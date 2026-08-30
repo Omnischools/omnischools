@@ -1132,6 +1132,123 @@ CREATE POLICY parent_scope ON attendance_record AS RESTRICTIVE FOR ALL TO public
     )
   );
 
+-- ---- INCR — PARENT BILLING: the NINTH widening of the 19a parent boundary (25 → 29 parent_scope tables)
+-- — the parent-portal BILLING tab (READ-ONLY, owner-authorised; approach a = narrow parent_scope grant).
+-- A parent gains ROW access to their OWN CHILD's invoices (invoice), the per-line breakdown
+-- (invoice_line_item), and the payments/receipts history (payment / receipt). Kept in sync with
+-- db/sql/prod-paste-0095-parent-billing.sql — this block is DEV; that file is the hand-paste on PROD (⚠ RLS
+-- is NOT auto-applied on prod; without the paste all four keep parent_deny and the Billing tab is an honest
+-- empty state — fail-closed, never a leak).
+--
+-- 🔴 THIS BLOCK IS STRUCTURALLY READ-ONLY — THE ONE DEPARTURE FROM EVERY prior parent_scope. Every earlier
+-- policy is `FOR ALL` with USING as WITH CHECK, trusting "no app write path runs inside withParentScope"
+-- (Kofi R4). Money is different: forging a `payment` (marking fees paid) or an `invoice` is the high-value
+-- attack, and a FOR-ALL scope would let a parent WRITE own-child rows. So billing uses SELECT reach + explicit
+-- write denial: parent_scope AS RESTRICTIVE FOR SELECT (own-child read, NO WITH CHECK) + parent_no_insert
+-- (FOR INSERT WITH CHECK pu IS NULL — without it tenant_isolation's permissive WITH CHECK alone would admit
+-- an own-school INSERT, the forge hole) + parent_no_update / parent_no_delete (FOR UPDATE/DELETE USING
+-- pu IS NULL → 0 rows). `pu IS NULL` (staff/webhook/escalated) → SELECT scope AND every write-deny are TRUE →
+-- total no-op, so staff finance read+write is byte-unchanged. Proven NON-SUPERUSER in scripts/rls-test.ts.
+--
+-- 🔴 OWN-CHILD, TENANT-FENCED. invoice/payment/receipt reach a specific child via parent_student_ids(school_id,
+-- pu). invoice_line_item has no student_id → reachable ONLY via an own-child invoice of the same tenant (a
+-- direct subquery on `invoice`, a DIFFERENT table → acyclic under prod FORCE RLS). RLS gates ROWS not COLUMNS:
+-- the discount TOTAL is the denormalised scalar invoice.discount_amount and the line text is
+-- invoice_line_item.description, so NO discount/mechanic table is ever reached. NEVER-WIDEN (stay parent_deny,
+-- re-affirmed by the catalog loop below): payment_allocation, invoice_discount_application, discount,
+-- discount_tier, fee_structure, fee_structure_item, fee_category, payment_audit_log.
+
+-- invoice — the child's issued bills (own-child only, via parent_student_ids). READ-ONLY.
+DROP POLICY IF EXISTS parent_deny ON invoice;
+DROP POLICY IF EXISTS parent_scope ON invoice;
+DROP POLICY IF EXISTS parent_no_insert ON invoice;
+DROP POLICY IF EXISTS parent_no_update ON invoice;
+DROP POLICY IF EXISTS parent_no_delete ON invoice;
+CREATE POLICY parent_scope ON invoice AS RESTRICTIVE FOR SELECT TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+CREATE POLICY parent_no_insert ON invoice AS RESTRICTIVE FOR INSERT TO public
+  WITH CHECK (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_update ON invoice AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON invoice AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
+-- invoice_line_item — the per-line breakdown, reachable ONLY via an OWN-CHILD invoice of the same tenant
+-- (no student_id on the row). Reads `invoice` (a different table → acyclic). READ-ONLY.
+DROP POLICY IF EXISTS parent_deny ON invoice_line_item;
+DROP POLICY IF EXISTS parent_scope ON invoice_line_item;
+DROP POLICY IF EXISTS parent_no_insert ON invoice_line_item;
+DROP POLICY IF EXISTS parent_no_update ON invoice_line_item;
+DROP POLICY IF EXISTS parent_no_delete ON invoice_line_item;
+CREATE POLICY parent_scope ON invoice_line_item AS RESTRICTIVE FOR SELECT TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR invoice_id IN (
+      SELECT i.id FROM invoice i
+      WHERE i.school_id = invoice_line_item.school_id
+        AND i.student_id IN (
+          SELECT parent_student_ids(
+            invoice_line_item.school_id,
+            NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+        )
+    )
+  );
+CREATE POLICY parent_no_insert ON invoice_line_item AS RESTRICTIVE FOR INSERT TO public
+  WITH CHECK (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_update ON invoice_line_item AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON invoice_line_item AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
+-- payment — the child's payments history (own-child only, via parent_student_ids). READ-ONLY: forging a
+-- payment (marking fees paid) is the high-value attack, denied structurally by parent_no_insert.
+DROP POLICY IF EXISTS parent_deny ON payment;
+DROP POLICY IF EXISTS parent_scope ON payment;
+DROP POLICY IF EXISTS parent_no_insert ON payment;
+DROP POLICY IF EXISTS parent_no_update ON payment;
+DROP POLICY IF EXISTS parent_no_delete ON payment;
+CREATE POLICY parent_scope ON payment AS RESTRICTIVE FOR SELECT TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+CREATE POLICY parent_no_insert ON payment AS RESTRICTIVE FOR INSERT TO public
+  WITH CHECK (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_update ON payment AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON payment AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
+-- receipt — the child's receipts history (own-child only, via parent_student_ids). READ-ONLY.
+DROP POLICY IF EXISTS parent_deny ON receipt;
+DROP POLICY IF EXISTS parent_scope ON receipt;
+DROP POLICY IF EXISTS parent_no_insert ON receipt;
+DROP POLICY IF EXISTS parent_no_update ON receipt;
+DROP POLICY IF EXISTS parent_no_delete ON receipt;
+CREATE POLICY parent_scope ON receipt AS RESTRICTIVE FOR SELECT TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+CREATE POLICY parent_no_insert ON receipt AS RESTRICTIVE FOR INSERT TO public
+  WITH CHECK (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_update ON receipt AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON receipt AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
