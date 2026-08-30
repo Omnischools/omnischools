@@ -338,6 +338,84 @@ async function main() {
         if ((e as Error).message !== ROLLBACK_B) throw e;
       }
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Parent House-PTA relabel — BEHAVIORAL RLS probe (INCR-58 R483/R484, prod-paste-0096).
+    //
+    // parent_house_names() is a SECURITY DEFINER helper that reads `house` (a parent_deny table) to give
+    // the parent portal the NAME of their OWN children's houses so it can relabel the generic "House PTA".
+    // On PROD the definer owner is a NON-SUPERUSER bound by FORCE RLS, so the ORIGINAL LANGUAGE sql body
+    // hit house.parent_deny inside a parent session and returned 0 ROWS → the tab silently fell back to
+    // "House PTA" (fail-closed, prod-only, masked by the dev superuser owner). The fix clears
+    // app.current_parent_user for the scoped read then restores it. This probe proves — as the NON-
+    // SUPERUSER omnischools_app owner (prod-shaped) — that a parent RESOLVES their own child's real house
+    // name (not the generic fallback), never another (unlinked) house's name, and 0 across a foreign
+    // tenant. A revert to the un-cleared LANGUAGE sql body turns "own house name resolves" red here.
+    console.log("\nParent House-PTA relabel (behavioral):");
+    const hParentRows = await sql<{ id: string }[]>`select id from ref_user limit 1`;
+    const houseKids = await sql<{ sid: string; hname: string }[]>`
+      select distinct on (s.house_id) s.id as sid, h.name as hname
+      from students s join house h on h.id = s.house_id
+      where s.school_id = ${schoolId} and s.house_id is not null
+      order by s.house_id, s.id`;
+    if (hParentRows.length < 1 || houseKids.length < 2) {
+      console.log("• skipped — needs ≥1 ref_user and ≥2 students in DISTINCT houses in the seeded school.");
+    } else {
+      const hParent = hParentRows[0].id;
+      const ownKid = houseKids[0].sid;
+      const ownHouse = houseKids[0].hname; // the parent's OWN child's house name
+      const otherHouse = houseKids[1].hname; // a real house the parent is NOT linked to
+      const ROLLBACK_H = "__parent_house_probe_rollback__";
+      try {
+        await sql.begin(async (tx) => {
+          // ---- superuser setup: link the parent to ONE child (in ownHouse) ----
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${ownKid}, 'RLSTEST', 'MOTHER',
+                           '+233RLSHOUSE1', true, ${hParent})`;
+          // prod-shape: definer owner = the non-superuser role subject to FORCE RLS (dev default owner is
+          // a superuser that bypasses RLS inside the body and would MASK the prod-only defect).
+          await tx`alter function parent_house_names(uuid, uuid) owner to omnischools_app`;
+
+          // ---- act as the parent (RLS enforced) ----
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${hParent}, true)`;
+
+          const own = await tx<{ house_name: string }[]>`
+            select house_name from parent_house_names(${schoolId}, ${hParent})`;
+          const names = own.map((r) => r.house_name);
+          assertTrue("parent resolves own child's house name (not the generic fallback)", names.includes(ownHouse));
+          assertTrue("parent does NOT resolve an unlinked house's name", !names.includes(otherHouse));
+
+          // cross-TENANT: scoped to a FOREIGN school, tenant_isolation still fences (GUC-clear can't widen)
+          await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+          const foreign = await tx<{ house_name: string }[]>`
+            select house_name from parent_house_names(${schoolId}, ${hParent})`;
+          assert("parent in foreign tenant resolves 0 house names", foreign.length, 0);
+
+          // prev-restore lock (Wells's nuance): the fn restores the PREVIOUS parent GUC, NOT the `pu` ARG.
+          // Parent-shape → restored verbatim; staff-shape (GUC unset, a pu passed as an arg) → left EMPTY,
+          // never mis-scoped as pu. A naive `pu::text` restore would fail the staff assertion below.
+          await tx`select set_config('app.current_school', ${schoolId}, true)`; // back to own school
+          const afterParent = await tx<{ v: string | null }[]>`
+            select current_setting('app.current_parent_user', true) as v`;
+          assertTrue("parent GUC restored to the caller's value after a call", afterParent[0]?.v === hParent);
+          await tx`select set_config('app.current_parent_user', '', true)`; // staff/escalated shape (GUC unset)
+          await tx`select house_name from parent_house_names(${schoolId}, ${hParent})`;
+          const afterStaff = await tx<{ v: string | null }[]>`
+            select current_setting('app.current_parent_user', true) as v`;
+          assertTrue(
+            "a pu-arg call leaves an unset parent GUC empty (not mis-scoped as pu)",
+            (afterStaff[0]?.v ?? "") === "",
+          );
+
+          throw new Error(ROLLBACK_H); // discard the probe row + the owner switch
+        });
+      } catch (e) {
+        if ((e as Error).message !== ROLLBACK_H) throw e;
+      }
+    }
   } finally {
     await sql.end();
   }
