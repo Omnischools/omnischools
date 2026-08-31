@@ -170,6 +170,10 @@ const PROD_PASTE = readFileSync(
   resolve(cwd(), "db/sql/prod-paste-0098-parent-exeat.sql"),
   "utf8",
 );
+const PROD_PASTE_CARD = readFileSync(
+  resolve(cwd(), "db/sql/prod-paste-0099-parent-exeat-card.sql"),
+  "utf8",
+);
 /** Slice a `CREATE OR REPLACE FUNCTION <name>( ... $$;` block out of a SQL file. */
 function fnBlock(sqlText: string, name: string): string {
   const start = sqlText.indexOf(`CREATE OR REPLACE FUNCTION ${name}(`);
@@ -247,5 +251,70 @@ describe("B/A5/D · parent_request_exeat server-forces the row and re-checks eli
     expect(write()).toMatch(
       /status::text IN \('REQUESTED','HM_APPROVED','SR_HM_SIGNED','DEPARTED'\)/,
     );
+  });
+});
+
+/**
+ * A1 (non-leak) + A3 (eligibility) for the CARD fn — Exeat Phase 3-A (prod-paste-0099). The behavioural
+ * proof lives in db:rls-test (own-child card returns EXACTLY the A1 set; RETURNED → 0 rows; cross-tenant /
+ * another-family / staff-pu=NULL → 0), but that needs a live DB and is NOT in `pnpm test`. These SQL-shape
+ * guards run in CI and bite the moment a future edit WIDENS the card projection (a fee/signer/bunk leak),
+ * ADMITS an ineligible status into the gate (e.g. RETURNED, the owner's live-window exclusion), or DRIFTS
+ * the prod-paste away from policies.sql (where a prod-only leak would land — the fn is absent in CI).
+ */
+// The A1 set — the ONLY columns of an own-child card a parent may ever read (Kofi A1). NO fee/amount,
+// signer staff name, bunk or dorm.
+const A1_CARD = [
+  "school_name", "school_code", "ref_code", "student_name", "form_label", "house_name",
+  "exeat_type", "date_out", "date_in", "academic_year", "status",
+].sort();
+
+describe("A1/A3 · parent_exeat_card projection + eligibility gate (SQL guard)", () => {
+  const cardBlock = (sqlText: string) => fnBlock(sqlText, "parent_exeat_card");
+
+  it("A1 — the RETURNS TABLE is EXACTLY the A1 set (no extras, none missing)", () => {
+    expect(returnsTableCols(cardBlock(POLICIES)).sort()).toEqual(A1_CARD);
+  });
+
+  it("A1 — the projection carries NONE of the OUT fields (fee/amount/signer/bunk/dorm/*_by/decline)", () => {
+    const rt = cardBlock(POLICIES).match(/RETURNS TABLE\(([\s\S]*?)\)\s*\n\s*LANGUAGE/)![1];
+    for (const banned of [
+      "fee", "owing", "amount", "signer", "bunk", "dorm", "_by_user_id", "decline",
+    ]) {
+      expect(rt, `projection must not expose ${banned}`).not.toContain(banned);
+    }
+  });
+
+  it("A3 — the eligibility gate admits ONLY the two download-eligible (type × status) pairs", () => {
+    const s = stripSql(cardBlock(POLICIES));
+    expect(s).toMatch(/'SPECIAL'\s+AND\s+be\.status::text\s+IN\s*\('SR_HM_SIGNED',\s*'DEPARTED'\)/);
+    expect(s).toMatch(
+      /IN\s*\('SCHEDULED',\s*'FEE_COLLECTION'\)\s+AND\s+be\.status::text\s+IN\s*\('HM_APPROVED',\s*'DEPARTED'\)/,
+    );
+  });
+
+  it("A3 — REQUESTED / DECLINED / RETURNED are NOT admitted (RETURNED excluded per owner — live-window only)", () => {
+    // stripSql drops the `-- RETURNED is deliberately EXCLUDED …` prose so a comment can't false-match.
+    const s = stripSql(cardBlock(POLICIES));
+    expect(s).not.toMatch(/'RETURNED'/);
+    expect(s).not.toMatch(/'REQUESTED'/);
+    expect(s).not.toMatch(/'DECLINED'/);
+  });
+
+  it("A4/A5 — own-child fence via the captured pu ARG, staff (pu IS NULL) short-circuits, GUC clear+restore", () => {
+    const s = stripSql(cardBlock(POLICIES));
+    expect(s).toMatch(/be\.student_id IN \(SELECT parent_student_ids\(school, pu\)\)/); // own-child fence
+    expect(s).toMatch(/IF pu IS NULL[\s\S]*?THEN RETURN/); // staff no-op
+    expect(s).toMatch(/set_config\('app\.current_parent_user', ''/); // clear parent_deny for the read
+    expect(s).toMatch(/set_config\('app\.current_parent_user', COALESCE\(prev, ''\)/); // restore VERBATIM
+    expect(s).not.toMatch(/pu::text/); // never forge a scope from the arg
+  });
+
+  it("the prod-paste-0099 card fn has NOT drifted from policies.sql (cols + normalized body)", () => {
+    expect(returnsTableCols(cardBlock(PROD_PASTE_CARD)).sort()).toEqual(
+      returnsTableCols(cardBlock(POLICIES)).sort(),
+    );
+    const norm = (t: string) => stripSql(t).replace(/\s+/g, " ").trim();
+    expect(norm(cardBlock(PROD_PASTE_CARD))).toEqual(norm(cardBlock(POLICIES)));
   });
 });
