@@ -134,6 +134,8 @@ export interface ExeatRow {
   type: ExeatType;
   status: ExeatStatus;
   reason: string | null;
+  /** The parent asked for this exeat (portal request, or a special phoned in) — drives the "from parent" chip. */
+  parentInitiated: boolean;
   outLabel: string | null;
   inLabel: string | null;
   fee: FeeStatus;
@@ -213,6 +215,7 @@ interface RawExeat extends RawActorIds {
   type: ExeatType;
   status: ExeatStatus;
   reason: string | null;
+  parentInitiated: boolean;
   departAt: Date | null;
   returnBy: Date | null;
   feeSnapshot: number;
@@ -278,6 +281,7 @@ function baseRow(r: RawExeat): ExeatRow {
     type: r.type,
     status: r.status,
     reason: r.reason,
+    parentInitiated: r.parentInitiated,
     outLabel: fmtDateTime(r.departAt),
     inLabel: fmtDateTime(r.returnBy),
     fee: feeStatus(r.feeSnapshot),
@@ -401,6 +405,7 @@ export async function getExeatBoard(
         type: boardingExeat.exeatType,
         status: boardingExeat.status,
         reason: boardingExeat.reason,
+        parentInitiated: boardingExeat.parentInitiated,
         departAt: boardingExeat.departAt,
         returnBy: boardingExeat.returnBy,
         feeSnapshot: boardingExeat.feeOwingSnapshot,

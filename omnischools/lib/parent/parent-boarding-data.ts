@@ -26,6 +26,7 @@ import { students, boardingCalendarEvent, boardingSettings, academicPeriod } fro
 
 export type BoarderState = "PLACED" | "AWAITING";
 export type ParentBoarderChild = {
+  studentId: string; // own child — the exeat-request form targets this (the fn re-fences own-child)
   firstName: string;
   state: BoarderState;
   houseName: string | null;
@@ -88,6 +89,7 @@ export async function loadParentBoardingTx(
   const boarders: ParentBoarderChild[] = boarderKids.map((k) => {
     const p = placeById.get(k.id);
     return {
+      studentId: k.id,
       firstName: k.firstName,
       state: p ? "PLACED" : "AWAITING",
       houseName: p?.house_name ?? null,

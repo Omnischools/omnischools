@@ -65,14 +65,14 @@ describe("parent-chrome · Boarding is a boarding-school-only 8th tab", () => {
     expect((s.match(/<span/g) ?? []).length).toBe(1);
   });
 
-  it("the boarding route is read-only, active-nav, and never reveals a removal or exeat", () => {
+  it("the boarding page stays a server component and never reveals a removal (exeat phase 2 now shipped)", () => {
     const s = page();
     expect(s).toMatch(/ParentNav active="Boarding"/);
     expect(s).toMatch(/NoChild/);
     expect(s).toMatch(/NotABoarder/); // day/deboardinized collapse
-    expect(s).not.toMatch(/^"use client"/m); // read-only server component
-    expect(s).not.toMatch(/Pay now|sendSms|gateway/i); // no write/gateway
+    expect(s).not.toMatch(/^"use client"/m); // the page is a server component (the exeat WRITE is a separate client form)
+    expect(s).not.toMatch(/Pay now|sendSms|gateway/i); // no gateway, no SMS from the page
     expect(s).not.toMatch(/deboardiniz|expelled|removed from board/i); // the removal is never shown
-    expect(s).not.toMatch(/\bexeat\b/i); // exeat is phase 2
+    expect(s).toMatch(/loadParentExeats/); // phase 2: own-child exeat status IS surfaced now
   });
 });

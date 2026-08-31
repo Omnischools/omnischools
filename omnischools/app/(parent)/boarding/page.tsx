@@ -7,8 +7,10 @@ import {
   type ParentVisitingDay,
   type ParentVisitingPolicy,
 } from "@/lib/parent/parent-boarding-data";
+import { loadParentExeats, type ParentExeatRow } from "@/lib/parent/parent-exeat-data";
 import { relationshipLabel, parentLongDate } from "@/lib/wassce/parent-copy";
 import { ParentHeader, ParentNav } from "../parent-chrome";
+import { ExeatRequestForm } from "./exeat-request";
 
 /**
  * INCR-BOARD · the parent-portal Boarding tab (lean v1) — a boarder's guardian sees their own child's House/
@@ -24,9 +26,10 @@ const longDay = (iso: string): string => parentLongDate(new Date(`${iso}T00:00:0
 
 export default async function ParentBoardingPage() {
   const { user, school } = await requireParent();
-  const [data, boarding] = await Promise.all([
+  const [data, boarding, exeats] = await Promise.all([
     loadParentPortal(school.id, user.id),
     loadParentBoarding(school.id, user.id),
+    loadParentExeats(school.id, user.id),
   ]);
   const child = data.children[0] ?? null;
   const guardianDisplay = data.guardianName ?? user.name ?? "Parent";
@@ -52,6 +55,7 @@ export default async function ParentBoardingPage() {
             {boarding.boarders.map((b, i) => (
               <PlacementCard key={i} boarder={b} />
             ))}
+            <Leave boarders={boarding.boarders} exeats={exeats} />
             <Visiting days={boarding.visitingDays} policy={boarding.visitingPolicy} />
             <TermDates dates={boarding.termDates} />
           </div>
@@ -123,6 +127,52 @@ function PlacementCard({ boarder }: { boarder: ParentBoarderChild }) {
         </div>
       )}
     </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────── leave / exeat ── */
+
+/** The "Leave / exeat" section — the request form + the child's exeat status list (own child only). */
+function Leave({ boarders, exeats }: { boarders: ParentBoarderChild[]; exeats: ParentExeatRow[] }) {
+  const hasOpenRequest = exeats.some((e) => e.isOpen);
+  return (
+    <div className="space-y-4">
+      <ExeatRequestForm
+        wards={boarders.map((b) => ({ studentId: b.studentId, firstName: b.firstName }))}
+        hasOpenRequest={hasOpenRequest}
+      />
+      <section className="overflow-hidden rounded-xl border border-border bg-surface">
+        <div className="border-b border-border bg-bg px-6 py-[18px]">
+          <h3 className="font-display text-base font-medium text-navy">Leave requests</h3>
+          <div className="text-[11px] text-navy-3">Your ward&apos;s exeats</div>
+        </div>
+        {exeats.length === 0 ? (
+          <div className="px-6 py-6 text-[13px] leading-relaxed text-navy-2">No leave requests yet.</div>
+        ) : (
+          exeats.map((e) => <ExeatRow key={e.id} exeat={e} />)
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ExeatRow({ exeat }: { exeat: ParentExeatRow }) {
+  return (
+    <div className="border-b border-border px-6 py-4 last:border-b-0">
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="font-display text-[15px] font-medium text-navy">{exeat.statusLabel}</span>
+        <span className="text-right font-mono text-[11px] text-navy-3">{exeat.refCode}</span>
+      </div>
+      <div className="mt-1 text-[13px] leading-relaxed text-navy-2">{exeat.detail}</div>
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-navy-3">
+        {exeat.houseName && <span>{exeat.houseName}</span>}
+        {exeat.milestones.map((m, i) => (
+          <span key={i}>
+            {m.label}: <span className="font-mono text-navy-2">{m.value}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
