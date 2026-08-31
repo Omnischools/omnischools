@@ -135,12 +135,17 @@ function PlacementCard({ boarder }: { boarder: ParentBoarderChild }) {
 /** The "Leave / exeat" section — the request form + the child's exeat status list (own child only). */
 function Leave({ boarders, exeats }: { boarders: ParentBoarderChild[]; exeats: ParentExeatRow[] }) {
   const hasOpenRequest = exeats.some((e) => e.isOpen);
+  // Only an ACTIVE boarder can request leave (the fn refuses a non-active student — A5). A withdrawn-but-
+  // still-BOARDER ward simply isn't offered the form (never revealing why); the status list still shows below.
+  const activeWards = boarders.filter((b) => b.isActive);
   return (
     <div className="space-y-4">
-      <ExeatRequestForm
-        wards={boarders.map((b) => ({ studentId: b.studentId, firstName: b.firstName }))}
-        hasOpenRequest={hasOpenRequest}
-      />
+      {activeWards.length > 0 && (
+        <ExeatRequestForm
+          wards={activeWards.map((b) => ({ studentId: b.studentId, firstName: b.firstName }))}
+          hasOpenRequest={hasOpenRequest}
+        />
+      )}
       <section className="overflow-hidden rounded-xl border border-border bg-surface">
         <div className="border-b border-border bg-bg px-6 py-[18px]">
           <h3 className="font-display text-base font-medium text-navy">Leave requests</h3>

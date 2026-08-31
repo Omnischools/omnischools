@@ -41,9 +41,9 @@ const btnGold = `${btn} border-gold bg-gold text-navy`;
 const btnTerra = `${btn} border-terra bg-terra text-bg`;
 
 /**
- * B12 · a small "from parent" chip flagging a parent-asked exeat on the staff queue (Exeat Phase 2).
- * Purely presentational; the row already carries `parentInitiated` from the projection. Gold accent to
- * echo the parent-portal (surface copy: "request from parent" / "parent-initiated").
+ * B12 · a small "from parent" chip flagging a genuinely portal-origin exeat on the staff queue (Exeat Phase 2).
+ * Purely presentational; the row carries `viaParentPortal` (TRUE only for a parent_request_exeat row) from the
+ * projection — parent_initiated is broadly true and NOT a provenance signal. Gold accent to echo the portal.
  */
 export function ParentChip() {
   return (

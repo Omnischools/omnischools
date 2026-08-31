@@ -168,7 +168,7 @@ export default async function ExeatManagementPage() {
                   <span className={`inline-block rounded-pill px-2 py-0.5 text-[9px] font-bold tracking-wide ${TYPE_PILL[r.type].cls}`}>
                     {TYPE_PILL[r.type].label}
                   </span>
-                  {r.parentInitiated && <ParentChip />}
+                  {r.viaParentPortal && <ParentChip />}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[9px] font-bold text-gold">
