@@ -633,12 +633,22 @@ async function main() {
           // (2) the created row is SPECIAL / REQUESTED / parent_initiated (read back as superuser via savepoint reset)
           await tx`reset role`;
           const [made] = await tx<
-            { exeat_type: string; status: string; parent_initiated: boolean; house_id: string }[]
-          >`select exeat_type, status, parent_initiated, house_id from boarding_exeat
+            {
+              exeat_type: string;
+              status: string;
+              parent_initiated: boolean;
+              via_parent_portal: boolean;
+              house_id: string;
+            }[]
+          >`select exeat_type, status, parent_initiated, via_parent_portal, house_id from boarding_exeat
               where school_id=${schoolId} and student_id=${exOwn}`;
           assertTrue("created exeat is SPECIAL", made?.exeat_type === "SPECIAL");
           assertTrue("created exeat is REQUESTED", made?.status === "REQUESTED");
           assertTrue("created exeat is parent_initiated", made?.parent_initiated === true);
+          // via_parent_portal is the accurate staff "From parent" provenance signal — TRUE only for a
+          // parent_request_exeat row (parent_initiated is broadly true and not a provenance signal). The
+          // select also proves the column exists on the dev DB.
+          assertTrue("created exeat is via_parent_portal (accurate From-parent chip)", made?.via_parent_portal === true);
           assertTrue("created exeat carries the derived house_id", made?.house_id === exHouse);
 
           // ---- back to the parent ----

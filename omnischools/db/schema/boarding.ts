@@ -344,6 +344,10 @@ export const boardingExeat = pgTable(
     refCode: text("ref_code").notNull(), // e.g. ASA-EX-2026-0341
     reason: text("reason"), // app-required for SPECIAL, auto-prefilled for FEE_COLLECTION
     parentInitiated: boolean("parent_initiated").notNull().default(true),
+    // TRUE only for a row created via parent_request_exeat (the parent portal). Powers the staff
+    // "From parent" chip accurately — parent_initiated is broadly true and NOT a provenance signal.
+    // Staff-created rows (lib/actions/boarding-exeat.ts requestExeat) keep the default false.
+    viaParentPortal: boolean("via_parent_portal").notNull().default(false),
     departAt: timestamp("depart_at", { withTimezone: true }), // planned out
     returnBy: timestamp("return_by", { withTimezone: true }), // planned in (return-by deadline)
     // --- 5 stage stamps, each + actor (global-table SET NULL → single-column FK) ---

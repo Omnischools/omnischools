@@ -1,7 +1,10 @@
 -- Omnischools — PROD paste 0098: PARENT EXEAT (INCR — Exeat Phase 2: parent-initiated SPECIAL exeat
--- request + own-child exeat status, parent-portal Boarding). FUNCTION-ONLY — ZERO new tables, ZERO enums,
--- ZERO altered columns, ZERO backfills, ZERO new parent_scope grants. It adds TWO SECURITY DEFINER
--- functions (parent_request_exeat = the ONLY parent write into boarding_exeat; parent_exeat_list = the
+-- request + own-child exeat status, parent-portal Boarding). ONE additive column + TWO fns — ZERO new
+-- tables, ZERO enums, ZERO backfills, ZERO new parent_scope grants. It adds ONE additive column
+-- (boarding_exeat.via_parent_portal boolean NOT NULL DEFAULT false — the accurate staff "From parent"
+-- provenance signal; Drizzle migration 0089 adds it on dev/source-of-truth, the idempotent ALTER below is
+-- belt-and-braces so this paste is self-contained) and TWO SECURITY DEFINER functions
+-- (parent_request_exeat = the ONLY parent write into boarding_exeat; parent_exeat_list = the
 -- ONLY parent read of boarding_exeat) and re-runs the catalog-driven parent_deny loop. Idempotent — safe
 -- to run more than once. Paste into the Supabase SQL editor on PROD after merging. Byte-identical in effect
 -- to the "INCR — PARENT EXEAT" block in db/sql/policies.sql (dev, db:policies).
@@ -43,7 +46,8 @@
 -- stays fully parent_deny), but a LOUD "the paste didn't run" signal, not a silent empty. Run this
 -- WITH/BEFORE the Exeat Phase 2 code release.
 --
--- SCOPE — NO TABLE CHANGES. Every policy on every table is untouched; boarding_exeat + exeat_notification
+-- SCOPE — ONE ADDITIVE COLUMN, NO POLICY CHANGES. boarding_exeat gains via_parent_portal (additive, NOT
+-- NULL DEFAULT false — no backfill, no RLS impact). Every policy on every table is untouched; boarding_exeat + exeat_notification
 -- keep tenant_isolation + parent_deny exactly as prod-paste-0046 / prod-paste-0097 left them. The catalog
 -- parent_deny loop at the tail re-affirms parent_deny on every FORCE-RLS + school_id table with NO
 -- parent_scope (both exeat tables included), so a future tenant table stays auto-denied with zero edits.
@@ -57,6 +61,14 @@
 --   where c.relname in ('boarding_exeat','exeat_notification') order by 1, 2;
 --   -- and db/sql/verify-prod-rls.sql: Query 1 must still return ZERO ROWS; parent_readable UNCHANGED (31 —
 --   -- no new parent_scope table is added by this increment).
+
+-- ---- ADDITIVE COLUMN (self-contained paste). The staff "From parent" chip must key on real portal
+-- provenance, not parent_initiated (which is broadly true). via_parent_portal is TRUE only for a row
+-- created by parent_request_exeat below; staff-created rows keep the default false. Additive, NOT NULL
+-- DEFAULT false → existing rows read false, no backfill. Drizzle migration 0089 adds it on dev/source-of-
+-- truth; this idempotent ALTER is belt-and-braces so the paste is self-contained (the updated fn below
+-- references the column). Idempotent.
+ALTER TABLE boarding_exeat ADD COLUMN IF NOT EXISTS via_parent_portal boolean NOT NULL DEFAULT false;
 
 -- ============================================================================================
 -- INCR — PARENT EXEAT (Exeat Phase 2). Two SECURITY DEFINER fns; byte-identical to the
@@ -205,11 +217,11 @@ BEGIN
       BEGIN
         INSERT INTO boarding_exeat (
           school_id, student_id, house_id, academic_period_id,
-          exeat_type, status, ref_code, reason, parent_initiated,
+          exeat_type, status, ref_code, reason, parent_initiated, via_parent_portal,
           depart_at, return_by, requested_by_user_id, fee_owing_snapshot)
         VALUES (
           school, p_student, v_house, v_period,
-          'SPECIAL', 'REQUESTED', v_ref, NULLIF(btrim(p_reason), ''), true,
+          'SPECIAL', 'REQUESTED', v_ref, NULLIF(btrim(p_reason), ''), true, true,
           p_depart::timestamptz, v_return_by, v_requested_by, v_snapshot)
         RETURNING id INTO v_id;
         ok := true;

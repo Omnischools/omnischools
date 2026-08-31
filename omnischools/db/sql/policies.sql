@@ -1605,11 +1605,11 @@ BEGIN
       BEGIN
         INSERT INTO boarding_exeat (
           school_id, student_id, house_id, academic_period_id,
-          exeat_type, status, ref_code, reason, parent_initiated,
+          exeat_type, status, ref_code, reason, parent_initiated, via_parent_portal,
           depart_at, return_by, requested_by_user_id, fee_owing_snapshot)
         VALUES (
           school, p_student, v_house, v_period,
-          'SPECIAL', 'REQUESTED', v_ref, NULLIF(btrim(p_reason), ''), true,
+          'SPECIAL', 'REQUESTED', v_ref, NULLIF(btrim(p_reason), ''), true, true,
           p_depart::timestamptz, v_return_by, v_requested_by, v_snapshot)
         RETURNING id INTO v_id;
         ok := true;

@@ -624,6 +624,13 @@
       "when": 1787819493414,
       "tag": "0088_fat_vengeance",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1788163266036,
+      "tag": "0089_kind_blindfold",
+      "breakpoints": true
     }
   ]
 }
