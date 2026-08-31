@@ -40,6 +40,19 @@ const btnPrimary = `${btn} border-navy bg-navy text-bg`;
 const btnGold = `${btn} border-gold bg-gold text-navy`;
 const btnTerra = `${btn} border-terra bg-terra text-bg`;
 
+/**
+ * B12 · a small "from parent" chip flagging a genuinely portal-origin exeat on the staff queue (Exeat Phase 2).
+ * Purely presentational; the row carries `viaParentPortal` (TRUE only for a parent_request_exeat row) from the
+ * projection — parent_initiated is broadly true and NOT a provenance signal. Gold accent to echo the portal.
+ */
+export function ParentChip() {
+  return (
+    <span className="inline-block rounded-pill border border-gold-soft bg-gold-bg px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-navy-2">
+      From parent
+    </span>
+  );
+}
+
 /** The per-exeat action buttons (used in the in-flight card and every queue row). */
 export function ActionBar({ exeat, canSign }: { exeat: ExeatRow; canSign: boolean }) {
   const { pending, error, run } = useAction();

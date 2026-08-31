@@ -26,7 +26,9 @@ import { students, boardingCalendarEvent, boardingSettings, academicPeriod } fro
 
 export type BoarderState = "PLACED" | "AWAITING";
 export type ParentBoarderChild = {
+  studentId: string; // own child — the exeat-request form targets this (the fn re-fences own-child)
   firstName: string;
+  isActive: boolean; // status='ACTIVE' — gates the exeat-request form (a withdrawn boarder can't request; never says why)
   state: BoarderState;
   houseName: string | null;
   dormName: string | null;
@@ -67,7 +69,12 @@ export async function loadParentBoardingTx(
 ): Promise<ParentBoarding> {
   // Own children + residency (students is parent-readable). NO bunk id / house id read here.
   const kids = await tx
-    .select({ id: students.id, firstName: students.firstName, residency: students.residency })
+    .select({
+      id: students.id,
+      firstName: students.firstName,
+      residency: students.residency,
+      status: students.status,
+    })
     .from(students)
     .where(eq(students.schoolId, schoolId))
     .orderBy(asc(students.firstName));
@@ -88,7 +95,9 @@ export async function loadParentBoardingTx(
   const boarders: ParentBoarderChild[] = boarderKids.map((k) => {
     const p = placeById.get(k.id);
     return {
+      studentId: k.id,
       firstName: k.firstName,
+      isActive: k.status === "ACTIVE",
       state: p ? "PLACED" : "AWAITING",
       houseName: p?.house_name ?? null,
       dormName: p?.dorm_name ?? null,

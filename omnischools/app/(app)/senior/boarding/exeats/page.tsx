@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { BOARDING_ROLES } from "@/lib/access";
 import { getExeatBoard, listExeatBoarders, type ExeatRow, type ExeatStage } from "@/lib/boarding/exeat-data";
 import { canSignSpecial } from "@/lib/boarding/exeat-decision";
-import { ActionBar, BulkApprove, NewExeatButton, RunLateChecks } from "@/components/boarding/exeat-console";
+import { ActionBar, BulkApprove, NewExeatButton, ParentChip, RunLateChecks } from "@/components/boarding/exeat-console";
 
 export const dynamic = "force-dynamic";
 
@@ -164,10 +164,11 @@ export default async function ExeatManagementPage() {
                 key={r.id}
                 className="grid grid-cols-[80px_1fr_1fr_140px_110px_120px_minmax(180px,auto)] items-center gap-3 border-b border-border px-4 py-2.5 text-[12px] last:border-0"
               >
-                <div>
+                <div className="flex flex-col items-start gap-1">
                   <span className={`inline-block rounded-pill px-2 py-0.5 text-[9px] font-bold tracking-wide ${TYPE_PILL[r.type].cls}`}>
                     {TYPE_PILL[r.type].label}
                   </span>
+                  {r.viaParentPortal && <ParentChip />}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[9px] font-bold text-gold">

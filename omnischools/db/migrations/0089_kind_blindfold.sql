@@ -1,0 +1,1 @@
+ALTER TABLE "boarding_exeat" ADD COLUMN "via_parent_portal" boolean DEFAULT false NOT NULL;

@@ -570,6 +570,240 @@ async function main() {
         if ((e as Error).message !== ROLLBACK_BR) throw e;
       }
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Parent EXEAT (write + read) — BEHAVIORAL RLS probe (INCR — Exeat Phase 2, prod-paste-0098).
+    // Proven as the NON-SUPERUSER omnischools_app; the dev superuser masks RLS.
+    //
+    // boarding_exeat stays fully parent_deny — the two parent touchpoints are SECURITY DEFINER fns:
+    //  • parent_request_exeat(...) — the ONLY parent write. Server-forces SPECIAL/REQUESTED/parent_initiated
+    //    for the parent's OWN active boarder; own-child fence via the pu ARG; open-guard rejects a 2nd live
+    //    exeat. The GUC-clear is LOAD-BEARING: under the prod-shaped owner (omnischools_app, FORCE RLS binds
+    //    the definer body) a no-clear version would hit boarding_exeat.parent_deny and create 0 rows.
+    //  • parent_exeat_list(...) — the ONLY parent read; returns exactly the C3-IN columns (no fee snapshot /
+    //    decline reason / *_by ids), newest first.
+    // Proves: a parent CREATES a SPECIAL for own child; CANNOT for another child (own-child fence) or a
+    // foreign tenant (tenant_isolation still fences the school arg); a DIRECT parent SELECT/INSERT/UPDATE/
+    // DELETE on boarding_exeat is denied; the open-guard blocks a 2nd request; staff (pu IS NULL) direct
+    // boarding_exeat access is byte-unchanged. All rows + the fn owner switches live in one rolled-back tx.
+    console.log("\nParent Exeat write+read path (behavioral):");
+    const exParentRows = await sql<{ id: string }[]>`select id from ref_user limit 1`;
+    const exKids = await sql<{ id: string }[]>`
+      select id from students where school_id = ${schoolId} order by id limit 2`;
+    const exPeriod = await sql<{ pid: string }[]>`
+      select period_id as pid from academic_period
+      where school_id = ${schoolId} and product_line = 'SENIOR' limit 1`;
+    if (exParentRows.length < 1 || exKids.length < 2 || exPeriod.length < 1) {
+      console.log("• skipped — needs ≥1 ref_user, ≥2 students, and a SENIOR academic period in the seed.");
+    } else {
+      const exParent = exParentRows[0].id;
+      const exOwn = exKids[0].id;
+      const exOther = exKids[1].id; // a real child in the SAME school, NOT linked to this parent
+      const exHouse = "77777777-0000-4000-8000-0000000e0001";
+      const ROLLBACK_EX = "__parent_exeat_probe_rollback__";
+      try {
+        await sql.begin(async (tx) => {
+          // ---- superuser setup (bypasses RLS) ----
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${exOwn}, 'RLSTEST', 'MOTHER',
+                           '+233RLSTESTEX', true, ${exParent})`;
+          await tx`insert into house (id, school_id, name) values (${exHouse}, ${schoolId}, 'RLST Exeat House')`;
+          await tx`update students set residency='BOARDER', status='ACTIVE', house_id=${exHouse} where id=${exOwn}`;
+          await tx`update students set residency='BOARDER', status='ACTIVE', house_id=${exHouse} where id=${exOther}`;
+          // prod-shape: definer owner = the non-superuser role FORCE RLS actually binds
+          await tx`alter function parent_request_exeat(uuid, uuid, uuid, text, date, date) owner to omnischools_app`;
+          await tx`alter function parent_exeat_list(uuid, uuid) owner to omnischools_app`;
+
+          // ---- act as the parent (RLS enforced, non-superuser) ----
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const c = async (t: string, w: string) =>
+            (await tx.unsafe(`select count(*)::int n from ${t} ${w}`))[0].n as number;
+
+          // (1) parent creates a SPECIAL for own child — the GUC-clear write LANDS under the prod-shaped owner.
+          const [req] = await tx<{ ok: boolean; ref_code: string; error: string | null }[]>`
+            select ok, ref_code, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOwn}::uuid,
+                                      'Funeral', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("parent request for own child succeeds (ok)", req?.ok === true);
+          assertTrue("parent request returns a ref_code", !!req?.ref_code && req.ref_code.includes("-EX-"));
+
+          // (2) the created row is SPECIAL / REQUESTED / parent_initiated (read back as superuser via savepoint reset)
+          await tx`reset role`;
+          const [made] = await tx<
+            {
+              exeat_type: string;
+              status: string;
+              parent_initiated: boolean;
+              via_parent_portal: boolean;
+              house_id: string;
+            }[]
+          >`select exeat_type, status, parent_initiated, via_parent_portal, house_id from boarding_exeat
+              where school_id=${schoolId} and student_id=${exOwn}`;
+          assertTrue("created exeat is SPECIAL", made?.exeat_type === "SPECIAL");
+          assertTrue("created exeat is REQUESTED", made?.status === "REQUESTED");
+          assertTrue("created exeat is parent_initiated", made?.parent_initiated === true);
+          // via_parent_portal is the accurate staff "From parent" provenance signal — TRUE only for a
+          // parent_request_exeat row (parent_initiated is broadly true and not a provenance signal). The
+          // select also proves the column exists on the dev DB.
+          assertTrue("created exeat is via_parent_portal (accurate From-parent chip)", made?.via_parent_portal === true);
+          assertTrue("created exeat carries the derived house_id", made?.house_id === exHouse);
+
+          // ---- back to the parent ----
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+
+          // (3) parent_exeat_list returns own child's exeat with EXACTLY the C3-IN columns (no fee/decline/*_by)
+          const list = await tx<Record<string, unknown>[]>`
+            select * from parent_exeat_list(${schoolId}::uuid, ${exParent}::uuid)`;
+          assert("parent_exeat_list returns the own-child exeat", list.length, 1);
+          const lkeys = Object.keys(list[0] ?? {}).sort().join(",");
+          assertTrue(
+            "list columns are EXACTLY the C3-IN set (no fee_owing_snapshot/decline_reason/*_by ids)",
+            lkeys ===
+              [
+                "depart_at", "departed_at", "exeat_id", "exeat_type", "hm_approved_at", "house_name",
+                "parent_initiated", "reason", "ref_code", "return_by", "returned_at", "sr_hm_signed_at", "status",
+              ].join(","),
+          );
+
+          // (4) parent GUC restored VERBATIM after each fn call
+          const [{ cur }] = await tx<{ cur: string }[]>`
+            select current_setting('app.current_parent_user', true) as cur`;
+          assertTrue("parent GUC restored VERBATIM after the fn calls", cur === exParent);
+
+          // (5) own-child fence — a request for ANOTHER (unlinked) child is refused, no row created
+          const [reqOther] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOther}::uuid,
+                                      'Forge', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("parent request for ANOTHER child refused (ok=false)", reqOther?.ok === false);
+          assert("no exeat created for the unlinked child", await c("boarding_exeat", `where student_id='${exOther}'`), 0);
+
+          // (6) open-guard — a 2nd request while one is live is refused
+          const [reqAgain] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOwn}::uuid,
+                                      'Second', '2026-09-10'::date, '2026-09-12'::date)`;
+          assertTrue("open-guard blocks a 2nd live request (ok=false)", reqAgain?.ok === false);
+          assertTrue("open-guard error mentions in-progress", (reqAgain?.error ?? "").includes("in progress"));
+
+          // (7) DIRECT parent access to boarding_exeat is denied every way (parent_deny)
+          assert("parent DIRECT read of boarding_exeat denied (0 rows)", await c("boarding_exeat", `where school_id='${schoolId}'`), 0);
+          let insDenied = false;
+          try {
+            await tx.savepoint(async (sp) => {
+              await sp.unsafe(
+                `insert into boarding_exeat (school_id, student_id, house_id, academic_period_id, exeat_type, status, ref_code)
+                 values ('${schoolId}', '${exOwn}', '${exHouse}', '${exPeriod[0].pid}', 'SPECIAL', 'HM_APPROVED', 'FORGE-EX-2026-9999')`,
+              );
+            });
+          } catch {
+            insDenied = true;
+          }
+          assertTrue("parent DIRECT INSERT into boarding_exeat denied", insDenied);
+          assert("parent DIRECT UPDATE boarding_exeat denied (rows)", (await tx`update boarding_exeat set status='HM_APPROVED' where student_id=${exOwn}`).count, 0);
+          assert("parent DIRECT DELETE boarding_exeat denied (rows)", (await tx`delete from boarding_exeat where student_id=${exOwn}`).count, 0);
+
+          // (8) cross-TENANT: scoped to a FOREIGN school, a request with the real school arg creates NOTHING
+          await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+          const [reqForeign] = await tx<{ ok: boolean }[]>`
+            select ok from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOther}::uuid,
+                                                'Cross', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("cross-tenant request creates nothing (ok=false)", reqForeign?.ok === false);
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          const listAfter = await tx`select * from parent_exeat_list(${schoolId}::uuid, ${exParent}::uuid)`;
+          assert("still exactly one own-child exeat after every refused attempt", listAfter.length, 1);
+
+          // (9) staff (pu IS NULL) — direct boarding_exeat access is byte-unchanged (sees the created row)
+          await tx`select set_config('app.current_parent_user', '', true)`;
+          assertAtLeast("staff sees the created exeat (parent_deny is a no-op for pu IS NULL)", await c("boarding_exeat", `where student_id='${exOwn}'`), 1);
+
+          // (10) A5 / E5 server-side re-checks — a child the parent OWNS but who is NOT an eligible boarder
+          // is refused server-side (the write fn re-checks, not just the UI affordance). Link exOther to the
+          // parent so the own-child fence PASSES and only the boarder/House gate can reject.
+          await tx`reset role`;
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${exOther}, 'RLSTEST', 'FATHER',
+                           '+233RLSTESTE2', false, ${exParent})`;
+          // E5: an active BOARDER with NO House → refused ("not assigned to a House").
+          await tx`update students set residency='BOARDER', status='ACTIVE', house_id=NULL where id=${exOther}`;
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const [reqNoHouse] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOther}::uuid,
+                                      'No house', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("no-House boarder refused (E5, ok=false)", reqNoHouse?.ok === false);
+          assertTrue("no-House error mentions a House", (reqNoHouse?.error ?? "").includes("House"));
+          // A5: a DAY student (own child, has a House) → refused ("Only an active boarder…").
+          await tx`reset role`;
+          await tx`update students set residency='DAY', status='ACTIVE', house_id=${exHouse} where id=${exOther}`;
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const [reqDay] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOther}::uuid,
+                                      'Day student', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("DAY student refused server-side (A5, ok=false)", reqDay?.ok === false);
+          assertTrue("A5 error mentions an active boarder", (reqDay?.error ?? "").toLowerCase().includes("active boarder"));
+          // and NEITHER refused request wrote a row (seed-immune: match on our own unique reasons, since
+          // the seeded DB may already carry an unrelated exeat for this student).
+          await tx`reset role`;
+          assert(
+            "neither A5/E5-refused request wrote a row",
+            await c("boarding_exeat", `where student_id='${exOther}' and reason in ('No house','Day student')`),
+            0,
+          );
+
+          // (11) 🔴 SARAH LEAK-CLOSURE — the reason this probe exists. A STAFF-authored exeat carries
+          // parent_initiated=true (staff SPECIALs FORCE it — lib/actions/boarding-exeat.ts:199) but
+          // via_parent_portal=false (the parent fn is the ONLY writer that sets it true). Its free-text
+          // reason (welfare/discipline) must be REDACTED to NULL by parent_exeat_list — the CASE-on-
+          // via_parent_portal at the fn is the authority, NOT the broadly-true parent_initiated flag. The
+          // ORIGINAL bug projected bare be.reason, so this staff string leaked verbatim to the parent, and
+          // the unit fixture (parentInitiated:false — a shape a staff SPECIAL never has) hid it. Insert one
+          // for the OWN child as the superuser owner, read as the own-child parent: the distinctive string
+          // must NOT appear (staff row reason = NULL), while the genuine PORTAL row ('Funeral', from step 1)
+          // MUST still return its parent-typed reason. Reverting the fn to bare be.reason turns this red.
+          const STAFF_REASON = "SECRET-STAFF-DISCIPLINE-NOTE";
+          const staffRef = "STAFF-EX-2026-9001";
+          await tx`insert into boarding_exeat
+                     (school_id, student_id, house_id, academic_period_id, exeat_type, status, ref_code,
+                      reason, parent_initiated)
+                   values (${schoolId}, ${exOwn}, ${exHouse}, ${exPeriod[0].pid}, 'SPECIAL', 'RETURNED',
+                           ${staffRef}, ${STAFF_REASON}, true)`; // via_parent_portal DEFAULTs false = staff row
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const leakRows = await tx<{ ref_code: string; reason: string | null }[]>`
+            select ref_code, reason from parent_exeat_list(${schoolId}::uuid, ${exParent}::uuid)`;
+          const staffRow = leakRows.find((r) => r.ref_code === staffRef);
+          const portalRow = leakRows.find((r) => r.ref_code === req.ref_code);
+          assertTrue("staff exeat IS visible to the own-child parent (row returned)", !!staffRow);
+          assertTrue("staff exeat reason REDACTED to NULL at the fn (leak CLOSED)", staffRow?.reason === null);
+          assertTrue(
+            "no returned reason leaks the distinctive staff string",
+            leakRows.every((r) => !(r.reason ?? "").includes(STAFF_REASON)),
+          );
+          assertTrue(
+            "genuine PORTAL row STILL returns its parent-typed reason (redaction is precise, not blanket)",
+            portalRow?.reason === "Funeral",
+          );
+          await tx`reset role`;
+
+          throw new Error(ROLLBACK_EX); // discard all probe rows + the fn owner switches
+        });
+      } catch (e) {
+        if ((e as Error).message !== ROLLBACK_EX) throw e;
+      }
+    }
   } finally {
     await sql.end();
   }

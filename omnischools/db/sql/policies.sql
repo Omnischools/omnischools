@@ -1442,6 +1442,311 @@ BEGIN
 END
 $$;
 
+-- ---- INCR — PARENT EXEAT: Exeat Phase 2 (parent-initiated SPECIAL exeat request + own-child exeat
+-- status). Kept in sync with db/sql/prod-paste-0098-parent-exeat.sql — this block is DEV; that file is the
+-- hand-paste on PROD (⚠ RLS/functions are NOT auto-applied on prod; without the paste both fns are ABSENT
+-- and a boarder parent's Exeat surface 500s "function does not exist" — fail-closed, never a leak).
+--
+-- FUNCTION-ONLY: NO new parent_scope grant. boarding_exeat + exeat_notification STAY fully parent_deny (the
+-- catalog loop above already re-affirmed it — neither carries parent_scope). A parent touches boarding_exeat
+-- ONLY through the two SECURITY DEFINER fns below.
+--
+-- 🔴 Fn 1 parent_request_exeat — the guarded WRITE (the ONLY parent write into boarding_exeat). Server-forces
+-- exeat_type=SPECIAL / status=REQUESTED / parent_initiated=true; derives house_id + academic_period_id;
+-- return_by = p_return at getExeatPolicy.returnByTime (default 16:00); fee_owing_snapshot advisory-only
+-- (NEVER blocks); requested_by_user_id = pu only if a ref_user row exists (OC-3), else NULL. Own-child fence
+-- via the CAPTURED pu ARG (parent_student_ids), open-guard rejects a second live exeat (B9), ref_code
+-- retry-guarded against uniq_exeat_ref_code. GUC-clear device: clears app.current_parent_user for the
+-- parent_deny traverse (boarding_exeat/house/academic_period/audit_log) then restores VERBATIM;
+-- app.current_school stays set. Composite OUT {ok, ref_code, error}.
+-- 🔴 Fn 2 parent_exeat_list — the own-child READ projection (the ONLY parent read of boarding_exeat). Returns
+-- ONLY the C3-IN columns for ALL own-child exeats, newest first — NEVER fee_owing_snapshot / decline_reason /
+-- *_by_user_id / returned_late / house_id/dorm/bunk. Same GUC-clear/restore device; own-child fence via the
+-- CAPTURED pu ARG.
+-- pu IS NULL (staff/webhook/escalated) → both fns short-circuit to a no-op; the staff exeat console reads/
+-- writes boarding_exeat DIRECTLY via withSchool and is byte-unchanged.
+
+CREATE OR REPLACE FUNCTION parent_request_exeat(
+  school     uuid,
+  pu         uuid,
+  p_student  uuid,
+  p_reason   text,
+  p_depart   date,
+  p_return   date,
+  OUT ok        boolean,
+  OUT ref_code  text,
+  OUT error     text
+)
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+DECLARE
+  prev           text := current_setting('app.current_parent_user', true);  -- caller's GUC, captured VERBATIM
+  v_today        date := (now() AT TIME ZONE 'UTC')::date;
+  v_year         int  := EXTRACT(YEAR FROM now())::int;
+  v_res          text;
+  v_status       text;
+  v_house        uuid;
+  v_period       uuid;
+  v_owing        numeric;
+  v_snapshot     numeric;
+  v_return_time  text;
+  v_return_by    timestamptz;
+  v_requested_by uuid;
+  v_prefix       text;
+  v_base_seq     int;
+  v_attempt      int;
+  v_ref          text;
+  v_id           uuid;
+BEGIN
+  ok := false;
+  -- fail-CLOSED: no parent / no school → do nothing, GUC untouched. STAFF (pu IS NULL) short-circuit here.
+  IF pu IS NULL OR school IS NULL THEN
+    error := 'unauthorized';
+    RETURN;
+  END IF;
+
+  -- own-child fence (D1): the CAPTURED pu ARG, never the GUC. Checked BEFORE the clear → GUC untouched,
+  -- and the error is a NEUTRAL not-found (never reveals the child exists in another family/tenant).
+  IF NOT EXISTS (SELECT 1 FROM parent_student_ids(school, pu) sid WHERE sid = p_student) THEN
+    error := 'not_found';
+    RETURN;
+  END IF;
+
+  -- GUC-CLEAR DEVICE: boarding_exeat / house / academic_period / audit_log are parent_deny and
+  -- invoice / students / boarding_settings are parent_scope — with the parent GUC still set the definer
+  -- body reads 0 rows / a write denies under prod's non-superuser FORCE-RLS owner. Clear the parent GUC
+  -- for the traverse (parent_deny's `pu IS NULL` → TRUE); KEEP app.current_school so tenant_isolation
+  -- still fences the school. RESTORED verbatim at the single exit below.
+  PERFORM set_config('app.current_parent_user', '', true);
+
+  <<body>>
+  BEGIN
+    -- residency / house (E5 / A5). Read after the clear (own-child already proven above).
+    SELECT s.residency::text, s.status::text, s.house_id
+      INTO v_res, v_status, v_house
+      FROM students s
+      WHERE s.school_id = school AND s.id = p_student;
+    IF NOT FOUND OR v_house IS NULL THEN
+      error := 'That boarder is not assigned to a House.';        -- E5
+      EXIT body;
+    END IF;
+    IF v_status IS DISTINCT FROM 'ACTIVE' OR v_res IS DISTINCT FROM 'BOARDER' THEN
+      error := 'Only an active boarder can request an exeat.';    -- A5 belt
+      EXIT body;
+    END IF;
+
+    -- current SENIOR semester — mirrors lib/boarding/period.ts getCurrentPeriod (covering → latest
+    -- started → earliest). E2 when the school has no SENIOR period.
+    SELECT ap.period_id INTO v_period
+      FROM academic_period ap
+      WHERE ap.school_id = school AND ap.product_line = 'SENIOR'
+      ORDER BY
+        (ap.starts_on <= v_today AND ap.ends_on >= v_today) DESC,
+        (ap.starts_on <= v_today) DESC,
+        CASE WHEN ap.starts_on <= v_today THEN ap.starts_on END DESC,
+        ap.starts_on ASC
+      LIMIT 1;
+    IF v_period IS NULL THEN
+      error := 'No academic semester is configured.';            -- E2
+      EXIT body;
+    END IF;
+
+    -- OPEN-GUARD (B9, authoritative, in-tx): one live exeat at a time (any type).
+    IF EXISTS (
+      SELECT 1 FROM boarding_exeat be
+      WHERE be.school_id = school AND be.student_id = p_student
+        AND be.status::text IN ('REQUESTED','HM_APPROVED','SR_HM_SIGNED','DEPARTED')
+    ) THEN
+      error := 'This boarder already has an exeat in progress — please contact the House.';  -- B9
+      EXIT body;
+    END IF;
+
+    -- fee-owing snapshot (B8): SUM(invoice.balance_amount) over owing statuses; > 0 ? sum : NULL.
+    -- Advisory only — NEVER blocks (mirrors lib/boarding/exeat-data.ts feeOwingForStudent semantics).
+    SELECT COALESCE(SUM(i.balance_amount), 0) INTO v_owing
+      FROM invoice i
+      WHERE i.school_id = school AND i.student_id = p_student
+        AND i.status::text IN ('ISSUED','PARTIAL','OVERDUE');
+    v_snapshot := CASE WHEN v_owing > 0 THEN round(v_owing, 2) ELSE NULL END;
+
+    -- return_by = p_return at the policy return-by time (default 16:00 — getExeatPolicy.returnByTime).
+    SELECT bs.exeat_return_by INTO v_return_time
+      FROM boarding_settings bs WHERE bs.school_id = school;
+    v_return_time := COALESCE(NULLIF(v_return_time, ''), '16:00');
+    v_return_by := (p_return::text || ' ' || v_return_time)::timestamptz;
+
+    -- requested_by_user_id = pu ONLY if a ref_user row exists (OC-3), else NULL (the FK is SET NULL).
+    v_requested_by := CASE WHEN EXISTS (SELECT 1 FROM ref_user u WHERE u.id = pu) THEN pu ELSE NULL END;
+
+    -- ref-code prefix — mirrors refPrefix in lib/actions/boarding-exeat.ts: first 4 alnum of
+    -- short_name/name, upper-cased, else 'EXT'.
+    SELECT COALESCE(
+             NULLIF(left(upper(regexp_replace(COALESCE(rs.short_name, rs.name), '[^A-Za-z0-9]', '', 'g')), 4), ''),
+             'EXT')
+      INTO v_prefix
+      FROM ref_school rs WHERE rs.id = school;
+    v_prefix := COALESCE(v_prefix, 'EXT');
+
+    -- base sequence = max trailing number over the school's existing ref_codes + 1 (per-school).
+    SELECT COALESCE(MAX(substring(be.ref_code from '(\d+)\s*$')::int), 0) + 1
+      INTO v_base_seq
+      FROM boarding_exeat be WHERE be.school_id = school;
+
+    -- ponytail: the "PREFIX-EX-YYYY-NNNN" format is intentionally duplicated from formatRefCode/
+    -- nextExeatSequence in lib/boarding/exeat-decision.ts — it is a DISPLAY string, not lifecycle logic.
+    -- Computing it IN-fn (retry-on-collision, guarded by uniq_exeat_ref_code) keeps allocation atomic
+    -- with the unique constraint (no TOCTOU). Upgrade path: extract a shared codegen only if a third
+    -- caller appears.
+    <<alloc>>
+    FOR v_attempt IN 0..4 LOOP
+      v_ref := v_prefix || '-EX-' || v_year::text || '-' || lpad((v_base_seq + v_attempt)::text, 4, '0');
+      BEGIN
+        INSERT INTO boarding_exeat (
+          school_id, student_id, house_id, academic_period_id,
+          exeat_type, status, ref_code, reason, parent_initiated, via_parent_portal,
+          depart_at, return_by, requested_by_user_id, fee_owing_snapshot)
+        VALUES (
+          school, p_student, v_house, v_period,
+          'SPECIAL', 'REQUESTED', v_ref, NULLIF(btrim(p_reason), ''), true, true,
+          p_depart::timestamptz, v_return_by, v_requested_by, v_snapshot)
+        RETURNING id INTO v_id;
+        ok := true;
+        ref_code := v_ref;
+        EXIT alloc;
+      EXCEPTION WHEN unique_violation THEN
+        -- uniq_exeat_ref_code lost race — bump the sequence and retry.
+        CONTINUE alloc;
+      END;
+    END LOOP alloc;
+
+    IF NOT ok THEN
+      error := 'Could not allocate an exeat reference — please retry.';
+      EXIT body;
+    END IF;
+
+    -- D8 recursion note: this fn reads boarding_exeat (open-guard) AND inserts into it. With the parent
+    -- GUC cleared, boarding_exeat's parent_deny is a no-op and tenant_isolation is a plain predicate —
+    -- no policy or SECURITY DEFINER helper on boarding_exeat re-enters parent_request_exeat. No recursion.
+
+    -- AUDIT (parity with lib/actions/boarding-exeat.ts recordAudit / EXEAT_REQUESTED) — parent-sourced.
+    INSERT INTO audit_log (
+      school_id, actor_user_id, actor_role, action_type, entity_type, entity_id,
+      before_jsonb, after_jsonb, reason)
+    VALUES (
+      school, v_requested_by, 'PARENT', 'EXEAT_REQUESTED', 'boarding_exeat', v_id,
+      NULL,
+      jsonb_build_object(
+        'refCode', v_ref, 'type', 'SPECIAL', 'status', 'REQUESTED',
+        'parentInitiated', true, 'source', 'parent', 'feeSnapshot', v_snapshot),
+      NULLIF(btrim(p_reason), ''));
+  END body;
+
+  -- SINGLE restore point (every EXIT body + the success path land here). RESTORE VERBATIM:
+  -- COALESCE(prev,'') because current_setting(...,true) is NULL when unset. NEVER pu::text — pu is a fn
+  -- ARG that may differ from the caller's session GUC (see the parent_boarding_placement note).
+  PERFORM set_config('app.current_parent_user', COALESCE(prev, ''), true);
+  RETURN;
+END;
+$$;
+-- On Supabase every public function is a PostgREST RPC (EXECUTE defaults to PUBLIC); a privileged
+-- SECURITY DEFINER write must not be anon-callable. The owner keeps EXECUTE regardless of the REVOKE.
+REVOKE EXECUTE ON FUNCTION parent_request_exeat(uuid, uuid, uuid, text, date, date) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_request_exeat(uuid, uuid, uuid, text, date, date) TO omnischools_app;
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION parent_exeat_list(school uuid, pu uuid)
+  RETURNS TABLE(
+    exeat_id        uuid,
+    ref_code        text,
+    exeat_type      text,
+    status          text,
+    parent_initiated boolean,
+    reason          text,
+    depart_at       timestamptz,
+    return_by       timestamptz,
+    departed_at     timestamptz,
+    returned_at     timestamptz,
+    hm_approved_at  timestamptz,
+    sr_hm_signed_at timestamptz,
+    house_name      text)
+  LANGUAGE plpgsql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+DECLARE
+  prev text := current_setting('app.current_parent_user', true);  -- caller's GUC, captured VERBATIM
+BEGIN
+  IF pu IS NULL OR school IS NULL THEN RETURN; END IF;  -- fail-closed; GUC untouched
+  -- Relax parent_deny on boarding_exeat + house for THIS read only (parent_deny's `pu IS NULL` → TRUE).
+  -- Own-child fencing uses the CAPTURED pu ARG (parent_student_ids), NOT the cleared GUC; app.current_school
+  -- stays set so tenant_isolation still fences the school.
+  PERFORM set_config('app.current_parent_user', '', true);
+  RETURN QUERY
+    -- reason: echo ONLY for genuine portal-origin rows (via_parent_portal) — the parent's OWN words.
+    -- A staff-authored reason (welfare/discipline free text) is REDACTED to NULL here; parent_initiated
+    -- is broadly true and is NOT a provenance signal (Sarah leak-fix; the fn is the authority).
+    SELECT be.id, be.ref_code, be.exeat_type::text, be.status::text, be.parent_initiated,
+           CASE WHEN be.via_parent_portal THEN be.reason ELSE NULL END, be.depart_at, be.return_by, be.departed_at, be.returned_at,
+           be.hm_approved_at, be.sr_hm_signed_at, h.name
+    FROM boarding_exeat be
+    JOIN house h ON h.school_id = be.school_id AND h.id = be.house_id
+    WHERE be.school_id = school
+      AND be.student_id IN (SELECT parent_student_ids(school, pu))
+    ORDER BY be.created_at DESC;
+  -- RESTORE the caller's GUC VERBATIM. COALESCE(prev,'') because current_setting(...,true) yields NULL when
+  -- unset. NEVER pu::text: pu is a fn ARG that may differ from the caller's session GUC.
+  PERFORM set_config('app.current_parent_user', COALESCE(prev, ''), true);
+END;
+$$;
+-- On Supabase every public function is a PostgREST RPC and EXECUTE defaults to PUBLIC; a privileged
+-- SECURITY DEFINER read must not be anon-callable (no-op without the GUCs, but harden anyway).
+REVOKE EXECUTE ON FUNCTION parent_exeat_list(uuid, uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_exeat_list(uuid, uuid) TO omnischools_app;
+  END IF;
+END $$;
+
+-- parent_deny catalog loop (re-affirm; this increment adds NO parent_scope, so boarding_exeat +
+-- exeat_notification and every other never-widen table stay auto-denied). Idempotent.
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOR tbl IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    WHERE c.relkind = 'r'
+      AND c.relforcerowsecurity
+      AND EXISTS (
+        SELECT 1 FROM information_schema.columns col
+        WHERE col.table_schema = 'public'
+          AND col.table_name = c.relname
+          AND col.column_name = 'school_id'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_policy p
+        WHERE p.polrelid = c.oid AND p.polname = 'parent_scope'
+      )
+    ORDER BY c.relname
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS parent_deny ON %I;', tbl);
+    EXECUTE format(
+      'CREATE POLICY parent_deny ON %I AS RESTRICTIVE FOR ALL TO public '
+      'USING (NULLIF(current_setting(''app.current_parent_user'', true), '''') IS NULL);',
+      tbl
+    );
+  END LOOP;
+END
+$$;
+
 -- ============================================================================================
 -- CHRONIC-REGISTER per-staff read boundary (INCR-23a / Module 4.4) — THE THIRD RLS BOUNDARY.
 -- Kept in sync with db/sql/prod-paste-0058-sickbay-chronic.sql — this block is dev; that file is the
