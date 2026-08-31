@@ -177,6 +177,18 @@ function ExeatRow({ exeat }: { exeat: ParentExeatRow }) {
           </span>
         ))}
       </div>
+      {/* Phase 3-A: the card PDF is offered only for a download-eligible row (cardReady mirrors the fn's
+          eligibility gate — advisory; the /api route + parent_exeat_card fn are authoritative). */}
+      {exeat.cardReady && (
+        <a
+          href={`/api/parent/exeat-card/${exeat.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2.5 inline-block text-xs font-bold text-gold"
+        >
+          Download exeat card →
+        </a>
+      )}
     </div>
   );
 }

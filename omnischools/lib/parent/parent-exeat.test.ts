@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { describe, it, expect } from "vitest";
 import { readCode } from "@/lib/test-utils/source-shape";
-import { exeatStatusLabel, exeatDetail } from "./parent-exeat-data";
+import { exeatStatusLabel, exeatDetail, isCardReady } from "./parent-exeat-data";
 
 /**
  * EXEAT PHASE 2 · parent-initiated SPECIAL exeat + own-child status. The reader is mostly an IO projection
@@ -55,6 +55,37 @@ describe("exeatDetail · reason-echo gate + FEE_COLLECTION relabel", () => {
       "Fee collection",
     );
     expect(exeatDetail({ exeatType: "FEE_COLLECTION", reason: "GHS 215.00 owed" })).toBe("Fee collection");
+  });
+});
+
+describe("isCardReady · card-download eligibility mirrors parent_exeat_card (Phase 3-A)", () => {
+  it("a SPECIAL is card-ready only once Senior-HM-signed or departed", () => {
+    expect(isCardReady("SR_HM_SIGNED", "SPECIAL")).toBe(true);
+    expect(isCardReady("DEPARTED", "SPECIAL")).toBe(true);
+    // a SPECIAL only HM-approved has NOT cleared the Senior-HM sign-off → not yet downloadable
+    expect(isCardReady("HM_APPROVED", "SPECIAL")).toBe(false);
+    expect(isCardReady("REQUESTED", "SPECIAL")).toBe(false);
+  });
+
+  it("a SCHEDULED / FEE_COLLECTION is card-ready once HM-approved or departed", () => {
+    for (const t of ["SCHEDULED", "FEE_COLLECTION"]) {
+      expect(isCardReady("HM_APPROVED", t)).toBe(true);
+      expect(isCardReady("DEPARTED", t)).toBe(true);
+      expect(isCardReady("REQUESTED", t)).toBe(false);
+    }
+  });
+
+  it("REQUESTED / DECLINED / RETURNED are never card-ready (RETURNED excluded per owner — live-window only)", () => {
+    for (const t of ["SCHEDULED", "SPECIAL", "FEE_COLLECTION"]) {
+      expect(isCardReady("REQUESTED", t)).toBe(false);
+      expect(isCardReady("DECLINED", t)).toBe(false);
+      expect(isCardReady("RETURNED", t)).toBe(false);
+    }
+  });
+
+  it("an unknown status or type is never card-ready (fail-closed)", () => {
+    expect(isCardReady("WEIRD", "SPECIAL")).toBe(false);
+    expect(isCardReady("DEPARTED", "WEIRD_TYPE")).toBe(false);
   });
 });
 
