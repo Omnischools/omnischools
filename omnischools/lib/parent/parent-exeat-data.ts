@@ -12,10 +12,11 @@ import type { ExeatStatus, ExeatType } from "@/lib/boarding/exeat-decision";
  * projection are the authority. This module runs the fn inside `withParentScope` and pre-formats every
  * timestamp into a display string (the client takes strings, never Date — server-only leak rule).
  *
- * The fn ALREADY drops fee_owing_snapshot / decline_reason / *_by_user_id, so the only guard left to us is
- * the parent-facing copy: the friendly status label (Kofi C2) and the DETAIL rule — echo the parent's OWN
- * words only when THEY initiated the request, else a friendly TYPE label; a FEE_COLLECTION row is relabelled
- * to a bare "Fee collection" so its amount-bearing reason is never surfaced.
+ * The fn ALREADY drops fee_owing_snapshot / decline_reason / *_by_user_id AND redacts a non-portal
+ * (staff-authored) `reason` to NULL — via_parent_portal is the provenance authority, NOT the broadly-true
+ * parent_initiated flag (Sarah leak-fix). So a `reason` that reaches us is the parent's OWN words; our only
+ * copy guard is the friendly status label (Kofi C2) and the DETAIL rule — echo a present reason, else a
+ * friendly TYPE label; a FEE_COLLECTION row is relabelled to a bare "Fee collection".
  */
 
 /** Friendly status label — Kofi C2. Parent-facing; never the operational REQUESTED/HM_APPROVED vocabulary. */
@@ -46,17 +47,14 @@ export function exeatStatusLabel(status: string): string {
 /**
  * PURE — what to show as the row's "reason/detail" (Kofi C2 detail rule):
  *  • FEE_COLLECTION → a bare "Fee collection" — NEVER its amount-bearing reason.
- *  • parent-initiated → the parent's OWN words (what they typed on the request).
- *  • otherwise → a friendly TYPE label (a staff-recorded exeat's reason is not echoed to the parent).
+ *  • a present reason → the parent's OWN words. `parent_exeat_list` REDACTS a staff-authored reason to
+ *    NULL (via_parent_portal is the authority), so any reason that reaches here was parent-typed.
+ *  • no reason → a friendly TYPE label (a staff-recorded exeat's reason never reaches the parent).
  */
-export function exeatDetail(row: {
-  exeatType: string;
-  parentInitiated: boolean;
-  reason: string | null;
-}): string {
+export function exeatDetail(row: { exeatType: string; reason: string | null }): string {
   if (row.exeatType === "FEE_COLLECTION") return "Fee collection";
   const reason = row.reason?.trim();
-  if (row.parentInitiated && reason) return reason;
+  if (reason) return reason;
   return TYPE_LABEL[row.exeatType as ExeatType] ?? "Leave";
 }
 
@@ -117,7 +115,7 @@ export async function loadParentExeatsTx(
       id: r.exeat_id,
       refCode: r.ref_code,
       statusLabel: exeatStatusLabel(r.status),
-      detail: exeatDetail({ exeatType: r.exeat_type, parentInitiated: r.parent_initiated, reason: r.reason }),
+      detail: exeatDetail({ exeatType: r.exeat_type, reason: r.reason }),
       houseName: r.house_name,
       isOpen: OPEN_STATUSES.includes(r.status as ExeatStatus),
       milestones,

@@ -32,30 +32,29 @@ describe("exeatStatusLabel · friendly status copy (Kofi C2)", () => {
 });
 
 describe("exeatDetail · reason-echo gate + FEE_COLLECTION relabel", () => {
-  it("echoes the parent's OWN words only when THEY initiated the request", () => {
-    expect(
-      exeatDetail({ exeatType: "SPECIAL", parentInitiated: true, reason: "  Grandmother's funeral  " }),
-    ).toBe("Grandmother's funeral"); // trimmed, verbatim
+  // parent_exeat_list REDACTS a staff-authored reason to NULL (via_parent_portal is the provenance
+  // authority, NOT the broadly-true parent_initiated flag — Sarah leak-fix), so at THIS reader boundary a
+  // PRESENT reason is always the parent's own words. That fn-level redaction is proven BEHAVIOURALLY by
+  // db:rls-test (a staff SPECIAL's reason comes back NULL); it is not reachable from a pure unit test.
+  it("echoes a present reason (the parent's OWN words, trimmed) verbatim", () => {
+    expect(exeatDetail({ exeatType: "SPECIAL", reason: "  Grandmother's funeral  " })).toBe(
+      "Grandmother's funeral",
+    );
   });
 
-  it("shows a friendly TYPE label — never the staff reason — for a non-parent-initiated row", () => {
-    expect(exeatDetail({ exeatType: "SPECIAL", parentInitiated: false, reason: "internal note" })).toBe(
-      "Special leave",
-    );
-    expect(exeatDetail({ exeatType: "SCHEDULED", parentInitiated: false, reason: "routine" })).toBe(
-      "Scheduled leave",
-    );
-    // parent-initiated but empty reason → still the friendly type label (no blank detail)
-    expect(exeatDetail({ exeatType: "SPECIAL", parentInitiated: true, reason: "   " })).toBe("Special leave");
+  it("shows a friendly TYPE label when the reason is NULL — a staff reason is redacted upstream, never echoed", () => {
+    // A staff-authored exeat reaches the reader with reason=NULL (redacted by the fn) → type label only.
+    expect(exeatDetail({ exeatType: "SPECIAL", reason: null })).toBe("Special leave");
+    expect(exeatDetail({ exeatType: "SCHEDULED", reason: null })).toBe("Scheduled leave");
+    // empty/whitespace reason → still the friendly type label (no blank detail)
+    expect(exeatDetail({ exeatType: "SPECIAL", reason: "   " })).toBe("Special leave");
   });
 
   it("relabels FEE_COLLECTION to a bare 'Fee collection' — the amount-bearing reason is NEVER echoed", () => {
-    expect(
-      exeatDetail({ exeatType: "FEE_COLLECTION", parentInitiated: true, reason: "Collect GHS 340.00 outstanding" }),
-    ).toBe("Fee collection");
-    expect(
-      exeatDetail({ exeatType: "FEE_COLLECTION", parentInitiated: false, reason: "GHS 215.00 owed" }),
-    ).toBe("Fee collection");
+    expect(exeatDetail({ exeatType: "FEE_COLLECTION", reason: "Collect GHS 340.00 outstanding" })).toBe(
+      "Fee collection",
+    );
+    expect(exeatDetail({ exeatType: "FEE_COLLECTION", reason: "GHS 215.00 owed" })).toBe("Fee collection");
   });
 });
 

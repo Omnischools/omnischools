@@ -306,8 +306,11 @@ BEGIN
   -- stays set so tenant_isolation still fences the school.
   PERFORM set_config('app.current_parent_user', '', true);
   RETURN QUERY
+    -- reason: echo ONLY for genuine portal-origin rows (via_parent_portal) — the parent's OWN words.
+    -- A staff-authored reason (welfare/discipline free text) is REDACTED to NULL here; parent_initiated
+    -- is broadly true and is NOT a provenance signal (Sarah leak-fix; the fn is the authority).
     SELECT be.id, be.ref_code, be.exeat_type::text, be.status::text, be.parent_initiated,
-           be.reason, be.depart_at, be.return_by, be.departed_at, be.returned_at,
+           CASE WHEN be.via_parent_portal THEN be.reason ELSE NULL END, be.depart_at, be.return_by, be.departed_at, be.returned_at,
            be.hm_approved_at, be.sr_hm_signed_at, h.name
     FROM boarding_exeat be
     JOIN house h ON h.school_id = be.school_id AND h.id = be.house_id
