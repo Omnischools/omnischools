@@ -762,6 +762,42 @@ async function main() {
             0,
           );
 
+          // (11) 🔴 SARAH LEAK-CLOSURE — the reason this probe exists. A STAFF-authored exeat carries
+          // parent_initiated=true (staff SPECIALs FORCE it — lib/actions/boarding-exeat.ts:199) but
+          // via_parent_portal=false (the parent fn is the ONLY writer that sets it true). Its free-text
+          // reason (welfare/discipline) must be REDACTED to NULL by parent_exeat_list — the CASE-on-
+          // via_parent_portal at the fn is the authority, NOT the broadly-true parent_initiated flag. The
+          // ORIGINAL bug projected bare be.reason, so this staff string leaked verbatim to the parent, and
+          // the unit fixture (parentInitiated:false — a shape a staff SPECIAL never has) hid it. Insert one
+          // for the OWN child as the superuser owner, read as the own-child parent: the distinctive string
+          // must NOT appear (staff row reason = NULL), while the genuine PORTAL row ('Funeral', from step 1)
+          // MUST still return its parent-typed reason. Reverting the fn to bare be.reason turns this red.
+          const STAFF_REASON = "SECRET-STAFF-DISCIPLINE-NOTE";
+          const staffRef = "STAFF-EX-2026-9001";
+          await tx`insert into boarding_exeat
+                     (school_id, student_id, house_id, academic_period_id, exeat_type, status, ref_code,
+                      reason, parent_initiated)
+                   values (${schoolId}, ${exOwn}, ${exHouse}, ${exPeriod[0].pid}, 'SPECIAL', 'RETURNED',
+                           ${staffRef}, ${STAFF_REASON}, true)`; // via_parent_portal DEFAULTs false = staff row
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const leakRows = await tx<{ ref_code: string; reason: string | null }[]>`
+            select ref_code, reason from parent_exeat_list(${schoolId}::uuid, ${exParent}::uuid)`;
+          const staffRow = leakRows.find((r) => r.ref_code === staffRef);
+          const portalRow = leakRows.find((r) => r.ref_code === req.ref_code);
+          assertTrue("staff exeat IS visible to the own-child parent (row returned)", !!staffRow);
+          assertTrue("staff exeat reason REDACTED to NULL at the fn (leak CLOSED)", staffRow?.reason === null);
+          assertTrue(
+            "no returned reason leaks the distinctive staff string",
+            leakRows.every((r) => !(r.reason ?? "").includes(STAFF_REASON)),
+          );
+          assertTrue(
+            "genuine PORTAL row STILL returns its parent-typed reason (redaction is precise, not blanket)",
+            portalRow?.reason === "Funeral",
+          );
+          await tx`reset role`;
+
           throw new Error(ROLLBACK_EX); // discard all probe rows + the fn owner switches
         });
       } catch (e) {
