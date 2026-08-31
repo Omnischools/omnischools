@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { cwd } from "node:process";
 import { describe, it, expect } from "vitest";
 import { readCode } from "@/lib/test-utils/source-shape";
 import { exeatStatusLabel, exeatDetail } from "./parent-exeat-data";
@@ -121,5 +124,98 @@ describe("boarding page · the exeat form is a client component; no server-only 
     expect(s).toMatch(/loadParentExeats/);
     expect(s).toMatch(/No leave requests yet\./); // empty state
     expect(s).toMatch(/ParentNav active="Boarding"/); // still one tab, unchanged
+  });
+});
+
+/**
+ * The SECURITY DEFINER fns are the authority for the C non-leak projection and the B/A5/D write guards.
+ * db:rls-test (scripts/rls-test.ts) proves them BEHAVIOURALLY as the non-superuser owner — but that probe
+ * needs a live DB and is NOT in `pnpm test`. These source-shape guards run in CI: they bite the moment a
+ * future edit WIDENS the read projection (a fee/decline/actor-id leak) or DROPS a write guard in the SQL
+ * that db:policies applies. We test db/sql/policies.sql (the dev source of truth) and cross-check that the
+ * prod-paste projection has NOT drifted from it (a widened prod-paste is where a real prod leak would land).
+ */
+const POLICIES = readFileSync(resolve(cwd(), "db/sql/policies.sql"), "utf8");
+const PROD_PASTE = readFileSync(
+  resolve(cwd(), "db/sql/prod-paste-0098-parent-exeat.sql"),
+  "utf8",
+);
+/** Slice a `CREATE OR REPLACE FUNCTION <name>( ... $$;` block out of a SQL file. */
+function fnBlock(sqlText: string, name: string): string {
+  const start = sqlText.indexOf(`CREATE OR REPLACE FUNCTION ${name}(`);
+  expect(start, `fn ${name} present`).toBeGreaterThan(-1);
+  const end = sqlText.indexOf("$$;", start);
+  return sqlText.slice(start, end);
+}
+/** Drop `-- …` line comments so a token in prose can't create a false match (or a false clear). */
+const stripSql = (s: string): string => s.replace(/--.*$/gm, "");
+/** The declared column names of a fn's `RETURNS TABLE( … )` — the authoritative read projection. */
+function returnsTableCols(block: string): string[] {
+  const m = block.match(/RETURNS TABLE\(([\s\S]*?)\)\s*\n\s*LANGUAGE/);
+  expect(m, "RETURNS TABLE parsed").not.toBeNull();
+  // `name TYPE[,]` per line — match ANY type word (not a fixed allow-list) so a leaked column of an
+  // unexpected type (numeric, jsonb, …) still lands in the set and trips the exact-match assertion.
+  return [...m![1].matchAll(/^\s*(\w+)\s+\w/gm)].map((x) => x[1]);
+}
+
+// The C3-IN set — the ONLY columns a parent may ever read of an exeat (Kofi C3).
+const C3_IN = [
+  "exeat_id", "ref_code", "exeat_type", "status", "parent_initiated", "reason",
+  "depart_at", "return_by", "departed_at", "returned_at", "hm_approved_at", "sr_hm_signed_at",
+  "house_name",
+].sort();
+
+describe("C non-leak · parent_exeat_list projection is exactly the C3-IN set (SQL guard)", () => {
+  it("returns EXACTLY the C3-IN columns — no extras, none missing", () => {
+    const cols = returnsTableCols(fnBlock(POLICIES, "parent_exeat_list")).sort();
+    expect(cols).toEqual(C3_IN);
+  });
+
+  it("the read projection carries NONE of the OUT columns (fee/decline/actor-id/late/placement-ids)", () => {
+    // Scope the denylist to the RETURNS TABLE only — fee_owing_snapshot legitimately appears in the WRITE
+    // fn's INSERT (the snapshot is captured, just never READ back to the parent).
+    const rt = fnBlock(POLICIES, "parent_exeat_list").match(/RETURNS TABLE\(([\s\S]*?)\)\s*\n\s*LANGUAGE/)![1];
+    for (const banned of [
+      "fee_owing_snapshot", "decline_reason", "_by_user_id", "returned_late",
+      "house_id", "dorm", "bunk",
+    ]) {
+      expect(rt, `projection must not expose ${banned}`).not.toContain(banned);
+    }
+  });
+
+  it("the prod-paste read projection has NOT drifted from policies.sql (a prod-only leak surface)", () => {
+    const dev = returnsTableCols(fnBlock(POLICIES, "parent_exeat_list")).sort();
+    const prod = returnsTableCols(fnBlock(PROD_PASTE, "parent_exeat_list")).sort();
+    expect(prod).toEqual(dev);
+  });
+});
+
+describe("B/A5/D · parent_request_exeat server-forces the row and re-checks eligibility (SQL guard)", () => {
+  const write = () => stripSql(fnBlock(POLICIES, "parent_request_exeat"));
+
+  it("SERVER-FORCES exeat_type=SPECIAL / status=REQUESTED / parent_initiated=true on the INSERT (B/D)", () => {
+    const s = write();
+    // the security-critical fields are literals in the fn, never derived from parent input
+    expect(s).toMatch(/INSERT INTO boarding_exeat/);
+    expect(s).toMatch(/'SPECIAL',\s*'REQUESTED'/);
+    expect(s).toMatch(/parent_initiated/);
+    expect(s).toMatch(/NULLIF\(btrim\(p_reason\), ''\), true/); // parent_initiated forced true
+  });
+
+  it("re-checks OWN-CHILD via the captured pu ARG before any traverse (D)", () => {
+    expect(write()).toMatch(/parent_student_ids\(school, pu\)[\s\S]*?WHERE sid = p_student/);
+  });
+
+  it("re-checks ACTIVE BOARDER server-side (A5) and a House assignment (E5)", () => {
+    const s = write();
+    expect(s).toMatch(/v_house IS NULL/); // E5 no-House block
+    expect(s).toMatch(/v_status IS DISTINCT FROM 'ACTIVE'/); // A5 active
+    expect(s).toMatch(/v_res IS DISTINCT FROM 'BOARDER'/); // A5 boarder
+  });
+
+  it("carries the B9 open-guard over the four live statuses", () => {
+    expect(write()).toMatch(
+      /status::text IN \('REQUESTED','HM_APPROVED','SR_HM_SIGNED','DEPARTED'\)/,
+    );
   });
 });

@@ -712,6 +712,46 @@ async function main() {
           await tx`select set_config('app.current_parent_user', '', true)`;
           assertAtLeast("staff sees the created exeat (parent_deny is a no-op for pu IS NULL)", await c("boarding_exeat", `where student_id='${exOwn}'`), 1);
 
+          // (10) A5 / E5 server-side re-checks — a child the parent OWNS but who is NOT an eligible boarder
+          // is refused server-side (the write fn re-checks, not just the UI affordance). Link exOther to the
+          // parent so the own-child fence PASSES and only the boarder/House gate can reject.
+          await tx`reset role`;
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${exOther}, 'RLSTEST', 'FATHER',
+                           '+233RLSTESTE2', false, ${exParent})`;
+          // E5: an active BOARDER with NO House → refused ("not assigned to a House").
+          await tx`update students set residency='BOARDER', status='ACTIVE', house_id=NULL where id=${exOther}`;
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const [reqNoHouse] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOther}::uuid,
+                                      'No house', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("no-House boarder refused (E5, ok=false)", reqNoHouse?.ok === false);
+          assertTrue("no-House error mentions a House", (reqNoHouse?.error ?? "").includes("House"));
+          // A5: a DAY student (own child, has a House) → refused ("Only an active boarder…").
+          await tx`reset role`;
+          await tx`update students set residency='DAY', status='ACTIVE', house_id=${exHouse} where id=${exOther}`;
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+          const [reqDay] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error
+            from parent_request_exeat(${schoolId}::uuid, ${exParent}::uuid, ${exOther}::uuid,
+                                      'Day student', '2026-09-05'::date, '2026-09-07'::date)`;
+          assertTrue("DAY student refused server-side (A5, ok=false)", reqDay?.ok === false);
+          assertTrue("A5 error mentions an active boarder", (reqDay?.error ?? "").toLowerCase().includes("active boarder"));
+          // and NEITHER refused request wrote a row (seed-immune: match on our own unique reasons, since
+          // the seeded DB may already carry an unrelated exeat for this student).
+          await tx`reset role`;
+          assert(
+            "neither A5/E5-refused request wrote a row",
+            await c("boarding_exeat", `where student_id='${exOther}' and reason in ('No house','Day student')`),
+            0,
+          );
+
           throw new Error(ROLLBACK_EX); // discard all probe rows + the fn owner switches
         });
       } catch (e) {
