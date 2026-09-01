@@ -23,7 +23,9 @@ export type NotificationKind =
   | "REMINDER"
   | "OVERDUE_STAGE_1"
   | "OVERDUE_STAGE_2"
-  | "OVERDUE_STAGE_3";
+  | "OVERDUE_STAGE_3"
+  | "DECISION_APPROVED"
+  | "DECISION_DECLINED";
 
 /**
  * The ordered gate-crossing lifecycle per exeat type (Kofi OQ4 / AC A1–A3). A scheduled or
@@ -277,5 +279,11 @@ export function buildExeatSms(kind: NotificationKind, ctx: SmsContext): string {
     case "OVERDUE_STAGE_3":
       // STUB copy — future/conditional; no discipline record is created in INCR-9.
       return `${ctx.studentName} is over an hour overdue. The Housemaster will call you directly; a formal note may be raised on the student's record if this is not resolved.`;
+    // Phase 3-C — SMS on the school's decision for a parent-portal request (Kofi C3). Neutral copy:
+    // no decline reason (no staff free-text leak), no fee (portal exeats are SPECIAL).
+    case "DECISION_APPROVED":
+      return `Your leave request for ${ctx.studentName} has been approved by the school. Due back by ${ctx.returnByLabel}. Safe journey.`;
+    case "DECISION_DECLINED":
+      return `Your leave request for ${ctx.studentName} was not approved. Please contact the House for details.`;
   }
 }

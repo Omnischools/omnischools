@@ -631,6 +631,13 @@
       "when": 1788163266036,
       "tag": "0089_kind_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1788221811272,
+      "tag": "0090_optimal_captain_stacy",
+      "breakpoints": true
     }
   ]
 }

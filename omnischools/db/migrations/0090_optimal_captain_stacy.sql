@@ -1,0 +1,2 @@
+ALTER TYPE "public"."exeat_notification_kind" ADD VALUE IF NOT EXISTS 'DECISION_APPROVED';--> statement-breakpoint
+ALTER TYPE "public"."exeat_notification_kind" ADD VALUE IF NOT EXISTS 'DECISION_DECLINED';
