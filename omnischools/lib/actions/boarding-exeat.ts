@@ -50,6 +50,7 @@ interface LoadedExeat {
   refCode: string;
   returnBy: Date | null;
   hmUserId: string | null;
+  viaParentPortal: boolean;
 }
 
 /** Load one exeat + its House HM (for the house-scope guard), or null. */
@@ -64,6 +65,7 @@ async function loadExeat(tx: Tx, schoolId: string, exeatId: string): Promise<Loa
       refCode: boardingExeat.refCode,
       returnBy: boardingExeat.returnBy,
       hmUserId: houses.hmUserId,
+      viaParentPortal: boardingExeat.viaParentPortal,
     })
     .from(boardingExeat)
     .innerJoin(
@@ -262,9 +264,13 @@ async function transition(
   }
   const actor = await resolveActor(school.id);
 
+  // Hoisted for the post-commit decision SMS gate (portal exeats only). Set inside the tx from the
+  // loaded row; only read when out.ok, so a failed/guarded transition leaves it harmlessly false.
+  let viaParentPortal = false;
   const out = await withSchool(school.id, async (tx): Promise<ExeatResult> => {
     const ex = await loadExeat(tx, school.id, exeatId);
     if (!ex) return { ok: false, error: "Exeat not found." };
+    viaParentPortal = ex.viaParentPortal;
     if (!canAccessHouse(user.roles, user.id, ex.hmUserId)) {
       return { ok: false, error: "You can only manage the House you are assigned to." };
     }
@@ -294,12 +300,22 @@ async function transition(
 
   if (out.ok) {
     safeRevalidate(EXEAT_PATH);
-    // Fire the departure SMS after the state change commits (idempotent, console provider). #253 —
-    // the send itself now runs post-commit via flushSms; only the notification row touches the tx.
-    if (to === "DEPARTED") {
+    // Fire the stage SMS after the state change commits (idempotent per (exeat × kind), console
+    // provider). #253 — the send runs post-commit via flushSms; only the notification row touches
+    // the tx. DEPARTURE fires for every exeat; the on-decision SMS (Phase 3-C) fires only for a
+    // parent-portal request — all portal exeats are SPECIAL, so SR_HM_SIGNED is their approval gate.
+    const kind =
+      to === "DEPARTED"
+        ? "DEPARTURE"
+        : to === "SR_HM_SIGNED" && viaParentPortal
+          ? "DECISION_APPROVED"
+          : to === "DECLINED" && viaParentPortal
+            ? "DECISION_DECLINED"
+            : null;
+    if (kind) {
       const sms: SmsIntent[] = [];
       await withSchool(school.id, (tx) =>
-        sendExeatStage(tx, school.id, exeatId, "DEPARTURE", actor.id, sms),
+        sendExeatStage(tx, school.id, exeatId, kind, actor.id, sms),
       );
       await flushSms(sms);
     }

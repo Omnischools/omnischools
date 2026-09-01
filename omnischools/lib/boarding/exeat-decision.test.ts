@@ -283,4 +283,29 @@ describe("E · return timing + overdue chain", () => {
     });
     expect(body).toContain("GHS 340.00");
   });
+
+  it("Phase 3-C DECISION_APPROVED carries the due-by, no fee (Kofi C3)", () => {
+    const body = buildExeatSms("DECISION_APPROVED", {
+      studentName: "A. Mensah",
+      returnByLabel: "Sun 31 May · 16:00",
+      amountLabel: "GHS 340.00", // ignored — approval copy takes no fee
+    });
+    expect(body).toMatch(/approved/i);
+    expect(body).toContain("A. Mensah");
+    expect(body).toContain("Sun 31 May · 16:00");
+    expect(body).not.toContain("GHS");
+  });
+
+  it("Phase 3-C DECISION_DECLINED leaks no reason and no fee (neutral copy)", () => {
+    const body = buildExeatSms("DECISION_DECLINED", {
+      studentName: "A. Mensah",
+      returnByLabel: "Sun 31 May · 16:00",
+      amountLabel: "GHS 340.00",
+    });
+    expect(body).toMatch(/not approved/i);
+    expect(body).toContain("A. Mensah");
+    // No staff free-text reason and no fee amount ever reach the declined body.
+    expect(body).not.toContain("GHS");
+    expect(body).not.toMatch(/reason/i);
+  });
 });
