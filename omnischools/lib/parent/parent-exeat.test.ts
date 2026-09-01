@@ -51,6 +51,13 @@ describe("canWithdraw · portal-cancel gate (Phase 3-B, advisory)", () => {
   it("an already-WITHDRAWN row is not withdrawable again", () => {
     expect(canWithdraw({ status: "WITHDRAWN", reason: "Grandmother's funeral" })).toBe(false);
   });
+  it("B9 advisory soundness: ONLY REQUESTED is withdrawable — every non-REQUESTED status → false", () => {
+    // The proxy shows the button ONLY on REQUESTED (+reason). A mis-shown button on any other status
+    // would still hit the authoritative fn's neutral refuse, but the advisory gate must not over-offer.
+    for (const status of ["HM_APPROVED", "SR_HM_SIGNED", "DEPARTED", "RETURNED", "DECLINED", "WITHDRAWN"]) {
+      expect(canWithdraw({ status, reason: "Grandmother's funeral" })).toBe(false);
+    }
+  });
 });
 
 describe("WITHDRAWN row · not open, not card-ready (form re-enables, no card)", () => {
@@ -227,6 +234,10 @@ const PROD_PASTE_CARD = readFileSync(
   resolve(cwd(), "db/sql/prod-paste-0099-parent-exeat-card.sql"),
   "utf8",
 );
+const PROD_PASTE_WITHDRAW = readFileSync(
+  resolve(cwd(), "db/sql/prod-paste-0101-parent-exeat-withdraw.sql"),
+  "utf8",
+);
 /** Slice a `CREATE OR REPLACE FUNCTION <name>( ... $$;` block out of a SQL file. */
 function fnBlock(sqlText: string, name: string): string {
   const start = sqlText.indexOf(`CREATE OR REPLACE FUNCTION ${name}(`);
@@ -369,5 +380,61 @@ describe("A1/A3 · parent_exeat_card projection + eligibility gate (SQL guard)",
     );
     const norm = (t: string) => stripSql(t).replace(/\s+/g, " ").trim();
     expect(norm(cardBlock(PROD_PASTE_CARD))).toEqual(norm(cardBlock(POLICIES)));
+  });
+});
+
+/**
+ * B1/B2/B7/B8 · parent_withdraw_exeat write guards — Exeat Phase 3-B (prod-paste-0101). The fn is the
+ * AUTHORITY for who may cancel (own-child + via_parent_portal + status='REQUESTED'), for idempotency
+ * (double withdraw = no-op success), and for the audit row. The BEHAVIOURAL proof lives in db:rls-test
+ * (23 assertions, non-superuser owner) but that needs a live DB and is NOT in `pnpm test`. These SQL-
+ * shape guards run in CI and bite the moment a future edit DROPS the eligibility predicate (a staff /
+ * non-REQUESTED exeat becomes withdrawable), removes the idempotency/pu-NULL short-circuit, or DRIFTS
+ * the prod-paste away from policies.sql — the exact place a prod-only regression would land.
+ */
+describe("B1/B2/B7/B8 · parent_withdraw_exeat write guards (SQL guard)", () => {
+  const fn = () => stripSql(fnBlock(POLICIES, "parent_withdraw_exeat"));
+
+  it("B1/B2 — the eligibility gate refuses anything but an own PORTAL, still-REQUESTED exeat", () => {
+    const s = fn();
+    // the refuse predicate: NOT (via_parent_portal AND status='REQUESTED') → no write
+    expect(s).toMatch(/IF NOT \(v_portal AND v_status = 'REQUESTED'\)/);
+  });
+
+  it("B1/B2 — the UPDATE carries the FULL state predicate in its WHERE (concurrency + forge fence)", () => {
+    const s = fn();
+    // via_parent_portal=true AND status='REQUESTED' are IN the UPDATE's WHERE, so a concurrent staff
+    // action (or a non-portal/non-REQUESTED target) matches 0 rows — never clobbered, never forged.
+    expect(s).toMatch(/UPDATE boarding_exeat[\s\S]*?SET status = 'WITHDRAWN'/);
+    expect(s).toMatch(/be\.via_parent_portal = true[\s\S]*?be\.status::text = 'REQUESTED'/);
+  });
+
+  it("B7 — idempotency (already WITHDRAWN → no-op success) and the staff pu=NULL short-circuit", () => {
+    const s = fn();
+    expect(s).toMatch(/IF v_status = 'WITHDRAWN' THEN[\s\S]*?ok := true/); // double withdraw = no-op success
+    expect(s).toMatch(/IF pu IS NULL[\s\S]*?error := 'unauthorized'/); // staff/webhook → total no-op
+  });
+
+  it("B8 — writes exactly one EXEAT_WITHDRAWN / PARENT / boarding_exeat audit row (who/when, not a column)", () => {
+    const s = fn();
+    expect(s).toMatch(/INSERT INTO audit_log/);
+    expect(s).toMatch(/'PARENT', 'EXEAT_WITHDRAWN', 'boarding_exeat'/);
+    expect(s).toMatch(/jsonb_build_object\('status', 'REQUESTED'\)/); // before
+    expect(s).toMatch(/jsonb_build_object\('status', 'WITHDRAWN', 'source', 'parent'\)/); // after
+  });
+
+  it("own-child fence via the captured pu ARG + GUC clear/restore VERBATIM (never pu::text)", () => {
+    const s = fn();
+    expect(s).toMatch(/parent_student_ids\(school, pu\)/); // own-child via the ARG, not the GUC
+    expect(s).toMatch(/set_config\('app\.current_parent_user', ''/); // clear parent_deny for the traverse
+    expect(s).toMatch(/set_config\('app\.current_parent_user', COALESCE\(prev, ''\)/); // restore VERBATIM
+    expect(s).not.toMatch(/pu::text/); // never forge a scope from the arg
+  });
+
+  it("the prod-paste-0101 withdraw fn has NOT drifted from policies.sql (normalized body)", () => {
+    const norm = (t: string) => stripSql(t).replace(/\s+/g, " ").trim();
+    expect(norm(fnBlock(PROD_PASTE_WITHDRAW, "parent_withdraw_exeat"))).toEqual(
+      norm(fnBlock(POLICIES, "parent_withdraw_exeat")),
+    );
   });
 });
