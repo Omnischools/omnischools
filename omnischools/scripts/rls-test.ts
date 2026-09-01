@@ -879,6 +879,162 @@ async function main() {
         if ((e as Error).message !== ROLLBACK_EX) throw e;
       }
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Parent EXEAT WITHDRAW (write) — BEHAVIORAL RLS probe (INCR — Exeat Phase 3-B, prod-paste-0101).
+    // Proven as the NON-SUPERUSER omnischools_app; the dev superuser masks RLS.
+    //
+    // boarding_exeat stays fully parent_deny — the parent CANCEL is the SECURITY DEFINER fn
+    // parent_withdraw_exeat(school, pu, exeat_id): it flips status → WITHDRAWN ONLY for an own,
+    // still-REQUESTED, portal-filed exeat, writes ONE audit row (EXEAT_WITHDRAWN), is idempotent
+    // (a double withdraw = no-op success, NO 2nd audit row) and never clobbers a concurrent staff
+    // action (the full state predicate is in the UPDATE's WHERE). The GUC-clear is LOAD-BEARING:
+    // under the prod-shaped owner (omnischools_app, FORCE RLS binds the definer body) a no-clear
+    // version hits boarding_exeat.parent_deny and flips 0 rows. Proves: OWN portal REQUESTED →
+    // WITHDRAWN + exactly one audit row; a double withdraw → no-op, no 2nd audit row; a non-REQUESTED
+    // (HM_APPROVED) and a non-portal (staff-authored) exeat → refused, no write; another family and a
+    // foreign tenant → refused; a DIRECT parent UPDATE of boarding_exeat still denied; staff (pu NULL)
+    // → unauthorized no-op; and after a withdraw a fresh parent_request_exeat for the same child
+    // SUCCEEDS (the B9 open-guard excludes WITHDRAWN). All rows + the fn owner switches live in one
+    // rolled-back tx.
+    console.log("\nParent Exeat WITHDRAW path (behavioral):");
+    const wdParentRows = await sql<{ id: string }[]>`select id from ref_user limit 1`;
+    const wdKids = await sql<{ id: string }[]>`
+      select id from students where school_id = ${schoolId} order by id limit 2`;
+    const wdPeriod = await sql<{ pid: string }[]>`
+      select period_id as pid from academic_period
+      where school_id = ${schoolId} and product_line = 'SENIOR' limit 1`;
+    if (wdParentRows.length < 1 || wdKids.length < 2 || wdPeriod.length < 1) {
+      console.log("• skipped — needs ≥1 ref_user, ≥2 students, and a SENIOR academic period in the seed.");
+    } else {
+      const wdParent = wdParentRows[0].id;
+      const wdOwn = wdKids[0].id;
+      const wdOther = wdKids[1].id; // a real child in the SAME school, NOT linked to this parent
+      const wdHouse = "88888888-0000-4000-8000-0000000d0001";
+      const portalReq = "aaaa1111-0000-4000-8000-0000000d1001"; // own, portal, REQUESTED → withdrawable
+      const staffReq = "bbbb2222-0000-4000-8000-0000000d2002"; // own, NON-portal, REQUESTED → refused
+      const portalAppr = "cccc3333-0000-4000-8000-0000000d3003"; // own, portal, HM_APPROVED → refused
+      const otherReq = "dddd4444-0000-4000-8000-0000000d4004"; // OTHER child, portal, REQUESTED → not_found
+      const strangerPu = "eeee5555-0000-4000-8000-0000000d5005"; // a parent with NO linked children
+      const wdPid = wdPeriod[0].pid;
+      const ROLLBACK_WD = "__parent_exeat_withdraw_probe_rollback__";
+      try {
+        await sql.begin(async (tx) => {
+          const asParent = async () => {
+            await tx`set local role omnischools_app`;
+            await tx`select set_config('app.current_school', ${schoolId}, true)`;
+            await tx`select set_config('app.current_parent_user', ${wdParent}, true)`;
+          };
+          const withdraw = (sch: string, pu: string | null, id: string) =>
+            tx<{ ok: boolean; error: string | null }[]>`
+              select ok, error from parent_withdraw_exeat(${sch}::uuid, ${pu}::uuid, ${id}::uuid)`;
+          const auditCount = (id: string) =>
+            tx<{ n: number }[]>`select count(*)::int n from audit_log
+              where entity_id = ${id} and action_type = 'EXEAT_WITHDRAWN'`;
+          const statusOf = (id: string) =>
+            tx<{ status: string }[]>`select status from boarding_exeat where id = ${id}`;
+          // ---- superuser setup (bypasses RLS) ----
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${wdOwn}, 'RLSTEST', 'MOTHER',
+                           '+233RLSTESTWD', true, ${wdParent})`;
+          await tx`insert into house (id, school_id, name) values (${wdHouse}, ${schoolId}, 'RLST WD House')`;
+          await tx`update students set residency='BOARDER', status='ACTIVE', house_id=${wdHouse} where id=${wdOwn}`;
+          const mk = (id: string, kid: string, portal: boolean, st: string, ref: string) =>
+            tx`insert into boarding_exeat
+                 (id, school_id, student_id, house_id, academic_period_id, exeat_type, status,
+                  ref_code, parent_initiated, via_parent_portal)
+               values (${id}, ${schoolId}, ${kid}, ${wdHouse}, ${wdPid}, 'SPECIAL', ${st},
+                       ${ref}, true, ${portal})`;
+          await mk(portalReq, wdOwn, true, "REQUESTED", "WD-PORTAL-REQ");
+          await mk(staffReq, wdOwn, false, "REQUESTED", "WD-STAFF-REQ");
+          await mk(portalAppr, wdOwn, true, "HM_APPROVED", "WD-PORTAL-APPR");
+          await mk(otherReq, wdOther, true, "REQUESTED", "WD-OTHER-REQ");
+          // prod-shape: definer owner = the non-superuser role FORCE RLS actually binds
+          await tx`alter function parent_withdraw_exeat(uuid, uuid, uuid) owner to omnischools_app`;
+          await tx`alter function parent_request_exeat(uuid, uuid, uuid, text, date, date) owner to omnischools_app`;
+
+          // (1) OWN portal REQUESTED → WITHDRAWN + exactly one audit row
+          await asParent();
+          const [w1] = await withdraw(schoolId, wdParent, portalReq);
+          assertTrue("withdraw own portal REQUESTED exeat succeeds (ok)", w1?.ok === true);
+          // parent GUC restored VERBATIM after the fn
+          const [{ cur: curWd }] = await tx<{ cur: string }[]>`
+            select current_setting('app.current_parent_user', true) as cur`;
+          assertTrue("parent GUC restored VERBATIM after parent_withdraw_exeat", curWd === wdParent);
+          await tx`reset role`;
+          assertTrue("withdrawn exeat status is WITHDRAWN", (await statusOf(portalReq))[0]?.status === "WITHDRAWN");
+          assert("exactly one EXEAT_WITHDRAWN audit row", (await auditCount(portalReq))[0].n, 1);
+
+          // (5) DOUBLE withdraw → no-op SUCCESS, NO second audit row, status unchanged
+          await asParent();
+          const [w5] = await withdraw(schoolId, wdParent, portalReq);
+          assertTrue("double withdraw is a no-op SUCCESS (ok, no error)", w5?.ok === true && w5?.error === null);
+          await tx`reset role`;
+          assert("double withdraw writes NO second audit row", (await auditCount(portalReq))[0].n, 1);
+          assertTrue("double-withdrawn exeat still WITHDRAWN", (await statusOf(portalReq))[0]?.status === "WITHDRAWN");
+
+          // (2) non-REQUESTED (HM_APPROVED) → refused, NO write, NO audit row
+          await asParent();
+          const [w2] = await withdraw(schoolId, wdParent, portalAppr);
+          assertTrue("withdraw HM_APPROVED exeat refused (ok=false)", w2?.ok === false);
+          assertTrue("HM_APPROVED refuse message points to the House", (w2?.error ?? "").includes("House"));
+          await tx`reset role`;
+          assertTrue("HM_APPROVED exeat status unchanged", (await statusOf(portalAppr))[0]?.status === "HM_APPROVED");
+          assert("no audit row for the refused HM_APPROVED withdraw", (await auditCount(portalAppr))[0].n, 0);
+
+          // (3) non-portal (staff-authored) REQUESTED → refused, NO write, NO audit row
+          await asParent();
+          const [w3] = await withdraw(schoolId, wdParent, staffReq);
+          assertTrue("withdraw non-portal REQUESTED exeat refused (ok=false)", w3?.ok === false);
+          await tx`reset role`;
+          assertTrue("non-portal exeat status unchanged (still REQUESTED)", (await statusOf(staffReq))[0]?.status === "REQUESTED");
+          assert("no audit row for the refused non-portal withdraw", (await auditCount(staffReq))[0].n, 0);
+
+          // (4a) ANOTHER FAMILY — a parent with no linked children → neutral not_found, NO write
+          await asParent();
+          const [w4a] = await withdraw(schoolId, strangerPu, portalAppr);
+          assertTrue("another family's parent refused (ok=false)", w4a?.ok === false);
+          assertTrue("another family gets a NEUTRAL not_found", w4a?.error === "not_found");
+          // (4b) ANOTHER TENANT — parent scoped to a FOREIGN school, real own exeat id → refused
+          await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+          const [w4b] = await withdraw(schoolId, wdParent, staffReq);
+          assertTrue("cross-tenant withdraw refused (ok=false)", w4b?.ok === false);
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`reset role`;
+          assertTrue("cross-tenant target exeat unchanged (still REQUESTED)", (await statusOf(staffReq))[0]?.status === "REQUESTED");
+
+          // (6) DIRECT parent UPDATE of boarding_exeat still DENIED (parent_deny — 0 rows)
+          await asParent();
+          assert(
+            "parent DIRECT UPDATE boarding_exeat denied (rows)",
+            (await tx`update boarding_exeat set status='WITHDRAWN' where id=${staffReq}`).count,
+            0,
+          );
+
+          // (7) STAFF (pu NULL) → total no-op (unauthorized), status unchanged
+          const [w7] = await withdraw(schoolId, null, portalAppr);
+          assertTrue("staff (pu NULL) withdraw is a no-op (ok=false)", w7?.ok === false);
+          assertTrue("staff (pu NULL) withdraw is unauthorized", w7?.error === "unauthorized");
+          await tx`reset role`;
+          assertTrue("pu-NULL call left HM_APPROVED unchanged", (await statusOf(portalAppr))[0]?.status === "HM_APPROVED");
+
+          // (8) after a withdraw, a fresh request for the SAME child SUCCEEDS (open-guard excludes
+          // WITHDRAWN). Clear the other live fixtures first so only the WITHDRAWN portalReq remains.
+          await tx`delete from boarding_exeat where id in (${staffReq}, ${portalAppr}, ${otherReq})`;
+          await asParent();
+          const [w8] = await tx<{ ok: boolean; error: string | null }[]>`
+            select ok, error from parent_request_exeat(${schoolId}::uuid, ${wdParent}::uuid, ${wdOwn}::uuid,
+                                                        'After withdraw', '2026-09-20'::date, '2026-09-22'::date)`;
+          assertTrue("after withdraw, a fresh request for the same child SUCCEEDS", w8?.ok === true);
+          await tx`reset role`;
+
+          throw new Error(ROLLBACK_WD); // discard all probe rows + the fn owner switches
+        });
+      } catch (e) {
+        if ((e as Error).message !== ROLLBACK_WD) throw e;
+      }
+    }
   } finally {
     await sql.end();
   }

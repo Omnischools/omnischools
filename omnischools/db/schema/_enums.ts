@@ -215,6 +215,10 @@ export const exeatTypeEnum = pgEnum("exeat_type", [
 // The 5-stage lifecycle + terminal DECLINED. Supersedes BUILD_STACK's OVERDUE/CANCELLED:
 // overdue is a DERIVED predicate (DEPARTED ∧ now>return_by ∧ returned_at IS NULL), never a stored
 // status; cancelled = DECLINED (Kofi OQ1). A scheduled-clean exeat skips SR_HM_SIGNED.
+// WITHDRAWN (Exeat Phase 3-B) is the parent-initiated cancel of an own, still-REQUESTED, portal-filed
+// exeat — a terminal status distinct from staff DECLINED (who/when is the audit row, not a column;
+// Kofi B8). Only parent_withdraw_exeat writes it; the B9 open-guard EXCLUDES it so a withdraw frees a
+// fresh request.
 export const exeatStatusEnum = pgEnum("exeat_status", [
   "REQUESTED",
   "HM_APPROVED",
@@ -222,6 +226,7 @@ export const exeatStatusEnum = pgEnum("exeat_status", [
   "DEPARTED",
   "RETURNED",
   "DECLINED",
+  "WITHDRAWN",
 ]);
 // The exeat SMS-to-parent kinds (exeat_notification.kind). One row per (exeat × kind) is the
 // idempotency guard for the +5/+30/+60 late-return chain (Kofi OQ5) — resend is blocked by

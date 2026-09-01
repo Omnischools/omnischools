@@ -11,6 +11,7 @@ import { loadParentExeats, type ParentExeatRow } from "@/lib/parent/parent-exeat
 import { relationshipLabel, parentLongDate } from "@/lib/wassce/parent-copy";
 import { ParentHeader, ParentNav } from "../parent-chrome";
 import { ExeatRequestForm } from "./exeat-request";
+import { ExeatWithdrawButton } from "./exeat-withdraw";
 
 /**
  * INCR-BOARD · the parent-portal Boarding tab (lean v1) — a boarder's guardian sees their own child's House/
@@ -189,6 +190,9 @@ function ExeatRow({ exeat }: { exeat: ParentExeatRow }) {
           Download exeat card →
         </a>
       )}
+      {/* Phase 3-B: withdraw is offered only on a still-REQUESTED portal request (canWithdraw — advisory;
+          parent_withdraw_exeat is authoritative). On success the row flips to the "Withdrawn" label. */}
+      {exeat.canWithdraw && <ExeatWithdrawButton exeatId={exeat.id} />}
     </div>
   );
 }

@@ -17,7 +17,10 @@ export type ExeatStatus =
   | "SR_HM_SIGNED"
   | "DEPARTED"
   | "RETURNED"
-  | "DECLINED";
+  | "DECLINED"
+  // Exeat Phase 3-B — the parent cancelled their own still-REQUESTED portal request (parent_withdraw_exeat).
+  // Terminal + inert to every staff transition; only ever reached from REQUESTED.
+  | "WITHDRAWN";
 export type NotificationKind =
   | "DEPARTURE"
   | "REMINDER"
@@ -45,7 +48,7 @@ const LIFECYCLE: Record<ExeatType, ExeatStatus[]> = {
  * longer be declined (its departure is immutable history — trap T4).
  */
 export function canTransition(type: ExeatType, from: ExeatStatus, to: ExeatStatus): boolean {
-  if (from === "RETURNED" || from === "DECLINED") return false; // terminal
+  if (from === "RETURNED" || from === "DECLINED" || from === "WITHDRAWN") return false; // terminal (WITHDRAWN inert to all staff transitions — Kofi B4)
   if (to === "DECLINED") return from !== "DEPARTED"; // decline only before departure (A5)
   const seq = LIFECYCLE[type];
   const fi = seq.indexOf(from);

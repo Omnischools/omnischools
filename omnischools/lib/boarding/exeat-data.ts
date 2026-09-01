@@ -250,6 +250,9 @@ function feeStatus(snapshot: number): FeeStatus {
 
 /** Approval column state for a queued (not-yet-departed) exeat (surface qc-row.approval). */
 function approvalState(r: RawExeat): { approval: "approved" | "pending" | "needs"; label: string } {
+  // Exeat Phase 3-B — a parent-cancelled request is terminal + inert (never actioned). It is naturally
+  // excluded from the queue/in-flight filters, so this label only shows if a WITHDRAWN row ever surfaces.
+  if (r.status === "WITHDRAWN") return { approval: "needs", label: "Withdrawn (by parent)" };
   if (r.status === "HM_APPROVED" && r.type === "SPECIAL")
     return { approval: "pending", label: "SR HM PENDING" };
   if (r.status === "HM_APPROVED") return CLEAN_APPROVAL;

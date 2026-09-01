@@ -1,0 +1,1 @@
+ALTER TYPE "public"."exeat_status" ADD VALUE IF NOT EXISTS 'WITHDRAWN';

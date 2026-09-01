@@ -1826,6 +1826,138 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ---- INCR — PARENT EXEAT WITHDRAW: Exeat Phase 3-B (parent cancels an own, still-REQUESTED,
+-- portal-filed exeat). ONE additive SECURITY DEFINER write fn + the additive enum value
+-- exeat_status.WITHDRAWN (migration 0091). Byte-identical to db/sql/prod-paste-0101-parent-exeat-
+-- withdraw.sql (the hand-paste on PROD). No parent_scope grant; boarding_exeat + audit_log stay fully
+-- parent_deny — this fn is the ONLY parent path that flips a status.
+--
+-- 🔴 Fn parent_withdraw_exeat — the guarded parent CANCEL (the only parent status write). Eligibility
+-- (Kofi B1/B2): allows a status flip ONLY when the exeat is via_parent_portal=true AND status='REQUESTED'
+-- (a parent may unsend what THEY filed, before any staff decision). Any other status or a staff-authored
+-- (non-portal) exeat → neutral refuse, NO write. Idempotent (B7): an already-WITHDRAWN row → no-op
+-- success, NO second status write, NO second audit row. Concurrency-safe: the full state predicate
+-- (own-child student, via_parent_portal, status='REQUESTED') is IN THE UPDATE's WHERE, so a staff action
+-- that lands between the read and the write matches 0 rows and we refuse rather than clobber it. who/when
+-- is the audit row (actionType EXEAT_WITHDRAWN), NOT a new column (Kofi B8). Own-child fence via the
+-- CAPTURED pu ARG (parent_student_ids). GUC-clear device: clear app.current_parent_user for the
+-- parent_deny reads/writes (boarding_exeat + audit_log), keep app.current_school (tenant_isolation),
+-- restore VERBATIM (COALESCE(prev,''), never pu::text). pu IS NULL (staff/webhook) → total no-op; the
+-- staff console flips status DIRECTLY via withSchool and is byte-unchanged. The B9 open-guard in
+-- parent_request_exeat EXCLUDES WITHDRAWN, so a withdraw frees a fresh request. Composite OUT {ok, error}.
+CREATE OR REPLACE FUNCTION parent_withdraw_exeat(
+  school      uuid,
+  pu          uuid,
+  p_exeat_id  uuid,
+  OUT ok      boolean,
+  OUT error   text
+)
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+DECLARE
+  prev      text := current_setting('app.current_parent_user', true);  -- caller's GUC, captured VERBATIM
+  v_student uuid;
+  v_status  text;
+  v_portal  boolean;
+  v_actor   uuid;
+  v_rows    int;
+BEGIN
+  ok := false;
+  -- fail-CLOSED: no parent / no school / no id → no-op, GUC untouched. STAFF (pu IS NULL) short-circuits.
+  IF pu IS NULL OR school IS NULL OR p_exeat_id IS NULL THEN
+    error := 'unauthorized';
+    RETURN;
+  END IF;
+
+  -- GUC-CLEAR DEVICE: boarding_exeat + audit_log are parent_deny — with the parent GUC still set the
+  -- definer body reads 0 rows / a write denies under prod's non-superuser FORCE-RLS owner. Clear the
+  -- parent GUC for the traverse (parent_deny's `pu IS NULL` → TRUE); KEEP app.current_school so
+  -- tenant_isolation still fences the school. RESTORED verbatim at the single exit below.
+  PERFORM set_config('app.current_parent_user', '', true);
+
+  <<body>>
+  BEGIN
+    -- read the target exeat within THIS school (tenant_isolation fences via app.current_school).
+    SELECT be.student_id, be.status::text, be.via_parent_portal
+      INTO v_student, v_status, v_portal
+      FROM boarding_exeat be
+      WHERE be.school_id = school AND be.id = p_exeat_id;
+
+    -- own-child fence (the CAPTURED pu ARG, never the GUC): a missing row OR a row for a child in another
+    -- family/tenant → the SAME neutral not_found (never reveals the exeat exists).
+    IF NOT FOUND
+       OR NOT EXISTS (SELECT 1 FROM parent_student_ids(school, pu) sid WHERE sid = v_student) THEN
+      error := 'not_found';
+      EXIT body;
+    END IF;
+
+    -- idempotency (B7): already WITHDRAWN → no-op SUCCESS. No second status write, no second audit row.
+    IF v_status = 'WITHDRAWN' THEN
+      ok := true;
+      EXIT body;
+    END IF;
+
+    -- eligibility (Kofi B1/B2): a parent may withdraw ONLY an own, still-REQUESTED, PORTAL-filed exeat
+    -- (unsend what THEY filed, before any staff decision). Any other status or a staff-authored
+    -- (non-portal) exeat → neutral refuse, NO write.
+    IF NOT (v_portal AND v_status = 'REQUESTED') THEN
+      error := 'This exeat can no longer be withdrawn — please contact the House.';
+      EXIT body;
+    END IF;
+
+    -- actor_user_id = pu ONLY if a ref_user row exists (OC-3 parity; audit_log.actor_user_id FK is
+    -- NO ACTION, so an orphan pu would raise). else NULL.
+    v_actor := CASE WHEN EXISTS (SELECT 1 FROM ref_user u WHERE u.id = pu) THEN pu ELSE NULL END;
+
+    -- WITHDRAW. The full state predicate (own-child student, via_parent_portal, status still REQUESTED)
+    -- is IN THE WHERE so a concurrent staff action that lands between the read above and this write
+    -- CANNOT be clobbered — the UPDATE matches 0 rows and we refuse.
+    UPDATE boarding_exeat be
+      SET status = 'WITHDRAWN'
+      WHERE be.school_id = school
+        AND be.id = p_exeat_id
+        AND be.student_id = v_student
+        AND be.via_parent_portal = true
+        AND be.status::text = 'REQUESTED';
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows = 0 THEN
+      -- lost the race to a concurrent staff action → neutral refuse, NO audit row.
+      error := 'This exeat can no longer be withdrawn — please contact the House.';
+      EXIT body;
+    END IF;
+
+    ok := true;
+    -- AUDIT (parity with lib/actions/boarding-exeat.ts recordAudit) — parent-sourced withdraw. who/when
+    -- lives HERE, not on a new boarding_exeat column (Kofi B8).
+    INSERT INTO audit_log (
+      school_id, actor_user_id, actor_role, action_type, entity_type, entity_id,
+      before_jsonb, after_jsonb, reason)
+    VALUES (
+      school, v_actor, 'PARENT', 'EXEAT_WITHDRAWN', 'boarding_exeat', p_exeat_id,
+      jsonb_build_object('status', 'REQUESTED'),
+      jsonb_build_object('status', 'WITHDRAWN', 'source', 'parent'),
+      NULL);
+  END body;
+
+  -- SINGLE restore point (every EXIT body + the success path land here). RESTORE VERBATIM:
+  -- COALESCE(prev,'') because current_setting(...,true) is NULL when unset. NEVER pu::text — pu is a fn
+  -- ARG that may differ from the caller's session GUC.
+  PERFORM set_config('app.current_parent_user', COALESCE(prev, ''), true);
+  RETURN;
+END;
+$$;
+-- On Supabase every public function is a PostgREST RPC (EXECUTE defaults to PUBLIC); a privileged
+-- SECURITY DEFINER write must not be anon-callable. The owner keeps EXECUTE regardless of the REVOKE.
+REVOKE EXECUTE ON FUNCTION parent_withdraw_exeat(uuid, uuid, uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_withdraw_exeat(uuid, uuid, uuid) TO omnischools_app;
+  END IF;
+END $$;
+
 -- ============================================================================================
 -- CHRONIC-REGISTER per-staff read boundary (INCR-23a / Module 4.4) — THE THIRD RLS BOUNDARY.
 -- Kept in sync with db/sql/prod-paste-0058-sickbay-chronic.sql — this block is dev; that file is the

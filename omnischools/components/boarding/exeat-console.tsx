@@ -92,7 +92,10 @@ export function ActionBar({ exeat, canSign }: { exeat: ExeatRow; canSign: boolea
           Print card
         </a>
       )}
-      {exeat.status !== "RETURNED" && exeat.status !== "DECLINED" && exeat.status !== "DEPARTED" && (
+      {exeat.status !== "RETURNED" &&
+      exeat.status !== "DECLINED" &&
+      exeat.status !== "DEPARTED" &&
+      exeat.status !== "WITHDRAWN" && (
         <button
           className={btnPlain}
           disabled={pending}
