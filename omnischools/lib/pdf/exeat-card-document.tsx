@@ -31,9 +31,12 @@ export type ExeatCardPdfData = {
   dateOut: string;
   dateIn: string;
   dressCode: string;
-  feeLine: string;
+  /** STAFF card only — the parent card carries no money, so it omits this and the Fee row isn't rendered. */
+  feeLine?: string;
   signerLabel: string;
-  signerActor: string | null;
+  /** STAFF card: the signing staff member's name (or null = pending). ABSENT on the parent card (no staff
+   * PII) — the footer then shows the signer policy LABEL only, with no name line. */
+  signerActor?: string | null;
   houseName: string;
   academicYear: string;
 };
@@ -129,14 +132,17 @@ export function ExeatCardDocument({ data }: { data: ExeatCardPdfData }) {
             <CardLine label="Type" value={data.typeLabel} em />
             <CardLine label="Date out" value={data.dateOut} />
             <CardLine label="Date in" value={data.dateIn} em />
-            <CardLine label="Dress" value={data.dressCode} />
-            <CardLine label="Fees" value={data.feeLine} last />
+            <CardLine label="Dress" value={data.dressCode} last={!data.feeLine} />
+            {data.feeLine ? <CardLine label="Fees" value={data.feeLine} last /> : null}
           </View>
 
           <View style={s.foot}>
             <View>
               <Text style={s.footLabel}>{data.signerLabel}</Text>
-              <Text style={s.footSig}>signed · {data.signerActor ?? "pending"}</Text>
+              {/* Parent card omits signerActor entirely → policy label only, no staff name. */}
+              {data.signerActor !== undefined ? (
+                <Text style={s.footSig}>signed · {data.signerActor ?? "pending"}</Text>
+              ) : null}
             </View>
             <View style={s.stamp}>
               <Text style={s.stampText}>SCHOOL{"\n"}STAMP</Text>

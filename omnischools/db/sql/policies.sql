@@ -1747,6 +1747,85 @@ BEGIN
 END
 $$;
 
+-- ---- INCR — PARENT EXEAT CARD: Exeat Phase 3-A (parent downloads the exeat CARD PDF for their OWN child).
+-- ONE additive SECURITY DEFINER read fn; byte-identical to db/sql/prod-paste-0099-parent-exeat-card.sql
+-- (the hand-paste on PROD). No parent_scope grant; boarding_exeat / house / academic_period / class stay
+-- fully parent_deny — the fn is the ONLY parent reach for the card fields.
+--
+-- 🔴 Fn parent_exeat_card — the own-child, download-eligible CARD projection. Returns ONLY the parent-safe
+-- A1 columns for ONE own-child exeat in a downloadable status: school name + GES/registration code,
+-- ref_code, student full name, class/form label, house NAME, exeat_type, date-out
+-- (COALESCE(departed_at, depart_at)), date-in (return_by), academic-year label and status. NEVER
+-- fee_owing_snapshot / any amount / signer staff name / bunk / dorm (the staff card source getExeatCardData
+-- reads those; this fn does not project them).
+-- 🔴 Eligibility gate embedded (Kofi A3 — the fn is the authority): SPECIAL → SR_HM_SIGNED/DEPARTED;
+-- SCHEDULED/FEE_COLLECTION → HM_APPROVED/DEPARTED; REQUESTED/DECLINED/(future)WITHDRAWN/RETURNED → 0 rows
+-- (RETURNED excluded per owner — live-window artefact). An ineligible / not-own-child / cross-tenant id → 0.
+-- 🔴 GUC-clear device (parent_exeat_list idiom): clear app.current_parent_user for the parent_deny reads
+-- (boarding_exeat/house/academic_period/class), keep app.current_school (tenant_isolation), restore VERBATIM
+-- (COALESCE(prev,''), never pu::text). Own-child fence via the CAPTURED pu ARG (parent_student_ids).
+CREATE OR REPLACE FUNCTION parent_exeat_card(school uuid, pu uuid, p_exeat_id uuid)
+  RETURNS TABLE(
+    school_name    text,
+    school_code    text,
+    ref_code       text,
+    student_name   text,
+    form_label     text,
+    house_name     text,
+    exeat_type     text,
+    date_out       timestamptz,
+    date_in        timestamptz,
+    academic_year  text,
+    status         text)
+  LANGUAGE plpgsql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+DECLARE
+  prev text := current_setting('app.current_parent_user', true);  -- caller's GUC, captured VERBATIM
+BEGIN
+  -- fail-closed; GUC untouched. STAFF (pu IS NULL) short-circuits here — total no-op.
+  IF pu IS NULL OR school IS NULL OR p_exeat_id IS NULL THEN RETURN; END IF;
+  -- Relax parent_deny on boarding_exeat + house + academic_period + class for THIS read only (parent_deny's
+  -- `pu IS NULL` → TRUE). Own-child fencing uses the CAPTURED pu ARG (parent_student_ids), NOT the cleared
+  -- GUC; app.current_school stays set so tenant_isolation still fences the school.
+  PERFORM set_config('app.current_parent_user', '', true);
+  RETURN QUERY
+    SELECT rs.name, rs.ges_code, be.ref_code,
+           s.first_name || ' ' || s.last_name,
+           c.name, h.name, be.exeat_type::text,
+           COALESCE(be.departed_at, be.depart_at), be.return_by,
+           ap.academic_year, be.status::text
+    FROM boarding_exeat be
+    JOIN students s        ON s.school_id = be.school_id AND s.id = be.student_id
+    JOIN house h           ON h.school_id = be.school_id AND h.id = be.house_id
+    JOIN academic_period ap ON ap.school_id = be.school_id AND ap.period_id = be.academic_period_id
+    JOIN ref_school rs     ON rs.id = be.school_id
+    LEFT JOIN class c      ON c.school_id = s.school_id AND c.id = s.class_id
+    WHERE be.school_id = school
+      AND be.id = p_exeat_id
+      AND be.student_id IN (SELECT parent_student_ids(school, pu))
+      -- eligibility gate — the fn is the authority (Kofi A3): only download-eligible statuses. RETURNED is
+      -- deliberately EXCLUDED (owner: the card is a live-window artefact, not a returned-trip receipt).
+      AND (
+        (be.exeat_type::text = 'SPECIAL' AND be.status::text IN ('SR_HM_SIGNED', 'DEPARTED'))
+        OR (be.exeat_type::text IN ('SCHEDULED', 'FEE_COLLECTION') AND be.status::text IN ('HM_APPROVED', 'DEPARTED'))
+      );
+  -- RESTORE the caller's GUC VERBATIM. COALESCE(prev,'') because current_setting(...,true) yields NULL when
+  -- unset. NEVER pu::text: pu is a fn ARG that may differ from the caller's session GUC.
+  PERFORM set_config('app.current_parent_user', COALESCE(prev, ''), true);
+END;
+$$;
+-- On Supabase every public function is a PostgREST RPC and EXECUTE defaults to PUBLIC; a privileged
+-- SECURITY DEFINER read must not be anon-callable (no-op without the GUCs, but harden anyway).
+REVOKE EXECUTE ON FUNCTION parent_exeat_card(uuid, uuid, uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_exeat_card(uuid, uuid, uuid) TO omnischools_app;
+  END IF;
+END $$;
+
 -- ============================================================================================
 -- CHRONIC-REGISTER per-staff read boundary (INCR-23a / Module 4.4) — THE THIRD RLS BOUNDARY.
 -- Kept in sync with db/sql/prod-paste-0058-sickbay-chronic.sql — this block is dev; that file is the

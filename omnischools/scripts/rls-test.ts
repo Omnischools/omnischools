@@ -614,6 +614,7 @@ async function main() {
           // prod-shape: definer owner = the non-superuser role FORCE RLS actually binds
           await tx`alter function parent_request_exeat(uuid, uuid, uuid, text, date, date) owner to omnischools_app`;
           await tx`alter function parent_exeat_list(uuid, uuid) owner to omnischools_app`;
+          await tx`alter function parent_exeat_card(uuid, uuid, uuid) owner to omnischools_app`;
 
           // ---- act as the parent (RLS enforced, non-superuser) ----
           await tx`set local role omnischools_app`;
@@ -795,6 +796,80 @@ async function main() {
           assertTrue(
             "genuine PORTAL row STILL returns its parent-typed reason (redaction is precise, not blanket)",
             portalRow?.reason === "Funeral",
+          );
+          await tx`reset role`;
+
+          // (12) EXEAT CARD (Phase 3-A, prod-paste-0099) — parent_exeat_card own-child + eligibility + fence.
+          // Promote the step-1 PORTAL exeat (SPECIAL/REQUESTED) to a download-eligible status (SR_HM_SIGNED)
+          // as the superuser owner. The step-11 staff row (SPECIAL/RETURNED) is the INELIGIBLE fixture
+          // (RETURNED is deliberately excluded from the card — owner: live-window only).
+          await tx`update boarding_exeat set status='SR_HM_SIGNED' where school_id=${schoolId} and ref_code=${req.ref_code}`;
+          const [{ id: eligibleId }] = await tx<{ id: string }[]>`
+            select id from boarding_exeat where school_id=${schoolId} and ref_code=${req.ref_code}`;
+          const [{ id: ineligibleId }] = await tx<{ id: string }[]>`
+            select id from boarding_exeat where school_id=${schoolId} and ref_code=${staffRef}`;
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${exParent}, true)`;
+
+          // eligible own-child card → exactly the A1 columns, NO fee/signer/bunk/dorm/*_by
+          const card = await tx<Record<string, unknown>[]>`
+            select * from parent_exeat_card(${schoolId}::uuid, ${exParent}::uuid, ${eligibleId}::uuid)`;
+          assert("parent_exeat_card returns the eligible own-child card", card.length, 1);
+          const ckeys = Object.keys(card[0] ?? {}).sort();
+          assertTrue(
+            "card columns are EXACTLY the A1 set",
+            ckeys.join(",") ===
+              [
+                "academic_year", "date_in", "date_out", "exeat_type", "form_label", "house_name",
+                "ref_code", "school_code", "school_name", "status", "student_name",
+              ].join(","),
+          );
+          assertTrue(
+            "card projects NO fee/amount/signer/bunk/dorm/*_by column",
+            !ckeys.some((k) => /fee|owing|amount|signer|bunk|dorm|_by/.test(k)),
+          );
+          assertTrue("card status is the promoted eligible status", card[0]?.status === "SR_HM_SIGNED");
+
+          // INELIGIBLE own-child (RETURNED staff row) → 0 rows (the fn is the authority, not the UI)
+          assert(
+            "ineligible-status own-child card → 0 rows",
+            (await tx`select * from parent_exeat_card(${schoolId}::uuid, ${exParent}::uuid, ${ineligibleId}::uuid)`).length,
+            0,
+          );
+
+          // another family (a parent with no linked children) → 0 rows (own-child fence)
+          const strangerPu = "99999999-0000-4000-8000-0000000f0001";
+          assert(
+            "another family's parent → 0 rows (not own child)",
+            (await tx`select * from parent_exeat_card(${schoolId}::uuid, ${strangerPu}::uuid, ${eligibleId}::uuid)`).length,
+            0,
+          );
+
+          // cross-TENANT: real exeat id but a foreign school arg → 0 rows (tenant_isolation on the arg)
+          assert(
+            "cross-tenant school arg → 0 rows",
+            (await tx`select * from parent_exeat_card(${FOREIGN_ID}::uuid, ${exParent}::uuid, ${eligibleId}::uuid)`).length,
+            0,
+          );
+
+          // staff (pu IS NULL) → 0 rows (total no-op; the card fn is not on any staff path)
+          assert(
+            "staff pu=NULL card → 0 rows (no-op)",
+            (await tx`select * from parent_exeat_card(${schoolId}::uuid, ${null}::uuid, ${eligibleId}::uuid)`).length,
+            0,
+          );
+
+          // parent GUC restored VERBATIM after the card fn
+          const [{ cur: curCard }] = await tx<{ cur: string }[]>`
+            select current_setting('app.current_parent_user', true) as cur`;
+          assertTrue("parent GUC restored VERBATIM after parent_exeat_card", curCard === exParent);
+
+          // DIRECT parent read of boarding_exeat STILL denied — the card fn is the ONLY reach
+          assert(
+            "parent DIRECT read of boarding_exeat still denied (card fn is the only reach)",
+            await c("boarding_exeat", `where id='${eligibleId}'`),
+            0,
           );
           await tx`reset role`;
 

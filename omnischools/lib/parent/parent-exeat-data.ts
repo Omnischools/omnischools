@@ -45,6 +45,21 @@ export function exeatStatusLabel(status: string): string {
 }
 
 /**
+ * PURE (Exeat Phase 3-A) — is the exeat CARD PDF downloadable for this (status, type)? MIRRORS the
+ * eligibility gate embedded in `parent_exeat_card` (Wells, prod-paste-0099) so the UI only offers the link
+ * for a card-ready row. ADVISORY ONLY — the fn + the /api/parent/exeat-card route are the authority (an
+ * ineligible id gets 0 rows → a neutral 404). A SPECIAL needs the Senior-HM signature; a SCHEDULED/
+ * FEE_COLLECTION needs only the House approval. REQUESTED / DECLINED / RETURNED → false (RETURNED is
+ * excluded per owner — the card is a live-window artefact, not a returned-trip receipt).
+ */
+export function isCardReady(status: string, type: string): boolean {
+  if (type === "SPECIAL") return status === "SR_HM_SIGNED" || status === "DEPARTED";
+  if (type === "SCHEDULED" || type === "FEE_COLLECTION")
+    return status === "HM_APPROVED" || status === "DEPARTED";
+  return false;
+}
+
+/**
  * PURE — what to show as the row's "reason/detail" (Kofi C2 detail rule):
  *  • FEE_COLLECTION → a bare "Fee collection" — NEVER its amount-bearing reason.
  *  • a present reason → the parent's OWN words. `parent_exeat_list` REDACTS a staff-authored reason to
@@ -66,6 +81,7 @@ export type ParentExeatRow = {
   detail: string;
   houseName: string | null;
   isOpen: boolean; // any live stage → the request form disables submit (advisory; the fn is authoritative)
+  cardReady: boolean; // download-eligible → show the "Download exeat card" link (advisory; the route is authoritative)
   milestones: ParentExeatMilestone[]; // pre-formatted display strings, only the ones that exist
 };
 
@@ -118,6 +134,7 @@ export async function loadParentExeatsTx(
       detail: exeatDetail({ exeatType: r.exeat_type, reason: r.reason }),
       houseName: r.house_name,
       isOpen: OPEN_STATUSES.includes(r.status as ExeatStatus),
+      cardReady: isCardReady(r.status, r.exeat_type),
       milestones,
     };
   });
