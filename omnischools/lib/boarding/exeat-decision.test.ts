@@ -14,6 +14,7 @@ import {
   nextExeatSequence,
   formatRefCode,
   type CreateExeatInput,
+  type ExeatStatus,
 } from "./exeat-decision";
 
 const baseCreate: CreateExeatInput = {
@@ -59,6 +60,15 @@ describe("A · transition guard (state machine)", () => {
     // Terminal states can transition nowhere.
     expect(canTransition("SCHEDULED", "DECLINED", "HM_APPROVED")).toBe(false);
     expect(canTransition("SCHEDULED", "RETURNED", "DEPARTED")).toBe(false);
+  });
+
+  it("B4 (Phase 3-B) WITHDRAWN is terminal — inert to every staff transition, for every type", () => {
+    const targets: ExeatStatus[] = ["HM_APPROVED", "SR_HM_SIGNED", "DEPARTED", "RETURNED", "DECLINED"];
+    for (const type of ["SCHEDULED", "SPECIAL", "FEE_COLLECTION"] as const) {
+      for (const to of targets) {
+        expect(canTransition(type, "WITHDRAWN", to)).toBe(false);
+      }
+    }
   });
 });
 

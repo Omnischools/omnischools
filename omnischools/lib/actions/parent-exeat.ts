@@ -62,3 +62,38 @@ export async function requestParentExeat(input: unknown): Promise<Result> {
   safeRevalidate("/boarding");
   return { ok: true, refCode: result.ref_code ?? undefined };
 }
+
+/**
+ * 🔴 EXEAT PHASE 3-B · the parent CANCELS their own still-REQUESTED portal request. Same thin-guarded-caller
+ * shape as requestParentExeat: the SECURITY DEFINER `parent_withdraw_exeat` fn is the authority — it allows
+ * ONLY own-child + via_parent_portal=true + status='REQUESTED', is idempotent (already-WITHDRAWN → no-op
+ * success), and refuses everything else with a neutral error. We validate the id at the trust boundary and
+ * pass the fn's neutral error straight through (never an SMS, never a direct boarding_exeat write).
+ */
+const WithdrawSchema = z.object({ exeatId: z.string().uuid() });
+
+export async function withdrawParentExeat(input: unknown): Promise<{ ok: boolean; error?: string }> {
+  const { user, school } = await requireParent();
+  const parsed = WithdrawSchema.safeParse(
+    typeof input === "string" ? { exeatId: input } : input,
+  );
+  if (!parsed.success) return { ok: false, error: "We couldn't find that request." };
+  const { exeatId } = parsed.data;
+
+  let result: { ok: boolean; error: string | null } | null;
+  try {
+    result = await withParentScope(school.id, user.id, async (tx) => {
+      const rows = (await tx.execute(sql`
+        select ok, error
+        from parent_withdraw_exeat(${school.id}::uuid, ${user.id}::uuid, ${exeatId}::uuid)
+      `)) as unknown as { ok: boolean; error: string | null }[];
+      return rows[0] ?? null;
+    });
+  } catch {
+    return { ok: false, error: "Couldn't withdraw your request. Please try again." };
+  }
+
+  if (!result?.ok) return { ok: false, error: mapExeatError(result?.error) };
+  safeRevalidate("/boarding");
+  return { ok: true };
+}

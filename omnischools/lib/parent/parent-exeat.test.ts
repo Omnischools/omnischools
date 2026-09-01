@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { describe, it, expect } from "vitest";
 import { readCode } from "@/lib/test-utils/source-shape";
-import { exeatStatusLabel, exeatDetail, isCardReady } from "./parent-exeat-data";
+import { exeatStatusLabel, exeatDetail, isCardReady, canWithdraw } from "./parent-exeat-data";
 
 /**
  * EXEAT PHASE 2 · parent-initiated SPECIAL exeat + own-child status. The reader is mostly an IO projection
@@ -28,6 +28,44 @@ describe("exeatStatusLabel · friendly status copy (Kofi C2)", () => {
       expect(exeatStatusLabel(s)).not.toBe(s);
     }
     expect(exeatStatusLabel("WEIRD_UNKNOWN")).toBe("In progress");
+  });
+
+  it("(Phase 3-B) WITHDRAWN has a friendly, own-agency label", () => {
+    expect(exeatStatusLabel("WITHDRAWN")).toBe("Withdrawn — you cancelled this request.");
+  });
+});
+
+describe("canWithdraw · portal-cancel gate (Phase 3-B, advisory)", () => {
+  // reason-presence is the PORTAL-ORIGIN proxy — parent_exeat_list redacts a staff reason to NULL, so a
+  // present reason ⟺ via_parent_portal (the SAME signal exeatDetail trusts). The fn is authoritative.
+  it("REQUESTED + a present reason (the parent's own portal request) → true", () => {
+    expect(canWithdraw({ status: "REQUESTED", reason: "Grandmother's funeral" })).toBe(true);
+  });
+  it("REQUESTED + NULL/blank reason (staff-authored, redacted upstream) → false", () => {
+    expect(canWithdraw({ status: "REQUESTED", reason: null })).toBe(false);
+    expect(canWithdraw({ status: "REQUESTED", reason: "   " })).toBe(false);
+  });
+  it("a further-along status is never withdrawable, even with a reason (HM_APPROVED → false)", () => {
+    expect(canWithdraw({ status: "HM_APPROVED", reason: "Grandmother's funeral" })).toBe(false);
+  });
+  it("an already-WITHDRAWN row is not withdrawable again", () => {
+    expect(canWithdraw({ status: "WITHDRAWN", reason: "Grandmother's funeral" })).toBe(false);
+  });
+});
+
+describe("WITHDRAWN row · not open, not card-ready (form re-enables, no card)", () => {
+  it("WITHDRAWN is never card-ready (fail-closed for every type)", () => {
+    expect(isCardReady("WITHDRAWN", "SPECIAL")).toBe(false);
+    expect(isCardReady("WITHDRAWN", "SCHEDULED")).toBe(false);
+    expect(isCardReady("WITHDRAWN", "FEE_COLLECTION")).toBe(false);
+  });
+  it("OPEN_STATUSES excludes WITHDRAWN → a withdrawn row's isOpen=false re-enables the request form", () => {
+    // OPEN_STATUSES is the module's private open-guard (isOpen = OPEN_STATUSES.includes(status)); assert its
+    // literal never admits WITHDRAWN, so a cancelled request no longer blocks a fresh submit.
+    const s = readCode("lib/parent/parent-exeat-data.ts");
+    const line = s.match(/OPEN_STATUSES[^\n]*=\s*\[[^\]]*\]/)?.[0] ?? "";
+    expect(line).toMatch(/REQUESTED/); // sanity: we matched the real declaration
+    expect(line).not.toMatch(/WITHDRAWN/);
   });
 });
 
@@ -134,6 +172,21 @@ describe("parent-exeat action · the write trust boundary", () => {
     expect(s).toMatch(/departDate < today/); // not-in-the-past belt
     expect(s).toMatch(/returnDate < departDate/); // ordering belt
     expect(s).not.toMatch(/sendSms|sendSMS/);
+  });
+
+  it("(Phase 3-B) withdrawParentExeat is parent-gated, id-validated, and calls the authoritative fn", () => {
+    const s = action();
+    expect(s).toMatch(/export async function withdrawParentExeat/);
+    expect(s).toMatch(/parent_withdraw_exeat/); // the SECURITY DEFINER authority
+    expect(s).toMatch(/z\.string\(\)\.uuid\(\)/); // id validated at the trust boundary
+    // parent-scoped, never a school-scoped mutation nor a direct boarding_exeat write
+    expect(s).toMatch(/requireParent\(\)/);
+    expect(s).toMatch(/withParentScope/);
+    expect(s).not.toMatch(/requireSchool/);
+    expect(s).not.toMatch(/\bwithSchool\b/);
+    expect(s).not.toMatch(/update\(boardingExeat\)|insert\(boardingExeat\)/);
+    expect(s).not.toMatch(/"WITHDRAWN"|'WITHDRAWN'/); // no lifecycle literal in app code
+    expect(s).toMatch(/safeRevalidate\("\/boarding"\)/);
   });
 });
 

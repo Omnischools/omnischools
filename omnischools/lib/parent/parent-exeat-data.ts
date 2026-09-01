@@ -27,6 +27,7 @@ const STATUS_LABEL: Record<ExeatStatus, string> = {
   DEPARTED: "Signed out — currently at home",
   RETURNED: "Returned to school",
   DECLINED: "Not approved — please contact the House",
+  WITHDRAWN: "Withdrawn — you cancelled this request.",
 };
 
 /** Friendly TYPE label for a row the parent did NOT author (never echo staff-entered reason text). */
@@ -60,6 +61,18 @@ export function isCardReady(status: string, type: string): boolean {
 }
 
 /**
+ * PURE (Exeat Phase 3-B) — may the parent CANCEL this request from the portal? True only for a still-
+ * REQUESTED row whose `reason` is present. Reason-presence is the PORTAL-ORIGIN proxy: `parent_exeat_list`
+ * redacts a staff-authored reason to NULL, so a present reason ⟺ via_parent_portal=true (the SAME signal
+ * `exeatDetail` already trusts) — we never put via_parent_portal on the parent wire. ADVISORY ONLY: the
+ * SECURITY DEFINER `parent_withdraw_exeat` fn is the authority (own-child + via_parent_portal + REQUESTED);
+ * a mis-shown button just yields a neutral "contact the House". WITHDRAWN → false (no reason echoed; not REQUESTED).
+ */
+export function canWithdraw(row: { status: string; reason: string | null }): boolean {
+  return row.status === "REQUESTED" && !!row.reason?.trim();
+}
+
+/**
  * PURE — what to show as the row's "reason/detail" (Kofi C2 detail rule):
  *  • FEE_COLLECTION → a bare "Fee collection" — NEVER its amount-bearing reason.
  *  • a present reason → the parent's OWN words. `parent_exeat_list` REDACTS a staff-authored reason to
@@ -81,6 +94,7 @@ export type ParentExeatRow = {
   detail: string;
   houseName: string | null;
   isOpen: boolean; // any live stage → the request form disables submit (advisory; the fn is authoritative)
+  canWithdraw: boolean; // still-REQUESTED portal request → show "Withdraw request" (advisory; parent_withdraw_exeat is authoritative)
   cardReady: boolean; // download-eligible → show the "Download exeat card" link (advisory; the route is authoritative)
   milestones: ParentExeatMilestone[]; // pre-formatted display strings, only the ones that exist
 };
@@ -134,6 +148,7 @@ export async function loadParentExeatsTx(
       detail: exeatDetail({ exeatType: r.exeat_type, reason: r.reason }),
       houseName: r.house_name,
       isOpen: OPEN_STATUSES.includes(r.status as ExeatStatus),
+      canWithdraw: canWithdraw({ status: r.status, reason: r.reason }),
       cardReady: isCardReady(r.status, r.exeat_type),
       milestones,
     };
