@@ -1,0 +1,42 @@
+-- Omnischools — PROD paste 0100: EXEAT DECISION SMS KINDS (INCR — Exeat Phase 3, Feature C:
+-- SMS-to-parent on the school's decision). PURELY ADDITIVE ENUM CHANGE — TWO new values on
+-- exeat_notification_kind. ZERO new tables, ZERO columns, ZERO functions, ZERO RLS changes,
+-- ZERO backfills. Idempotent (ADD VALUE IF NOT EXISTS) — safe to run more than once. Paste into
+-- the Supabase SQL editor on PROD. Mirrors Drizzle migration 0090_optimal_captain_stacy.sql
+-- (dev source-of-truth) and the exeatNotificationKindEnum in db/schema/_enums.ts.
+--
+-- WHAT IT SHIPS. exeat_notification.kind gains DECISION_APPROVED + DECISION_DECLINED — the two
+-- on-decision SMS kinds (HM approves / declines the exeat), alongside the existing DEPARTURE /
+-- REMINDER / OVERDUE_STAGE_1/2/3 chain. One row per (exeat × kind) remains the idempotency guard
+-- (NOT EXISTS(kind)), so an approval/decline SMS is sent at most once per exeat. The kinds are named
+-- DECISION_* to read clearly in the SMS log and to stay distinct from exeat_status.DECLINED
+-- (a DIFFERENT enum — no overlap, no ambiguity). The SMS wiring itself (buildExeatSms cases,
+-- transition() hooks) is app code shipped separately.
+--
+-- 🔴 RLS UNCHANGED — NO LEAK SURFACE. exeat_notification stays fully parent_deny (it carries NO
+-- parent_scope; the catalog parent_deny loop keeps it denied). This paste adds NO policy, NO grant,
+-- NO parent reach — an enum value is not a row and touches no RLS. verify-prod-rls.sql is unaffected
+-- (parent_readable UNCHANGED at 31 — no new parent_scope table).
+--
+-- 🔴 THE ADD-VALUE-OUTSIDE-TX CAVEAT (Kofi). `ALTER TYPE ... ADD VALUE` historically cannot run
+-- inside a transaction block, and a value added in a transaction cannot be USED in that same
+-- transaction. These two statements therefore run STANDALONE — NO surrounding BEGIN/COMMIT. Do NOT
+-- wrap them in a transaction, and do NOT insert a notification row of the new kind in the same
+-- statement batch. (The Supabase SQL editor autocommits each statement, so pasting the two lines
+-- below as-is is correct.) IF NOT EXISTS makes each idempotent.
+--
+-- ⚠ ORDERING — RUN THIS BEFORE THE APP DEPLOY THAT REFERENCES THE NEW KINDS. db:policies configures
+-- LOCAL DEV ONLY, and enum changes are NOT auto-applied to prod. If the Exeat Phase 3-C app deploys
+-- BEFORE this paste runs, the first attempt to INSERT an exeat_notification row of kind
+-- DECISION_APPROVED / DECISION_DECLINED will FAIL ("invalid input value for enum") and the decision
+-- SMS will not be logged/sent. Run this WITH/BEFORE the release. Purely additive → running it early
+-- (before the app knows the values) is harmless; the old app never emits the new kinds.
+--
+-- Verify afterwards:
+--   select enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
+--   where t.typname = 'exeat_notification_kind' order by e.enumsortorder;
+--   -- expect: DEPARTURE, REMINDER, OVERDUE_STAGE_1, OVERDUE_STAGE_2, OVERDUE_STAGE_3,
+--   --         DECISION_APPROVED, DECISION_DECLINED
+
+ALTER TYPE "public"."exeat_notification_kind" ADD VALUE IF NOT EXISTS 'DECISION_APPROVED';
+ALTER TYPE "public"."exeat_notification_kind" ADD VALUE IF NOT EXISTS 'DECISION_DECLINED';

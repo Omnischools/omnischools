@@ -223,14 +223,19 @@ export const exeatStatusEnum = pgEnum("exeat_status", [
   "RETURNED",
   "DECLINED",
 ]);
-// The late-return SMS escalation kinds (exeat_notification.kind). One row per (exeat × kind) is the
-// idempotency guard for the +5/+30/+60 chain (Kofi OQ5) — resend is blocked by NOT EXISTS(kind).
+// The exeat SMS-to-parent kinds (exeat_notification.kind). One row per (exeat × kind) is the
+// idempotency guard for the +5/+30/+60 late-return chain (Kofi OQ5) — resend is blocked by
+// NOT EXISTS(kind). DECISION_APPROVED / DECISION_DECLINED (Exeat Phase 3-C) are the on-decision
+// notifications; named distinctly from exeat_status.DECLINED (a DIFFERENT enum) to read clearly
+// in the SMS log.
 export const exeatNotificationKindEnum = pgEnum("exeat_notification_kind", [
   "DEPARTURE",
   "REMINDER",
   "OVERDUE_STAGE_1",
   "OVERDUE_STAGE_2",
   "OVERDUE_STAGE_3",
+  "DECISION_APPROVED",
+  "DECISION_DECLINED",
 ]);
 
 // Senior boarding daily life (SHS module 4.2) — INCR-10 (Kofi OQ1).
