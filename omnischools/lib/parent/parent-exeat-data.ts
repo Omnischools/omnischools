@@ -67,6 +67,9 @@ export function isCardReady(status: string, type: string): boolean {
  * `exeatDetail` already trusts) — we never put via_parent_portal on the parent wire. ADVISORY ONLY: the
  * SECURITY DEFINER `parent_withdraw_exeat` fn is the authority (own-child + via_parent_portal + REQUESTED);
  * a mis-shown button just yields a neutral "contact the House". WITHDRAWN → false (no reason echoed; not REQUESTED).
+ * COUPLING (Dex): soundness also rests on the request path mandating a >=4-char reason
+ * (lib/actions/parent-exeat.ts) — if a parent reason ever becomes optional this silently false-negatives;
+ * upgrade to a server-computed `withdrawable` boolean in the parent_exeat_list projection then.
  */
 export function canWithdraw(row: { status: string; reason: string | null }): boolean {
   return row.status === "REQUESTED" && !!row.reason?.trim();
