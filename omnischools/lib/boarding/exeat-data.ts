@@ -90,8 +90,10 @@ export async function feeOwingForStudent(
 export { getCurrentPeriod };
 
 /**
- * Quota used = count(SCHEDULED+FEE_COLLECTION, status≠DECLINED) for this student × semester
- * (Kofi OQ3 / AC B). Derived by counting rows — there is deliberately no counter column.
+ * Quota used = count(SCHEDULED+FEE_COLLECTION, status ∉ {DECLINED, WITHDRAWN}) for this student × semester
+ * (Kofi OQ3 / AC B). Derived by counting rows — there is deliberately no counter column. WITHDRAWN is a
+ * no-op today (only SPECIAL is parent-withdrawable, and quota counts SCHEDULED/FEE) but keeps the filter
+ * correct if withdrawal ever widens (Dex).
  */
 export async function countQuotaUsed(
   tx: Tx,
@@ -109,6 +111,7 @@ export async function countQuotaUsed(
         eq(boardingExeat.academicPeriodId, periodId),
         inArray(boardingExeat.exeatType, ["SCHEDULED", "FEE_COLLECTION"]),
         ne(boardingExeat.status, "DECLINED"),
+        ne(boardingExeat.status, "WITHDRAWN"),
       ),
     );
   return row?.n ?? 0;
