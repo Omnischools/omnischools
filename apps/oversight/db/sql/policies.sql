@@ -17,17 +17,20 @@
 -- ---- helper functions -------------------------------------------------------
 
 create or replace function ov_current_jurisdiction() returns uuid
-  language sql stable as $$
+  language sql stable
+  set search_path = public as $$
     select nullif(current_setting('app.current_jurisdiction', true), '')::uuid
   $$;
 
 create or replace function ov_current_officer() returns uuid
-  language sql stable as $$
+  language sql stable
+  set search_path = public as $$
     select nullif(current_setting('app.current_officer', true), '')::uuid
   $$;
 
 create or replace function ov_is_national() returns boolean
-  language sql stable as $$
+  language sql stable
+  set search_path = public as $$
     select coalesce(current_setting('app.current_level', true), '') = 'NATIONAL'
   $$;
 
@@ -35,7 +38,8 @@ create or replace function ov_is_national() returns boolean
 -- if the current node appears in that ancestor chain (or equals :jid), the row is in scope.
 -- National short-circuits to true (no filter).
 create or replace function ov_in_subtree(jid uuid) returns boolean
-  language sql stable as $$
+  language sql stable
+  set search_path = public as $$
     select ov_is_national()
         or (jid is not null and exists (
           with recursive up as (
@@ -56,8 +60,22 @@ drop policy if exists jurisdiction_scope on dim_jurisdiction;
 create policy jurisdiction_scope on dim_jurisdiction
   for select using ( ov_in_subtree(jurisdiction_id) );
 
--- dim_period / dim_stage / dim_subject are non-sensitive shared vocabularies: left readable
--- (no RLS) so period banners and stage/subject grids resolve for every tier.
+-- Non-sensitive shared vocabulary / config tables (dim_period, dim_stage, dim_subject,
+-- ref_anomaly_rule, ref_assessment_weights) and etl_run carry no jurisdiction and no school data.
+-- They still get RLS ENABLED with a read-all policy: on Supabase a public table without RLS is
+-- exposed to the anon role via PostgREST, so "no RLS" is not "no exposure". `using (true)` keeps
+-- them readable to every tier (and to the app's direct-Postgres role) while satisfying the linter.
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'dim_period','dim_stage','dim_subject','ref_anomaly_rule','ref_assessment_weights','etl_run'
+  ] loop
+    execute format('alter table %I enable row level security;', t);
+    execute format('drop policy if exists read_all on %I;', t);
+    execute format('create policy read_all on %I for select using ( true );', t);
+  end loop;
+end $$;
 
 -- ---- fact_* : one predicate, joined through jurisdiction_id -----------------
 do $$
@@ -127,7 +145,8 @@ create policy audit_insert on audit_access_log
 
 -- Append-only: reject UPDATE/DELETE on existing rows. A review only ever INSERTs a linked row.
 create or replace function ov_audit_append_only() returns trigger
-  language plpgsql as $$
+  language plpgsql
+  set search_path = public as $$
   begin
     raise exception 'audit_access_log is append-only (% rejected)', tg_op;
   end $$;
