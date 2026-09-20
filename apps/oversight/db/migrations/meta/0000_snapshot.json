@@ -1,5 +1,5 @@
 {
-  "id": "820d95b6-2985-4be9-ba09-a1fd26bd3c01",
+  "id": "5e6b06fc-b573-45fe-a313-9ee112c306b6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -415,85 +415,6 @@
           "tableTo": "dim_jurisdiction",
           "columnsFrom": [
             "region_id"
-          ],
-          "columnsTo": [
-            "jurisdiction_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.ref_ges_data_sharing_agreements": {
-      "name": "ref_ges_data_sharing_agreements",
-      "schema": "",
-      "columns": {
-        "school_id": {
-          "name": "school_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "agreement_version": {
-          "name": "agreement_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "dsa_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'NONE'"
-        },
-        "agreed_at": {
-          "name": "agreed_at",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scope_json": {
-          "name": "scope_json",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "signed_by": {
-          "name": "signed_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source": {
-          "name": "source",
-          "type": "ov_source",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'OPERATIONAL_AGG'"
-        },
-        "as_of_date": {
-          "name": "as_of_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "ref_ges_data_sharing_agreements_school_id_dim_jurisdiction_jurisdiction_id_fk": {
-          "name": "ref_ges_data_sharing_agreements_school_id_dim_jurisdiction_jurisdiction_id_fk",
-          "tableFrom": "ref_ges_data_sharing_agreements",
-          "tableTo": "dim_jurisdiction",
-          "columnsFrom": [
-            "school_id"
           ],
           "columnsTo": [
             "jurisdiction_id"
@@ -2072,15 +1993,6 @@
         "TERMLY",
         "ANNUAL",
         "MOCK"
-      ]
-    },
-    "public.dsa_status": {
-      "name": "dsa_status",
-      "schema": "public",
-      "values": [
-        "NONE",
-        "SIGNED",
-        "LIVE"
       ]
     },
     "public.etl_status": {

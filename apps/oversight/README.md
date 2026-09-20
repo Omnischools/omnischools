@@ -50,8 +50,27 @@ pnpm dev                            # http://localhost:3100
 The schema is warehouse-agnostic (`OVERSIGHT_ANALYTICS_SPEC.md` §7) — Supabase Postgres to start,
 a managed warehouse later only if scale demands.
 
+## Regulatory model — no consent gate
+
+GES and the MoE are **statutory regulators** with mandatory oversight of curriculum, academic
+performance, and school administration. So there is **no per-school data-sharing/consent table**:
+every EMIS-registered school is in scope by law. The ETL inclusion set is simply the registered
+schools live on Omnischools (`on_schoolup` / `is_reporting`), and coverage stays register-based. The
+privacy boundary is architectural (analytics holds aggregates only; named records go through the
+gated §6 audit path), not consent-based.
+
+## Fact domains
+
+Modelled now: enrolment/demographics, student attendance, exam performance (WASSCE/BECE),
+internal/continuous performance, staffing (PTR/vacancies), fees (distributional), anomalies.
+
+Planned next (each needs its own grain decision before modelling): **teacher attendance**, **school
+infrastructure** (from the operational facilities snapshot), and **PLC/VLC** participation. These
+map directly to the oversight services GES/MoE want — performance, student/teacher attendance,
+infrastructure, demographics, PLC/VLC.
+
 ## Status
 
-Scaffold. The schema, RLS, config seed, and app shell are in place. Still to build: the ETL job
-(`apps/web`, 02:00 GMT — deferred), the 13 surfaces, and GES-staff auth. See
+Scaffold. The schema (20 tables), RLS, config seed, and app shell are in place. Still to build: the
+ETL job (`apps/web`, 02:00 GMT — deferred), the surfaces, and GES-staff auth. See
 `docs/PROVISIONING.md` and `md files/OVERSIGHT_ANALYTICS_SPEC.md` for the full plan.

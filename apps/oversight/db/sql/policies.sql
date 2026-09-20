@@ -92,10 +92,8 @@ drop policy if exists jurisdiction_scope on ref_gss_population;
 create policy jurisdiction_scope on ref_gss_population
   for select using ( ov_in_subtree(district_id) );
 
-alter table ref_ges_data_sharing_agreements enable row level security;
-drop policy if exists jurisdiction_scope on ref_ges_data_sharing_agreements;
-create policy jurisdiction_scope on ref_ges_data_sharing_agreements
-  for select using ( ov_in_subtree(school_id) );
+-- (No ref_ges_data_sharing_agreements: GES/MoE are statutory regulators, so there is no per-school
+-- consent to gate on — every registered school is in scope by law.)
 
 -- WAEC + establishment extracts are keyed by emis_school_id (not a dim uuid): scope via the register.
 alter table ref_waec_results_extract enable row level security;

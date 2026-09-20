@@ -242,7 +242,7 @@ The authoritative list of every recognised school — the **Y** in every "X of Y
 | `source` | enum | `EMIS_EXTRACT` |
 | `as_of_date` | date | extract vintage |
 
-Coverage = `COUNT(on_schoolup) / COUNT(*)` within a jurisdiction. Because the register is independent of who synced, coverage is honest even when a school's data is missing. The data-sharing-agreement surface's three-stage funnel (registered → signed → live) is this table joined to `ref_ges_data_sharing_agreements`.
+Coverage = `COUNT(on_schoolup) / COUNT(*)` within a jurisdiction. Because the register is independent of who synced, coverage is honest even when a school's data is missing. The coverage funnel is registered then live, read straight off `on_schoolup` — a school is either on the register only, or registered **and** live on Omnischools.
 
 ### 5.2 `ref_gss_population`
 
@@ -266,20 +266,10 @@ Official WAEC school-level results, where supplied under a GES–WAEC arrangemen
 
 GES payroll/HR establishment data from the EMIS personnel module — authorised teaching posts per school, and the staff IDs that make teacher named-record lookup possible (§6). Supplies `teaching_posts_established` to `fact_staffing`.
 
-### 5.5 `ref_ges_data_sharing_agreements`
+### 5.5 No data-sharing-agreement / consent table (revised)
 
-Mirrors the operational `ges_data_sharing_agreements` table into analytics so the DSA-management surface can run at the national tier.
+**Superseded.** An earlier draft modelled a `ref_ges_data_sharing_agreements` table and a per-school "signed then live" consent gate. That is removed: **GES and the MoE are statutory regulators** with mandatory oversight of curriculum, academic performance, and school administration, so every EMIS-registered school's data is in scope **by law** — there is no opt-in to record and no consent to gate on. The ETL inclusion set is simply the registered schools that are live on Omnischools (`ref_emis_school_register.on_schoolup` / `dim_jurisdiction.is_reporting`), and coverage stays register-based. The privacy boundary is preserved by architecture, not by consent: analytics holds **aggregates only**, and the one named-record surface goes through the gated, audited §6 path.
 
-| Column | Type | Notes |
-|---|---|---|
-| `school_id` | uuid FK | |
-| `agreement_version` | text | `v2.1`, `v1.4` … |
-| `status` | enum | `NONE`, `SIGNED`, `LIVE` — the funnel's three stages |
-| `agreed_at` | date | |
-| `scope_json` | jsonb | which categories aggregate, which gated — the scope table |
-| `signed_by` | text | e.g. the Headmaster |
-
-The ETL's school-inclusion rule reads this: a school's facts are written to analytics only if `status = LIVE`.
 
 ---
 
@@ -318,7 +308,7 @@ A cron job in the operational app, 02:00 GMT, same window as the nightly DR snap
 
 1. **Open run.** Insert an `etl_run` row (`run_id`, `started_at`, `status = RUNNING`).
 2. **Refresh dimensions.** Upsert `dim_jurisdiction` from the operational school/district/region tables (new schools, changed `is_reporting`). `dim_period` rolls the term/year. `dim_stage`, `dim_subject`, `ref_anomaly_rule` change only by manual config edit — skipped unless a version bump is flagged.
-3. **Determine the inclusion set.** Schools where `ref_ges_data_sharing_agreements.status = LIVE`. Public schools are `LIVE` by default once onboarded (GES is the regulator); private schools require a signed agreement. Schools not `LIVE` are excluded from fact computation but **still counted in `ref_emis_school_register`** — that asymmetry is what makes the coverage figure real.
+3. **Determine the inclusion set.** Every EMIS-registered school that is live on Omnischools (`ref_emis_school_register.on_schoolup` / `dim_jurisdiction.is_reporting`). GES/MoE oversight is statutory, so there is no consent gate — a registered school not yet live on Omnischools is excluded from fact computation but **still counted in `ref_emis_school_register`**, and that asymmetry is what makes the coverage figure real.
 4. **Compute facts.** For each included school and the current period(s), aggregate operational data into `fact_enrolment`, `fact_attendance`, `fact_performance_*`, `fact_staffing`, `fact_fees`. School grain only — no pre-rolled district/region rows. Stamp `source`, `as_of_date`, `etl_run_id`.
 5. **Load reference deltas.** If a new EMIS register, GSS population set, WAEC extract, or establishment file has been supplied, load it into the matching `ref_*` table with its own `as_of_date`. These are event-driven, not nightly.
 6. **Run the anomaly engine.** Evaluate enabled `ref_anomaly_rule` predicates against the night's facts. Insert new `fact_anomaly` rows; update `last_updated` on ones that persist; leave `status`/`cluster_id` alone (those are app-owned). Correlate same-school, same-window anomalies into a `cluster_id`.
@@ -357,7 +347,7 @@ Because the hierarchy is one self-referencing table, "the subtree" is a single r
 
 Consistent with BUILD_STACK's "provision the analytics DB ~3 months before Oversight launch":
 
-1. **Now, in the operational migration:** the Oversight-readiness columns already noted — `district_id`, `region_id`, `ownership_type` on schools, and the `ges_data_sharing_agreements` table. Designing the operational data shape so aggregation is later a script, not a redesign.
+1. **Now, in the operational migration:** the Oversight-readiness columns already noted — `district_id`, `region_id`, `ownership_type` on schools (no consent table is needed — GES/MoE oversight is statutory). Designing the operational data shape so aggregation is later a script, not a redesign.
 2. **~3 months pre-launch:** provision `omnischools-analytics-prod`; create `dim_*`, `fact_*`, `ref_*`, `audit_access_log`, `etl_run`; seed `dim_stage`, `dim_subject`, `ref_anomaly_rule` from config; load the first `ref_emis_school_register`, `ref_gss_population`.
 3. **Pre-launch:** stand up the ETL cron; run it nightly against a staging analytics DB; verify roll-ups equal hand-computed sums and coverage equals register-minus-onboarded.
 4. **Launch:** point `apps/oversight` at the analytics DB; enable jurisdiction RLS; first GES users provisioned national→regional→district per Decision 5.

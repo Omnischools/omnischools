@@ -1,7 +1,6 @@
 CREATE TYPE "public"."ov_anomaly_severity" AS ENUM('HIGH', 'MEDIUM', 'LOW');--> statement-breakpoint
 CREATE TYPE "public"."ov_anomaly_status" AS ENUM('NEW', 'IN_REVIEW', 'ASSIGNED', 'RESOLVED', 'DISMISSED');--> statement-breakpoint
 CREATE TYPE "public"."assessment_type" AS ENUM('TERMLY', 'ANNUAL', 'MOCK');--> statement-breakpoint
-CREATE TYPE "public"."dsa_status" AS ENUM('NONE', 'SIGNED', 'LIVE');--> statement-breakpoint
 CREATE TYPE "public"."etl_status" AS ENUM('RUNNING', 'SUCCESS', 'FAILED');--> statement-breakpoint
 CREATE TYPE "public"."exam" AS ENUM('BECE', 'WASSCE');--> statement-breakpoint
 CREATE TYPE "public"."ov_fee_category" AS ENUM('TUITION', 'BOARDING', 'FEEDING', 'EXAM', 'PTA_DUES', 'OTHER');--> statement-breakpoint
@@ -78,17 +77,6 @@ CREATE TABLE "ref_emis_school_register" (
 	"ownership_type" "ov_ownership_type",
 	"on_schoolup" boolean DEFAULT false NOT NULL,
 	"source" "ov_source" DEFAULT 'EMIS_EXTRACT' NOT NULL,
-	"as_of_date" date NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "ref_ges_data_sharing_agreements" (
-	"school_id" uuid PRIMARY KEY NOT NULL,
-	"agreement_version" text,
-	"status" "dsa_status" DEFAULT 'NONE' NOT NULL,
-	"agreed_at" date,
-	"scope_json" jsonb,
-	"signed_by" text,
-	"source" "ov_source" DEFAULT 'OPERATIONAL_AGG' NOT NULL,
 	"as_of_date" date NOT NULL
 );
 --> statement-breakpoint
@@ -273,7 +261,6 @@ CREATE TABLE "fact_staffing" (
 ALTER TABLE "dim_jurisdiction" ADD CONSTRAINT "dim_jurisdiction_parent_id_dim_jurisdiction_jurisdiction_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."dim_jurisdiction"("jurisdiction_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ref_emis_school_register" ADD CONSTRAINT "ref_emis_school_register_district_id_dim_jurisdiction_jurisdiction_id_fk" FOREIGN KEY ("district_id") REFERENCES "public"."dim_jurisdiction"("jurisdiction_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ref_emis_school_register" ADD CONSTRAINT "ref_emis_school_register_region_id_dim_jurisdiction_jurisdiction_id_fk" FOREIGN KEY ("region_id") REFERENCES "public"."dim_jurisdiction"("jurisdiction_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ref_ges_data_sharing_agreements" ADD CONSTRAINT "ref_ges_data_sharing_agreements_school_id_dim_jurisdiction_jurisdiction_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."dim_jurisdiction"("jurisdiction_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ref_ges_teacher_establishment" ADD CONSTRAINT "ref_ges_teacher_establishment_emis_school_id_ref_emis_school_register_emis_school_id_fk" FOREIGN KEY ("emis_school_id") REFERENCES "public"."ref_emis_school_register"("emis_school_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ref_gss_population" ADD CONSTRAINT "ref_gss_population_district_id_dim_jurisdiction_jurisdiction_id_fk" FOREIGN KEY ("district_id") REFERENCES "public"."dim_jurisdiction"("jurisdiction_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ref_gss_population" ADD CONSTRAINT "ref_gss_population_stage_dim_stage_stage_fk" FOREIGN KEY ("stage") REFERENCES "public"."dim_stage"("stage") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

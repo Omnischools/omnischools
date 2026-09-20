@@ -46,8 +46,10 @@ These are **external data-agreement** loads, not part of the seed. Load with eac
 - `ref_waec_results_extract` — the GES–WAEC school-level extract (if/when supplied).
 - `ref_ges_teacher_establishment` — GES payroll/HR authorised posts + staff IDs.
 
-`ref_ges_data_sharing_agreements` is populated by the ETL from the **operational**
-`ges_data_sharing_agreements` table (each school's own consent to share with GES), not loaded here.
+There is **no data-sharing-agreement / consent load**. GES and the MoE are statutory regulators
+with mandatory oversight, so every EMIS-registered school is in scope by law. The ETL inclusion set
+is simply the registered schools live on Omnischools (`ref_emis_school_register.on_schoolup` /
+`dim_jurisdiction.is_reporting`); coverage stays register-based (`on_schoolup ÷ register`).
 
 ## 4 · Wire the app
 

@@ -16,7 +16,6 @@ import {
   ownershipTypeEnum,
   sourceEnum,
   anomalySeverityEnum,
-  dsaStatusEnum,
 } from "./_enums";
 
 /**
@@ -97,28 +96,12 @@ export const refGesTeacherEstablishment = pgTable("ref_ges_teacher_establishment
   asOfDate: date("as_of_date").notNull(),
 });
 
-/**
- * ref_ges_data_sharing_agreements — the SCHOOL↔GES data-sharing agreement (§5.5). ONE ROW PER
- * SCHOOL recording that the school has consented to feed its data up to GES/Oversight. This is
- * NOT the EMIS/WAEC/GSS upstream feeds (those are the ref_* extract tables above) — it is each
- * school's own consent, and it is the ETL's inclusion gate: a school's facts are written to
- * analytics only when `status = LIVE`. Public schools are LIVE by default (GES is the regulator);
- * private schools require an explicit signed agreement. Mirrors the operational
- * `ges_data_sharing_agreements` table so the DSA-management surface can run at the national tier.
- */
-export const refGesDataSharingAgreements = pgTable("ref_ges_data_sharing_agreements", {
-  schoolId: uuid("school_id")
-    .primaryKey()
-    .references(() => dimJurisdiction.jurisdictionId),
-  agreementVersion: text("agreement_version"), // v2.1, v1.4 …
-  status: dsaStatusEnum("status").notNull().default("NONE"), // the funnel's three stages
-  agreedAt: date("agreed_at"),
-  // which categories aggregate, which are gated — the scope table.
-  scopeJson: jsonb("scope_json"),
-  signedBy: text("signed_by"), // e.g. the Headmaster
-  source: sourceEnum("source").notNull().default("OPERATIONAL_AGG"),
-  asOfDate: date("as_of_date").notNull(),
-});
+// NOTE: there is deliberately NO school-consent / data-sharing-agreement table. GES and the MoE
+// are statutory regulators with mandatory oversight of curriculum, academic performance, and
+// administration, so every EMIS-registered school's data is in scope by law — there is no opt-in to
+// gate on. The ETL inclusion set is simply the registered schools that are live on Omnischools
+// (ref_emis_school_register.on_schoolup / dim_jurisdiction.is_reporting), and coverage stays
+// register-based (on_schoolup ÷ register). This replaces the earlier consent-gate design.
 
 /**
  * ref_anomaly_rule — rules as CONFIG, not code (§4.9), so a rule is inspectable and tunable

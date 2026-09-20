@@ -76,9 +76,6 @@ export const anomalyStatusEnum = pgEnum("ov_anomaly_status", [
   "DISMISSED",
 ]);
 
-// The data-sharing funnel: registered (NONE) → SIGNED → LIVE. Only LIVE schools feed the ETL.
-export const dsaStatusEnum = pgEnum("dsa_status", ["NONE", "SIGNED", "LIVE"]);
-
 // Named-record audit path (§6).
 export const recordTypeEnum = pgEnum("record_type", ["STUDENT", "TEACHER"]);
 export const reviewStatusEnum = pgEnum("access_review_status", [
