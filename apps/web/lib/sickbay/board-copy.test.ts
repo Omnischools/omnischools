@@ -47,7 +47,9 @@ import {
 import { formatWait } from "./visits";
 import { VITALS_COLUMNS } from "./visit-copy";
 
-const root = resolve(cwd(), "..");
+// Monorepo: tests run from apps/web (pnpm -C apps/web test); the Surfaces/ design assets
+// live at the repo root, two levels up.
+const root = resolve(cwd(), "..", "..");
 const SURFACE = readFileSync(
   resolve(root, "Surfaces", "schoolup-sickbay-today.html"),
   "utf8",

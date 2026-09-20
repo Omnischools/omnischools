@@ -20,7 +20,9 @@ import {
 } from "./visit-copy";
 import { vitalTrend } from "./vitals";
 
-const root = resolve(cwd(), "..");
+// Monorepo: tests run from apps/web (pnpm -C apps/web test); the Surfaces/ design assets
+// live at the repo root, two levels up.
+const root = resolve(cwd(), "..", "..");
 const SURFACE = readFileSync(
   resolve(root, "Surfaces", "schoolup-sickbay-visit-record.html"),
   "utf8",

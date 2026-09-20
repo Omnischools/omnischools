@@ -34,7 +34,9 @@ import {
 } from "./chronic-copy";
 import { CANONICAL_SICKBAY_SLOTS, roundSchedule, type SickbaySlot } from "./defaults";
 
-const root = resolve(cwd(), "..");
+// Monorepo: tests run from apps/web (pnpm -C apps/web test); the Surfaces/ design assets
+// live at the repo root, two levels up.
+const root = resolve(cwd(), "..", "..");
 const SURFACE = readFileSync(
   resolve(root, "Surfaces", "schoolup-sickbay-chronic-register.html"),
   "utf8",
