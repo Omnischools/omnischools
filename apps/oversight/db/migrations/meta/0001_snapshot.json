@@ -1,5 +1,5 @@
 {
-  "id": "794721e0-ea4d-4f87-82ba-4b50bd895576",
+  "id": "277bd134-dd80-4f11-a921-00663d902cde",
   "prevId": "5e6b06fc-b573-45fe-a313-9ee112c306b6",
   "version": "7",
   "dialect": "postgresql",
@@ -1637,7 +1637,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2220,6 +2220,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "teacher_headcount": {
+          "name": "teacher_headcount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "sessions_held": {
           "name": "sessions_held",
           "type": "integer",
@@ -2252,12 +2258,6 @@
         },
         "teachers_in_plc": {
           "name": "teachers_in_plc",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "teacher_headcount": {
-          "name": "teacher_headcount",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -2329,7 +2329,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2581,7 +2581,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}

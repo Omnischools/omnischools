@@ -8,7 +8,7 @@ import {
   numeric,
   jsonb,
   timestamp,
-  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { dimJurisdiction, dimPeriod, dimStage, dimSubject } from "./dim";
 import { refAssessmentWeights } from "./ref";
@@ -211,9 +211,26 @@ export const factAnomaly = pgTable("fact_anomaly", {
  * All three are `source = OPERATIONAL_AGG` (the nightly ETL reads operational Postgres); no new
  * ov_source member and no new enum is needed for any of them.
  *
- * Each carries a non-unique (jurisdiction_id, period_id) index — the standard RLS-filtered read path
- * (`ov_in_subtree(jurisdiction_id)` + a period filter). The eight tables above are deliberately left
- * untouched; retrofitting them is a separate, non-additive decision.
+ * Each carries a UNIQUE (jurisdiction_id, period_id) index. It does double duty: it serves the
+ * standard RLS-filtered read path (`ov_in_subtree(jurisdiction_id)` + a period filter — a unique
+ * index is a btree and serves reads exactly like a plain one, so there is no separate non-unique
+ * index), AND it is the grain constraint. For these three there is NO legitimate second row per
+ * school × period: none has a stage / subject / sex breakdown, and fact_plc_participation's TERM and
+ * ANNUAL cuts are distinct period_ids, not two rows on one period. Without it a duplicated ETL row
+ * silently DOUBLES every roll-up above it — an error that is invisible at every tier, because the
+ * sum is still internally consistent. It also gives the ETL a clean `on conflict` upsert target, so
+ * a re-run overwrites rather than appends.
+ *
+ * ⚠ This DEVIATES from the existing eight fact tables, which are PK-only with no natural-key UNIQUE.
+ * That is a deliberate, flagged call (pending consistency ratification): it is free here because
+ * these three tables are empty, whereas retrofitting the existing eight would need a de-duplication
+ * pass first, so it is not additive and is not done here.
+ *
+ * NOTE (RLS): migration 0001 ENABLEs row level security on all three at CREATE time. The POLICY is
+ * applied separately — db/sql/policies.sql on dev, db/sql/prod-paste-0001-fact-domains.sql by hand on
+ * prod. Enabling RLS in the migration is what makes the skip-the-paste state genuinely fail CLOSED
+ * (RLS on + no policy → zero rows to a non-owner role) instead of briefly world-readable. NOT FORCEd,
+ * so the owner / BYPASSRLS ETL loader still writes freely.
  * ==========================================================================*/
 
 /**
@@ -252,10 +269,10 @@ export const factTeacherAttendance = pgTable(
     ...provenance, // source = OPERATIONAL_AGG
   },
   (t) => ({
-    byJurisdictionPeriod: index("fact_teacher_attendance_jurisdiction_period_idx").on(
-      t.jurisdictionId,
-      t.periodId,
-    ),
+    // Grain constraint AND the RLS-filtered read path — one row per school × period, no exceptions.
+    uniqJurisdictionPeriod: uniqueIndex(
+      "fact_teacher_attendance_jurisdiction_period_idx",
+    ).on(t.jurisdictionId, t.periodId),
   }),
 );
 
@@ -361,7 +378,8 @@ export const factInfrastructure = pgTable(
     ...provenance, // source = OPERATIONAL_AGG
   },
   (t) => ({
-    byJurisdictionPeriod: index("fact_infrastructure_jurisdiction_period_idx").on(
+    // Grain constraint AND the RLS-filtered read path — one census row per school × period.
+    uniqJurisdictionPeriod: uniqueIndex("fact_infrastructure_jurisdiction_period_idx").on(
       t.jurisdictionId,
       t.periodId,
     ),
@@ -382,17 +400,36 @@ export const factInfrastructure = pgTable(
  * does not sum.
  *
  * TWO PERIOD CUTS in one table, discriminated by the referenced dim_period.period_type:
- *   TERM   rows carry sessions_* / attendance_* / plc_participation_rate / teachers_in_plc /
- *          teacher_headcount; the CPD columns are NULL.
- *   ANNUAL rows carry cpd_points_* / teachers_meeting_cpd_threshold / annual_cpd_target; the
- *          session columns are NULL.
+ *   TERM   rows carry sessions_* / attendance_* / plc_participation_rate / teachers_in_plc; the CPD
+ *          columns are NULL.
+ *   ANNUAL rows carry cpd_points_* / teachers_meeting_cpd_threshold / annual_cpd_target; the session
+ *          columns are NULL.
+ *   BOTH   cuts carry `teacher_headcount` (see the ETL contract below) — it is the ONLY cut-spanning
+ *          measure, because both cuts need the same on-roll denominator.
  * Hence every cut-specific column is nullable; only the grain keys and schools_running_plc_count are
  * NOT NULL. (period_type lives on dim_period — it is not duplicated onto the fact.)
  *
+ * ETL CONTRACT — `teacher_headcount` IS POPULATED ON *BOTH* CUTS, TERM *AND* ANNUAL. It is not a
+ * TERM-only column, and an ANNUAL row that leaves it NULL is an ETL defect, not a valid row. The
+ * reason is that both headline rates divide by it, and each must be readable from a SINGLE row:
+ *   TERM   PLC coverage      = teachers_in_plc               ÷ teacher_headcount
+ *   ANNUAL CPD-target metric = teachers_meeting_cpd_threshold ÷ teacher_headcount
+ * If ANNUAL rows omitted it, "% of staff meeting the CPD target" would have no on-roll denominator on
+ * its own row: the numerator and denominator would sit on different rows with different period_ids
+ * and never join, so the invariant teachers_meeting_cpd_threshold ≤ teacher_headcount would compare
+ * zero rows and be VACUOUSLY true — unprovable, and silently so.
+ *
+ * `cpd_points_teacher_count` is explicitly NOT that denominator. It counts only teachers who already
+ * have a CPD ledger entry, so dividing by it would understate non-participation: a teacher who earned
+ * nothing all year would vanish from both numerator and denominator instead of counting as a miss.
+ * It is the honest denominator for `cpd_points_mean` ONLY (mean points among teachers who earned
+ * any). The staff-coverage denominator is always teacher_headcount.
+ *
  * `teacher_headcount` is PINNED to the same population as fact_staffing.teachers_on_roll — the same
- * ETL definition of "a teacher on this school's roll this period" — so PLC coverage
- * (teachers_in_plc ÷ teacher_headcount) is comparable with PTR and vacancies rather than counting a
- * quietly different set of people.
+ * ETL definition of "a teacher on this school's roll this period", on BOTH cuts — so PLC coverage and
+ * the CPD-target metric are comparable with PTR and vacancies rather than counting a quietly
+ * different set of people. For an ANNUAL row the ETL takes the roll for the academic year that period
+ * covers, by the same rule fact_staffing uses.
  *
  * `annual_cpd_target` is stored PER SCHOOL (it is the school's configured
  * plc_programme.annual_plc_target), never a hard-coded constant: schools configure different
@@ -417,6 +454,11 @@ export const factPlcParticipation = pgTable(
       .references(() => dimPeriod.periodId), // period_type = TERM or ANNUAL (discriminates the cut)
     // 0/1 per school — "N of Y schools run PLC". Present on both cuts.
     schoolsRunningPlcCount: integer("schools_running_plc_count").notNull(),
+    // ---- BOTH cuts: the shared on-roll denominator ----
+    // Populated on TERM *and* ANNUAL rows (ETL contract, see doc comment). Same population as
+    // fact_staffing.teachers_on_roll. Denominator for BOTH teachers_in_plc (TERM) and
+    // teachers_meeting_cpd_threshold (ANNUAL), so each rate is derivable from a single row.
+    teacherHeadcount: integer("teacher_headcount"),
 
     // ---- TERM cut (NULL on an ANNUAL row) ----
     sessionsHeld: integer("sessions_held"),
@@ -425,13 +467,14 @@ export const factPlcParticipation = pgTable(
     attendanceExpected: integer("attendance_expected"),
     plcParticipationRate: numeric("plc_participation_rate", { precision: 5, scale: 2 }),
     teachersInPlc: integer("teachers_in_plc"),
-    // Same population as fact_staffing.teachers_on_roll (see doc comment).
-    teacherHeadcount: integer("teacher_headcount"),
 
     // ---- ANNUAL cut (NULL on a TERM row) ----
     cpdPointsTotal: numeric("cpd_points_total", { precision: 7, scale: 2 }),
+    // Denominator for cpd_points_mean ONLY (teachers with any ledger entry) — NOT the staff-coverage
+    // denominator; that is teacher_headcount above.
     cpdPointsTeacherCount: integer("cpd_points_teacher_count"),
     cpdPointsMean: numeric("cpd_points_mean", { precision: 5, scale: 2 }),
+    // Invariant: ≤ teacher_headcount on the SAME row (both populated on ANNUAL rows).
     teachersMeetingCpdThreshold: integer("teachers_meeting_cpd_threshold"),
     // The school's own configured annual target — never a constant.
     annualCpdTarget: numeric("annual_cpd_target", { precision: 5, scale: 2 }),
@@ -439,9 +482,10 @@ export const factPlcParticipation = pgTable(
     ...provenance, // source = OPERATIONAL_AGG
   },
   (t) => ({
-    byJurisdictionPeriod: index("fact_plc_participation_jurisdiction_period_idx").on(
-      t.jurisdictionId,
-      t.periodId,
-    ),
+    // Grain constraint AND the RLS-filtered read path. The TERM and ANNUAL cuts live on DIFFERENT
+    // period_ids, so one row per school × period holds for both.
+    uniqJurisdictionPeriod: uniqueIndex(
+      "fact_plc_participation_jurisdiction_period_idx",
+    ).on(t.jurisdictionId, t.periodId),
   }),
 );
