@@ -1,12 +1,14 @@
 # CI — the gates the owner currently runs by hand, now on every PR (issue #252).
 #
-# Repo layout: the git root is the worktree top; the app lives in the omnischools/ subdir,
-# so this file sits at .github/workflows/ (repo root) next to pr-project-tracking.yml, and
-# every app command runs with `pnpm -C omnischools ...`.
+# Repo layout: the git root is the worktree top; the operational app lives in apps/web and the
+# GES Oversight app in apps/oversight (each a self-contained project with its own pnpm-lock.yaml —
+# per-app installs, no hoisted workspace). This file sits at .github/workflows/ (repo root) next
+# to pr-project-tracking.yml, and every app command runs with `pnpm -C apps/<app> ...`.
 #
-# Two jobs:
-#   verify           — typecheck + vitest + next build (the hand-run gates).
-#   migration-replay — apply the FULL db/migrations/* chain from an EMPTY postgres:16,
+# Jobs:
+#   verify           — apps/web: typecheck + vitest + next build (the hand-run gates).
+#   oversight-verify — apps/oversight: typecheck + next build.
+#   migration-replay — apply the FULL apps/web/db/migrations/* chain from an EMPTY postgres:16,
 #                      catching composite-FK / ordering regressions (the 0033 class) that
 #                      no local or verify step exercises.
 #
@@ -47,19 +49,46 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: omnischools/pnpm-lock.yaml
+          cache-dependency-path: apps/web/pnpm-lock.yaml
 
       - name: Install
-        run: pnpm -C omnischools install --frozen-lockfile
+        run: pnpm -C apps/web install --frozen-lockfile
 
       - name: Typecheck
-        run: pnpm -C omnischools typecheck
+        run: pnpm -C apps/web typecheck
 
       - name: Test
-        run: pnpm -C omnischools test
+        run: pnpm -C apps/web test
 
       - name: Build
-        run: pnpm -C omnischools build
+        run: pnpm -C apps/web build
+
+  oversight-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apps/oversight/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm -C apps/oversight install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -C apps/oversight typecheck
+
+      - name: Build
+        run: pnpm -C apps/oversight build
 
   migration-replay:
     runs-on: ubuntu-latest
@@ -93,13 +122,13 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: omnischools/pnpm-lock.yaml
+          cache-dependency-path: apps/web/pnpm-lock.yaml
 
       - name: Install
-        run: pnpm -C omnischools install --frozen-lockfile
+        run: pnpm -C apps/web install --frozen-lockfile
 
       # `drizzle-kit migrate` walks db/migrations/meta/_journal.json and applies every .sql
       # from empty; it exits non-zero if any migration errors (e.g. a composite FK created
       # before its target UNIQUE — the 0033 class). This is what no local step does.
       - name: Replay migrations from empty
-        run: pnpm -C omnischools db:migrate
+        run: pnpm -C apps/web db:migrate
