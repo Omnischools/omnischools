@@ -1,0 +1,62 @@
+{
+  "name": "omnischools-oversight",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:policies": "tsx scripts/apply-policies.ts",
+    "db:seed": "tsx db/seed/config.ts",
+    "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/config.ts"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.17.0",
+    "next": "15.5.21",
+    "postgres": "^3.4.9",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^8",
+    "eslint-config-next": "15.5.21",
+    "postcss": "^8",
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.23",
+      "@next/eslint-plugin-next>glob": "10.5.0",
+      "@esbuild-kit/core-utils>esbuild": "0.25.12",
+      "tsx>esbuild": "0.28.1",
+      "vite>esbuild": "0.28.1",
+      "brace-expansion@<1.1.16": "^1.1.16",
+      "brace-expansion@>=3.0.0 <5.0.7": ">=5.0.7",
+      "js-yaml@>=4.0.0 <4.3.0": "5.2.2",
+      "nanoid@<3.3.18": "^3.3.18",
+      "sharp@<0.35.0": "^0.35.0"
+    }
+  }
+}
