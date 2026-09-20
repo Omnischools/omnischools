@@ -36,6 +36,26 @@ pnpm db:setup        # drizzle-kit migrate  +  apply-policies (RLS)  +  seed con
 jurisdiction RLS and the append-only `audit_access_log` guard; and seeds the config tables
 (`dim_stage`, `dim_subject`, `ref_anomaly_rule`).
 
+### 2a · After prod is live: the RLS hand-paste step (⚠ not automated)
+
+Once `omnischools-analytics-prod` exists, adding a jurisdiction-scoped table is **two** steps, not
+one. `db:policies` is a **local-dev** runner — it is not part of any prod deploy — so every table
+added after go-live needs its RLS pasted by hand:
+
+1. Apply the migration to prod (`pnpm db:migrate` against the **Direct** connection string).
+2. Paste the matching `db/sql/prod-paste-XXXX-*.sql` into the Supabase SQL editor on the prod
+   project, **after** the migration, and run the verification query at the foot of that file.
+
+Each paste file is idempotent and **fails closed**: skipping it leaves the new table with RLS
+enabled and no policy, so the non-owner app role reads **zero rows** (an empty panel) — it never
+leaks one jurisdiction's schools to another. An empty panel on a freshly shipped table is the
+signature of a missed paste.
+
+Current files:
+
+- `db/sql/prod-paste-0001-fact-domains.sql` — `fact_teacher_attendance`, `fact_infrastructure`,
+  `fact_plc_participation` (migration `0001_majestic_gwen_stacy`).
+
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 
 These are **external data-agreement** loads, not part of the seed. Load with each source's own

@@ -83,7 +83,10 @@ declare t text;
 begin
   foreach t in array array[
     'fact_enrolment','fact_attendance','fact_performance_exam','fact_performance_subject',
-    'fact_performance_internal','fact_staffing','fact_fees','fact_anomaly'
+    'fact_performance_internal','fact_staffing','fact_fees','fact_anomaly',
+    -- Additive fact domains (migration 0001). ⚠ On PROD these three are applied BY HAND via
+    -- db/sql/prod-paste-0001-fact-domains.sql — this loop only configures LOCAL DEV.
+    'fact_teacher_attendance','fact_infrastructure','fact_plc_participation'
   ] loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists jurisdiction_scope on %I;', t);

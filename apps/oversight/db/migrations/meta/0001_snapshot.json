@@ -1,0 +1,2795 @@
+{
+  "id": "794721e0-ea4d-4f87-82ba-4b50bd895576",
+  "prevId": "5e6b06fc-b573-45fe-a313-9ee112c306b6",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.dim_jurisdiction": {
+      "name": "dim_jurisdiction",
+      "schema": "",
+      "columns": {
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "level": {
+          "name": "level",
+          "type": "jurisdiction_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ges_code": {
+          "name": "ges_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "school_type": {
+          "name": "school_type",
+          "type": "ov_school_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ownership_type": {
+          "name": "ownership_type",
+          "type": "ov_ownership_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "founded_year": {
+          "name": "founded_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_reporting": {
+          "name": "is_reporting",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dim_jurisdiction_parent_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "dim_jurisdiction_parent_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "dim_jurisdiction",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dim_period": {
+      "name": "dim_period",
+      "schema": "",
+      "columns": {
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "term": {
+          "name": "term",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "period_type": {
+          "name": "period_type",
+          "type": "period_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "starts_on": {
+          "name": "starts_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ends_on": {
+          "name": "ends_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_current": {
+          "name": "is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dim_stage": {
+      "name": "dim_stage",
+      "schema": "",
+      "columns": {
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "official_age_low": {
+          "name": "official_age_low",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "official_age_high": {
+          "name": "official_age_high",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dim_subject": {
+      "name": "dim_subject",
+      "schema": "",
+      "columns": {
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_core": {
+          "name": "is_core",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ref_anomaly_rule": {
+      "name": "ref_anomaly_rule",
+      "schema": "",
+      "columns": {
+        "rule_code": {
+          "name": "rule_code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "predicate_json": {
+          "name": "predicate_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "ov_anomaly_severity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ref_assessment_weights": {
+      "name": "ref_assessment_weights",
+      "schema": "",
+      "columns": {
+        "weights_config_id": {
+          "name": "weights_config_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assignments_weight": {
+          "name": "assignments_weight",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mid_sem_weight": {
+          "name": "mid_sem_weight",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_sem_weight": {
+          "name": "end_sem_weight",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_weight": {
+          "name": "project_weight",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portfolio_weight": {
+          "name": "portfolio_weight",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_from": {
+          "name": "effective_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ref_emis_school_register": {
+      "name": "ref_emis_school_register",
+      "schema": "",
+      "columns": {
+        "emis_school_id": {
+          "name": "emis_school_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "district_id": {
+          "name": "district_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_id": {
+          "name": "region_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "school_type": {
+          "name": "school_type",
+          "type": "ov_school_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ownership_type": {
+          "name": "ownership_type",
+          "type": "ov_ownership_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "on_schoolup": {
+          "name": "on_schoolup",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EMIS_EXTRACT'"
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ref_emis_school_register_district_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "ref_emis_school_register_district_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "ref_emis_school_register",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "district_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ref_emis_school_register_region_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "ref_emis_school_register_region_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "ref_emis_school_register",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "region_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ref_ges_teacher_establishment": {
+      "name": "ref_ges_teacher_establishment",
+      "schema": "",
+      "columns": {
+        "establishment_id": {
+          "name": "establishment_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "emis_school_id": {
+          "name": "emis_school_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teaching_posts_established": {
+          "name": "teaching_posts_established",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "staff_ids": {
+          "name": "staff_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'GES_ESTABLISHMENT'"
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ref_ges_teacher_establishment_emis_school_id_ref_emis_school_register_emis_school_id_fk": {
+          "name": "ref_ges_teacher_establishment_emis_school_id_ref_emis_school_register_emis_school_id_fk",
+          "tableFrom": "ref_ges_teacher_establishment",
+          "tableTo": "ref_emis_school_register",
+          "columnsFrom": [
+            "emis_school_id"
+          ],
+          "columnsTo": [
+            "emis_school_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ref_gss_population": {
+      "name": "ref_gss_population",
+      "schema": "",
+      "columns": {
+        "district_id": {
+          "name": "district_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "population": {
+          "name": "population",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'GSS_CENSUS'"
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ref_gss_population_district_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "ref_gss_population_district_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "ref_gss_population",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "district_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ref_gss_population_stage_dim_stage_stage_fk": {
+          "name": "ref_gss_population_stage_dim_stage_stage_fk",
+          "tableFrom": "ref_gss_population",
+          "tableTo": "dim_stage",
+          "columnsFrom": [
+            "stage"
+          ],
+          "columnsTo": [
+            "stage"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ref_gss_population_district_id_stage_as_of_date_pk": {
+          "name": "ref_gss_population_district_id_stage_as_of_date_pk",
+          "columns": [
+            "district_id",
+            "stage",
+            "as_of_date"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ref_waec_results_extract": {
+      "name": "ref_waec_results_extract",
+      "schema": "",
+      "columns": {
+        "extract_id": {
+          "name": "extract_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "emis_school_id": {
+          "name": "emis_school_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exam": {
+          "name": "exam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "candidates": {
+          "name": "candidates",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qualified": {
+          "name": "qualified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'WAEC_EXTRACT'"
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ref_waec_results_extract_emis_school_id_ref_emis_school_register_emis_school_id_fk": {
+          "name": "ref_waec_results_extract_emis_school_id_ref_emis_school_register_emis_school_id_fk",
+          "tableFrom": "ref_waec_results_extract",
+          "tableTo": "ref_emis_school_register",
+          "columnsFrom": [
+            "emis_school_id"
+          ],
+          "columnsTo": [
+            "emis_school_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ref_waec_results_extract_subject_dim_subject_subject_fk": {
+          "name": "ref_waec_results_extract_subject_dim_subject_subject_fk",
+          "tableFrom": "ref_waec_results_extract",
+          "tableTo": "dim_subject",
+          "columnsFrom": [
+            "subject"
+          ],
+          "columnsTo": [
+            "subject"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_access_log": {
+      "name": "audit_access_log",
+      "schema": "",
+      "columns": {
+        "access_id": {
+          "name": "access_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "officer_id": {
+          "name": "officer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "officer_role": {
+          "name": "officer_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason_code": {
+          "name": "reason_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "case_reference": {
+          "name": "case_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "record_type": {
+          "name": "record_type",
+          "type": "record_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_ref": {
+          "name": "target_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fields_released": {
+          "name": "fields_released",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roster_browsed": {
+          "name": "roster_browsed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "exported": {
+          "name": "exported",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "export_format": {
+          "name": "export_format",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "review_status": {
+          "name": "review_status",
+          "type": "access_review_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "review_note": {
+          "name": "review_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "audit_access_log_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "audit_access_log_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "audit_access_log",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.etl_run": {
+      "name": "etl_run",
+      "schema": "",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "etl_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'RUNNING'"
+        },
+        "error_text": {
+          "name": "error_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_anomaly": {
+      "name": "fact_anomaly",
+      "schema": "",
+      "columns": {
+        "anomaly_id": {
+          "name": "anomaly_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_code": {
+          "name": "rule_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "ov_anomaly_severity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "ov_anomaly_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NEW'"
+        },
+        "cluster_id": {
+          "name": "cluster_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detail_json": {
+          "name": "detail_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raised_etl_run_id": {
+          "name": "raised_etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_seen": {
+          "name": "first_seen",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_updated": {
+          "name": "last_updated",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_anomaly_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_anomaly_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_anomaly",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_anomaly_raised_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_anomaly_raised_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_anomaly",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "raised_etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_attendance": {
+      "name": "fact_attendance",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "class_form": {
+          "name": "class_form",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enrolled_days": {
+          "name": "enrolled_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "present_days": {
+          "name": "present_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attendance_rate": {
+          "name": "attendance_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_attendance_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_attendance_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_attendance",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_attendance_period_id_dim_period_period_id_fk": {
+          "name": "fact_attendance_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_attendance",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_attendance_stage_dim_stage_stage_fk": {
+          "name": "fact_attendance_stage_dim_stage_stage_fk",
+          "tableFrom": "fact_attendance",
+          "tableTo": "dim_stage",
+          "columnsFrom": [
+            "stage"
+          ],
+          "columnsTo": [
+            "stage"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_attendance_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_attendance_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_attendance",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_enrolment": {
+      "name": "fact_enrolment",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "class_form": {
+          "name": "class_form",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sex": {
+          "name": "sex",
+          "type": "ov_sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headcount": {
+          "name": "headcount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_enrolment_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_enrolment_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_enrolment",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_enrolment_period_id_dim_period_period_id_fk": {
+          "name": "fact_enrolment_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_enrolment",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_enrolment_stage_dim_stage_stage_fk": {
+          "name": "fact_enrolment_stage_dim_stage_stage_fk",
+          "tableFrom": "fact_enrolment",
+          "tableTo": "dim_stage",
+          "columnsFrom": [
+            "stage"
+          ],
+          "columnsTo": [
+            "stage"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_enrolment_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_enrolment_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_enrolment",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_fees": {
+      "name": "fact_fees",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fee_category": {
+          "name": "fee_category",
+          "type": "ov_fee_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mean_amount": {
+          "name": "mean_amount",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "median_amount": {
+          "name": "median_amount",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_fees_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_fees_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_fees",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_fees_period_id_dim_period_period_id_fk": {
+          "name": "fact_fees_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_fees",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_fees_stage_dim_stage_stage_fk": {
+          "name": "fact_fees_stage_dim_stage_stage_fk",
+          "tableFrom": "fact_fees",
+          "tableTo": "dim_stage",
+          "columnsFrom": [
+            "stage"
+          ],
+          "columnsTo": [
+            "stage"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_fees_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_fees_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_fees",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_infrastructure": {
+      "name": "fact_infrastructure",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "schools_reporting": {
+          "name": "schools_reporting",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "classrooms_total": {
+          "name": "classrooms_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "classrooms_good": {
+          "name": "classrooms_good",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "classrooms_repair": {
+          "name": "classrooms_repair",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrines_boys": {
+          "name": "latrines_boys",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrines_girls": {
+          "name": "latrines_girls",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrines_staff": {
+          "name": "latrines_staff",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_desks_usable": {
+          "name": "student_desks_usable",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "student_desks_broken": {
+          "name": "student_desks_broken",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teacher_desks": {
+          "name": "teacher_desks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "chalkboards": {
+          "name": "chalkboards",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "whiteboards": {
+          "name": "whiteboards",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "projectors": {
+          "name": "projectors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "computers_total": {
+          "name": "computers_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "computers_working": {
+          "name": "computers_working",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "library_book_count": {
+          "name": "library_book_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_electricity_count": {
+          "name": "has_electricity_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_water_count": {
+          "name": "has_water_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_handwashing_count": {
+          "name": "has_handwashing_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_library_count": {
+          "name": "has_library_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_ict_lab_count": {
+          "name": "has_ict_lab_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_internet_count": {
+          "name": "has_internet_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gsfp_participating_count": {
+          "name": "gsfp_participating_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_kitchen_count": {
+          "name": "has_kitchen_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "water_borehole_count": {
+          "name": "water_borehole_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "water_pipe_count": {
+          "name": "water_pipe_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "water_well_count": {
+          "name": "water_well_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "water_none_count": {
+          "name": "water_none_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "electricity_grid_count": {
+          "name": "electricity_grid_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "electricity_solar_count": {
+          "name": "electricity_solar_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "electricity_generator_count": {
+          "name": "electricity_generator_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "electricity_none_count": {
+          "name": "electricity_none_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrine_wc_count": {
+          "name": "latrine_wc_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrine_kvip_count": {
+          "name": "latrine_kvip_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrine_pit_count": {
+          "name": "latrine_pit_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latrine_none_count": {
+          "name": "latrine_none_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "computers_reporting_count": {
+          "name": "computers_reporting_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "library_books_reporting_count": {
+          "name": "library_books_reporting_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "furniture_reporting_count": {
+          "name": "furniture_reporting_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "fact_infrastructure_jurisdiction_period_idx": {
+          "name": "fact_infrastructure_jurisdiction_period_idx",
+          "columns": [
+            {
+              "expression": "jurisdiction_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fact_infrastructure_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_infrastructure_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_infrastructure",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_infrastructure_period_id_dim_period_period_id_fk": {
+          "name": "fact_infrastructure_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_infrastructure",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_infrastructure_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_infrastructure_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_infrastructure",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_performance_exam": {
+      "name": "fact_performance_exam",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exam": {
+          "name": "exam",
+          "type": "exam",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sex": {
+          "name": "sex",
+          "type": "ov_sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidates": {
+          "name": "candidates",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qualified": {
+          "name": "qualified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qualification_rate": {
+          "name": "qualification_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_performance_exam_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_performance_exam_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_performance_exam",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_exam_period_id_dim_period_period_id_fk": {
+          "name": "fact_performance_exam_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_performance_exam",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_exam_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_performance_exam_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_performance_exam",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_performance_internal": {
+      "name": "fact_performance_internal",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessment_type": {
+          "name": "assessment_type",
+          "type": "assessment_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "school_level": {
+          "name": "school_level",
+          "type": "ov_school_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "class_form": {
+          "name": "class_form",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sex": {
+          "name": "sex",
+          "type": "ov_sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_score_mean": {
+          "name": "subject_score_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignments_score_mean": {
+          "name": "assignments_score_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mid_sem_score_mean": {
+          "name": "mid_sem_score_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_sem_score_mean": {
+          "name": "end_sem_score_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_score_mean": {
+          "name": "project_score_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "portfolio_score_mean": {
+          "name": "portfolio_score_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weights_config_id": {
+          "name": "weights_config_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paths_used": {
+          "name": "paths_used",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credit_rate": {
+          "name": "credit_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gradebook_coverage_flag": {
+          "name": "gradebook_coverage_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "score_ledger_coverage_flag": {
+          "name": "score_ledger_coverage_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_performance_internal_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_performance_internal_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_performance_internal",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_internal_period_id_dim_period_period_id_fk": {
+          "name": "fact_performance_internal_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_performance_internal",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_internal_stage_dim_stage_stage_fk": {
+          "name": "fact_performance_internal_stage_dim_stage_stage_fk",
+          "tableFrom": "fact_performance_internal",
+          "tableTo": "dim_stage",
+          "columnsFrom": [
+            "stage"
+          ],
+          "columnsTo": [
+            "stage"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_internal_subject_dim_subject_subject_fk": {
+          "name": "fact_performance_internal_subject_dim_subject_subject_fk",
+          "tableFrom": "fact_performance_internal",
+          "tableTo": "dim_subject",
+          "columnsFrom": [
+            "subject"
+          ],
+          "columnsTo": [
+            "subject"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_internal_weights_config_id_ref_assessment_weights_weights_config_id_fk": {
+          "name": "fact_performance_internal_weights_config_id_ref_assessment_weights_weights_config_id_fk",
+          "tableFrom": "fact_performance_internal",
+          "tableTo": "ref_assessment_weights",
+          "columnsFrom": [
+            "weights_config_id"
+          ],
+          "columnsTo": [
+            "weights_config_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_internal_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_performance_internal_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_performance_internal",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_performance_subject": {
+      "name": "fact_performance_subject",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exam": {
+          "name": "exam",
+          "type": "exam",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sex": {
+          "name": "sex",
+          "type": "ov_sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidates": {
+          "name": "candidates",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qualified": {
+          "name": "qualified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qualification_rate": {
+          "name": "qualification_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_performance_subject_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_performance_subject_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_performance_subject",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_subject_period_id_dim_period_period_id_fk": {
+          "name": "fact_performance_subject_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_performance_subject",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_subject_subject_dim_subject_subject_fk": {
+          "name": "fact_performance_subject_subject_dim_subject_subject_fk",
+          "tableFrom": "fact_performance_subject",
+          "tableTo": "dim_subject",
+          "columnsFrom": [
+            "subject"
+          ],
+          "columnsTo": [
+            "subject"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_performance_subject_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_performance_subject_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_performance_subject",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_plc_participation": {
+      "name": "fact_plc_participation",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "schools_running_plc_count": {
+          "name": "schools_running_plc_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sessions_held": {
+          "name": "sessions_held",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sessions_expected": {
+          "name": "sessions_expected",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attendance_events": {
+          "name": "attendance_events",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attendance_expected": {
+          "name": "attendance_expected",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plc_participation_rate": {
+          "name": "plc_participation_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teachers_in_plc": {
+          "name": "teachers_in_plc",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teacher_headcount": {
+          "name": "teacher_headcount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_points_total": {
+          "name": "cpd_points_total",
+          "type": "numeric(7, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_points_teacher_count": {
+          "name": "cpd_points_teacher_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_points_mean": {
+          "name": "cpd_points_mean",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teachers_meeting_cpd_threshold": {
+          "name": "teachers_meeting_cpd_threshold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "annual_cpd_target": {
+          "name": "annual_cpd_target",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "fact_plc_participation_jurisdiction_period_idx": {
+          "name": "fact_plc_participation_jurisdiction_period_idx",
+          "columns": [
+            {
+              "expression": "jurisdiction_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fact_plc_participation_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_plc_participation_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_plc_participation",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_plc_participation_period_id_dim_period_period_id_fk": {
+          "name": "fact_plc_participation_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_plc_participation",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_plc_participation_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_plc_participation_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_plc_participation",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_staffing": {
+      "name": "fact_staffing",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teachers_on_roll": {
+          "name": "teachers_on_roll",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teaching_posts_established": {
+          "name": "teaching_posts_established",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enrolment_total": {
+          "name": "enrolment_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ptr": {
+          "name": "ptr",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancies": {
+          "name": "vacancies",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_staffing_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_staffing_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_staffing",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_staffing_period_id_dim_period_period_id_fk": {
+          "name": "fact_staffing_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_staffing",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_staffing_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_staffing_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_staffing",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fact_teacher_attendance": {
+      "name": "fact_teacher_attendance",
+      "schema": "",
+      "columns": {
+        "fact_id": {
+          "name": "fact_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jurisdiction_id": {
+          "name": "jurisdiction_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_teacher_days": {
+          "name": "expected_teacher_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "present_teacher_days": {
+          "name": "present_teacher_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teacher_attendance_rate": {
+          "name": "teacher_attendance_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "ov_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "as_of_date": {
+          "name": "as_of_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etl_run_id": {
+          "name": "etl_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "fact_teacher_attendance_jurisdiction_period_idx": {
+          "name": "fact_teacher_attendance_jurisdiction_period_idx",
+          "columns": [
+            {
+              "expression": "jurisdiction_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fact_teacher_attendance_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk": {
+          "name": "fact_teacher_attendance_jurisdiction_id_dim_jurisdiction_jurisdiction_id_fk",
+          "tableFrom": "fact_teacher_attendance",
+          "tableTo": "dim_jurisdiction",
+          "columnsFrom": [
+            "jurisdiction_id"
+          ],
+          "columnsTo": [
+            "jurisdiction_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_teacher_attendance_period_id_dim_period_period_id_fk": {
+          "name": "fact_teacher_attendance_period_id_dim_period_period_id_fk",
+          "tableFrom": "fact_teacher_attendance",
+          "tableTo": "dim_period",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "period_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fact_teacher_attendance_etl_run_id_etl_run_run_id_fk": {
+          "name": "fact_teacher_attendance_etl_run_id_etl_run_run_id_fk",
+          "tableFrom": "fact_teacher_attendance",
+          "tableTo": "etl_run",
+          "columnsFrom": [
+            "etl_run_id"
+          ],
+          "columnsTo": [
+            "run_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.ov_anomaly_severity": {
+      "name": "ov_anomaly_severity",
+      "schema": "public",
+      "values": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
+    },
+    "public.ov_anomaly_status": {
+      "name": "ov_anomaly_status",
+      "schema": "public",
+      "values": [
+        "NEW",
+        "IN_REVIEW",
+        "ASSIGNED",
+        "RESOLVED",
+        "DISMISSED"
+      ]
+    },
+    "public.assessment_type": {
+      "name": "assessment_type",
+      "schema": "public",
+      "values": [
+        "TERMLY",
+        "ANNUAL",
+        "MOCK"
+      ]
+    },
+    "public.etl_status": {
+      "name": "etl_status",
+      "schema": "public",
+      "values": [
+        "RUNNING",
+        "SUCCESS",
+        "FAILED"
+      ]
+    },
+    "public.exam": {
+      "name": "exam",
+      "schema": "public",
+      "values": [
+        "BECE",
+        "WASSCE"
+      ]
+    },
+    "public.ov_fee_category": {
+      "name": "ov_fee_category",
+      "schema": "public",
+      "values": [
+        "TUITION",
+        "BOARDING",
+        "FEEDING",
+        "EXAM",
+        "PTA_DUES",
+        "OTHER"
+      ]
+    },
+    "public.jurisdiction_level": {
+      "name": "jurisdiction_level",
+      "schema": "public",
+      "values": [
+        "SCHOOL",
+        "DISTRICT",
+        "REGION",
+        "NATIONAL"
+      ]
+    },
+    "public.ov_ownership_type": {
+      "name": "ov_ownership_type",
+      "schema": "public",
+      "values": [
+        "PUBLIC",
+        "PRIVATE",
+        "MISSION"
+      ]
+    },
+    "public.period_type": {
+      "name": "period_type",
+      "schema": "public",
+      "values": [
+        "TERM",
+        "ANNUAL",
+        "EXAM_COHORT"
+      ]
+    },
+    "public.record_type": {
+      "name": "record_type",
+      "schema": "public",
+      "values": [
+        "STUDENT",
+        "TEACHER"
+      ]
+    },
+    "public.access_review_status": {
+      "name": "access_review_status",
+      "schema": "public",
+      "values": [
+        "CLEARED",
+        "QUERIED",
+        "PENDING"
+      ]
+    },
+    "public.ov_school_level": {
+      "name": "ov_school_level",
+      "schema": "public",
+      "values": [
+        "BASIC",
+        "JHS",
+        "SHS"
+      ]
+    },
+    "public.ov_school_type": {
+      "name": "ov_school_type",
+      "schema": "public",
+      "values": [
+        "KG",
+        "PRIMARY",
+        "JHS",
+        "SHS",
+        "COMBINED"
+      ]
+    },
+    "public.ov_sex": {
+      "name": "ov_sex",
+      "schema": "public",
+      "values": [
+        "MALE",
+        "FEMALE",
+        "ALL"
+      ]
+    },
+    "public.ov_source": {
+      "name": "ov_source",
+      "schema": "public",
+      "values": [
+        "OPERATIONAL_AGG",
+        "SCHOOL_ENTERED",
+        "SCHOOL_GRADEBOOK",
+        "WAEC_EXTRACT",
+        "EMIS_EXTRACT",
+        "GSS_CENSUS",
+        "GES_ESTABLISHMENT"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
