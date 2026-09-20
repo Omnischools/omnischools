@@ -560,6 +560,33 @@ export const factInfrastructure = pgTable(
  * the table rather than on one cut. ALL is stored beside MALE/FEMALE; see the section header for the
  * one-sex-value-per-query rule. No stage breakdown (a teacher spans stages).
  *
+ * ⚠ SEX-INVARIANT COLUMNS — THE ONE PLACE THE SPLIT READ IS WRONG. Widening the grain to sex makes
+ * every row sexed, but three measures here are properties of the SCHOOL, not of the teachers in it,
+ * and have no sex at all:
+ *     schools_running_plc_count   0/1 — a school either runs a PLC programme or it does not
+ *     sessions_held               PLC sessions the school actually held
+ *     sessions_expected           PLC sessions its configured cadence called for
+ * A session is held once, not once per sex, and `schools_running_plc_count` is NOT NULL so the ETL
+ * cannot leave it off the MALE/FEMALE rows. So the ETL REPEATS THE IDENTICAL VALUE on all three sex
+ * rows (MALE, FEMALE and ALL) — the value is copied, never apportioned, and never split in half.
+ *
+ * Therefore these three columns are read with `sex = 'ALL'` ONLY. They MUST NOT be aggregated under
+ * the `sex IN ('MALE','FEMALE')` split: summing the two split rows returns EXACTLY 2× the truth, so
+ * a district with 12 PLC-running schools reports 24, and the session-coverage rate
+ * sessions_held ÷ sessions_expected still reads correctly because the doubling cancels — which is
+ * what makes this one dangerous. The inflated COUNT looks plausible and its derived RATE looks
+ * right, so nothing in the output signals the error. The section header's one-sex-value-per-query
+ * rule covers the general case; this is the specific column list where the split read — normally the
+ * legitimate way to see MALE and FEMALE separately — is simply not defined.
+ *
+ * `annual_plc_target` and `ntc_cpd_target` are likewise per-row SCALARS repeated across the sex rows
+ * (a school's target and the national statutory total are not sexed either). They are COMPARED
+ * against a measure, never SUMMED — across sex or across anything else. Summing a target across
+ * three sex rows yields 3× a number that was never a quantity to begin with.
+ *
+ * (fact_teacher_attendance needs no equivalent note: every measure on it — expected / present /
+ * excused / absent teacher-days — is genuinely sexed and splits honestly.)
+ *
  * NO teacher-identifiable columns — no user ids, no names, no per-teacher rows. Analytics holds
  * aggregates only; the named path is the gated §6 audit route.
  *
@@ -581,6 +608,8 @@ export const factPlcParticipation = pgTable(
     // value per query or every figure double-counts.
     sex: sexEnum("sex").notNull(),
     // 0/1 per school — "N of Y schools run PLC". Present on both cuts.
+    // ⚠ SEX-INVARIANT: identical value repeated on the MALE, FEMALE and ALL rows. Read with
+    // sex = 'ALL' ONLY — summing it under sex IN ('MALE','FEMALE') returns exactly 2×.
     schoolsRunningPlcCount: integer("schools_running_plc_count").notNull(),
     // ---- BOTH cuts: the shared on-roll denominator ----
     // Populated on TERM *and* ANNUAL rows (ETL contract, see doc comment). Same population as
@@ -589,6 +618,9 @@ export const factPlcParticipation = pgTable(
     teacherHeadcount: integer("teacher_headcount"),
 
     // ---- TERM cut (NULL on an ANNUAL row) ----
+    // ⚠ sessions_held / sessions_expected are SEX-INVARIANT school-level event counts: a session is
+    // held once, not once per sex, so the ETL repeats the identical value on all three sex rows.
+    // Read with sex = 'ALL' ONLY — never aggregated under the MALE/FEMALE split (returns 2×).
     sessionsHeld: integer("sessions_held"),
     sessionsExpected: integer("sessions_expected"), // from the school's configured cadence
     attendanceEvents: integer("attendance_events"),
@@ -609,19 +641,30 @@ export const factPlcParticipation = pgTable(
     // The SCHOOL's own configured PLC-ONLY target — same name as the operational column it copies,
     // plc_programme.annual_plc_target (default 8). Never a constant, and NOT the threshold that
     // teachers_meeting_cpd_threshold is measured against.
+    // ⚠ SEX-INVARIANT scalar (repeated across the sex rows): COMPARE it, never SUM it.
     annualPlcTarget: numeric("annual_plc_target", { precision: 5, scale: 2 }),
     // The NATIONAL statutory NTC CPD total (nominally 20 pts/yr, covering ALL CPD, not just PLC) —
     // the threshold the count above is actually computed from. Stored per row because it is a POLICY
     // VARIABLE: prior years must keep their own number.
+    // ⚠ SEX-INVARIANT scalar (repeated across the sex rows): COMPARE it, never SUM it.
     ntcCpdTarget: numeric("ntc_cpd_target", { precision: 5, scale: 2 }),
 
     // ---- ANNUAL cut · NTC CATEGORY SPLIT (columns, never rows — reconciles to cpd_points_total) ----
     // Invariant when populated: mandatory + specialised + recommended = cpd_points_total.
     // ⚠ Specialised / Recommended (and the NCPD half of Mandatory) have NO operational source today
     // — the ETL leaves them NULL, never 0. See the sourcing gate in the doc comment.
-    cpdPointsMandatoryTotal: numeric("cpd_points_mandatory_total", { precision: 7, scale: 2 }),
-    cpdPointsSpecialisedTotal: numeric("cpd_points_specialised_total", { precision: 7, scale: 2 }),
-    cpdPointsRecommendedTotal: numeric("cpd_points_recommended_total", { precision: 7, scale: 2 }),
+    cpdPointsMandatoryTotal: numeric("cpd_points_mandatory_total", {
+      precision: 7,
+      scale: 2,
+    }),
+    cpdPointsSpecialisedTotal: numeric("cpd_points_specialised_total", {
+      precision: 7,
+      scale: 2,
+    }),
+    cpdPointsRecommendedTotal: numeric("cpd_points_recommended_total", {
+      precision: 7,
+      scale: 2,
+    }),
     // Per-category COVERAGE numerators: teachers with ≥1 point in that category. Denominator is
     // teacher_headcount (not cpd_points_teacher_count). These OVERLAP by design — a teacher earning
     // in two categories is counted in both — so they do NOT sum to any other count here.

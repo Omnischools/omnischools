@@ -68,12 +68,17 @@ internal/continuous performance, staffing (PTR/vacancies), fees (distributional)
 **PLC participation** (teacher CPD). These map directly to the oversight services GES/MoE want —
 performance, student/teacher attendance, infrastructure, demographics, PLC.
 
-Two caveats on the newest three. `fact_teacher_attendance` is shape-correct but stays **empty**
+Three caveats on the newest three. `fact_teacher_attendance` is shape-correct but stays **empty**
 until an operational teacher daily-attendance source exists (apps/web records staff PD/PLC
-attendance, not a teacher daily register). And **VLC participation is deliberately not modelled**:
-VLC is the *student* pastoral programme, whose confidential graph is structurally barred from
-analytics — whether GES wants even an aggregate VLC session-coverage fact is an open question for
-the human owner.
+attendance, not a teacher daily register). `fact_plc_participation` has a narrower gate of the same
+kind: the operational CPD ledger records PLC points only and carries no category, so the NTC
+category columns — Specialised, Recommended, and the National-CPD-Days half of Mandatory — stay
+**NULL, never 0**, and with them `teachers_meeting_cpd_threshold`, until an NTC-portal feed exists.
+So "% of teachers meeting the 20-point NTC target" is gated, not merely unpopulated; writing 0
+would report every school in Ghana as 0% compliant. And **VLC participation is deliberately not
+modelled**: VLC is the *student* pastoral programme, whose confidential graph is structurally
+barred from analytics — whether GES wants even an aggregate VLC session-coverage fact is an open
+question for the human owner.
 
 On `fact_infrastructure`, every presence/categorical attribute is stored as a 0/1 **count**
 (`has_library_count`, `water_borehole_count`, …) rather than a boolean or enum, because a boolean
