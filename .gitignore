@@ -33,7 +33,9 @@ graphify-out/
 skills-lock.json
 
 # ---- editor / tooling ----
-.claude/
+# Ignore local .claude state (settings.local.json, etc.) but TRACK the shared sub-agent team.
+.claude/*
+!.claude/agents/
 .vscode/
 .idea/
 .DS_Store
