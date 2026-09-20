@@ -211,15 +211,29 @@ export const factAnomaly = pgTable("fact_anomaly", {
  * All three are `source = OPERATIONAL_AGG` (the nightly ETL reads operational Postgres); no new
  * ov_source member and no new enum is needed for any of them.
  *
- * Each carries a UNIQUE (jurisdiction_id, period_id) index. It does double duty: it serves the
- * standard RLS-filtered read path (`ov_in_subtree(jurisdiction_id)` + a period filter — a unique
- * index is a btree and serves reads exactly like a plain one, so there is no separate non-unique
- * index), AND it is the grain constraint. For these three there is NO legitimate second row per
- * school × period: none has a stage / subject / sex breakdown, and fact_plc_participation's TERM and
- * ANNUAL cuts are distinct period_ids, not two rows on one period. Without it a duplicated ETL row
- * silently DOUBLES every roll-up above it — an error that is invisible at every tier, because the
- * sum is still internally consistent. It also gives the ETL a clean `on conflict` upsert target, so
- * a re-run overwrites rather than appends.
+ * Each carries a UNIQUE index over its FULL grain. It does double duty: it serves the standard
+ * RLS-filtered read path (`ov_in_subtree(jurisdiction_id)` + a period filter — a unique index is a
+ * btree and serves reads exactly like a plain one, so there is no separate non-unique index), AND it
+ * is the grain constraint. Without it a duplicated ETL row silently DOUBLES every roll-up above it —
+ * an error that is invisible at every tier, because the sum is still internally consistent. It also
+ * gives the ETL a clean `on conflict` upsert target, so a re-run overwrites rather than appends.
+ *
+ * The grain differs by table, because the breakdown does (owner answer E4):
+ *   fact_teacher_attendance  UNIQUE (jurisdiction_id, period_id, sex)
+ *   fact_plc_participation   UNIQUE (jurisdiction_id, period_id, sex)
+ *   fact_infrastructure      UNIQUE (jurisdiction_id, period_id)      — NO breakdown, see below
+ * fact_plc_participation's TERM and ANNUAL cuts are distinct period_ids, not two rows on one period,
+ * so period_id alone still separates them.
+ *
+ * ⚠ THE `ALL` ROW IS STORED BESIDE THE SPLIT (the sexEnum idiom used by fact_enrolment and the two
+ * performance tables). ov_sex = MALE | FEMALE | ALL, and the ETL writes the ALL row in ADDITION to
+ * the MALE and FEMALE rows so a single-figure read needs no aggregation. The consequence is binding
+ * on EVERY reader: a roll-up query MUST filter to exactly ONE sex value — `sex = 'ALL'` for a total,
+ * `sex IN ('MALE','FEMALE')` for the split. Summing without a sex filter DOUBLE-COUNTS every figure,
+ * and — as with a duplicated grain row — the result is internally consistent and therefore invisible.
+ * There is no DB constraint that can catch this; it is a query-authoring rule.
+ *
+ * No new enum is introduced for any of this: sex reuses the existing ov_sex.
  *
  * ⚠ This DEVIATES from the existing eight fact tables, which are PK-only with no natural-key UNIQUE.
  * That is a deliberate, flagged call (pending consistency ratification): it is free here because
@@ -238,15 +252,57 @@ export const factAnomaly = pgTable("fact_anomaly", {
  * TERM. Rate stored AND its inputs stored, so a district roll-up re-derives a correctly weighted
  * rate from summed days rather than averaging school rates.
  *
- * NO sex / stage / role breakdown: teacher attendance is a whole-school figure here; a per-role cut
- * would be a different grain and is not requested. Headcount does NOT live here — teachers_on_roll
- * is fact_staffing's column and duplicating it would let the two drift.
+ * THREE-STATE DAY MODEL (owner answer E1). Teacher days split into PRESENT / EXCUSED / ABSENT, not
+ * the two-state present-vs-the-rest shape, because GES's headline teacher-absenteeism metric is
+ *   absenteeism = absent_teacher_days ÷ expected_teacher_days
+ * and it must isolate UNAUTHORISED absence. Folding approved leave and certified sickness into
+ * "absent" would overstate absenteeism at every tier, and the overstatement would be largest at the
+ * schools with the most honest leave records — exactly backwards as an accountability signal.
+ *
+ * INVARIANT (ETL-enforced, deliberately NOT a DB CHECK — a partial term's ETL row is still legal
+ * mid-load, and the loader owns the reconciliation):
+ *     present_teacher_days + excused_teacher_days + absent_teacher_days = expected_teacher_days
+ * All four are summable, so the identity holds under roll-up at every tier.
+ *
+ * EXACTLY ONE STORED RATE. `teacher_attendance_rate` = present ÷ expected, and there is deliberately
+ * NO excused_rate and NO absent_rate column. Every other rate re-derives EXACTLY from the summed
+ * inputs above (absenteeism = sum(absent) ÷ sum(expected)), so storing them would add two columns
+ * that can drift from the days they are supposed to summarise while adding no read that is not
+ * already a single-row division. The one rate that IS stored earns its place by the §4.2 doctrine:
+ * a single-school card reads it with no math.
+ *
+ * ETL STATUS MAPPING — from the OPERATIONAL `attendance_status` enum
+ * (apps/web/db/schema/_enums.ts: PRESENT | ABSENT | LATE | EXCUSED | MEDICAL). All five members are
+ * mapped; there is no default bucket, so a new enum member is an explicit ETL change, not a silent
+ * mis-classification:
+ *     PRESENT, LATE     → present_teacher_days   (LATE is present — it is a punctuality signal, not
+ *                                                 an attendance one; the operational PLC register
+ *                                                 already treats Late == Present for CPD)
+ *     EXCUSED, MEDICAL  → excused_teacher_days   (authorised absence: approved leave / certified
+ *                                                 sickness — attended-to, not unaccounted-for)
+ *     ABSENT            → absent_teacher_days    (UNAUTHORISED only)
+ * ⚠ NEVER fold EXCUSED or MEDICAL into absent_teacher_days. That is the single defect this column
+ * split exists to prevent, and once loaded it is unrecoverable from the fact row (the three buckets
+ * cannot be un-summed).
+ *
+ * BREAKDOWN = SEX ONLY (owner answer E4), on the stored-ALL-beside-the-split idiom — see the section
+ * header for the one-sex-value-per-query rule. NO stage and NO subject breakdown: a teacher spans
+ * both stages and several subjects, so a per-stage teacher-day would require apportioning one
+ * person's day across stages, which is a modelling fiction, not a measurement.
+ *
+ * NO staff_category column (DEFERRED, not rejected): a teaching/non-teaching/management cut would
+ * need a new ov_staff_category enum AND an owner ruling on the category list, and it would widen the
+ * grain again. It is additive when confirmed; it is not guessed at here.
+ *
+ * Headcount does NOT live here — teachers_on_roll is fact_staffing's column and duplicating it would
+ * let the two drift.
  *
  * ⚠ ETL POPULATION IS GATED (human-owner question E1): there is today NO operational teacher
- * daily-attendance source to aggregate from — apps/web records staff PD/PLC attendance, not a
- * teacher daily register. The table SHAPE is correct and this addition is purely additive, so the
- * table simply stays EMPTY until that operational source exists; nothing above or below depends on
- * it being populated.
+ * daily-attendance source to aggregate from — apps/web records staff PD/PLC attendance
+ * (plc_session_attendance), not a teacher daily register. The table SHAPE is correct and this
+ * addition is purely additive, so the table simply stays EMPTY until that operational source exists;
+ * nothing above or below depends on it being populated. The status mapping above is written now so
+ * that whoever builds that register knows which bucket each status owes its day to.
  */
 export const factTeacherAttendance = pgTable(
   "fact_teacher_attendance",
@@ -258,10 +314,16 @@ export const factTeacherAttendance = pgTable(
     periodId: uuid("period_id")
       .notNull()
       .references(() => dimPeriod.periodId), // period_type = TERM
+    // The ONLY breakdown (E4). ALL is stored beside MALE/FEMALE — filter to one value per query.
+    sex: sexEnum("sex").notNull(),
     // Summable inputs (the roll-up's numerator/denominator).
+    // INVARIANT: present + excused + absent = expected.
     expectedTeacherDays: integer("expected_teacher_days").notNull(),
-    presentTeacherDays: integer("present_teacher_days").notNull(),
-    // The stored rate — a single-school card is a no-math read.
+    presentTeacherDays: integer("present_teacher_days").notNull(), // PRESENT + LATE
+    excusedTeacherDays: integer("excused_teacher_days").notNull(), // EXCUSED + MEDICAL (authorised)
+    absentTeacherDays: integer("absent_teacher_days").notNull(), // ABSENT only (unauthorised)
+    // The ONE stored rate = present ÷ expected — a single-school card is a no-math read. Absenteeism
+    // and the excused share re-derive exactly from the summed inputs, so they are NOT stored.
     teacherAttendanceRate: numeric("teacher_attendance_rate", {
       precision: 5,
       scale: 2,
@@ -269,10 +331,10 @@ export const factTeacherAttendance = pgTable(
     ...provenance, // source = OPERATIONAL_AGG
   },
   (t) => ({
-    // Grain constraint AND the RLS-filtered read path — one row per school × period, no exceptions.
-    uniqJurisdictionPeriod: uniqueIndex(
-      "fact_teacher_attendance_jurisdiction_period_idx",
-    ).on(t.jurisdictionId, t.periodId),
+    // Grain constraint AND the RLS-filtered read path — one row per school × period × sex.
+    uniqJurisdictionPeriodSex: uniqueIndex(
+      "fact_teacher_attendance_jurisdiction_period_sex_idx",
+    ).on(t.jurisdictionId, t.periodId, t.sex),
   }),
 );
 
@@ -308,6 +370,17 @@ export const factTeacherAttendance = pgTable(
  *
  * NO school_type / ownership_type here: they live on dim_jurisdiction (§3.1) and the ETL must not
  * duplicate a slowly-changing dimension attribute onto a fact.
+ *
+ * ⚠ NO sex AND NO stage BREAKDOWN — the deliberate exception among the three new tables (owner
+ * answer E4). The grain stays (jurisdiction_id, period_id), one census row per school × period.
+ * A classroom, a borehole or a generator has no sex and belongs to no stage: adding a sex column
+ * would force the ETL to either duplicate the whole wide row three times (MALE/FEMALE/ALL rows all
+ * carrying the same classroom count — which then sums to 3× the real estate if a reader forgets the
+ * sex filter) or write MALE/FEMALE rows of zeros. Both are worse than honest.
+ * Where the domain genuinely IS sexed, it is already a COLUMN split and stays one:
+ * latrines_boys / latrines_girls / latrines_staff. That is the right shape here precisely because it
+ * is a property of the facility, not a breakdown of the reporting school — the three sum to the
+ * school's latrine stock on ONE row, with no ALL-row double-count hazard at all.
  *
  * TIME SEMANTICS: infrastructure is a STOCK, not a flow — sum it SPATIALLY (across schools) only,
  * NEVER across periods. Two terms of a school's classroom count are the same classrooms.
@@ -402,12 +475,15 @@ export const factInfrastructure = pgTable(
  * TWO PERIOD CUTS in one table, discriminated by the referenced dim_period.period_type:
  *   TERM   rows carry sessions_* / attendance_* / plc_participation_rate / teachers_in_plc; the CPD
  *          columns are NULL.
- *   ANNUAL rows carry cpd_points_* / teachers_meeting_cpd_threshold / annual_cpd_target; the session
- *          columns are NULL.
+ *   ANNUAL rows carry cpd_points_* (including the three NTC category totals and their teacher
+ *          counts) / teachers_meeting_cpd_threshold / annual_plc_target / ntc_cpd_target; the
+ *          session columns are NULL.
  *   BOTH   cuts carry `teacher_headcount` (see the ETL contract below) — it is the ONLY cut-spanning
- *          measure, because both cuts need the same on-roll denominator.
- * Hence every cut-specific column is nullable; only the grain keys and schools_running_plc_count are
- * NOT NULL. (period_type lives on dim_period — it is not duplicated onto the fact.)
+ *          MEASURE, because both cuts need the same on-roll denominator — and `sex`, which is a
+ *          grain key rather than a measure.
+ * Hence every cut-specific column is nullable; only the grain keys (jurisdiction_id, period_id, sex)
+ * and schools_running_plc_count are NOT NULL. (period_type lives on dim_period — it is not
+ * duplicated onto the fact.)
  *
  * ETL CONTRACT — `teacher_headcount` IS POPULATED ON *BOTH* CUTS, TERM *AND* ANNUAL. It is not a
  * TERM-only column, and an ANNUAL row that leaves it NULL is an ETL defect, not a valid row. The
@@ -431,9 +507,58 @@ export const factInfrastructure = pgTable(
  * different set of people. For an ANNUAL row the ETL takes the roll for the academic year that period
  * covers, by the same rule fact_staffing uses.
  *
- * `annual_cpd_target` is stored PER SCHOOL (it is the school's configured
- * plc_programme.annual_plc_target), never a hard-coded constant: schools configure different
- * targets, so "met the target" is only meaningful against the target that school actually set.
+ * TWO DIFFERENT TARGETS, DELIBERATELY BOTH STORED (owner answer E2 — this resolves a genuine name
+ * collision; they are not duplicates and neither derives from the other). They are named APART on
+ * purpose: anything called "the annual CPD target" reads as the statutory one, so the school's
+ * self-set target carries the narrower PLC name instead.
+ *   `annual_plc_target` = THE SCHOOL'S OWN configured, PLC-ONLY target. It mirrors the operational
+ *      column it is copied from BY NAME — plc_programme.annual_plc_target (numeric(5,2), default 8)
+ *      — so the lineage is readable without a lookup. It covers PLC participation ALONE, not a
+ *      teacher's whole CPD year, and schools configure different values, so it is stored per school
+ *      and is never a hard-coded constant. It measures a school against the cadence it set itself.
+ *   `ntc_cpd_target` = THE NATIONAL STATUTORY CPD TOTAL from the NTC framework (nominally 20 points
+ *      a year), covering ALL CPD a teacher earns, not just PLC. It is the SAME number for every
+ *      school in a given year — but it is a POLICY VARIABLE, so it is stored PER ROW rather than
+ *      hard-coded in a query or a config file. If NTC moves the total, last year's rows must keep
+ *      reporting against last year's number; a constant in the reader would silently rewrite history
+ *      for every prior year the moment it changed. The stored copy makes the threshold
+ *      self-describing provenance, exactly like as_of_date.
+ * `teachers_meeting_cpd_threshold` IS MEASURED AGAINST ntc_cpd_target (the statutory 20-pt total),
+ * NEVER against annual_plc_target. It is the statutory compliance count GES asks for ("how many
+ * teachers met the national CPD requirement"), so a school that set itself a low PLC target cannot
+ * thereby report full compliance. The two numbers are not comparable and must never be substituted
+ * for one another: 8 PLC points is not 8/20ths of compliance, because PLC is only one contributor.
+ *
+ * CPD BY NTC CATEGORY (E2) — Mandatory / Specialised / Recommended, the NTC framework's three point
+ * classes. They are stored as COLUMNS, never as breakdown ROWS, and that is load-bearing: as columns
+ * the reconciliation
+ *     cpd_points_mandatory_total + cpd_points_specialised_total + cpd_points_recommended_total
+ *       = cpd_points_total                                          (when the categories are populated)
+ * is checkable on ONE row and survives roll-up. As rows they would be a second ALL-beside-the-split
+ * hazard stacked on top of sex, and the total would no longer be readable without an aggregation.
+ * The three `cpd_*_teacher_count` columns are per-category COVERAGE NUMERATORS — teachers with ≥1
+ * point in that category — and their denominator is `teacher_headcount`, the same on-roll population
+ * as every other coverage rate here. They deliberately do NOT sum to cpd_points_teacher_count: one
+ * teacher earning in two categories is counted in both, so the three overlap by construction.
+ *
+ * ⚠ SOURCING GATE — THE CATEGORY AND THRESHOLD COLUMNS STAY NULL UNTIL AN NTC FEED EXISTS (the
+ * E1-class ruling applied to CPD). The operational ledger (apps/web/db/schema/plc.ts,
+ * `plc_cpd_ledger`) stores exactly two arms — `attended_pts` and `reflection_pts` — and carries NO
+ * category column of any kind. So today the ONLY CPD points Omnischools can observe are PLC points,
+ * which are one part of the NTC Mandatory class; the NCPD half of Mandatory, and the Specialised and
+ * Recommended classes entirely, are earned OUTSIDE this product and have NO operational source at
+ * all. Therefore the ETL must leave `cpd_points_specialised_total`, `cpd_points_recommended_total`,
+ * their two teacher counts, and `teachers_meeting_cpd_threshold` **NULL — never 0** — until an
+ * NTC-portal feed is wired up. Zero is a measurement ("nobody earned any"); NULL is the truth ("we
+ * cannot see it"). Writing 0 here would report every school in Ghana as 0% CPD-compliant, which is
+ * both false and actionable, i.e. the worst possible failure mode for a regulator's dashboard.
+ * `cpd_points_mandatory_total` may be populated from PLC points ONLY if the ETL is prepared to state
+ * that it is a PLC-only partial; if not, it too stays NULL.
+ *
+ * BREAKDOWN = SEX (E4), on both the TERM and the ANNUAL cut — "are women getting the same CPD access
+ * as men" is a question GES asks of both session participation and points earned, so the column is on
+ * the table rather than on one cut. ALL is stored beside MALE/FEMALE; see the section header for the
+ * one-sex-value-per-query rule. No stage breakdown (a teacher spans stages).
  *
  * NO teacher-identifiable columns — no user ids, no names, no per-teacher rows. Analytics holds
  * aggregates only; the named path is the gated §6 audit route.
@@ -452,6 +577,9 @@ export const factPlcParticipation = pgTable(
     periodId: uuid("period_id")
       .notNull()
       .references(() => dimPeriod.periodId), // period_type = TERM or ANNUAL (discriminates the cut)
+    // Breakdown (E4) — meaningful on BOTH cuts. ALL is stored beside MALE/FEMALE: filter to one
+    // value per query or every figure double-counts.
+    sex: sexEnum("sex").notNull(),
     // 0/1 per school — "N of Y schools run PLC". Present on both cuts.
     schoolsRunningPlcCount: integer("schools_running_plc_count").notNull(),
     // ---- BOTH cuts: the shared on-roll denominator ----
@@ -474,18 +602,40 @@ export const factPlcParticipation = pgTable(
     // denominator; that is teacher_headcount above.
     cpdPointsTeacherCount: integer("cpd_points_teacher_count"),
     cpdPointsMean: numeric("cpd_points_mean", { precision: 5, scale: 2 }),
-    // Invariant: ≤ teacher_headcount on the SAME row (both populated on ANNUAL rows).
+    // Count of teachers meeting the NATIONAL statutory CPD total — measured against ntc_cpd_target
+    // below, NEVER against annual_plc_target. Invariant: ≤ teacher_headcount on the SAME row.
+    // ⚠ Stays NULL (never 0) until an NTC feed exists — see the sourcing gate in the doc comment.
     teachersMeetingCpdThreshold: integer("teachers_meeting_cpd_threshold"),
-    // The school's own configured annual target — never a constant.
-    annualCpdTarget: numeric("annual_cpd_target", { precision: 5, scale: 2 }),
+    // The SCHOOL's own configured PLC-ONLY target — same name as the operational column it copies,
+    // plc_programme.annual_plc_target (default 8). Never a constant, and NOT the threshold that
+    // teachers_meeting_cpd_threshold is measured against.
+    annualPlcTarget: numeric("annual_plc_target", { precision: 5, scale: 2 }),
+    // The NATIONAL statutory NTC CPD total (nominally 20 pts/yr, covering ALL CPD, not just PLC) —
+    // the threshold the count above is actually computed from. Stored per row because it is a POLICY
+    // VARIABLE: prior years must keep their own number.
+    ntcCpdTarget: numeric("ntc_cpd_target", { precision: 5, scale: 2 }),
+
+    // ---- ANNUAL cut · NTC CATEGORY SPLIT (columns, never rows — reconciles to cpd_points_total) ----
+    // Invariant when populated: mandatory + specialised + recommended = cpd_points_total.
+    // ⚠ Specialised / Recommended (and the NCPD half of Mandatory) have NO operational source today
+    // — the ETL leaves them NULL, never 0. See the sourcing gate in the doc comment.
+    cpdPointsMandatoryTotal: numeric("cpd_points_mandatory_total", { precision: 7, scale: 2 }),
+    cpdPointsSpecialisedTotal: numeric("cpd_points_specialised_total", { precision: 7, scale: 2 }),
+    cpdPointsRecommendedTotal: numeric("cpd_points_recommended_total", { precision: 7, scale: 2 }),
+    // Per-category COVERAGE numerators: teachers with ≥1 point in that category. Denominator is
+    // teacher_headcount (not cpd_points_teacher_count). These OVERLAP by design — a teacher earning
+    // in two categories is counted in both — so they do NOT sum to any other count here.
+    cpdMandatoryTeacherCount: integer("cpd_mandatory_teacher_count"),
+    cpdSpecialisedTeacherCount: integer("cpd_specialised_teacher_count"),
+    cpdRecommendedTeacherCount: integer("cpd_recommended_teacher_count"),
 
     ...provenance, // source = OPERATIONAL_AGG
   },
   (t) => ({
-    // Grain constraint AND the RLS-filtered read path. The TERM and ANNUAL cuts live on DIFFERENT
-    // period_ids, so one row per school × period holds for both.
-    uniqJurisdictionPeriod: uniqueIndex(
-      "fact_plc_participation_jurisdiction_period_idx",
-    ).on(t.jurisdictionId, t.periodId),
+    // Grain constraint AND the RLS-filtered read path — one row per school × period × sex. The TERM
+    // and ANNUAL cuts live on DIFFERENT period_ids, so period_id alone still separates them.
+    uniqJurisdictionPeriodSex: uniqueIndex(
+      "fact_plc_participation_jurisdiction_period_sex_idx",
+    ).on(t.jurisdictionId, t.periodId, t.sex),
   }),
 );

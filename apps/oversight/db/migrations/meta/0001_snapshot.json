@@ -1,5 +1,5 @@
 {
-  "id": "277bd134-dd80-4f11-a921-00663d902cde",
+  "id": "344cd1a9-57a7-4d8e-9c4b-29f99a2ac6c6",
   "prevId": "5e6b06fc-b573-45fe-a313-9ee112c306b6",
   "version": "7",
   "dialect": "postgresql",
@@ -2214,6 +2214,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sex": {
+          "name": "sex",
+          "type": "ov_sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
         "schools_running_plc_count": {
           "name": "schools_running_plc_count",
           "type": "integer",
@@ -2286,9 +2293,51 @@
           "primaryKey": false,
           "notNull": false
         },
-        "annual_cpd_target": {
-          "name": "annual_cpd_target",
+        "annual_plc_target": {
+          "name": "annual_plc_target",
           "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ntc_cpd_target": {
+          "name": "ntc_cpd_target",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_points_mandatory_total": {
+          "name": "cpd_points_mandatory_total",
+          "type": "numeric(7, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_points_specialised_total": {
+          "name": "cpd_points_specialised_total",
+          "type": "numeric(7, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_points_recommended_total": {
+          "name": "cpd_points_recommended_total",
+          "type": "numeric(7, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_mandatory_teacher_count": {
+          "name": "cpd_mandatory_teacher_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_specialised_teacher_count": {
+          "name": "cpd_specialised_teacher_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpd_recommended_teacher_count": {
+          "name": "cpd_recommended_teacher_count",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -2313,8 +2362,8 @@
         }
       },
       "indexes": {
-        "fact_plc_participation_jurisdiction_period_idx": {
-          "name": "fact_plc_participation_jurisdiction_period_idx",
+        "fact_plc_participation_jurisdiction_period_sex_idx": {
+          "name": "fact_plc_participation_jurisdiction_period_sex_idx",
           "columns": [
             {
               "expression": "jurisdiction_id",
@@ -2324,6 +2373,12 @@
             },
             {
               "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sex",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2526,6 +2581,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sex": {
+          "name": "sex",
+          "type": "ov_sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
         "expected_teacher_days": {
           "name": "expected_teacher_days",
           "type": "integer",
@@ -2534,6 +2596,18 @@
         },
         "present_teacher_days": {
           "name": "present_teacher_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "excused_teacher_days": {
+          "name": "excused_teacher_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "absent_teacher_days": {
+          "name": "absent_teacher_days",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -2565,8 +2639,8 @@
         }
       },
       "indexes": {
-        "fact_teacher_attendance_jurisdiction_period_idx": {
-          "name": "fact_teacher_attendance_jurisdiction_period_idx",
+        "fact_teacher_attendance_jurisdiction_period_sex_idx": {
+          "name": "fact_teacher_attendance_jurisdiction_period_sex_idx",
           "columns": [
             {
               "expression": "jurisdiction_id",
@@ -2576,6 +2650,12 @@
             },
             {
               "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sex",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

@@ -62,7 +62,7 @@ signature of a missed paste.
 Current files:
 
 - `db/sql/prod-paste-0001-fact-domains.sql` — `fact_teacher_attendance`, `fact_infrastructure`,
-  `fact_plc_participation` (migration `0001_big_inertia`).
+  `fact_plc_participation` (migration `0001_opposite_mimic`).
 
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 

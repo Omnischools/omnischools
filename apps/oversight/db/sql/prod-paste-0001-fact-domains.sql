@@ -6,7 +6,7 @@
 -- (scripts/apply-policies.ts → db/sql/policies.sql) only configures LOCAL DEV. This file is the
 -- hand-paste that gives the three NEW analytics fact tables their jurisdiction isolation on the LIVE
 -- `omnischools-analytics-prod` project. Paste it into the Supabase SQL editor on that project AFTER
--- migration 0001_big_inertia.sql has created the tables — never before.
+-- migration 0001_opposite_mimic.sql has created the tables — never before.
 --
 -- This is the FIRST prod-paste file in apps/oversight; it establishes here the convention already
 -- used throughout apps/web/db/sql/prod-paste-*.sql. Every future new jurisdiction-scoped analytics
@@ -14,11 +14,11 @@
 --
 -- FAILS CLOSED IF SKIPPED — and that is TRUE ONLY BECAUSE MIGRATION 0001 ALREADY ENABLED RLS.
 -- The migration runs `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on all three tables at CREATE time
--- (see the hand-appended block at the foot of 0001_big_inertia.sql). That is load-bearing: a table
--- created WITHOUT RLS enabled is readable in full by any SELECT-granted non-owner role (Supabase
--- anon/authenticated in `public`), so between the migration and this paste every district would read
--- every other district's rows. With RLS enabled at create time, the skip-this-paste state is
--- RLS-enabled-with-no-policy => ZERO rows to a non-owner role (an empty panel), never a leak.
+-- (see the hand-appended block at the foot of 0001_opposite_mimic.sql). That is load-bearing: a
+-- table created WITHOUT RLS enabled is readable in full by any SELECT-granted non-owner role
+-- (Supabase anon/authenticated in `public`), so between the migration and this paste every district
+-- would read every other district's rows. With RLS enabled at create time, the skip-this-paste state
+-- is RLS-enabled-with-no-policy => ZERO rows to a non-owner role (an empty panel), never a leak.
 --
 -- The app runtime connects as a NON-OWNER, read-scoped role (docs/PROVISIONING.md §1). If this paste
 -- is skipped:
@@ -51,7 +51,7 @@ BEGIN
     'fact_teacher_attendance','fact_infrastructure','fact_plc_participation'
   ] LOOP
     IF to_regclass('public.' || t) IS NULL THEN
-      RAISE EXCEPTION '% does not exist — run migration 0001_big_inertia BEFORE this RLS paste', t;
+      RAISE EXCEPTION '% does not exist — run migration 0001_opposite_mimic BEFORE this RLS paste', t;
     END IF;
   END LOOP;
 END

@@ -50,6 +50,7 @@ CREATE TABLE "fact_plc_participation" (
 	"fact_id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"jurisdiction_id" uuid NOT NULL,
 	"period_id" uuid NOT NULL,
+	"sex" "ov_sex" NOT NULL,
 	"schools_running_plc_count" integer NOT NULL,
 	"teacher_headcount" integer,
 	"sessions_held" integer,
@@ -62,7 +63,14 @@ CREATE TABLE "fact_plc_participation" (
 	"cpd_points_teacher_count" integer,
 	"cpd_points_mean" numeric(5, 2),
 	"teachers_meeting_cpd_threshold" integer,
-	"annual_cpd_target" numeric(5, 2),
+	"annual_plc_target" numeric(5, 2),
+	"ntc_cpd_target" numeric(5, 2),
+	"cpd_points_mandatory_total" numeric(7, 2),
+	"cpd_points_specialised_total" numeric(7, 2),
+	"cpd_points_recommended_total" numeric(7, 2),
+	"cpd_mandatory_teacher_count" integer,
+	"cpd_specialised_teacher_count" integer,
+	"cpd_recommended_teacher_count" integer,
 	"source" "ov_source" NOT NULL,
 	"as_of_date" timestamp with time zone NOT NULL,
 	"etl_run_id" uuid
@@ -72,8 +80,11 @@ CREATE TABLE "fact_teacher_attendance" (
 	"fact_id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"jurisdiction_id" uuid NOT NULL,
 	"period_id" uuid NOT NULL,
+	"sex" "ov_sex" NOT NULL,
 	"expected_teacher_days" integer NOT NULL,
 	"present_teacher_days" integer NOT NULL,
+	"excused_teacher_days" integer NOT NULL,
+	"absent_teacher_days" integer NOT NULL,
 	"teacher_attendance_rate" numeric(5, 2) NOT NULL,
 	"source" "ov_source" NOT NULL,
 	"as_of_date" timestamp with time zone NOT NULL,
@@ -90,8 +101,8 @@ ALTER TABLE "fact_teacher_attendance" ADD CONSTRAINT "fact_teacher_attendance_ju
 ALTER TABLE "fact_teacher_attendance" ADD CONSTRAINT "fact_teacher_attendance_period_id_dim_period_period_id_fk" FOREIGN KEY ("period_id") REFERENCES "public"."dim_period"("period_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "fact_teacher_attendance" ADD CONSTRAINT "fact_teacher_attendance_etl_run_id_etl_run_run_id_fk" FOREIGN KEY ("etl_run_id") REFERENCES "public"."etl_run"("run_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "fact_infrastructure_jurisdiction_period_idx" ON "fact_infrastructure" USING btree ("jurisdiction_id","period_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "fact_plc_participation_jurisdiction_period_idx" ON "fact_plc_participation" USING btree ("jurisdiction_id","period_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "fact_teacher_attendance_jurisdiction_period_idx" ON "fact_teacher_attendance" USING btree ("jurisdiction_id","period_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "fact_plc_participation_jurisdiction_period_sex_idx" ON "fact_plc_participation" USING btree ("jurisdiction_id","period_id","sex");--> statement-breakpoint
+CREATE UNIQUE INDEX "fact_teacher_attendance_jurisdiction_period_sex_idx" ON "fact_teacher_attendance" USING btree ("jurisdiction_id","period_id","sex");--> statement-breakpoint
 -- ---------------------------------------------------------------------------
 -- HAND-APPENDED (drizzle-kit cannot express RLS in the Drizzle schema, so this block is added by
 -- hand after every regeneration of this file — see db/schema/fact.ts).
