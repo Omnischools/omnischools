@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { CONSENT_ID, EMIS, JUR, OPS_SCHOOL, OPS_STAFF } from "./fixtures/ids";
+import { CONSENT_ID, OPS_STAFF } from "./fixtures/ids";
+import { SCHOOL } from "./fixtures/schools";
 import { auditRowsFor, caseRef, districtOfficer } from "./helpers";
 
 /**
@@ -36,12 +37,7 @@ describe("with E3_NON_PUBLIC_STAFF_DRILLDOWN on", () => {
     const reference = caseRef("flag-on");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
-      school: {
-        emisSchoolId: EMIS.privateConsented,
-        operationalSchoolId: OPS_SCHOOL.privateConsented,
-        jurisdictionId: JUR.schoolPrivateConsented,
-        ownershipType: "PRIVATE",
-      },
+      school: SCHOOL.privateConsented,
       reasonCode: "LICENSURE_QUALIFICATION_VERIFICATION",
       caseReference: reference,
       subject: { operationalStaffId: OPS_STAFF.staffPrivateSchool, gesStaffId: null },
@@ -58,20 +54,33 @@ describe("with E3_NON_PUBLIC_STAFF_DRILLDOWN on", () => {
   });
 
   it("still refuses a PRIVATE school that has NOT granted consent — the flag is not a bypass", async () => {
+    // A genuinely private fixture school with no consent row (EMIS-PRI-007), rather than a public
+    // school the caller describes as private — the gate reads ownership from the register now, so
+    // the old shape could not have tested this at all.
     const reference = caseRef("flag-on-no-consent");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
-      school: {
-        emisSchoolId: EMIS.publicNoConsent,
-        operationalSchoolId: OPS_SCHOOL.publicNoConsent,
-        jurisdictionId: JUR.schoolPublicNoConsent,
-        // Treat it as private for this test: consent is still absent, so it must still refuse.
-        ownershipType: "PRIVATE",
-      },
+      school: SCHOOL.privateNoConsent,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffNoConsentSchool, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffPrivateNoConsent, gesStaffId: null },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    if (result.outcome === "GRANTED") return;
+    expect(result.denialReason).toBe("NO_CONSENT_ON_RECORD");
+  });
+
+  it("still refuses an UNKNOWN-ownership school even though it HAS consent", async () => {
+    const reference = caseRef("flag-on-unknown-ownership");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.unknownOwnership,
+      reasonCode: "STATUTORY_AUDIT",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.staffUnknownOwnership, gesStaffId: null },
+    });
+    expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    if (result.outcome === "GRANTED") return;
+    expect(result.denialReason).toBe("UNKNOWN_OWNERSHIP");
   });
 });

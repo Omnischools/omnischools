@@ -187,9 +187,29 @@ alter table audit_access_log enable row level security;
 drop policy if exists audit_scope on audit_access_log;
 create policy audit_scope on audit_access_log
   for select using ( officer_id = ov_current_officer() or ov_in_subtree(jurisdiction_id) );
+--   · THE INSERT PREDICATE IS TWO CONDITIONS, NOT ONE (added 0003). `officer_id =
+--     ov_current_officer()` alone says "you may not write a row in someone else's name" — it says
+--     nothing about WHOSE SCHOOL the row is about. A district director could log (and therefore
+--     perform) an access against a school in another region, in their own name, and the database
+--     would accept it. Adding `ov_in_subtree(jurisdiction_id)` makes the jurisdiction ceiling a
+--     property of the DATABASE rather than of the application: because the gate writes the audit
+--     row BEFORE it fetches anything (§6 step 2), a row the database refuses is an access that
+--     cannot happen. That is the backstop behind lib/oversight/named-record-access.ts's own check,
+--     and it holds against a future caller that forgets to make one.
+--
+--     Note what this does NOT block: an in-subtree DENIAL. A no-consent / stale-establishment /
+--     flag-off refusal carries the TARGET SCHOOL's jurisdiction_id, which is inside the officer's
+--     subtree, so denial rows still insert cleanly — as they must, or the gate would fail closed by
+--     becoming unable to record that it fired.
+--
+--     NULL jurisdiction_id: ov_in_subtree(null) is false below NATIONAL, so a row that names no
+--     jurisdiction is rejected for every tier except national. That is intended — an access nobody
+--     can scope is an access nobody can review.
 drop policy if exists audit_insert on audit_access_log;
 create policy audit_insert on audit_access_log
-  for insert with check ( officer_id = ov_current_officer() );
+  for insert with check (
+    officer_id = ov_current_officer() and ov_in_subtree(jurisdiction_id)
+  );
 
 -- Append-only: reject UPDATE/DELETE on existing rows. A review only ever INSERTs a linked row.
 --

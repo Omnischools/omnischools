@@ -15,6 +15,12 @@ export const JUR = {
   schoolPrivateConsented: "10000000-0000-4000-8000-000000000013",
   schoolPublicStale: "10000000-0000-4000-8000-000000000014",
   schoolPublicRevoked: "10000000-0000-4000-8000-000000000015",
+  /** Registered with ownership_type NULL — a real data gap, not a caller lying about one. */
+  schoolUnknownOwnership: "10000000-0000-4000-8000-000000000016",
+  /** PRIVATE with no consent row — so the flag-ON path still has something to refuse. */
+  schoolPrivateNoConsent: "10000000-0000-4000-8000-000000000017",
+  /** In the OTHER district: the school a district officer must not be able to reach. */
+  schoolOutsideSubtree: "10000000-0000-4000-8000-000000000018",
 } as const;
 
 export const PERIOD_ID = "20000000-0000-4000-8000-000000000001";
@@ -26,6 +32,9 @@ export const EMIS = {
   privateConsented: "EMIS-PRI-003",
   publicStale: "EMIS-PUB-004",
   publicRevoked: "EMIS-PUB-005",
+  unknownOwnership: "EMIS-UNK-006",
+  privateNoConsent: "EMIS-PRI-007",
+  outsideSubtree: "EMIS-OUT-008",
 } as const;
 
 export const OPS_SCHOOL = {
@@ -34,6 +43,9 @@ export const OPS_SCHOOL = {
   privateConsented: "30000000-0000-4000-8000-000000000003",
   publicStale: "30000000-0000-4000-8000-000000000004",
   publicRevoked: "30000000-0000-4000-8000-000000000005",
+  unknownOwnership: "30000000-0000-4000-8000-000000000006",
+  privateNoConsent: "30000000-0000-4000-8000-000000000007",
+  outsideSubtree: "30000000-0000-4000-8000-000000000008",
 } as const;
 
 export const OPS_USER = {
@@ -43,6 +55,9 @@ export const OPS_USER = {
   staffPrivateSchool: "40000000-0000-4000-8000-000000000004",
   teacherStaleRegister: "40000000-0000-4000-8000-000000000005",
   staffRevokedSchool: "40000000-0000-4000-8000-000000000006",
+  staffUnknownOwnership: "40000000-0000-4000-8000-000000000007",
+  staffPrivateNoConsent: "40000000-0000-4000-8000-000000000008",
+  staffOutsideSubtree: "40000000-0000-4000-8000-000000000009",
 } as const;
 
 /** `staff_profile.id` — the only key that reaches an operational staff row. */
@@ -53,6 +68,11 @@ export const OPS_STAFF = {
   staffPrivateSchool: "50000000-0000-4000-8000-000000000004",
   teacherStaleRegister: "50000000-0000-4000-8000-000000000005",
   staffRevokedSchool: "50000000-0000-4000-8000-000000000006",
+  staffUnknownOwnership: "50000000-0000-4000-8000-000000000007",
+  staffPrivateNoConsent: "50000000-0000-4000-8000-000000000008",
+  staffOutsideSubtree: "50000000-0000-4000-8000-000000000009",
+  /** A uuid that is a valid shape but no staff_profile row — the SUBJECT_NOT_FOUND probe. */
+  absent: "5fffffff-0000-4000-8000-0000000000ff",
 } as const;
 
 export const GES_STAFF_ID = {
@@ -77,4 +97,6 @@ export const CONSENT_ID = {
   publicConsented: "70000000-0000-4000-8000-000000000001",
   privateConsented: "70000000-0000-4000-8000-000000000003",
   publicRevoked: "70000000-0000-4000-8000-000000000005",
+  unknownOwnership: "70000000-0000-4000-8000-000000000006",
+  outsideSubtree: "70000000-0000-4000-8000-000000000008",
 } as const;

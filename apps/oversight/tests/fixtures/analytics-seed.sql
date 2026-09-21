@@ -8,6 +8,16 @@
 --   EMIS-PRI-003  PRIVATE, fresh establishment, consent GRANTED   → flag-off denial (and only that)
 --   EMIS-PUB-004  PUBLIC,  STALE establishment, NO consent row    → DENIED_STALE_ESTABLISHMENT
 --   EMIS-PUB-005  PUBLIC,  fresh establishment, consent REVOKED   → DENIED_NO_CONSENT (revoked)
+--   EMIS-UNK-006  ownership_type NULL, consent GRANTED            → UNKNOWN_OWNERSHIP (fails closed)
+--   EMIS-PRI-007  PRIVATE, NO consent row                         → refused with the flag ON too
+--   EMIS-OUT-008  PUBLIC, in the OTHER DISTRICT, consent GRANTED  → the jurisdiction-ceiling probe
+--
+-- The last three exist because a security test has to be able to fail for exactly one reason.
+-- EMIS-UNK-006 and EMIS-OUT-008 both HAVE live consent, so a refusal there can only be the missing
+-- ownership or the ceiling; EMIS-PRI-007 has none, so a refusal there with the flag ON can only be
+-- the absent consent. Previously two of these cases were simulated by having the caller LIE about
+-- the school's ownership — which stopped being possible once the gate started reading ownership
+-- from the register itself, and was never a good test of a real data gap anyway.
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 
 insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, ges_code, school_type, ownership_type, is_reporting) values
@@ -19,7 +29,11 @@ insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, ges_code,
   ('10000000-0000-4000-8000-000000000012', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Amenfiman SHS',        'EMIS-PUB-002', 'SHS', 'PUBLIC',  true),
   ('10000000-0000-4000-8000-000000000013', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'St. Monica Mission SHS','EMIS-PRI-003','SHS', 'PRIVATE', true),
   ('10000000-0000-4000-8000-000000000014', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Wassa Akropong JHS',   'EMIS-PUB-004', 'JHS', 'PUBLIC',  true),
-  ('10000000-0000-4000-8000-000000000015', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Manso Amenfi JHS',     'EMIS-PUB-005', 'JHS', 'PUBLIC',  true);
+  ('10000000-0000-4000-8000-000000000015', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Manso Amenfi JHS',     'EMIS-PUB-005', 'JHS', 'PUBLIC',  true),
+  ('10000000-0000-4000-8000-000000000016', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Nkwanta Community JHS','EMIS-UNK-006', 'JHS', null,      true),
+  ('10000000-0000-4000-8000-000000000017', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Bethel Academy',       'EMIS-PRI-007', 'JHS', 'PRIVATE', true),
+  -- In Sekondi-Takoradi Metro: OUTSIDE a Wassa Amenfi West officer's subtree.
+  ('10000000-0000-4000-8000-000000000018', 'SCHOOL',   '10000000-0000-4000-8000-000000000004', 'Takoradi SHS',         'EMIS-OUT-008', 'SHS', 'PUBLIC',  true);
 
 insert into dim_period (period_id, academic_year, term, period_type, is_current) values
   ('20000000-0000-4000-8000-000000000001', '2025/26', 2, 'TERM', true);
@@ -29,7 +43,12 @@ insert into ref_emis_school_register (emis_school_id, name, district_id, region_
   ('EMIS-PUB-002', 'Amenfiman SHS',         '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
   ('EMIS-PRI-003', 'St. Monica Mission SHS','10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PRIVATE', true, 'EMIS_EXTRACT', current_date - 30),
   ('EMIS-PUB-004', 'Wassa Akropong JHS',    '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
-  ('EMIS-PUB-005', 'Manso Amenfi JHS',      '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30);
+  ('EMIS-PUB-005', 'Manso Amenfi JHS',      '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
+  -- ownership_type NULL: the register has the school but not its ownership. Fails closed.
+  ('EMIS-UNK-006', 'Nkwanta Community JHS', '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', null,      true, 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-PRI-007', 'Bethel Academy',        '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PRIVATE', true, 'EMIS_EXTRACT', current_date - 30),
+  -- district_id = Sekondi-Takoradi Metro, so ov_in_subtree() filters it away for a Wassa officer.
+  ('EMIS-OUT-008', 'Takoradi SHS',          '10000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30);
 
 -- FRESH vintages — 30 days old, comfortably inside the 6-month staleness ceiling.
 insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, teaching_posts_established, staff_ids, source, as_of_date) values

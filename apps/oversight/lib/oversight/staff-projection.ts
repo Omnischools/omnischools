@@ -163,6 +163,35 @@ export function buildStaffProjection(allowedFields: readonly string[]): StaffPro
   };
 }
 
+/**
+ * Does the subject exist at this school? Selects the CONSTANT 1 — no column of the staff record, no
+ * name, nothing scoped.
+ *
+ * It runs BEFORE the audit INSERT, and that is deliberate rather than a loophole in "audit before
+ * fetch". The audit row has to state `fields_released`, and it is append-only, so whatever it claims
+ * at INSERT time is what a reviewer reads forever. Writing the full scope and THEN discovering the
+ * subject does not exist leaves a permanent row asserting that a DOB and an address were released
+ * when nothing was — the log would overstate every mistyped uuid as a disclosure. Asking "is there a
+ * row?" first lets the audit row tell the truth: found ⇒ GRANTED with the scope, absent ⇒ a denial
+ * with `fields_released = []`.
+ *
+ * What it costs: the gate can confirm that a given (school, uuid) pair exists. That is the pair the
+ * officer already supplied, the probe reveals no attribute of the person, and EVERY probe writes an
+ * audit row — so it is strictly more accountable than the previous behaviour, which logged a
+ * fictitious release for the same query.
+ */
+export async function staffRecordExists(
+  tx: ReadbackTx,
+  operationalSchoolId: string,
+  operationalStaffId: string,
+): Promise<boolean> {
+  const rows = (await tx.unsafe(
+    `select 1 as present from staff_profile where school_id = $1::uuid and id = $2::uuid limit 1`,
+    [operationalSchoolId, operationalStaffId],
+  )) as unknown as unknown[];
+  return rows.length > 0;
+}
+
 /** Run the projection inside the read-back transaction. Returns null when the subject is absent. */
 export async function fetchScopedStaffRecord(
   tx: ReadbackTx,

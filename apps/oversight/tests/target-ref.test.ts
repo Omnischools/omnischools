@@ -7,6 +7,7 @@ import {
   isRosterTargetRef,
   isValidTargetRefForBasis,
 } from "@/lib/oversight/target-ref";
+import { assertTargetRefMatchesBasisUnlessRoster } from "@/lib/oversight/named-record-access";
 
 const EMIS = "EMIS-PUB-001";
 const UUID = "50000000-0000-4000-8000-000000000001";
@@ -58,6 +59,32 @@ describe("target_ref format and the basis it must match", () => {
 
   it("rejects an OPS ref whose person slot is not a uuid", () => {
     expect(isValidTargetRefForBasis(`OPS:${EMIS}:not-a-uuid`, "CONSENT")).toBe(false);
+  });
+
+  it("does NOT treat a bare `:ROSTER` suffix as a roster ref", () => {
+    // The gate exempts roster refs from the basis assertion. That exemption used to key on
+    // `ref.endsWith(":ROSTER")`, which `GES:ROSTER` satisfies — so an officer who typed ROSTER as a
+    // GES staff id would have produced a STATUTORY row whose ref was never checked against its
+    // basis. `isRosterTargetRef` requires the full OPS:<emis>:ROSTER shape, so it does not.
+    expect("GES:ROSTER".endsWith(":ROSTER")).toBe(true);
+    expect(isRosterTargetRef("GES:ROSTER")).toBe(false);
+    expect(isRosterTargetRef("ROSTER")).toBe(false);
+    expect(isRosterTargetRef("OPS:EMIS-PUB-001:ROSTER")).toBe(true);
+  });
+
+  it("the gate's roster exemption cannot be reached by a non-OPS ref", () => {
+    // `GES:ROSTER` is valid FOR STATUTORY, so it passes …
+    expect(() =>
+      assertTargetRefMatchesBasisUnlessRoster("GES:ROSTER", "STATUTORY"),
+    ).not.toThrow();
+    // … and is now correctly REFUSED for CONSENT, where the old suffix test let it through silently.
+    expect(() =>
+      assertTargetRefMatchesBasisUnlessRoster("GES:ROSTER", "CONSENT"),
+    ).toThrowError(TargetRefError);
+    // A genuine roster ref is still exempt.
+    expect(() =>
+      assertTargetRefMatchesBasisUnlessRoster("OPS:EMIS-PUB-001:ROSTER", "CONSENT"),
+    ).not.toThrow();
   });
 
   it("marks a roster ref distinctly from an individual one", () => {

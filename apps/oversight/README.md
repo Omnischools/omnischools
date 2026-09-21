@@ -89,11 +89,18 @@ is a stock, so it sums spatially (across schools) only, never across periods.
 
 The one surface that shows a named person. Its server-side core lives in `lib/oversight/`, and
 `lib/oversight/named-record-access.ts` is the **single choke point**: nothing else opens the
-operational read-back, and nothing else writes an `audit_access_log` row. In order — classify the
-subject against the GES establishment register (analytics, jurisdiction RLS), preflight the school's
-ownership against `E3_NON_PUBLIC_STAFF_DRILLDOWN`, read consent live inside the read-back
-transaction, **write the audit row**, and only then project the fields the stated reason unlocks.
-Denials are written rows too, with `fields_released = []`.
+operational read-back, and nothing else writes an `audit_access_log` row. In order — resolve the
+school under the officer's own jurisdiction RLS and refuse it outright if it is outside their
+subtree, classify the subject against the GES establishment register, preflight the school's
+ownership (from the **register**, never from the caller) against `E3_NON_PUBLIC_STAFF_DRILLDOWN`,
+read consent live inside the read-back transaction, **write the audit row**, and only then project
+the fields the stated reason unlocks. Denials are written rows too, with `fields_released = []`.
+
+The jurisdiction ceiling is enforced **twice, independently**: in the choke point (so it cannot be
+skipped by a future caller) and in the database, where `audit_insert`'s `WITH CHECK` requires
+`ov_in_subtree(jurisdiction_id)`. Because the gate logs before it fetches, a row the database
+refuses is an access that cannot happen. On prod that predicate arrives via
+`db/sql/prod-paste-0003-audit-insert-subtree.sql`.
 
 `lib/db/readback.ts` is a second, isolated Postgres client for `OPERATIONAL_READBACK_URL`. It fails
 closed when that is unset and never falls back to the analytics DB. Aggregate code may not import it

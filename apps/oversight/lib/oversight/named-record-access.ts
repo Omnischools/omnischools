@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { withJurisdiction } from "@/lib/db/rls";
+import type { Tx } from "@/lib/db";
 import type { OfficerSession } from "@/lib/oversight/officer";
 import {
   ReadbackUnavailableError,
@@ -28,16 +29,19 @@ import {
   assertTargetRefMatchesBasis,
   buildRosterTargetRef,
   buildTargetRef,
+  isRosterTargetRef,
   type LegalBasis,
 } from "@/lib/oversight/target-ref";
 import {
   confirmSchoolIdentity,
   fetchScopedStaffRecord,
   fetchStaffList,
+  staffRecordExists,
   SOURCELESS_FIELDS,
   UNAVAILABLE_NO_SOURCE,
   type StaffListRow,
 } from "@/lib/oversight/staff-projection";
+import { resolveSchoolInTx, type ResolvedSchool } from "@/lib/oversight/school-ref";
 
 /**
  * THE ORCHESTRATOR — the single choke point for every individual staff drill-down (§6).
@@ -49,15 +53,23 @@ import {
  *
  * ═══ THE ORDER IS THE CONTROL ═══════════════════════════════════════════════════════════════════
  *
- *   1. VALIDATE the gate input (shape, jurisdiction, reason code).
- *   2. CLASSIFY the subject against the GES establishment register — ANALYTICS, jurisdiction-RLS,
- *      no operational connection involved. Decides STATUTORY vs CONSENT.
+ *   1. VALIDATE the gate input (shape, reason code).
+ *   2. RESOLVE THE SCHOOL under the OFFICER's own jurisdiction RLS, and refuse outright if it is
+ *      outside their subtree; then CLASSIFY the subject against the GES establishment register in
+ *      the same transaction. ANALYTICS only — no operational connection exists yet. The school's
+ *      jurisdiction node and ownership type come from the register, NOT from the caller.
  *   3. PREFLIGHT ownership (CONSENT branch only): with `E3_NON_PUBLIC_STAFF_DRILLDOWN` off, a
  *      PRIVATE/MISSION school is refused here — before any operational connection is opened.
- *   4. OPEN the read-back transaction, confirm the claimed school, and (CONSENT branch) read the
- *      consent row live. Still no staff column has been named.
+ *   4. OPEN the read-back transaction, confirm the claimed school, (CONSENT branch) read the
+ *      consent row live, and ask whether the subject exists. Still no staff COLUMN has been named.
  *   5. WRITE THE AUDIT ROW. Outcome, lawful basis, consent ref, fields the reason unlocks.
  *   6. ONLY THEN project the record, inside the SAME read-back transaction.
+ *
+ * THE CEILING IS ENFORCED HERE, NOT BY THE CALLER. Step 2 is an authorization check, and it lives
+ * in the choke point precisely so that it cannot be omitted by the next caller — a route handler, a
+ * job, a script. See `resolveGateSchoolInTx`. The database backstops it independently: the
+ * `audit_insert` RLS policy requires `ov_in_subtree(jurisdiction_id)`, so even a gate bug cannot log
+ * — and therefore cannot perform — an access outside the officer's subtree.
  *
  * WHY THE AUDIT ROW COMES BEFORE THE FETCH. If the fetch came first, then every failure mode
  * between fetching and logging — a crash, a timeout, a deploy, a deliberate kill — produces an
@@ -84,6 +96,16 @@ import {
 
 export type { OfficerSession } from "@/lib/oversight/officer";
 
+/**
+ * What a caller may say about the school — and it is deliberately the SHORTEST possible list.
+ *
+ * `jurisdictionId` and `ownershipType` used to be here and have been REMOVED. Both are security
+ * decisions (which subtree the access is logged against, and whether the non-public flag applies),
+ * and a caller that supplies them is a caller that can forge them: passing the officer's own
+ * district node would have slipped the audit row past a subtree check, and claiming `PUBLIC` for a
+ * private school would have dodged `E3_NON_PUBLIC_STAFF_DRILLDOWN` entirely. The orchestrator now
+ * derives both from `ref_emis_school_register` under the OFFICER's own RLS — see `resolveGateSchool`.
+ */
 export interface SchoolGateRef {
   /** The analytics-side key (`ref_emis_school_register.emis_school_id`). */
   emisSchoolId: string;
@@ -98,10 +120,18 @@ export interface SchoolGateRef {
    * onto the register so this hand-off disappears.)
    */
   operationalSchoolId: string;
+  /** Display only — never used in a decision. */
+  name?: string | null;
+}
+
+/** The school as the GATE resolved it: register-sourced, RLS-filtered, jurisdiction-confirmed. */
+interface GateSchool {
+  emisSchoolId: string;
+  operationalSchoolId: string;
   /** The SCHOOL-level `dim_jurisdiction` node — written to the audit row. */
   jurisdictionId: string;
   ownershipType: OwnershipType | null;
-  name?: string | null;
+  name: string;
 }
 
 export interface GateSubject {
@@ -190,9 +220,18 @@ export function isIndividualDrilldownAvailable(): boolean {
   return isReadbackConfigured();
 }
 
-/** Raised for input that is malformed or self-contradicting — not an access outcome. */
+/**
+ * Raised for a request that never constituted a lawful request at all — malformed input, a tenant
+ * key that belongs to another school, or a school outside the officer's jurisdiction.
+ *
+ * These are NOT access outcomes and do not write an audit row. The distinction is between "you
+ * asked for something the gate refused" (a DENIED_* row, because a refusal of a well-formed request
+ * is exactly what the log exists to evidence) and "that was not a request this officer could make"
+ * — where writing a row would mean the log records a jurisdiction, subject or school that the
+ * officer had no standing to name in the first place.
+ */
 export class GateInputError extends Error {
-  readonly code: "INVALID_INPUT" | "SCHOOL_MISMATCH";
+  readonly code: "INVALID_INPUT" | "SCHOOL_MISMATCH" | "OUT_OF_JURISDICTION";
   constructor(code: GateInputError["code"], message: string) {
     super(message);
     this.code = code;
@@ -207,6 +246,68 @@ function requireUuid(value: string, label: string): string {
     throw new GateInputError("INVALID_INPUT", `${label} must be a uuid.`);
   }
   return value;
+}
+
+/**
+ * THE JURISDICTION CEILING, ENFORCED IN THE CHOKE POINT.
+ *
+ * `ref_emis_school_register` is RLS-scoped by `ov_in_subtree(district_id)`, so reading the school
+ * under the OFFICER's own scope answers two questions at once: what the school actually is
+ * (jurisdiction node, ownership), and whether this officer may touch it at all. A school outside
+ * the subtree simply does not come back.
+ *
+ * This used to be done only by the caller (`app/(oversight)/…/actions.ts` re-resolved the school
+ * before calling). That held in practice and not in principle: a second caller — a route handler, a
+ * background job, a test — could hand the gate any school in Ghana and receive a full safeguarding
+ * record, because nothing in the gate itself looked. An authorization check that depends on every
+ * future caller remembering it is not a check. It lives here now, on the same read the gate was
+ * already making, so it costs nothing and cannot be skipped.
+ *
+ * Refusal is a THROW, not a logged denial (see `GateInputError`): the officer had no standing to
+ * name this school, so there is nothing about it that belongs in their audit trail.
+ */
+async function resolveGateSchoolInTx(tx: Tx, ref: SchoolGateRef): Promise<GateSchool> {
+  requireUuid(ref.operationalSchoolId, "school.operationalSchoolId");
+
+  let resolved: ResolvedSchool | null;
+  try {
+    resolved = await resolveSchoolInTx(tx, ref.emisSchoolId);
+  } catch (err) {
+    // The register could not be read. We do not know whether this school is in scope, so we do not
+    // proceed — an unreadable ceiling is not an absent one.
+    throw new GateInputError(
+      "OUT_OF_JURISDICTION",
+      `Could not confirm that ${ref.emisSchoolId} is inside your jurisdiction: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  if (!resolved) {
+    throw new GateInputError(
+      "OUT_OF_JURISDICTION",
+      `No school ${ref.emisSchoolId} inside your jurisdiction.`,
+    );
+  }
+  if (!resolved.jurisdictionId) {
+    // No dim_jurisdiction node ⇒ the access could be neither scoped nor logged against a subtree.
+    // Refusing beats logging it against nothing.
+    throw new GateInputError(
+      "OUT_OF_JURISDICTION",
+      `School ${ref.emisSchoolId} has no dim_jurisdiction node, so an access to it could not be scoped or logged.`,
+    );
+  }
+
+  return {
+    emisSchoolId: resolved.emisSchoolId,
+    operationalSchoolId: ref.operationalSchoolId,
+    jurisdictionId: resolved.jurisdictionId,
+    // From the GES REGISTER, never from the caller and never from the school's own operational row:
+    // ownership decides whether the consent branch is offered at all, and neither a caller nor a
+    // school should be able to move that line.
+    ownershipType: resolved.ownershipType,
+    name: resolved.name,
+  };
 }
 
 /**
@@ -292,9 +393,19 @@ async function writeAuditRow(input: AuditRowInput): Promise<string> {
   });
 }
 
-/** Roster refs (`OPS:<emis>:ROSTER`) are not individual refs; everything else must match its basis. */
-function assertTargetRefMatchesBasisUnlessRoster(ref: string, basis: LegalBasis): void {
-  if (ref.endsWith(":ROSTER")) return;
+/**
+ * Roster refs (`OPS:<emis>:ROSTER`) are not individual refs; everything else must match its basis.
+ *
+ * The exemption keys on `isRosterTargetRef`, which requires the full `OPS:<emis>:ROSTER` shape —
+ * NOT on `endsWith(":ROSTER")`. A suffix test would let `GES:ROSTER` through, so an officer who
+ * typed `ROSTER` as a GES staff id would have produced a STATUTORY row whose ref was never checked
+ * against its basis. Narrow escape hatches have to be spelled out in full.
+ */
+export function assertTargetRefMatchesBasisUnlessRoster(
+  ref: string,
+  basis: LegalBasis,
+): void {
+  if (isRosterTargetRef(ref)) return;
   assertTargetRefMatchesBasis(ref, basis);
 }
 
@@ -330,7 +441,6 @@ export async function requestNamedStaffRecord(
   // ── 1. validate ────────────────────────────────────────────────────────────────────────────
   requireUuid(request.officer.officerId, "officer.officerId");
   requireUuid(request.school.operationalSchoolId, "school.operationalSchoolId");
-  requireUuid(request.school.jurisdictionId, "school.jurisdictionId");
   requireUuid(request.subject.operationalStaffId, "subject.operationalStaffId");
   if (!request.caseReference || request.caseReference.trim().length === 0) {
     throw new GateInputError(
@@ -340,20 +450,33 @@ export async function requestNamedStaffRecord(
   }
   trace.push("validated");
 
-  // ── 2. classify (ANALYTICS, jurisdiction RLS — no operational connection yet) ───────────────
-  const classification = await withJurisdiction(
+  // ── 2. ceiling + classify, in ONE analytics transaction under the OFFICER's own RLS ─────────
+  //
+  // The school is resolved FIRST and the whole request is refused if it is outside the officer's
+  // subtree — before the establishment register is consulted, before any operational connection
+  // exists, and therefore before anything could be disclosed. Note that classification alone would
+  // NOT have caught this: an out-of-subtree school's register row is filtered away by RLS, which
+  // reads as NO_ESTABLISHMENT_ROW and DOWNGRADES the subject to OTHER_STAFF — i.e. the ceiling
+  // failure would have been silently converted into a consent-branch request, not a refusal.
+  const { school, classification } = await withJurisdiction(
     {
       jurisdictionId: request.officer.jurisdictionId,
       level: request.officer.level,
       officerId: request.officer.officerId,
     },
-    (tx) =>
-      classifyStaffSubjectInTx(tx, {
-        emisSchoolId: request.school.emisSchoolId,
-        gesStaffId: request.subject.gesStaffId ?? null,
-        now,
-      }),
+    async (tx) => {
+      const resolvedSchool = await resolveGateSchoolInTx(tx, request.school);
+      return {
+        school: resolvedSchool,
+        classification: await classifyStaffSubjectInTx(tx, {
+          emisSchoolId: resolvedSchool.emisSchoolId,
+          gesStaffId: request.subject.gesStaffId ?? null,
+          now,
+        }),
+      };
+    },
   );
+  trace.push("school:in-jurisdiction");
   trace.push(`classified:${classification.category}`);
 
   const legalBasis = basisFor(classification);
@@ -361,10 +484,22 @@ export async function requestNamedStaffRecord(
   const recordType = recordTypeFor(classification);
 
   const targetRef = buildTargetRef(legalBasis, {
-    emisSchoolId: request.school.emisSchoolId,
+    emisSchoolId: school.emisSchoolId,
     gesStaffId: request.subject.gesStaffId ?? null,
     operationalStaffId: request.subject.operationalStaffId,
   });
+
+  /**
+   * A denial that has been WRITTEN. Held outside the read-back transaction on purpose.
+   *
+   * A denial decided inside the transaction has already had its audit row committed to the
+   * ANALYTICS database — a different connection, unaffected by anything happening operationally.
+   * If the operational transaction then fails to unwind cleanly (which is the normal case when the
+   * consent table is missing: the SELECT aborts the transaction and COMMIT fails), the rejection
+   * would otherwise discard a refusal that has already been decided AND recorded. The refusal is
+   * the real outcome; the transaction unwind is bookkeeping. See the catch at the end.
+   */
+  let settledDenial: DeniedResult | null = null;
 
   const deny = async (
     outcome: DeniedOutcome,
@@ -372,7 +507,7 @@ export async function requestNamedStaffRecord(
   ): Promise<DeniedResult> => {
     const accessId = await writeAuditRow({
       officer: request.officer,
-      jurisdictionId: request.school.jurisdictionId,
+      jurisdictionId: school.jurisdictionId,
       reasonCode: request.reasonCode,
       caseReference: request.caseReference,
       recordType,
@@ -387,7 +522,7 @@ export async function requestNamedStaffRecord(
       exportFormat: null,
     });
     trace.push(`audit:${outcome}`);
-    return {
+    const result: DeniedResult = {
       outcome,
       accessId,
       legalBasis,
@@ -400,6 +535,8 @@ export async function requestNamedStaffRecord(
       classification,
       trace,
     };
+    settledDenial = result;
+    return result;
   };
 
   // ── 2b. the reason code must unlock something, and must not be a student reason ─────────────
@@ -423,7 +560,7 @@ export async function requestNamedStaffRecord(
 
   // ── 3. ownership preflight (CONSENT branch only) — BEFORE any operational connection ────────
   if (legalBasis === "CONSENT") {
-    const preflight = ownershipPreflight(request.school.ownershipType);
+    const preflight = ownershipPreflight(school.ownershipType);
     if (!preflight.allowed) {
       trace.push(`preflight:${preflight.reason}`);
       return deny(
@@ -447,123 +584,155 @@ export async function requestNamedStaffRecord(
   }
 
   // ── 4-6. one read-back transaction: confirm school → read consent → AUDIT → project ─────────
-  return withReadbackSchool(request.school.operationalSchoolId, async (tx) => {
-    const identity = await confirmSchoolIdentity(
-      tx,
-      request.school.operationalSchoolId,
-      request.school.emisSchoolId,
-    );
-    if (!identity.ok) {
-      throw new GateInputError(
-        "SCHOOL_MISMATCH",
-        `The supplied operational school uuid does not belong to EMIS school ${request.school.emisSchoolId}.`,
+  try {
+    return await withReadbackSchool(school.operationalSchoolId, async (tx) => {
+      const identity = await confirmSchoolIdentity(
+        tx,
+        school.operationalSchoolId,
+        school.emisSchoolId,
       );
-    }
-    trace.push("school:confirmed");
-
-    let consentRef: string | null = null;
-    if (legalBasis === "CONSENT") {
-      const consent = await readConsentInTx(tx, request.school.operationalSchoolId);
-      trace.push(`consent:${consent.outcome}`);
-      if (!isConsentGranted(consent)) {
-        const staleFallThrough =
-          classification.category === "OTHER_STAFF" &&
-          classification.reason === "STALE_ESTABLISHMENT";
-        return deny(
-          staleFallThrough ? "DENIED_STALE_ESTABLISHMENT" : "DENIED_NO_CONSENT",
-          staleFallThrough
-            ? "ESTABLISHMENT_STALE"
-            : consent.outcome === "REVOKED"
-              ? "CONSENT_REVOKED"
-              : consent.outcome === "TABLE_UNREACHABLE"
-                ? "CONSENT_UNREADABLE"
-                : "NO_CONSENT_ON_RECORD",
+      if (!identity.ok) {
+        throw new GateInputError(
+          "SCHOOL_MISMATCH",
+          `The supplied operational school uuid does not belong to EMIS school ${school.emisSchoolId}.`,
         );
       }
-      consentRef = consent.consentRef;
-    }
+      trace.push("school:confirmed");
 
-    // ── 5. AUDIT FIRST. Nothing below runs if this throws. ────────────────────────────────────
-    const exported = Boolean(request.exportFormat);
-    const accessId = await writeAuditRow({
-      officer: request.officer,
-      jurisdictionId: request.school.jurisdictionId,
-      reasonCode: request.reasonCode,
-      caseReference: request.caseReference,
-      recordType,
-      targetRef,
-      fieldsReleased: scopedFields,
-      legalBasis,
-      consentRef,
-      outcome: "GRANTED",
-      staffCategory,
-      rosterBrowsed: request.rosterBrowsed === true,
-      exported,
-      exportFormat: request.exportFormat ?? null,
-    });
-    trace.push("audit:GRANTED");
+      let consentRef: string | null = null;
+      if (legalBasis === "CONSENT") {
+        const consent = await readConsentInTx(tx, school.operationalSchoolId);
+        trace.push(`consent:${consent.outcome}`);
+        if (!isConsentGranted(consent)) {
+          const staleFallThrough =
+            classification.category === "OTHER_STAFF" &&
+            classification.reason === "STALE_ESTABLISHMENT";
+          return deny(
+            staleFallThrough ? "DENIED_STALE_ESTABLISHMENT" : "DENIED_NO_CONSENT",
+            staleFallThrough
+              ? "ESTABLISHMENT_STALE"
+              : consent.outcome === "REVOKED"
+                ? "CONSENT_REVOKED"
+                : consent.outcome === "TABLE_UNREACHABLE"
+                  ? "CONSENT_UNREADABLE"
+                  : "NO_CONSENT_ON_RECORD",
+          );
+        }
+        consentRef = consent.consentRef;
+      }
 
-    // ── 6. and only now, the record ───────────────────────────────────────────────────────────
-    const row = await fetchScopedStaffRecord(
-      tx,
-      request.school.operationalSchoolId,
-      request.subject.operationalStaffId,
-      scopedFields,
-    );
-    trace.push("fetched");
-    if (!row) {
-      // The audit row stands: the access was authorised and attempted. The subject simply is not
-      // there. We do NOT rewrite the outcome — the log is append-only and records what was done.
+      // ── 4b. does the subject exist? NO staff column is selected — see `staffRecordExists`. ───
+      // Asked before the audit INSERT so the append-only row can state a truthful
+      // `fields_released`: a missing subject must not leave a permanent entry claiming that a DOB
+      // and an address were released when nothing was.
+      if (
+        !(await staffRecordExists(
+          tx,
+          school.operationalSchoolId,
+          request.subject.operationalStaffId,
+        ))
+      ) {
+        trace.push("subject:absent");
+        return deny("DENIED_FIELD_SCOPE", "SUBJECT_NOT_FOUND");
+      }
+
+      // ── 5. AUDIT FIRST. Nothing below runs if this throws. ────────────────────────────────────
+      const exported = Boolean(request.exportFormat);
+      const accessId = await writeAuditRow({
+        officer: request.officer,
+        jurisdictionId: school.jurisdictionId,
+        reasonCode: request.reasonCode,
+        caseReference: request.caseReference,
+        recordType,
+        targetRef,
+        fieldsReleased: scopedFields,
+        legalBasis,
+        consentRef,
+        outcome: "GRANTED",
+        staffCategory,
+        rosterBrowsed: request.rosterBrowsed === true,
+        exported,
+        exportFormat: request.exportFormat ?? null,
+      });
+      trace.push("audit:GRANTED");
+
+      // ── 6. and only now, the record ───────────────────────────────────────────────────────────
+      const row = await fetchScopedStaffRecord(
+        tx,
+        school.operationalSchoolId,
+        request.subject.operationalStaffId,
+        scopedFields,
+      );
+      trace.push("fetched");
+      if (!row) {
+        // The existence probe said yes a moment ago, so this is a concurrent delete, not a typo.
+        // The audit row stands — the access was authorised and attempted — and the log is
+        // append-only, so the outcome is not rewritten.
+        return {
+          outcome: "DENIED_FIELD_SCOPE" as const,
+          accessId,
+          legalBasis,
+          consentRef: null,
+          staffCategory,
+          recordType,
+          targetRef,
+          fieldsReleased: [] as const,
+          denialReason: "SUBJECT_NOT_FOUND" as const,
+          classification,
+          trace,
+        };
+      }
+
+      // Server-derived and sourceless members of the scope, filled after the projection.
+      const record: Record<string, unknown> = { ...row };
+      if (scopedFields.includes("is_on_ges_establishment")) {
+        record.is_on_ges_establishment = classification.category === "GES_TEACHER";
+      }
+      if (scopedFields.includes("establishment_as_of_date")) {
+        // INDETERMINATE was refused above, so the classification here always carries a vintage field
+        // (null on an OTHER_STAFF subject with no register row).
+        record.establishment_as_of_date = classification.establishmentAsOfDate;
+      }
+      if (scopedFields.includes("establishment_post_count")) {
+        record.establishment_post_count =
+          classification.category === "GES_TEACHER"
+            ? classification.teachingPostsEstablished
+            : null;
+      }
+      for (const field of SOURCELESS_FIELDS) {
+        if (scopedFields.includes(field)) record[field] = UNAVAILABLE_NO_SOURCE;
+      }
+
       return {
-        outcome: "DENIED_FIELD_SCOPE" as const,
+        outcome: "GRANTED" as const,
         accessId,
         legalBasis,
-        consentRef: null,
+        consentRef,
         staffCategory,
         recordType,
         targetRef,
-        fieldsReleased: [] as const,
-        denialReason: "SUBJECT_NOT_FOUND" as const,
+        fieldsReleased: scopedFields,
+        withheld: withheldFields(request.reasonCode, recordType),
+        record,
         classification,
         trace,
       };
+    });
+  } catch (err) {
+    // A denial that has ALREADY been decided and logged outranks a failure to unwind the
+    // operational transaction it was decided in. The commonest case by far: the consent table does
+    // not exist yet, the SELECT aborts the transaction, the refusal is written to analytics, and
+    // then COMMIT fails. Rethrowing here would throw away a completed refusal and hand the officer
+    // a driver error instead of Lucy's C2 state. Nothing was fetched either way.
+    if (settledDenial) {
+      (settledDenial as DeniedResult).trace = [
+        ...trace,
+        "readback-tx:unwound-after-denial",
+      ];
+      return settledDenial;
     }
-
-    // Server-derived and sourceless members of the scope, filled after the projection.
-    const record: Record<string, unknown> = { ...row };
-    if (scopedFields.includes("is_on_ges_establishment")) {
-      record.is_on_ges_establishment = classification.category === "GES_TEACHER";
-    }
-    if (scopedFields.includes("establishment_as_of_date")) {
-      // INDETERMINATE was refused above, so the classification here always carries a vintage field
-      // (null on an OTHER_STAFF subject with no register row).
-      record.establishment_as_of_date = classification.establishmentAsOfDate;
-    }
-    if (scopedFields.includes("establishment_post_count")) {
-      record.establishment_post_count =
-        classification.category === "GES_TEACHER"
-          ? classification.teachingPostsEstablished
-          : null;
-    }
-    for (const field of SOURCELESS_FIELDS) {
-      if (scopedFields.includes(field)) record[field] = UNAVAILABLE_NO_SOURCE;
-    }
-
-    return {
-      outcome: "GRANTED" as const,
-      accessId,
-      legalBasis,
-      consentRef,
-      staffCategory,
-      recordType,
-      targetRef,
-      fieldsReleased: scopedFields,
-      withheld: withheldFields(request.reasonCode, recordType),
-      record,
-      classification,
-      trace,
-    };
-  });
+    throw err;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -607,7 +776,6 @@ export async function requestStaffListBrowse(
 ): Promise<StaffListBrowseResult> {
   requireUuid(request.officer.officerId, "officer.officerId");
   requireUuid(request.school.operationalSchoolId, "school.operationalSchoolId");
-  requireUuid(request.school.jurisdictionId, "school.jurisdictionId");
   if (!request.caseReference || request.caseReference.trim().length === 0) {
     throw new GateInputError(
       "INVALID_INPUT",
@@ -615,8 +783,22 @@ export async function requestStaffListBrowse(
     );
   }
 
-  const targetRef = buildRosterTargetRef(request.school.emisSchoolId);
+  // Same ceiling as the record path: the school is resolved under the OFFICER's own RLS, and a
+  // school outside their subtree is refused before anything else happens. A staff list is a list of
+  // names, so browsing one outside your jurisdiction is the same wrong as opening a record there.
+  const school = await withJurisdiction(
+    {
+      jurisdictionId: request.officer.jurisdictionId,
+      level: request.officer.level,
+      officerId: request.officer.officerId,
+    },
+    (tx) => resolveGateSchoolInTx(tx, request.school),
+  );
+
+  const targetRef = buildRosterTargetRef(school.emisSchoolId);
   const legalBasis: LegalBasis = "CONSENT";
+
+  let settledDenial: StaffListBrowseResult | null = null;
 
   const denyBrowse = async (
     outcome: DeniedOutcome,
@@ -624,7 +806,7 @@ export async function requestStaffListBrowse(
   ): Promise<StaffListBrowseResult> => {
     const accessId = await writeAuditRow({
       officer: request.officer,
-      jurisdictionId: request.school.jurisdictionId,
+      jurisdictionId: school.jurisdictionId,
       reasonCode: request.reasonCode,
       caseReference: request.caseReference,
       recordType: "STAFF",
@@ -638,10 +820,19 @@ export async function requestStaffListBrowse(
       exported: false,
       exportFormat: null,
     });
-    return { accessId, outcome, legalBasis, targetRef, rows: [], denialReason };
+    const result: StaffListBrowseResult = {
+      accessId,
+      outcome,
+      legalBasis,
+      targetRef,
+      rows: [],
+      denialReason,
+    };
+    settledDenial = result;
+    return result;
   };
 
-  const preflight = ownershipPreflight(request.school.ownershipType);
+  const preflight = ownershipPreflight(school.ownershipType);
   if (!preflight.allowed) {
     return denyBrowse(
       "DENIED_NO_CONSENT",
@@ -654,56 +845,63 @@ export async function requestStaffListBrowse(
     return denyBrowse("DENIED_NO_CONSENT", "CONSENT_UNREADABLE");
   }
 
-  return withReadbackSchool(request.school.operationalSchoolId, async (tx) => {
-    const identity = await confirmSchoolIdentity(
-      tx,
-      request.school.operationalSchoolId,
-      request.school.emisSchoolId,
-    );
-    if (!identity.ok) {
-      throw new GateInputError(
-        "SCHOOL_MISMATCH",
-        `The supplied operational school uuid does not belong to EMIS school ${request.school.emisSchoolId}.`,
+  try {
+    return await withReadbackSchool(school.operationalSchoolId, async (tx) => {
+      const identity = await confirmSchoolIdentity(
+        tx,
+        school.operationalSchoolId,
+        school.emisSchoolId,
       );
-    }
+      if (!identity.ok) {
+        throw new GateInputError(
+          "SCHOOL_MISMATCH",
+          `The supplied operational school uuid does not belong to EMIS school ${school.emisSchoolId}.`,
+        );
+      }
 
-    const consent = await readConsentInTx(tx, request.school.operationalSchoolId);
-    if (!isConsentGranted(consent)) {
-      return denyBrowse(
-        "DENIED_NO_CONSENT",
-        consent.outcome === "REVOKED"
-          ? "CONSENT_REVOKED"
-          : consent.outcome === "TABLE_UNREACHABLE"
-            ? "CONSENT_UNREADABLE"
-            : "NO_CONSENT_ON_RECORD",
+      const consent = await readConsentInTx(tx, school.operationalSchoolId);
+      if (!isConsentGranted(consent)) {
+        return denyBrowse(
+          "DENIED_NO_CONSENT",
+          consent.outcome === "REVOKED"
+            ? "CONSENT_REVOKED"
+            : consent.outcome === "TABLE_UNREACHABLE"
+              ? "CONSENT_UNREADABLE"
+              : "NO_CONSENT_ON_RECORD",
+        );
+      }
+
+      // AUDIT FIRST, then the list.
+      const accessId = await writeAuditRow({
+        officer: request.officer,
+        jurisdictionId: school.jurisdictionId,
+        reasonCode: request.reasonCode,
+        caseReference: request.caseReference,
+        recordType: "STAFF",
+        targetRef,
+        fieldsReleased: [],
+        legalBasis,
+        consentRef: consent.consentRef,
+        outcome: "GRANTED",
+        staffCategory: "OTHER_STAFF",
+        rosterBrowsed: true,
+        exported: false,
+        exportFormat: null,
+      });
+
+      const rows = await fetchStaffList(
+        tx,
+        school.operationalSchoolId,
+        request.limit ?? 50,
       );
-    }
-
-    // AUDIT FIRST, then the list.
-    const accessId = await writeAuditRow({
-      officer: request.officer,
-      jurisdictionId: request.school.jurisdictionId,
-      reasonCode: request.reasonCode,
-      caseReference: request.caseReference,
-      recordType: "STAFF",
-      targetRef,
-      fieldsReleased: [],
-      legalBasis,
-      consentRef: consent.consentRef,
-      outcome: "GRANTED",
-      staffCategory: "OTHER_STAFF",
-      rosterBrowsed: true,
-      exported: false,
-      exportFormat: null,
+      return { accessId, outcome: "GRANTED" as const, legalBasis, targetRef, rows };
     });
-
-    const rows = await fetchStaffList(
-      tx,
-      request.school.operationalSchoolId,
-      request.limit ?? 50,
-    );
-    return { accessId, outcome: "GRANTED" as const, legalBasis, targetRef, rows };
-  });
+  } catch (err) {
+    // Same reasoning as the record path: a refusal already decided and logged outranks a failure to
+    // unwind the operational transaction it was decided in.
+    if (settledDenial) return settledDenial;
+    throw err;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════

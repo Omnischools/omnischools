@@ -114,6 +114,28 @@ Current files:
 > *as* that owner. Verification block A prints it: confirm it is the intended privileged schema
 > owner before considering the paste done.
 
+- `db/sql/prod-paste-0003-audit-insert-subtree.sql` — **replaces the `audit_insert` policy on
+  `audit_access_log`** so its `WITH CHECK` is
+  `officer_id = ov_current_officer() and ov_in_subtree(jurisdiction_id)`. No migration; no table,
+  column or function is touched.
+
+> **Apply 0003 AFTER 0002** — it calls `ov_in_subtree`, and the pre-check block at the head of the
+> file confirms that function exists and is `SECURITY DEFINER` before you paste.
+>
+> **What it closes.** The original predicate enforced only "you cannot write a row in another
+> officer's name". It said nothing about *which school* the row was about, so a district director
+> could log — and therefore, since the gate writes the audit row **before** it fetches (§6 step 2),
+> **perform** — a named-record access against a school in another region. The application now
+> refuses this itself (`lib/oversight/named-record-access.ts` resolves the target school under the
+> officer's own RLS and throws `OUT_OF_JURISDICTION`); this paste is the independent database
+> backstop behind that check, and it is the one that holds when a future caller forgets to make it.
+>
+> **It does not block in-subtree denials.** A no-consent / stale-establishment / flag-off refusal
+> carries the *target school's* `jurisdiction_id`, which is inside the officer's subtree, so those
+> rows still insert. That is required: denials are the rows that evidence the gate holding. The
+> file's verification block checks exactly this, and the dev/test harness boots from
+> `db/sql/policies.sql`, which carries the same predicate.
+
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 
 These are **external data-agreement** loads, not part of the seed. Load with each source's own

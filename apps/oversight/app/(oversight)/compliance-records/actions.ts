@@ -11,7 +11,6 @@ import {
   type SchoolGateRef,
 } from "@/lib/oversight/named-record-access";
 import { STAFF_REASON_CODES, withheldFields } from "@/lib/oversight/field-scope";
-import { resolveSchool } from "@/lib/oversight/school-ref";
 import type { StaffListRow } from "@/lib/oversight/staff-projection";
 
 /**
@@ -19,14 +18,15 @@ import type { StaffListRow } from "@/lib/oversight/staff-projection";
  * does so exclusively through `lib/oversight/named-record-access.ts` (see the isolation guard in
  * tests/readback-isolation.test.ts).
  *
- * Two things are done HERE rather than in the orchestrator, because they are session/request
- * concerns rather than gate logic:
- *   · the officer identity comes from `lib/auth` — never from the form. A form-supplied officer id
- *     would let the audit log be written in someone else's name, which is the one thing the log
- *     cannot survive.
- *   · the school is re-resolved from the analytics register under the officer's own jurisdiction
- *     RLS. The form carries an EMIS id; if that school is outside the officer's subtree it does not
- *     resolve, so the jurisdiction ceiling holds at the gate exactly as Lucy §A1.1 requires.
+ * ONE thing is done HERE rather than in the orchestrator, because it is a session concern rather
+ * than gate logic: the officer identity comes from `lib/auth`, never from the form. A form-supplied
+ * officer id would let the audit log be written in someone else's name, which is the one thing the
+ * log cannot survive.
+ *
+ * The JURISDICTION CEILING used to be enforced here too, by re-resolving the school before calling.
+ * It has moved INTO the orchestrator (`resolveGateSchoolInTx`): an authorization check that only
+ * works because the single current caller remembers to make it is not a check, and this file is not
+ * going to stay the only caller. This action now passes two ids and lets the gate decide.
  */
 
 export interface ReleasedField {
@@ -71,35 +71,15 @@ function field(formData: FormData, name: string): string {
   return String(formData.get(name) ?? "").trim();
 }
 
-/** Resolve the school under the officer's ceiling and pair it with the operational tenant uuid. */
-async function gateSchool(
-  officer: Awaited<ReturnType<typeof requireOfficerSession>>,
-  emisSchoolId: string,
-  operationalSchoolId: string,
-): Promise<SchoolGateRef | { error: string }> {
-  const resolved = await resolveSchool(
-    {
-      jurisdictionId: officer.jurisdictionId,
-      level: officer.level,
-      officerId: officer.officerId,
-    },
-    emisSchoolId,
-  );
-  if (!resolved) {
-    return { error: `No school ${emisSchoolId} inside your jurisdiction.` };
-  }
-  if (!resolved.jurisdictionId) {
-    return {
-      error: `School ${emisSchoolId} has no dim_jurisdiction node, so an access to it could not be scoped or logged.`,
-    };
-  }
-  return {
-    emisSchoolId: resolved.emisSchoolId,
-    operationalSchoolId,
-    jurisdictionId: resolved.jurisdictionId,
-    ownershipType: resolved.ownershipType,
-    name: resolved.name,
-  };
+/**
+ * The school reference handed to the gate: two ids and nothing else.
+ *
+ * The jurisdiction node and the ownership type are DELIBERATELY not passed. The orchestrator
+ * resolves both from the GES register under the officer's own RLS and refuses an out-of-subtree
+ * school itself — so this action cannot get the ceiling wrong, and neither can any future caller.
+ */
+function gateSchool(emisSchoolId: string, operationalSchoolId: string): SchoolGateRef {
+  return { emisSchoolId, operationalSchoolId };
 }
 
 export async function submitStaffGate(
@@ -129,13 +109,10 @@ export async function submitStaffGate(
     return { status: "error", message: "Pick a compliance reason." };
   }
 
-  const school = await gateSchool(officer, emisSchoolId, operationalSchoolId);
-  if ("error" in school) return { status: "error", message: school.error };
-
   try {
     const result = await requestNamedStaffRecord({
       officer,
-      school,
+      school: gateSchool(emisSchoolId, operationalSchoolId),
       reasonCode,
       caseReference,
       subject: { operationalStaffId, gesStaffId: gesStaffId || null },
@@ -209,13 +186,10 @@ export async function browseStaffListAction(
     return { status: "error", message: "Pick a compliance reason." };
   }
 
-  const school = await gateSchool(officer, emisSchoolId, operationalSchoolId);
-  if ("error" in school) return { status: "error", message: school.error };
-
   try {
     const result = await requestStaffListBrowse({
       officer,
-      school,
+      school: gateSchool(emisSchoolId, operationalSchoolId),
       reasonCode,
       caseReference,
     });

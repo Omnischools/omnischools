@@ -12,7 +12,14 @@ insert into ref_school (id, name, ges_code, ownership_type) values
   ('30000000-0000-4000-8000-000000000002', 'Amenfiman SHS',          'EMIS-PUB-002', 'PUBLIC'),
   ('30000000-0000-4000-8000-000000000003', 'St. Monica Mission SHS', 'EMIS-PRI-003', 'PRIVATE'),
   ('30000000-0000-4000-8000-000000000004', 'Wassa Akropong JHS',     'EMIS-PUB-004', 'PUBLIC'),
-  ('30000000-0000-4000-8000-000000000005', 'Manso Amenfi JHS',       'EMIS-PUB-005', 'PUBLIC');
+  ('30000000-0000-4000-8000-000000000005', 'Manso Amenfi JHS',       'EMIS-PUB-005', 'PUBLIC'),
+  ('30000000-0000-4000-8000-000000000006', 'Nkwanta Community JHS',  'EMIS-UNK-006', 'PUBLIC'),
+  ('30000000-0000-4000-8000-000000000007', 'Bethel Academy',         'EMIS-PRI-007', 'PRIVATE'),
+  ('30000000-0000-4000-8000-000000000008', 'Takoradi SHS',           'EMIS-OUT-008', 'PUBLIC');
+
+-- ⚠ Note EMIS-UNK-006: the OPERATIONAL row says PUBLIC while the GES register says nothing. The
+-- gate reads ownership from the REGISTER, so it fails closed on UNKNOWN_OWNERSHIP — a school's own
+-- record of what it is must not be able to move the line the non-public flag draws.
 
 insert into ref_user (id, phone, email, full_name) values
   ('40000000-0000-4000-8000-000000000001', '+233200000001', 'a.boateng@example.gh',  'Ama Boateng'),
@@ -20,7 +27,10 @@ insert into ref_user (id, phone, email, full_name) values
   ('40000000-0000-4000-8000-000000000003', '+233200000003', 'e.darko@example.gh',    'Efua Darko'),
   ('40000000-0000-4000-8000-000000000004', '+233200000004', 'y.owusu@example.gh',    'Yaw Owusu'),
   ('40000000-0000-4000-8000-000000000005', '+233200000005', 'a.asare@example.gh',    'Abena Asare'),
-  ('40000000-0000-4000-8000-000000000006', '+233200000006', 'k.frimpong@example.gh', 'Kwesi Frimpong');
+  ('40000000-0000-4000-8000-000000000006', '+233200000006', 'k.frimpong@example.gh', 'Kwesi Frimpong'),
+  ('40000000-0000-4000-8000-000000000007', '+233200000007', 'n.tetteh@example.gh',   'Naa Tetteh'),
+  ('40000000-0000-4000-8000-000000000008', '+233200000008', 'j.quaye@example.gh',    'Joana Quaye'),
+  ('40000000-0000-4000-8000-000000000009', '+233200000009', 's.appiah@example.gh',   'Selorm Appiah');
 
 insert into ref_role (id, code, label) values
   ('41000000-0000-4000-8000-000000000001', 'TEACHER',    'Teacher · JHS Maths'),
@@ -35,7 +45,10 @@ insert into role_assignment (id, user_id, school_id, role_id, scope_ref, start_d
   ('42000000-0000-4000-8000-000000000003', '40000000-0000-4000-8000-000000000003', '30000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000001', null, current_date - 400, null),
   ('42000000-0000-4000-8000-000000000004', '40000000-0000-4000-8000-000000000004', '30000000-0000-4000-8000-000000000003', '41000000-0000-4000-8000-000000000002', null, current_date - 300, null),
   ('42000000-0000-4000-8000-000000000005', '40000000-0000-4000-8000-000000000005', '30000000-0000-4000-8000-000000000004', '41000000-0000-4000-8000-000000000001', null, current_date - 1200, null),
-  ('42000000-0000-4000-8000-000000000006', '40000000-0000-4000-8000-000000000006', '30000000-0000-4000-8000-000000000005', '41000000-0000-4000-8000-000000000002', null, current_date - 200, null);
+  ('42000000-0000-4000-8000-000000000006', '40000000-0000-4000-8000-000000000006', '30000000-0000-4000-8000-000000000005', '41000000-0000-4000-8000-000000000002', null, current_date - 200, null),
+  ('42000000-0000-4000-8000-000000000007', '40000000-0000-4000-8000-000000000007', '30000000-0000-4000-8000-000000000006', '41000000-0000-4000-8000-000000000002', null, current_date - 150, null),
+  ('42000000-0000-4000-8000-000000000008', '40000000-0000-4000-8000-000000000008', '30000000-0000-4000-8000-000000000007', '41000000-0000-4000-8000-000000000002', null, current_date - 120, null),
+  ('42000000-0000-4000-8000-000000000009', '40000000-0000-4000-8000-000000000009', '30000000-0000-4000-8000-000000000008', '41000000-0000-4000-8000-000000000001', null, current_date - 500, null);
 
 insert into staff_profile (
   id, school_id, user_id, date_of_birth, gender, address, emergency_contact,
@@ -65,7 +78,19 @@ insert into staff_profile (
   ('50000000-0000-4000-8000-000000000006', '30000000-0000-4000-8000-000000000005', '40000000-0000-4000-8000-000000000006',
    '1993-09-30', 'Male', 'Manso Amenfi', 'Esi Frimpong · sister · +233200000106',
    'HND', 'HND Secretarialship · 2016', null,
-   null, null, null, null, null);
+   null, null, null, null, null),
+  ('50000000-0000-4000-8000-000000000007', '30000000-0000-4000-8000-000000000006', '40000000-0000-4000-8000-000000000007',
+   '1987-06-14', 'Female', 'Nkwanta', 'Ayele Tetteh · mother · +233200000107',
+   'DIPLOMA', 'Diploma in Basic Education · 2010', null,
+   null, null, null, null, null),
+  ('50000000-0000-4000-8000-000000000008', '30000000-0000-4000-8000-000000000007', '40000000-0000-4000-8000-000000000008',
+   '1995-03-08', 'Female', 'Bethel staff quarters', 'Kofi Quaye · brother · +233200000108',
+   'HND', 'HND Marketing · 2018', null,
+   null, null, null, null, null),
+  ('50000000-0000-4000-8000-000000000009', '30000000-0000-4000-8000-000000000008', '40000000-0000-4000-8000-000000000009',
+   '1983-12-01', 'Male', 'Takoradi', 'Mawuli Appiah · brother · +233200000109',
+   'MASTERS', 'MPhil Chemistry · KNUST · 2011', 'KNUST',
+   'NTC-2012-000114', '2028-01-31', null, null, 'Chemistry');
 
 -- Salary rows: present, populated, and unreadable by the read-back role.
 insert into staff_compensation (school_id, user_id, salary_status, monthly_amount, ssnit_deduction, paye_deduction, effective_from, notes)
@@ -88,7 +113,13 @@ insert into school_staff_oversight_consent (id, school_id, scope, state, granted
    '40000000-0000-4000-8000-000000000004', 'ADMIN', now() - interval '40 days', null, 'v1.0-2026-05'),
   -- REVOKED: a school that granted and changed its mind. Must refuse exactly like never granting.
   ('70000000-0000-4000-8000-000000000005', '30000000-0000-4000-8000-000000000005', 'NON_GES_STAFF', 'REVOKED',
-   '40000000-0000-4000-8000-000000000006', 'ADMIN', now() - interval '90 days', now() - interval '5 days', 'v1.0-2026-05');
+   '40000000-0000-4000-8000-000000000006', 'ADMIN', now() - interval '90 days', now() - interval '5 days', 'v1.0-2026-05'),
+  -- GRANTED at the unknown-ownership school: so a refusal there can ONLY be the missing ownership.
+  ('70000000-0000-4000-8000-000000000006', '30000000-0000-4000-8000-000000000006', 'NON_GES_STAFF', 'GRANTED',
+   '40000000-0000-4000-8000-000000000007', 'HEADMASTER', now() - interval '20 days', null, 'v1.0-2026-05'),
+  -- GRANTED outside the officer's subtree: so a refusal there can ONLY be the jurisdiction ceiling.
+  ('70000000-0000-4000-8000-000000000008', '30000000-0000-4000-8000-000000000008', 'NON_GES_STAFF', 'GRANTED',
+   '40000000-0000-4000-8000-000000000009', 'HEADMASTER', now() - interval '10 days', null, 'v1.0-2026-05');
 
 -- EMIS-PUB-002 and EMIS-PUB-004 have NO consent row at all. Absence is the commonest real state and
 -- must behave identically to an explicit refusal.

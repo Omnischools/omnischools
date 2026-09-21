@@ -121,18 +121,35 @@ export async function readConsentInTx(
 ): Promise<ConsentRead> {
   let rows: ConsentRow[];
   try {
-    rows = (await tx`
-      select
-        id::text                        as id,
-        state::text                     as state,
-        revoked_at::text                as revoked_at,
-        granted_at::text                as granted_at,
-        consent_statement_version       as consent_statement_version
-      from school_staff_oversight_consent
-      where school_id = ${operationalSchoolId}::uuid
-        and scope::text = ${scope}
-      limit 1
-    `) as unknown as ConsentRow[];
+    // ⚠ THE SAVEPOINT IS LOAD-BEARING, NOT DEFENSIVE STYLE.
+    //
+    // This SELECT is EXPECTED to fail in production today: the consent table does not exist yet
+    // (it is being built in apps/web against the contract in apps/web/Todo.md), so the very first
+    // non-GES staff drill-down against a real operational database hits `relation
+    // "school_staff_oversight_consent" does not exist`. The same is true of a revoked grant or a
+    // statement_timeout.
+    //
+    // In Postgres, a failed statement ABORTS the whole transaction: every later command in it
+    // returns "current transaction is aborted", and COMMIT fails. Without the savepoint the catch
+    // below would compute the correct refusal, the caller would write its denial — and then the
+    // enclosing `sql.begin()` would reject on commit and THROW THAT REFUSAL AWAY, surfacing a raw
+    // driver error to the officer instead of Lucy's C2 "individual record not available" state.
+    // Rolling back to a savepoint discards only this statement, leaving the outer transaction
+    // usable so the gate can finish refusing properly.
+    rows = (await tx.savepoint(
+      (sp) => sp`
+        select
+          id::text                        as id,
+          state::text                     as state,
+          revoked_at::text                as revoked_at,
+          granted_at::text                as granted_at,
+          consent_statement_version       as consent_statement_version
+        from school_staff_oversight_consent
+        where school_id = ${operationalSchoolId}::uuid
+          and scope::text = ${scope}
+        limit 1
+      `,
+    )) as unknown as ConsentRow[];
   } catch (err) {
     // Table missing, no grant on it, connection lost, statement_timeout. We do not know, so no.
     return {

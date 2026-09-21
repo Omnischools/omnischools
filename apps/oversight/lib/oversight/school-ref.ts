@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import type { Tx } from "@/lib/db";
 import type { OwnershipType } from "@/lib/oversight/consent";
 
 /**
@@ -74,16 +75,32 @@ export async function listSchoolsInJurisdiction(
   });
 }
 
+/**
+ * Resolve inside an EXISTING jurisdiction-scoped transaction.
+ *
+ * This is the form the gate uses. It matters that it is the same transaction as the establishment
+ * classification: the ceiling check and the lawful-basis derivation then see one consistent,
+ * RLS-filtered view of the register, and the gate makes no extra round trip to get it.
+ *
+ * Null means "does not exist, OR is outside the officer's ceiling" — deliberately the same answer.
+ * Distinguishing them would turn the gate into an oracle for the existence of schools an officer
+ * has no business knowing about.
+ */
+export async function resolveSchoolInTx(
+  tx: Tx,
+  emisSchoolId: string,
+): Promise<ResolvedSchool | null> {
+  const result = await tx.execute(
+    sql`${SELECT_SCHOOLS} where r.emis_school_id = ${emisSchoolId} limit 1`,
+  );
+  const row = rowsOf(result)[0];
+  return row ? mapRow(row) : null;
+}
+
 /** Null when the school does not exist OR is outside the officer's ceiling — the same answer. */
 export async function resolveSchool(
   scope: JurisdictionScope,
   emisSchoolId: string,
 ): Promise<ResolvedSchool | null> {
-  return withJurisdiction(scope, async (tx) => {
-    const result = await tx.execute(
-      sql`${SELECT_SCHOOLS} where r.emis_school_id = ${emisSchoolId} limit 1`,
-    );
-    const row = rowsOf(result)[0];
-    return row ? mapRow(row) : null;
-  });
+  return withJurisdiction(scope, (tx) => resolveSchoolInTx(tx, emisSchoolId));
 }

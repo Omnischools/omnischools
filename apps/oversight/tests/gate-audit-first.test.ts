@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { EMIS, GES_STAFF_ID, JUR, OPS_SCHOOL, OPS_STAFF } from "./fixtures/ids";
-import { auditRowsFor, caseRef, districtOfficer } from "./helpers";
+import { GES_STAFF_ID, OPS_STAFF } from "./fixtures/ids";
+import { SCHOOL } from "./fixtures/schools";
+import { adminAnalytics, auditRowsFor, caseRef, districtOfficer } from "./helpers";
 
 /**
  * Kofi group F/J — AUDIT BEFORE FETCH, proved two ways.
@@ -8,8 +9,9 @@ import { auditRowsFor, caseRef, districtOfficer } from "./helpers";
  * 1. The record fetch is intercepted, and at the moment it is called it asserts that the audit row
  *    for this access ALREADY EXISTS in the analytics DB. That is a direct observation of the
  *    ordering, not an inference from a trace array the implementation itself produced.
- * 2. The audit INSERT is made to fail (a jurisdiction_id that violates the foreign key), and the
- *    fetch must then never be called at all. An access that cannot be logged does not happen.
+ * 2. The audit INSERT is made to fail — by revoking the app role's INSERT grant, which is the real
+ *    production failure mode rather than a contrived one — and the fetch must then never be called
+ *    at all. An access that cannot be logged does not happen.
  */
 
 const fetchCalls: { caseReference: string; auditRowsAtCallTime: number }[] = [];
@@ -45,12 +47,7 @@ beforeEach(() => {
   fetchCalls.length = 0;
 });
 
-const school = {
-  emisSchoolId: EMIS.publicConsented,
-  operationalSchoolId: OPS_SCHOOL.publicConsented,
-  jurisdictionId: JUR.schoolPublicConsented,
-  ownershipType: "PUBLIC" as const,
-};
+const school = SCHOOL.publicConsented;
 
 describe("the audit row exists before the record is fetched", () => {
   it("sees exactly one audit row at the moment the projection runs", async () => {
@@ -73,23 +70,36 @@ describe("the audit row exists before the record is fetched", () => {
 
 describe("a failed audit INSERT means no fetch at all", () => {
   it("propagates the error and never reaches the projection", async () => {
+    // The real production failure mode, reproduced rather than simulated: the app role loses its
+    // INSERT grant on the audit log (a mis-provisioned role, a revoked grant). The gate must then
+    // be unable to read a record at all — an unloggable access does not occur.
+    const admin = adminAnalytics();
     currentCaseReference = caseRef("audit-fails");
-    await expect(
-      requestNamedStaffRecord({
-        officer: districtOfficer,
-        school: {
-          ...school,
-          // A well-formed uuid that is not in dim_jurisdiction: the audit row's FK rejects it.
-          jurisdictionId: "19999999-0000-4000-8000-000000000999",
-        },
-        reasonCode: "STATUTORY_AUDIT",
-        caseReference: currentCaseReference,
-        subject: {
-          operationalStaffId: OPS_STAFF.teacherOnRegister,
-          gesStaffId: GES_STAFF_ID.onRegister,
-        },
-      }),
-    ).rejects.toThrowError();
+    try {
+      await admin.unsafe(`revoke insert on audit_access_log from ov_app`);
+      let thrown: unknown = null;
+      try {
+        await requestNamedStaffRecord({
+          officer: districtOfficer,
+          school,
+          reasonCode: "STATUTORY_AUDIT",
+          caseReference: currentCaseReference,
+          subject: {
+            operationalStaffId: OPS_STAFF.teacherOnRegister,
+            gesStaffId: GES_STAFF_ID.onRegister,
+          },
+        });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).not.toBeNull();
+      // Drizzle wraps the driver error; the refusal itself is on the cause.
+      const cause = (thrown as { cause?: { message?: string } }).cause;
+      expect(`${cause?.message ?? ""}`).toMatch(/permission denied/i);
+    } finally {
+      await admin.unsafe(`grant insert on audit_access_log to ov_app`);
+      await admin.end({ timeout: 5 });
+    }
 
     expect(fetchCalls).toHaveLength(0);
     expect(await auditRowsFor(currentCaseReference)).toHaveLength(0);
