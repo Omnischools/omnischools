@@ -30,7 +30,11 @@ insert into ref_user (id, phone, email, full_name) values
   ('40000000-0000-4000-8000-000000000006', '+233200000006', 'k.frimpong@example.gh', 'Kwesi Frimpong'),
   ('40000000-0000-4000-8000-000000000007', '+233200000007', 'n.tetteh@example.gh',   'Naa Tetteh'),
   ('40000000-0000-4000-8000-000000000008', '+233200000008', 'j.quaye@example.gh',    'Joana Quaye'),
-  ('40000000-0000-4000-8000-000000000009', '+233200000009', 's.appiah@example.gh',   'Selorm Appiah');
+  ('40000000-0000-4000-8000-000000000009', '+233200000009', 's.appiah@example.gh',   'Selorm Appiah'),
+  -- Two PRIVATE-school (EMIS-PRI-003) teachers: one on the establishment with a MATCHING GES name
+  -- (statutory even with the flag off, AC-3.10), one whose GES name DISAGREES (OC-NTC-RESIDUAL).
+  ('40000000-0000-4000-8000-000000000010', '+233200000010', 'k.adomako@example.gh',  'Kofi Adomako'),
+  ('40000000-0000-4000-8000-000000000011', '+233200000011', 'e.nyaku@example.gh',    'Efo Nyaku');
 
 insert into ref_role (id, code, label) values
   ('41000000-0000-4000-8000-000000000001', 'TEACHER',    'Teacher · JHS Maths'),
@@ -48,7 +52,9 @@ insert into role_assignment (id, user_id, school_id, role_id, scope_ref, start_d
   ('42000000-0000-4000-8000-000000000006', '40000000-0000-4000-8000-000000000006', '30000000-0000-4000-8000-000000000005', '41000000-0000-4000-8000-000000000002', null, current_date - 200, null),
   ('42000000-0000-4000-8000-000000000007', '40000000-0000-4000-8000-000000000007', '30000000-0000-4000-8000-000000000006', '41000000-0000-4000-8000-000000000002', null, current_date - 150, null),
   ('42000000-0000-4000-8000-000000000008', '40000000-0000-4000-8000-000000000008', '30000000-0000-4000-8000-000000000007', '41000000-0000-4000-8000-000000000002', null, current_date - 120, null),
-  ('42000000-0000-4000-8000-000000000009', '40000000-0000-4000-8000-000000000009', '30000000-0000-4000-8000-000000000008', '41000000-0000-4000-8000-000000000001', null, current_date - 500, null);
+  ('42000000-0000-4000-8000-000000000009', '40000000-0000-4000-8000-000000000009', '30000000-0000-4000-8000-000000000008', '41000000-0000-4000-8000-000000000001', null, current_date - 500, null),
+  ('42000000-0000-4000-8000-000000000010', '40000000-0000-4000-8000-000000000010', '30000000-0000-4000-8000-000000000003', '41000000-0000-4000-8000-000000000001', null, current_date - 700, null),
+  ('42000000-0000-4000-8000-000000000011', '40000000-0000-4000-8000-000000000011', '30000000-0000-4000-8000-000000000003', '41000000-0000-4000-8000-000000000001', null, current_date - 350, null);
 
 insert into staff_profile (
   id, school_id, user_id, date_of_birth, gender, address, emergency_contact,
@@ -63,10 +69,12 @@ insert into staff_profile (
    '1991-11-02', 'Male', 'Plot 9, Asankrangwa', 'Adwoa Mensah · wife · +233200000102',
    'HND', 'HND Accountancy · Takoradi Technical University · 2014', 'Takoradi Technical University',
    null, null, null, null, null),
+  -- staffNoConsentSchool: NTC licence NULL, so classification is OTHER_STAFF and a refusal at this
+  -- no-consent school can only be the missing consent (not a statutory bypass).
   ('50000000-0000-4000-8000-000000000003', '30000000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000003',
    '1990-02-19', 'Female', 'Amenfiman staff quarters', 'Kofi Darko · brother · +233200000103',
    'BACHELORS', 'BSc Integrated Science · UEW · 2013', 'University of Education, Winneba',
-   'NTC-2018-002210', '2026-12-31', null, null, 'Integrated Science'),
+   null, null, null, null, 'Integrated Science'),
   ('50000000-0000-4000-8000-000000000004', '30000000-0000-4000-8000-000000000003', '40000000-0000-4000-8000-000000000004',
    '1985-07-07', 'Male', 'Mission house, Wassa', 'Akua Owusu · wife · +233200000104',
    'DIPLOMA', 'Diploma in Business Studies · 2009', null,
@@ -90,7 +98,19 @@ insert into staff_profile (
   ('50000000-0000-4000-8000-000000000009', '30000000-0000-4000-8000-000000000008', '40000000-0000-4000-8000-000000000009',
    '1983-12-01', 'Male', 'Takoradi', 'Mawuli Appiah · brother · +233200000109',
    'MASTERS', 'MPhil Chemistry · KNUST · 2011', 'KNUST',
-   'NTC-2012-000114', '2028-01-31', null, null, 'Chemistry');
+   'NTC-2012-000114', '2028-01-31', null, null, 'Chemistry'),
+  -- teacherPrivateOnRegister: NTC on EMIS-PRI-003's fresh establishment, GES name "Kofi Adomako"
+  -- MATCHES this row → STATUTORY even though the school is PRIVATE and the flag is off (AC-3.10).
+  ('50000000-0000-4000-8000-000000000010', '30000000-0000-4000-8000-000000000003', '40000000-0000-4000-8000-000000000010',
+   '1986-05-20', 'Male', 'Mission house, Wassa', 'Ama Adomako · wife · +233200000110',
+   'BACHELORS', 'BEd Mathematics · UEW · 2010', 'University of Education, Winneba',
+   'NTC-PRI-003-STAT', '2027-06-30', null, null, 'Core Maths'),
+  -- teacherPrivateNameMismatch: NTC on the same establishment, but GES named it "Kwabena Otchere"
+  -- while this operational row is "Efo Nyaku" → OC-NTC-RESIDUAL demotes STATUTORY→CONSENT + anomaly.
+  ('50000000-0000-4000-8000-000000000011', '30000000-0000-4000-8000-000000000003', '40000000-0000-4000-8000-000000000011',
+   '1992-09-14', 'Male', 'Mission house, Wassa', 'Yoofi Nyaku · brother · +233200000111',
+   'BACHELORS', 'BSc ICT · KNUST · 2015', 'KNUST',
+   'NTC-PRI-003-MISMATCH', '2026-09-30', null, null, 'ICT');
 
 -- Salary rows: present, populated, and unreadable by the read-back role.
 insert into staff_compensation (school_id, user_id, salary_status, monthly_amount, ssnit_deduction, paye_deduction, effective_from, notes)

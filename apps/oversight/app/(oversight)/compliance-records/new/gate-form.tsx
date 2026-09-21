@@ -139,21 +139,15 @@ export function GateForm({ schools }: { schools: ResolvedSchool[] }) {
                 <Pill tone="navy">Staff lookup</Pill>
               </legend>
               <p className="text-xs text-navy-3">
-                For teachers, GES holds the staff ID from the establishment register — so
-                a staff record is found directly by staff ID, with a name search against
-                the school&apos;s staff list as a fallback. The register decides the
-                lawful basis; the role a school typed does not.
+                Find the staff member by browsing the school&apos;s staff list, then open
+                their record by its operational id. You supply nothing that decides the
+                lawful basis: the record&apos;s own NTC licence is checked against the GES
+                establishment register inside the read-back — an establishment teacher is
+                covered by statute, everyone else by the school&apos;s DPO consent. The role
+                a school typed does not decide it.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="block text-xs text-navy-2">
-                  GES staff ID (blank ⇒ consent branch)
-                  <input
-                    name="gesStaffId"
-                    placeholder="GES/WR/08841"
-                    className="mt-1 w-full rounded-md border border-border-2 bg-surface px-3 py-2 font-mono text-sm text-navy"
-                  />
-                </label>
-                <label className="block text-xs text-navy-2">
+                <label className="block text-xs text-navy-2 sm:col-span-2">
                   Operational staff record (uuid, from the staff list)
                   <input
                     name="operationalStaffId"
@@ -161,20 +155,6 @@ export function GateForm({ schools }: { schools: ResolvedSchool[] }) {
                     placeholder="00000000-0000-0000-0000-000000000000"
                     className="mt-1 w-full rounded-md border border-border-2 bg-surface px-3 py-2 font-mono text-sm text-navy"
                   />
-                </label>
-                <label className="block text-xs text-navy-2 sm:col-span-2">
-                  Operational school id (uuid)
-                  <input
-                    name="operationalSchoolId"
-                    required
-                    placeholder="00000000-0000-0000-0000-000000000000"
-                    className="mt-1 w-full rounded-md border border-border-2 bg-surface px-3 py-2 font-mono text-sm text-navy"
-                  />
-                  <span className="mt-1 block text-navy-3">
-                    Checked against the selected school&apos;s GES code inside the
-                    read-back transaction — a uuid that belongs to another school is
-                    refused.
-                  </span>
                 </label>
               </div>
             </fieldset>

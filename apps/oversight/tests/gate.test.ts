@@ -7,7 +7,7 @@ import {
 } from "@/lib/oversight/named-record-access";
 import { NEVER_RELEASE_FIELDS, STAFF_REASON_CODES } from "@/lib/oversight/field-scope";
 import { closeReadback } from "@/lib/db/readback";
-import { CONSENT_ID, EMIS, GES_STAFF_ID, OPS_SCHOOL, OPS_STAFF } from "./fixtures/ids";
+import { CONSENT_ID, EMIS, NTC_LICENCE, OPS_STAFF } from "./fixtures/ids";
 import { SCHOOL } from "./fixtures/schools";
 import {
   adminAnalytics,
@@ -22,165 +22,106 @@ afterAll(async () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
-describe("S1 — an UNBOUND establishment number must not confer the statutory basis", () => {
-  // The forge: `gesStaffId` decides the lawful basis, `operationalStaffId` decides whose record is
-  // fetched, and nothing binds them. Supplying a real establishment number for the target school
-  // alongside ANY staff uuid used to yield legal_basis = STATUTORY, which skips both the consent
-  // read and the non-public flag. Both arms below use a genuinely on-register number.
+describe("S1 — the statutory basis is the fetched row's NTC licence; there is nothing to forge", () => {
+  // The officer supplies NO establishment identifier. The NTC licence is read off the operational
+  // row itself, so the basis follows the ROW, not any fact a request could carry (AC-3.5/3.7/3.8).
 
-  it("(a) PRIVATE school, flag OFF: a real establishment number does not buy the record", async () => {
-    const reference = caseRef("forge-private");
+  it("(a) a row with NO establishment licence is CONSENT — a colleague's membership cannot be borrowed", async () => {
+    // clerkNotOnRegister and teacherOnRegister are at the SAME school, and that school HAS a GES
+    // teacher on the register. The clerk still resolves to CONSENT: there is no request field to
+    // point at the teacher's licence, and the clerk's own row carries none.
+    const reference = caseRef("row-decides-consent");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
-      school: SCHOOL.privateConsented,
-      // The widest welfare scope — this is the record Sarah extracted: DOB, address, next of kin.
+      school: SCHOOL.publicConsented,
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.staffPrivateSchool, // an accountant, not the teacher
-        gesStaffId: "GES/WR/00003", // genuinely on THIS school's register
-      },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
-
-    expect(result.outcome).toBe("DENIED_NO_CONSENT");
-    if (result.outcome === "GRANTED") {
-      throw new Error("an unbound establishment number must not confer STATUTORY");
-    }
-    expect(result.denialReason).toBe("NON_PUBLIC_FLAG_OFF");
+    expect(result.outcome).toBe("GRANTED");
+    if (result.outcome !== "GRANTED") return;
     expect(result.legalBasis).toBe("CONSENT");
-    expect(result.fieldsReleased).toEqual([]);
-    // The claim was never bound, and the trace says so rather than silently ignoring it.
-    expect(result.trace).toContain("binding:UNVERIFIABLE");
+    expect(result.staffCategory).toBe("OTHER_STAFF");
+    expect(result.recordType).toBe("STAFF");
+    expect(result.targetRef).toBe(
+      `OPS:${EMIS.publicConsented}:${OPS_STAFF.clerkNotOnRegister}`,
+    );
+    expect(result.record.is_on_ges_establishment).toBe(false);
+  });
+
+  it("(b) the SAME request shape on the establishment row IS statutory — the basis follows the row (AC-3.5)", async () => {
+    const reference = caseRef("row-decides-statutory");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.publicConsented,
+      reasonCode: "SAFEGUARDING_MISCONDUCT",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
+    });
+    expect(result.outcome).toBe("GRANTED");
+    if (result.outcome !== "GRANTED") return;
+    expect(result.legalBasis).toBe("STATUTORY");
+    expect(result.staffCategory).toBe("GES_TEACHER");
+    expect(result.recordType).toBe("TEACHER");
+    // The ref names the licence READ OFF the row — no consent was consulted.
+    expect(result.targetRef).toBe(`NTC:${NTC_LICENCE.onRegister}`);
+    expect(result.consentRef).toBeNull();
+    expect(result.record.is_on_ges_establishment).toBe(true);
 
     const rows = await auditRowsFor(reference);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      outcome: "DENIED_NO_CONSENT",
-      legal_basis: "CONSENT",
-      record_type: "STAFF",
-      staff_category: "OTHER_STAFF",
+      legal_basis: "STATUTORY",
+      record_type: "TEACHER",
+      staff_category: "GES_TEACHER",
+      consent_ref: null,
     });
-    // The unverified claim appears NOWHERE on the row — the ref names the uuid actually targeted.
-    expect(rows[0]!.target_ref).toBe(
-      `OPS:${EMIS.privateConsented}:${OPS_STAFF.staffPrivateSchool}`,
-    );
-    expect(rows[0]!.target_ref).not.toContain("GES/WR/00003");
-    expect(rows[0]!.fields_released).toEqual([]);
+    expect(rows[0]!.target_ref).toBe(`NTC:${NTC_LICENCE.onRegister}`);
   });
 
-  it("(b) PUBLIC school, no consent: same claim, same refusal", async () => {
-    const reference = caseRef("forge-public-no-consent");
-    const result = await requestNamedStaffRecord({
-      officer: districtOfficer,
-      school: SCHOOL.publicNoConsent,
-      reasonCode: "SAFEGUARDING_MISCONDUCT",
-      caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.staffNoConsentSchool,
-        gesStaffId: "GES/WR/00002", // on this school's register
-      },
-    });
-
-    expect(result.outcome).toBe("DENIED_NO_CONSENT");
-    if (result.outcome === "GRANTED") {
-      throw new Error("an unbound establishment number must not confer STATUTORY");
-    }
-    expect(result.denialReason).toBe("NO_CONSENT_ON_RECORD");
-    expect(result.legalBasis).toBe("CONSENT");
-
-    const rows = await auditRowsFor(reference);
-    expect(rows[0]).toMatchObject({ legal_basis: "CONSENT", record_type: "STAFF" });
-    expect(rows[0]!.target_ref).toBe(
-      `OPS:${EMIS.publicNoConsent}:${OPS_STAFF.staffNoConsentSchool}`,
-    );
-    expect(rows[0]!.fields_released).toEqual([]);
-  });
-
-  it("(c) where consent DOES exist the record opens — under CONSENT, naming the fetched subject", async () => {
-    // The same claim at the consenting school. It still does not upgrade the basis; the record is
-    // released because the school consented, and the row says exactly that.
-    const reference = caseRef("claim-does-not-upgrade");
+  it("(c) an absent/unregistered licence is a clean CONSENT branch — never a MISMATCH/forgery denial (AC-3.8)", async () => {
+    // The old footgun turned an empty binding column into an ESTABLISHMENT_ID_MISMATCH *denial*.
+    // That reason is gone, and a subject not on the register simply flows to consent and (here)
+    // grants — the DenialReason union no longer even contains a mismatch value.
+    const reference = caseRef("no-mismatch-footgun");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
       school: SCHOOL.publicConsented,
       reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
       caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.teacherOnRegister,
-        gesStaffId: GES_STAFF_ID.onRegister,
-      },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
-
     expect(result.outcome).toBe("GRANTED");
     if (result.outcome !== "GRANTED") return;
     expect(result.legalBasis).toBe("CONSENT");
-    expect(result.consentRef).toBe(CONSENT_ID.publicConsented);
-    expect(result.staffCategory).toBe("OTHER_STAFF");
-    expect(result.recordType).toBe("STAFF");
-    expect(result.targetRef).toBe(
-      `OPS:${EMIS.publicConsented}:${OPS_STAFF.teacherOnRegister}`,
-    );
-    expect(result.record.full_name).toBe("Ama Boateng");
-    // Neither true (unconfirmable) nor false (unrefutable) — the third, honest state.
-    expect(result.record.is_on_ges_establishment).toBe("UNVERIFIABLE_NO_LINK_KEY");
-
-    const rows = await auditRowsFor(reference);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      outcome: "GRANTED",
-      legal_basis: "CONSENT",
-      consent_ref: CONSENT_ID.publicConsented,
-      record_type: "STAFF",
-      staff_category: "OTHER_STAFF",
-      reason_code: "ESTABLISHMENT_PAYROLL_VERIFICATION",
-      case_reference: reference,
-      officer_role: districtOfficer.officerRole,
-      exported: false,
-    });
-    expect(rows[0]!.fields_released).toEqual([...result.fieldsReleased]);
-  });
-
-  it("(d) NO audit row anywhere in the suite claims STATUTORY while the binding is unverifiable", async () => {
-    // A whole-log invariant rather than a per-request one: with no `staff_profile.ges_staff_id`,
-    // STATUTORY is unreachable, so a single such row would mean some path still forges it.
-    const sql = adminAnalytics();
-    try {
-      const rows = (await sql`
-        select count(*)::int as n from audit_access_log where legal_basis = 'STATUTORY'
-      `) as unknown as { n: number }[];
-      expect(rows[0]!.n).toBe(0);
-    } finally {
-      await sql.end({ timeout: 5 });
-    }
+    // No mismatch/forgery trace token exists any more.
+    expect(result.trace.some((t) => /mismatch|binding|MISMATCH/i.test(t))).toBe(false);
   });
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 describe("Kofi group F — ordering, on the path a record actually takes", () => {
-  it("writes the audit row BEFORE the record is fetched", async () => {
+  it("classifies BEFORE the audit row, and writes the audit row BEFORE the record is fetched", async () => {
     const reference = caseRef("order");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
       school: SCHOOL.publicConsented,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.teacherOnRegister,
-        gesStaffId: GES_STAFF_ID.onRegister,
-      },
+      subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
     });
-    expect(result.trace.indexOf("audit:GRANTED")).toBeGreaterThan(-1);
+    expect(result.outcome).toBe("GRANTED");
+    // Classification (keyed on the licence read off the row) precedes the audit write …
+    expect(result.trace.indexOf("classified:GES_TEACHER")).toBeGreaterThan(-1);
+    expect(result.trace.indexOf("classified:GES_TEACHER")).toBeLessThan(
+      result.trace.indexOf("audit:GRANTED"),
+    );
+    // … and the audit write precedes the fetch.
     expect(result.trace.indexOf("fetched")).toBeGreaterThan(
       result.trace.indexOf("audit:GRANTED"),
     );
-    // Classification happens before any operational connection is opened.
-    expect(result.trace.indexOf("classified:GES_TEACHER")).toBeLessThan(
-      result.trace.indexOf("school:confirmed"),
-    );
-    // …and the subject binding is attempted before the consent read that depends on its outcome.
-    expect(result.trace.indexOf("binding:UNVERIFIABLE")).toBeLessThan(
-      result.trace.indexOf("consent:GRANTED"),
-    );
+    // A statutory access consults no consent row at all.
+    expect(result.trace.some((t) => t.startsWith("consent:"))).toBe(false);
   });
 });
 
@@ -193,7 +134,7 @@ describe("Kofi group G — the CONSENT branch (non-GES / non-teaching staff)", (
       school: SCHOOL.publicConsented,
       reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
 
     expect(result.outcome).toBe("GRANTED");
@@ -206,9 +147,9 @@ describe("Kofi group G — the CONSENT branch (non-GES / non-teaching staff)", (
       `OPS:${EMIS.publicConsented}:${OPS_STAFF.clerkNotOnRegister}`,
     );
     expect(result.record.full_name).toBe("Kojo Mensah");
-    // No claim was made, and none could be bound anyway — so the field reports that rather than
-    // asserting a non-membership the gate is not in a position to assert.
-    expect(result.record.is_on_ges_establishment).toBe("UNVERIFIABLE_NO_LINK_KEY");
+    // Not on the register, so the honest field value is a plain false — the gate did not treat this
+    // person as an establishment teacher, and says so.
+    expect(result.record.is_on_ges_establishment).toBe(false);
 
     const rows = await auditRowsFor(reference);
     expect(rows[0]).toMatchObject({
@@ -226,7 +167,7 @@ describe("Kofi group G — the CONSENT branch (non-GES / non-teaching staff)", (
       school: SCHOOL.publicNoConsent,
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffNoConsentSchool, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffNoConsentSchool },
     });
 
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
@@ -253,7 +194,7 @@ describe("Kofi group G — the CONSENT branch (non-GES / non-teaching staff)", (
       school: SCHOOL.publicRevoked,
       reasonCode: "TEACHER_ABSENCE_INVESTIGATION",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffRevokedSchool, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffRevokedSchool },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
     if (result.outcome === "GRANTED") return;
@@ -272,10 +213,7 @@ describe("Kofi group H — staleness falls through to consent, and then closes",
       school: SCHOOL.publicStale,
       reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
       caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.teacherStaleRegister,
-        gesStaffId: GES_STAFF_ID.onStaleRegister,
-      },
+      subject: { operationalStaffId: OPS_STAFF.teacherStaleRegister },
     });
     expect(result.outcome).toBe("DENIED_STALE_ESTABLISHMENT");
     if (result.outcome === "GRANTED") return;
@@ -294,24 +232,70 @@ describe("Kofi group H — staleness falls through to consent, and then closes",
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
-describe("Kofi group I — the non-public feature flag", () => {
-  it("DENIES a PRIVATE school's staff even though that school HAS granted consent", async () => {
+describe("Kofi group I — the non-public feature flag (and where statute overrides it)", () => {
+  it("DENIES a PRIVATE school's non-establishment staff even though that school HAS granted consent", async () => {
     const reference = caseRef("flag-off");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
       school: SCHOOL.privateConsented,
       reasonCode: "LICENSURE_QUALIFICATION_VERIFICATION",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffPrivateSchool, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffPrivateSchool },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
     if (result.outcome === "GRANTED") return;
     expect(result.denialReason).toBe("NON_PUBLIC_FLAG_OFF");
-    // Refused BEFORE any operational connection: the trace never reaches the school confirmation.
-    expect(result.trace).not.toContain("school:confirmed");
+    // The subject was classified OTHER_STAFF, so the flag applies; the preflight refused before any
+    // scoped field was fetched.
+    expect(result.trace).toContain("classified:OTHER_STAFF");
     expect(result.trace).toContain("preflight:FLAG_OFF_NON_PUBLIC");
+    expect(result.trace).not.toContain("fetched");
     const rows = await auditRowsFor(reference);
     expect(rows[0]!.fields_released).toEqual([]);
+  });
+
+  it("STATUTE overrides the flag: a GES-establishment teacher at a PRIVATE school is GRANTED with the flag OFF (AC-3.10)", async () => {
+    // teacherPrivateOnRegister's NTC is on EMIS-PRI-003's establishment and the GES name matches, so
+    // the subject is a verified establishment teacher. The non-public flag is off (suite default),
+    // and it must NOT touch statute — the record opens under STATUTORY at a private school.
+    const reference = caseRef("statute-at-private-flag-off");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.privateConsented,
+      reasonCode: "STATUTORY_AUDIT",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.teacherPrivateOnRegister },
+    });
+    expect(result.outcome).toBe("GRANTED");
+    if (result.outcome !== "GRANTED") return;
+    expect(result.legalBasis).toBe("STATUTORY");
+    expect(result.staffCategory).toBe("GES_TEACHER");
+    expect(result.record.full_name).toBe("Kofi Adomako");
+    // The flag preflight never ran — statute skips it entirely.
+    expect(result.trace).not.toContain("preflight:FLAG_OFF_NON_PUBLIC");
+    const rows = await auditRowsFor(reference);
+    expect(rows[0]).toMatchObject({ legal_basis: "STATUTORY", record_type: "TEACHER" });
+  });
+
+  it("a name-mismatch teacher at a PRIVATE school (flag off) is DENIED — the mismatch strips statute, the flag then refuses", async () => {
+    // teacherPrivateNameMismatch's NTC IS on the register, but GES named it differently from the
+    // operational row → OC-NTC-RESIDUAL demotes to CONSENT. With the flag off, the consent branch
+    // refuses. If the mismatch had NOT stripped statute, this would have been granted.
+    const reference = caseRef("name-mismatch-flag-off");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.privateConsented,
+      reasonCode: "STATUTORY_AUDIT",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.teacherPrivateNameMismatch },
+    });
+    expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    if (result.outcome === "GRANTED") return;
+    expect(result.denialReason).toBe("NON_PUBLIC_FLAG_OFF");
+    expect(result.legalBasis).toBe("CONSENT");
+    expect(result.trace).toContain("establishment:name-mismatch");
+    expect(result.trace).toContain("preflight:FLAG_OFF_NON_PUBLIC");
+    expect(result.trace).not.toContain("fetched");
   });
 
   it("an UNKNOWN ownership type is refused too — a data gap is not a grant", async () => {
@@ -324,46 +308,68 @@ describe("Kofi group I — the non-public feature flag", () => {
       school: SCHOOL.unknownOwnership,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffUnknownOwnership, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffUnknownOwnership },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
     if (result.outcome === "GRANTED") return;
     expect(result.denialReason).toBe("UNKNOWN_OWNERSHIP");
-    expect(result.trace).not.toContain("school:confirmed");
-  });
-
-  it("the flag applies to a claim-carrying request too — the claim cannot route around it", async () => {
-    // Statute IS meant to hold at private and mission schools, and the code keeps a path for that
-    // (the preflight moves after the binding when a claim is present). But the exemption belongs to
-    // a VERIFIED establishment teacher, not to anyone who can type an establishment number — so
-    // while the binding is unverifiable the flag refuses this, exactly as it refuses a no-claim
-    // request. The same request without the claim is covered by the test above; the point here is
-    // that adding the claim changes nothing.
-    const reference = caseRef("private-claim-no-bypass");
-    const result = await requestNamedStaffRecord({
-      officer: districtOfficer,
-      school: SCHOOL.privateConsented,
-      reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
-      caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.staffPrivateSchool,
-        gesStaffId: "GES/WR/00003",
-      },
-    });
-    expect(result.outcome).toBe("DENIED_NO_CONSENT");
-    if (result.outcome === "GRANTED") return;
-    expect(result.denialReason).toBe("NON_PUBLIC_FLAG_OFF");
-    // The preflight ran INSIDE the read-back this time (the basis was not decidable before it),
-    // but it still ran, and still before any scoped field was selected.
-    expect(result.trace).toContain("binding:UNVERIFIABLE");
-    expect(result.trace).toContain("preflight:FLAG_OFF_NON_PUBLIC");
     expect(result.trace).not.toContain("fetched");
   });
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
+describe("AC-1.6 — a school with no operational tenant mapping is refused, never guessed", () => {
+  it("DENIES a record request for a registered-but-unmapped school, and logs it with no fields", async () => {
+    // EMIS-UNM-009 is in the officer's subtree, PUBLIC, but its register operational_school_id is
+    // NULL. There is no tenant to read a record from, and the gate must NOT fall back to any
+    // request-supplied uuid (there no longer is one). Fail-closed, logged.
+    const reference = caseRef("unmapped");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.unmappedOperational,
+      reasonCode: "STATUTORY_AUDIT",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
+    });
+    expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    if (result.outcome === "GRANTED") return;
+    expect(result.denialReason).toBe("OPERATIONAL_UNMAPPED");
+    expect(result.trace).toContain("school:unmapped");
+    expect(result.trace).not.toContain("fetched");
+    const rows = await auditRowsFor(reference);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.fields_released).toEqual([]);
+
+    // The register row really does carry a NULL mapping — the fixture is the scenario, not a mock.
+    const sql = adminAnalytics();
+    try {
+      const reg = (await sql`
+        select operational_school_id from ref_emis_school_register
+        where emis_school_id = ${EMIS.unmappedOperational}
+      `) as unknown as { operational_school_id: string | null }[];
+      expect(reg[0]!.operational_school_id).toBeNull();
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
+  it("DENIES a staff-LIST browse for an unmapped school too", async () => {
+    const reference = caseRef("unmapped-browse");
+    const result = await requestStaffListBrowse({
+      officer: districtOfficer,
+      school: SCHOOL.unmappedOperational,
+      reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
+      caseReference: reference,
+    });
+    expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    expect(result.denialReason).toBe("OPERATIONAL_UNMAPPED");
+    expect(result.rows).toEqual([]);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
 describe("Kofi group E (runtime) — nothing released is ever a compensation field", () => {
-  it("across every reason code, a granted record carries no never-released key", async () => {
+  it("across every reason code, a granted STATUTORY record carries no never-released key", async () => {
     for (const reason of STAFF_REASON_CODES) {
       const reference = caseRef(`matrix-${reason}`);
       const result = await requestNamedStaffRecord({
@@ -371,13 +377,12 @@ describe("Kofi group E (runtime) — nothing released is ever a compensation fie
         school: SCHOOL.publicConsented,
         reasonCode: reason,
         caseReference: reference,
-        subject: {
-          operationalStaffId: OPS_STAFF.teacherOnRegister,
-          gesStaffId: GES_STAFF_ID.onRegister,
-        },
+        subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
       });
       expect(result.outcome, reason).toBe("GRANTED");
       if (result.outcome !== "GRANTED") continue;
+      expect(result.legalBasis, reason).toBe("STATUTORY");
+      expect(result.recordType, reason).toBe("TEACHER");
       for (const forbidden of NEVER_RELEASE_FIELDS) {
         expect(Object.keys(result.record), `${reason} leaked ${forbidden}`).not.toContain(
           forbidden,
@@ -397,7 +402,7 @@ describe("Kofi group E (runtime) — nothing released is ever a compensation fie
       school: SCHOOL.publicConsented,
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
     if (result.outcome !== "GRANTED") throw new Error("expected a grant");
     expect(result.targetRef).not.toMatch(/Kojo|Mensah/i);
@@ -416,10 +421,7 @@ describe("Kofi group J — export is the same logged event", () => {
       school: SCHOOL.publicConsented,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.teacherOnRegister,
-        gesStaffId: GES_STAFF_ID.onRegister,
-      },
+      subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
       exportFormat: "CSV",
     });
     expect(result.outcome).toBe("GRANTED");
@@ -429,7 +431,7 @@ describe("Kofi group J — export is the same logged event", () => {
       exported: true,
       export_format: "CSV",
       outcome: "GRANTED",
-      legal_basis: "CONSENT",
+      legal_basis: "STATUTORY",
     });
     expect((rows[0]!.fields_released ?? []).length).toBeGreaterThan(0);
   });
@@ -475,10 +477,6 @@ describe("Lucy C4 — the staff-list browse is logged as a browse", () => {
   });
 
   it("a browse with an UNRECOGNISED reason code is DENIED and returns no names", async () => {
-    // The consenting school: consent, ownership and ceiling all pass, so the only thing that can
-    // refuse this is the reason code. Without the check in the orchestrator a second caller could
-    // have obtained every staff name here under reason_code = "banana", logged verbatim as the
-    // compliance ground — the record path has always refused it; the browse did not.
     const reference = caseRef("browse-bad-reason");
     const result = await requestStaffListBrowse({
       officer: districtOfficer,
@@ -526,7 +524,7 @@ describe("Lucy C4 — the staff-list browse is logged as a browse", () => {
       school: SCHOOL.publicConsented,
       reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
       rosterBrowsed: true,
     });
     const rows = await auditRowsFor(reference);
@@ -541,21 +539,6 @@ describe("Lucy C4 — the staff-list browse is logged as a browse", () => {
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 describe("input integrity", () => {
-  it("refuses a tenant uuid that does not belong to the EMIS school picked", async () => {
-    await expect(
-      requestNamedStaffRecord({
-        officer: districtOfficer,
-        school: {
-          ...SCHOOL.publicConsented,
-          operationalSchoolId: OPS_SCHOOL.publicNoConsent, // someone else's tenant
-        },
-        reasonCode: "STATUTORY_AUDIT",
-        caseReference: caseRef("mismatch"),
-        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
-      }),
-    ).rejects.toBeInstanceOf(GateInputError);
-  });
-
   it("requires a case reference", async () => {
     await expect(
       requestNamedStaffRecord({
@@ -563,7 +546,7 @@ describe("input integrity", () => {
         school: SCHOOL.publicConsented,
         reasonCode: "STATUTORY_AUDIT",
         caseReference: "   ",
-        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
       }),
     ).rejects.toBeInstanceOf(GateInputError);
   });
@@ -575,7 +558,7 @@ describe("input integrity", () => {
       school: SCHOOL.publicConsented,
       reasonCode: "FSHS_CLAIM_VERIFICATION", // a STUDENT reason on a staff subject
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
     expect(result.outcome).toBe("DENIED_FIELD_SCOPE");
     const rows = await auditRowsFor(reference);
@@ -595,7 +578,7 @@ describe("input integrity", () => {
       // would permanently claim that a DOB, an address and a next-of-kin phone were released.
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.absent, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.absent },
     });
 
     expect(result.outcome).toBe("DENIED_FIELD_SCOPE");
@@ -613,9 +596,6 @@ describe("input integrity", () => {
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 describe("the jurisdiction ceiling is enforced by the choke point itself", () => {
-  // EMIS-OUT-008 is in the OTHER district and HAS live DPO consent, so the only thing that can
-  // refuse it is the ceiling. Previously this returned a full record: the check lived only in the
-  // server action, and a direct call bypassed it.
   it("refuses a record request for a school outside the officer's subtree", async () => {
     const reference = caseRef("out-of-subtree");
     await expect(
@@ -624,7 +604,7 @@ describe("the jurisdiction ceiling is enforced by the choke point itself", () =>
         school: SCHOOL.outsideSubtree,
         reasonCode: "SAFEGUARDING_MISCONDUCT",
         caseReference: reference,
-        subject: { operationalStaffId: OPS_STAFF.staffOutsideSubtree, gesStaffId: null },
+        subject: { operationalStaffId: OPS_STAFF.staffOutsideSubtree },
       }),
     ).rejects.toMatchObject({ name: "GateInputError", code: "OUT_OF_JURISDICTION" });
     // Nothing was disclosed and nothing was logged — the officer had no standing to name the school.
@@ -644,24 +624,6 @@ describe("the jurisdiction ceiling is enforced by the choke point itself", () =>
     expect(await auditRowsFor(reference)).toHaveLength(0);
   });
 
-  it("does NOT downgrade an out-of-subtree school to the consent branch", async () => {
-    // The subtle failure this replaces: RLS hides the establishment row, classification reads that
-    // as NO_ESTABLISHMENT_ROW, and the request quietly becomes an OTHER_STAFF consent request
-    // against a school in another region — which then SUCCEEDS, because that school consented.
-    await expect(
-      requestNamedStaffRecord({
-        officer: districtOfficer,
-        school: SCHOOL.outsideSubtree,
-        reasonCode: "STATUTORY_AUDIT",
-        caseReference: caseRef("no-downgrade"),
-        subject: {
-          operationalStaffId: OPS_STAFF.staffOutsideSubtree,
-          gesStaffId: GES_STAFF_ID.onRegister,
-        },
-      }),
-    ).rejects.toMatchObject({ code: "OUT_OF_JURISDICTION" });
-  });
-
   it("the NATIONAL tier reaches the same school (the ceiling is a ceiling, not a wall)", async () => {
     const reference = caseRef("national-reaches");
     const result = await requestNamedStaffRecord({
@@ -669,11 +631,40 @@ describe("the jurisdiction ceiling is enforced by the choke point itself", () =>
       school: SCHOOL.outsideSubtree,
       reasonCode: "LICENSURE_QUALIFICATION_VERIFICATION",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffOutsideSubtree, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffOutsideSubtree },
     });
     expect(result.outcome).toBe("GRANTED");
     if (result.outcome !== "GRANTED") return;
     expect(result.legalBasis).toBe("CONSENT");
     expect(result.record.full_name).toBe("Selorm Appiah");
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+describe("whole-log invariant — the basis prefix always matches the ref shape (AC-3.9)", () => {
+  it("every STATUTORY row is NTC:/TEACHER and every CONSENT row is OPS:", async () => {
+    // STATUTORY is REACHABLE now (this file writes several such rows above), the inverse of the old
+    // 'no STATUTORY anywhere' invariant. Whatever the interleaving of the parallel suite, the shape
+    // must hold for every committed row.
+    const sql = adminAnalytics();
+    try {
+      const statutory = (await sql`
+        select target_ref, record_type::text as record_type
+        from audit_access_log where legal_basis = 'STATUTORY'
+      `) as unknown as { target_ref: string; record_type: string }[];
+      expect(statutory.length).toBeGreaterThan(0);
+      for (const r of statutory) {
+        expect(r.target_ref.startsWith("NTC:"), r.target_ref).toBe(true);
+        expect(r.record_type).toBe("TEACHER");
+      }
+      const consent = (await sql`
+        select target_ref from audit_access_log where legal_basis = 'CONSENT'
+      `) as unknown as { target_ref: string }[];
+      for (const r of consent) {
+        expect(r.target_ref.startsWith("NTC:"), r.target_ref).toBe(false);
+      }
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
   });
 });

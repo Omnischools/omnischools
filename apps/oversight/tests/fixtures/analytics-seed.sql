@@ -11,6 +11,12 @@
 --   EMIS-UNK-006  ownership_type NULL, consent GRANTED            → UNKNOWN_OWNERSHIP (fails closed)
 --   EMIS-PRI-007  PRIVATE, NO consent row                         → refused with the flag ON too
 --   EMIS-OUT-008  PUBLIC, in the OTHER DISTRICT, consent GRANTED  → the jurisdiction-ceiling probe
+--   EMIS-UNM-009  PUBLIC, register operational_school_id IS NULL  → drill-down refused (AC-1.6)
+--
+-- The statutory branch is keyed on the NTC LICENCE carried by the operational staff row, matched
+-- against establishment_teachers[].ntc_licence_number of the max-as_of_date vintage. EMIS-PRI-003
+-- carries TWO establishment entries so a private-school GES teacher is statutory even with the flag
+-- OFF (AC-3.10), and a name that disagrees with the operational row demotes to consent (OC-NTC-RESIDUAL).
 --
 -- The last three exist because a security test has to be able to fail for exactly one reason.
 -- EMIS-UNK-006 and EMIS-OUT-008 both HAVE live consent, so a refusal there can only be the missing
@@ -33,34 +39,46 @@ insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, ges_code,
   ('10000000-0000-4000-8000-000000000016', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Nkwanta Community JHS','EMIS-UNK-006', 'JHS', null,      true),
   ('10000000-0000-4000-8000-000000000017', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Bethel Academy',       'EMIS-PRI-007', 'JHS', 'PRIVATE', true),
   -- In Sekondi-Takoradi Metro: OUTSIDE a Wassa Amenfi West officer's subtree.
-  ('10000000-0000-4000-8000-000000000018', 'SCHOOL',   '10000000-0000-4000-8000-000000000004', 'Takoradi SHS',         'EMIS-OUT-008', 'SHS', 'PUBLIC',  true);
+  ('10000000-0000-4000-8000-000000000018', 'SCHOOL',   '10000000-0000-4000-8000-000000000004', 'Takoradi SHS',         'EMIS-OUT-008', 'SHS', 'PUBLIC',  true),
+  -- In the officer's district, PUBLIC, but its register row has NO operational_school_id: the
+  -- individual drill-down must be REFUSED (AC-1.6), never resolved against a guessed tenant.
+  ('10000000-0000-4000-8000-000000000019', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Diaso Community JHS',  'EMIS-UNM-009', 'JHS', 'PUBLIC',  true);
 
 insert into dim_period (period_id, academic_year, term, period_type, is_current) values
   ('20000000-0000-4000-8000-000000000001', '2025/26', 2, 'TERM', true);
 
-insert into ref_emis_school_register (emis_school_id, name, district_id, region_id, school_type, ownership_type, on_schoolup, source, as_of_date) values
-  ('EMIS-PUB-001', 'Asankrangwa SHS',       '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
-  ('EMIS-PUB-002', 'Amenfiman SHS',         '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
-  ('EMIS-PRI-003', 'St. Monica Mission SHS','10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PRIVATE', true, 'EMIS_EXTRACT', current_date - 30),
-  ('EMIS-PUB-004', 'Wassa Akropong JHS',    '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
-  ('EMIS-PUB-005', 'Manso Amenfi JHS',      '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30),
+-- operational_school_id maps each EMIS school to its operational tenant uuid (apps/web ref_school.id
+-- = the OPS_SCHOOL.* constants). EMIS-UNM-009 is deliberately UNMAPPED (NULL) — the drill-down gate
+-- must refuse it (AC-1.6) rather than fall back to any request-supplied uuid.
+insert into ref_emis_school_register (emis_school_id, name, district_id, region_id, school_type, ownership_type, on_schoolup, operational_school_id, source, as_of_date) values
+  ('EMIS-PUB-001', 'Asankrangwa SHS',       '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, '30000000-0000-4000-8000-000000000001', 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-PUB-002', 'Amenfiman SHS',         '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, '30000000-0000-4000-8000-000000000002', 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-PRI-003', 'St. Monica Mission SHS','10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'SHS', 'PRIVATE', true, '30000000-0000-4000-8000-000000000003', 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-PUB-004', 'Wassa Akropong JHS',    '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, '30000000-0000-4000-8000-000000000004', 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-PUB-005', 'Manso Amenfi JHS',      '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, '30000000-0000-4000-8000-000000000005', 'EMIS_EXTRACT', current_date - 30),
   -- ownership_type NULL: the register has the school but not its ownership. Fails closed.
-  ('EMIS-UNK-006', 'Nkwanta Community JHS', '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', null,      true, 'EMIS_EXTRACT', current_date - 30),
-  ('EMIS-PRI-007', 'Bethel Academy',        '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PRIVATE', true, 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-UNK-006', 'Nkwanta Community JHS', '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', null,      true, '30000000-0000-4000-8000-000000000006', 'EMIS_EXTRACT', current_date - 30),
+  ('EMIS-PRI-007', 'Bethel Academy',        '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PRIVATE', true, '30000000-0000-4000-8000-000000000007', 'EMIS_EXTRACT', current_date - 30),
   -- district_id = Sekondi-Takoradi Metro, so ov_in_subtree() filters it away for a Wassa officer.
-  ('EMIS-OUT-008', 'Takoradi SHS',          '10000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, 'EMIS_EXTRACT', current_date - 30);
+  ('EMIS-OUT-008', 'Takoradi SHS',          '10000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'SHS', 'PUBLIC',  true, '30000000-0000-4000-8000-000000000008', 'EMIS_EXTRACT', current_date - 30),
+  -- operational_school_id NULL: registered, in the officer's subtree, but not mapped to a tenant.
+  ('EMIS-UNM-009', 'Diaso Community JHS',   '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'JHS', 'PUBLIC',  true, null,                                   'EMIS_EXTRACT', current_date - 30);
 
--- FRESH vintages — 30 days old, comfortably inside the 6-month staleness ceiling.
-insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, teaching_posts_established, staff_ids, source, as_of_date) values
-  ('80000000-0000-4000-8000-000000000001', 'EMIS-PUB-001', 42, '["GES/WR/00001"]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30),
-  ('80000000-0000-4000-8000-000000000002', 'EMIS-PUB-002', 38, '["GES/WR/00002"]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30),
-  ('80000000-0000-4000-8000-000000000003', 'EMIS-PRI-003', 12, '["GES/WR/00003"]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30),
-  ('80000000-0000-4000-8000-000000000005', 'EMIS-PUB-005', 21, '["GES/WR/00005"]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30);
+-- FRESH vintages — 30 days old, comfortably inside the 6-month staleness ceiling. establishment_teachers
+-- is an array of { ntc_licence_number, name? }; membership-by-NTC (over the max-as_of_date vintage) is
+-- the whole statutory test. The optional `name` is a GES display aid the gate cross-checks (OC-NTC-RESIDUAL).
+insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, teaching_posts_established, establishment_teachers, source, as_of_date) values
+  ('80000000-0000-4000-8000-000000000001', 'EMIS-PUB-001', 42, '[{"ntc_licence_number":"NTC-2019-004417","name":"Ama Boateng"}]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30),
+  ('80000000-0000-4000-8000-000000000002', 'EMIS-PUB-002', 38, '[]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30),
+  -- Two entries: one whose GES name MATCHES the operational row (statutory), one whose name DISAGREES
+  -- (the OC-NTC-RESIDUAL cross-check demotes it to consent + raises an anomaly).
+  ('80000000-0000-4000-8000-000000000003', 'EMIS-PRI-003', 12, '[{"ntc_licence_number":"NTC-PRI-003-STAT","name":"Kofi Adomako"},{"ntc_licence_number":"NTC-PRI-003-MISMATCH","name":"Kwabena Otchere"}]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30),
+  ('80000000-0000-4000-8000-000000000005', 'EMIS-PUB-005', 21, '[]'::jsonb, 'GES_ESTABLISHMENT', current_date - 30);
 
--- STALE vintage — 400 days old. It NAMES GES/WR/00004, and must still refuse the statutory branch:
+-- STALE vintage — 400 days old. It NAMES NTC-2015-000981, and must still refuse the statutory branch:
 -- the subject falls through to consent, the school has none, and the access is denied.
-insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, teaching_posts_established, staff_ids, source, as_of_date) values
-  ('80000000-0000-4000-8000-000000000004', 'EMIS-PUB-004', 19, '["GES/WR/00004"]'::jsonb, 'GES_ESTABLISHMENT', current_date - 400);
+insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, teaching_posts_established, establishment_teachers, source, as_of_date) values
+  ('80000000-0000-4000-8000-000000000004', 'EMIS-PUB-004', 19, '[{"ntc_licence_number":"NTC-2015-000981","name":"Abena Asare"}]'::jsonb, 'GES_ESTABLISHMENT', current_date - 400);
 
 -- Facilities census for the NON-GATED C5 drill. The analytics fact carries no `captured_by` and no
 -- `caterer_name` at all — the ETL never brings them across — which is the structural floor under

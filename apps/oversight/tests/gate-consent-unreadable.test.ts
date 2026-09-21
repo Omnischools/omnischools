@@ -65,7 +65,7 @@ describe("the consent table is MISSING (the day-one state)", () => {
         school: SCHOOL.publicConsented,
         reasonCode: "SAFEGUARDING_MISCONDUCT",
         caseReference: reference,
-        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
       }),
     );
 
@@ -114,7 +114,7 @@ describe("the consent table is MISSING (the day-one state)", () => {
         school: SCHOOL.publicConsented,
         reasonCode: "STATUTORY_AUDIT",
         caseReference: caseRef("poison-check"),
-        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
       }),
     );
     // Same pooled client, table restored: a normal grant must go straight through.
@@ -123,7 +123,7 @@ describe("the consent table is MISSING (the day-one state)", () => {
       school: SCHOOL.publicConsented,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: caseRef("poison-check-after"),
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
     expect(result.outcome).toBe("GRANTED");
   });
@@ -138,7 +138,7 @@ describe("SELECT on the consent table is REVOKED", () => {
         school: SCHOOL.publicConsented,
         reasonCode: "LICENSURE_QUALIFICATION_VERIFICATION",
         caseReference: reference,
-        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+        subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
       }),
     );
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
@@ -150,28 +150,25 @@ describe("SELECT on the consent table is REVOKED", () => {
     expect(rows[0]!.fields_released).toEqual([]);
   });
 
-  it("a claimed establishment number does NOT route around the unreadable consent table", async () => {
-    // Before S1 this request skipped the consent read entirely and was granted — so an unreadable
-    // consent table was not merely survivable, it was avoidable by adding a staff number. The
-    // statutory branch would still skip consent, but only for a VERIFIED binding, which no request
-    // can obtain today. So this refuses like any other consent-branch request.
-    const reference = caseRef("claim-during-revoke");
+  it("a STATUTORY teacher is unaffected by an unreadable consent table — statute never reads it", async () => {
+    // The consent table is the OTHER_STAFF branch's dependency, not the statutory one. A GES
+    // establishment teacher (their operational NTC licence is on the register) is granted under
+    // statute WITHOUT any consent read, so revoking SELECT on the consent table cannot touch them.
+    // This is the honest inverse of the consent-branch tests above, and the whole point of statute.
+    const reference = caseRef("statutory-during-revoke");
     const result = await withConsentSelectRevoked(() =>
       requestNamedStaffRecord({
         officer: districtOfficer,
         school: SCHOOL.publicConsented,
         reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
         caseReference: reference,
-        subject: {
-          operationalStaffId: OPS_STAFF.teacherOnRegister,
-          gesStaffId: "GES/WR/00001",
-        },
+        subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
       }),
     );
-    expect(result.outcome).toBe("DENIED_NO_CONSENT");
-    if (result.outcome === "GRANTED") return;
-    expect(result.denialReason).toBe("CONSENT_UNREADABLE");
-    expect(result.legalBasis).toBe("CONSENT");
-    expect(result.trace).not.toContain("fetched");
+    expect(result.outcome).toBe("GRANTED");
+    if (result.outcome !== "GRANTED") return;
+    expect(result.legalBasis).toBe("STATUTORY");
+    expect(result.trace).not.toContain("consent:TABLE_UNREACHABLE");
+    expect(result.trace).toContain("fetched");
   });
 });

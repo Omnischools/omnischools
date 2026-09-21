@@ -37,14 +37,6 @@ import { isNeverReleased, NEVER_RELEASE_FIELDS } from "@/lib/oversight/field-sco
 export const UNAVAILABLE_NO_SOURCE = "UNAVAILABLE_NO_SOURCE" as const;
 
 /**
- * A value that COULD be derived, but not for THIS person, because nothing binds the operational
- * staff row to the GES establishment register. Distinct from `UNAVAILABLE_NO_SOURCE` (no source
- * exists at all) and from `false` (which would assert that the subject is NOT established — a claim
- * we are equally unable to make). See `bindEstablishmentId`.
- */
-export const UNVERIFIABLE_NO_LINK_KEY = "UNVERIFIABLE_NO_LINK_KEY" as const;
-
-/**
  * Canonical field id → SQL expression, evaluated against the FROM clause in `STAFF_RECORD_FROM`.
  *
  * Fields NOT in this map are not operational: they are filled in by the orchestrator from the
@@ -190,130 +182,58 @@ export function buildStaffProjection(allowedFields: readonly string[]): StaffPro
 }
 
 /**
- * Does the subject exist at this school? Selects the CONSTANT 1 — no column of the staff record, no
- * name, nothing scoped.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE BASIS PROBE — read the licence and name off the row we are about to fetch. (AC-3.4/3.5)
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
  *
- * It runs BEFORE the audit INSERT, and that is deliberate rather than a loophole in "audit before
- * fetch". The audit row has to state `fields_released`, and it is append-only, so whatever it claims
- * at INSERT time is what a reviewer reads forever. Writing the full scope and THEN discovering the
- * subject does not exist leaves a permanent row asserting that a DOB and an address were released
- * when nothing was — the log would overstate every mistyped uuid as a disclosure. Asking "is there a
- * row?" first lets the audit row tell the truth: found ⇒ GRANTED with the scope, absent ⇒ a denial
- * with `fields_released = []`.
+ * WHAT REPLACED THE OLD FORGEABLE BINDING. The statutory basis used to be derived from a GES
+ * establishment NUMBER that arrived WITH THE REQUEST, alongside a separate operational
+ * `staff_profile.id`. Nothing bound the two, so any on-register number (a public fact about a
+ * colleague) plus any staff uuid produced `legal_basis = STATUTORY` for the wrong person — and,
+ * worse, the "fix" that fell out of `staff_profile` having no bindable column flipped an empty
+ * probe from UNVERIFIABLE to MISMATCH (the §0 footgun). Both are GONE. The officer now supplies
+ * NOTHING that decides the basis: the NTC licence is read HERE, off the exact `(school, id)` row the
+ * projection will use, inside the SAME read-back transaction — so the licence that confers statute
+ * is, structurally, the licence of the person projected. There is nothing to forge because there is
+ * no claim to bind (AC-3.7/3.8).
  *
- * What it costs: the gate can confirm that a given (school, uuid) pair exists. That is the pair the
- * officer already supplied, the probe reveals no attribute of the person, and EVERY probe writes an
- * audit row — so it is strictly more accountable than the previous behaviour, which logged a
- * fictitious release for the same query.
+ * WHAT IT READS, AND WHY IT IS NOT A FIELD RELEASE. `ntc_licence_number` (to key the register
+ * membership) and `full_name` (for the OC-NTC-RESIDUAL identity cross-check the caller runs). These
+ * are read for the BASIS DECISION, before the audit row is written and before the scoped projection;
+ * they are not returned to the caller as released fields (the scoped projection re-selects whatever
+ * the reason code actually unlocks). `exists` is derived from the presence of the staff row itself
+ * (LEFT JOIN, so a hidden `ref_user` never masks existence) and lets the audit row state a truthful
+ * `fields_released`: found ⇒ the access can proceed, absent ⇒ a denial with `[]`.
  */
-export async function staffRecordExists(
+export interface StaffBasisProbe {
+  /** Does the `(school, id)` staff row exist under the current tenant scope? */
+  exists: boolean;
+  /** The row's NTC licence number, or null when it carries none. Null ⇒ cannot be on the register. */
+  ntcLicenceNumber: string | null;
+  /** The subject's operational `ref_user.full_name`, for the identity cross-check. */
+  fullName: string | null;
+}
+
+export async function readStaffBasisProbe(
   tx: ReadbackTx,
   operationalSchoolId: string,
   operationalStaffId: string,
-): Promise<boolean> {
+): Promise<StaffBasisProbe> {
   const rows = (await tx.unsafe(
-    `select 1 as present from staff_profile where school_id = $1::uuid and id = $2::uuid limit 1`,
+    `select sp.ntc_licence_number as ntc, u.full_name as full_name
+       from staff_profile sp
+       left join ref_user u on u.id = sp.user_id
+      where sp.school_id = $1::uuid and sp.id = $2::uuid
+      limit 1`,
     [operationalSchoolId, operationalStaffId],
-  )) as unknown as unknown[];
-  return rows.length > 0;
-}
-
-/**
- * ════════════════════════════════════════════════════════════════════════════════════════════════
- * SUBJECT BINDING — does the row we are about to fetch actually carry the claimed GES id?
- * ════════════════════════════════════════════════════════════════════════════════════════════════
- *
- * THE HOLE THIS CLOSES. The statutory basis is derived from a GES establishment number, and the
- * record is fetched by an operational `staff_profile.id`. Both arrive with the request. If nothing
- * checks that the two describe the SAME person, then supplying any establishment number that is
- * genuinely on the target school's register — a public fact about a colleague, a number off a
- * payslip — alongside an arbitrary `staff_profile.id` yields `legal_basis = STATUTORY` for a
- * completely different subject. That skips the consent read AND the private/mission flag preflight
- * (statute is meant to hold everywhere), releases the record, and writes an append-only audit row
- * asserting TEACHER / `GES:<claimed id>` for a person who is neither. It is the whole consent gate
- * defeated by one extra form field.
- *
- * WHY THE FIX IS "ROUTE TO CONSENT" AND NOT "CHECK HARDER". Operational `staff_profile` carries NO
- * GES establishment id (no column in apps/web/db/schema/*.ts holds one — already escalated). There
- * is therefore no join key, and no amount of care in this process can establish the binding: it is
- * UNVERIFIABLE, not merely unchecked. An unverifiable claim must not confer the stronger lawful
- * basis, so a direct record fetch routes to CONSENT — the same fail-closed direction the staff-list
- * browse already takes for the same missing key.
- *
- * THE INTENDED CONSEQUENCE, STATED PLAINLY: until that column exists, a GES-establishment teacher
- * is reachable only where the school has recorded consent. That is a real loss of reach, and it is
- * the honest state — the alternative is a statutory basis that anyone who knows one staff number
- * can claim for anyone.
- *
- * THE DURABLE PATH, GUARDED. When apps/web adds `staff_profile.ges_staff_id`, the binding becomes
- * checkable against the SAME row being fetched, inside the SAME read-back transaction. The
- * capability is feature-detected (so this never queries a column that does not exist) and the probe
- * selects a BOOLEAN — never the stored id, never a name — so it discloses nothing beyond the
- * yes/no the lawful basis turns on.
- */
-
-export type EstablishmentBinding =
-  /** No claimed id: the request never asserted the statutory basis. */
-  | { state: "NOT_CLAIMED" }
-  /** No `staff_profile.ges_staff_id` column exists, so no claim can be bound to this row. */
-  | { state: "UNVERIFIABLE" }
-  /** The fetched row carries exactly the claimed id. */
-  | { state: "VERIFIED"; gesStaffId: string }
-  /** The column exists and the row does NOT carry the claimed id. A forgery attempt looks like this. */
-  | { state: "MISMATCH" };
-
-/**
- * Cached per process: whether `staff_profile.ges_staff_id` exists. A schema fact, so it cannot
- * change under a running process without a migration — and a migration that adds it is followed by
- * a deploy, which resets this. `__resetEstablishmentBindingCapability` exists for tests only.
- */
-let bindingCapability: boolean | null = null;
-
-export function __resetEstablishmentBindingCapability(): void {
-  bindingCapability = null;
-}
-
-async function hasGesStaffIdColumn(tx: ReadbackTx): Promise<boolean> {
-  if (bindingCapability !== null) return bindingCapability;
-  const rows = (await tx.unsafe(
-    `select 1 as present
-       from information_schema.columns
-      where table_schema = 'public'
-        and table_name = 'staff_profile'
-        and column_name = 'ges_staff_id'
-      limit 1`,
-  )) as unknown as unknown[];
-  bindingCapability = rows.length > 0;
-  return bindingCapability;
-}
-
-/**
- * Bind the claimed establishment id to the row that is about to be fetched. Call INSIDE the
- * read-back transaction, against the same (school, staff) pair the projection will use.
- */
-export async function bindEstablishmentId(
-  tx: ReadbackTx,
-  operationalSchoolId: string,
-  operationalStaffId: string,
-  claimedGesStaffId: string | null,
-): Promise<EstablishmentBinding> {
-  const claimed = claimedGesStaffId?.trim();
-  if (!claimed) return { state: "NOT_CLAIMED" };
-  if (!(await hasGesStaffIdColumn(tx))) return { state: "UNVERIFIABLE" };
-
-  // Selects a constant, not the stored id: the basis turns on a yes/no, and the yes/no is all this
-  // is entitled to learn.
-  const rows = (await tx.unsafe(
-    `select 1 as bound
-       from staff_profile
-      where school_id = $1::uuid and id = $2::uuid and ges_staff_id = $3
-      limit 1`,
-    [operationalSchoolId, operationalStaffId, claimed],
-  )) as unknown as unknown[];
-
-  return rows.length > 0
-    ? { state: "VERIFIED", gesStaffId: claimed }
-    : { state: "MISMATCH" };
+  )) as unknown as { ntc: string | null; full_name: string | null }[];
+  const row = rows[0];
+  if (!row) return { exists: false, ntcLicenceNumber: null, fullName: null };
+  return {
+    exists: true,
+    ntcLicenceNumber: row.ntc ?? null,
+    fullName: row.full_name ?? null,
+  };
 }
 
 /** Run the projection inside the read-back transaction. Returns null when the subject is absent. */
@@ -336,12 +256,12 @@ export async function fetchScopedStaffRecord(
  * post label, and nothing else. A browse is a navigation step, not a record: it must not become a
  * way to read a field the reason code did not unlock by reading it off a list instead.
  *
- * ⚠ REGISTER STATUS IS NOT COMPUTABLE HERE. Lucy C4 wants a "GES establishment / Not on register"
- * column as the branch signal, but operational `staff_profile` carries NO GES establishment id (no
- * column in apps/web/db/schema/*.ts holds one), so there is no key to join the analytics register
- * on. The list therefore reports `NOT_LINKED` for every row, and picking any row routes to the
- * CONSENT branch — which is the fail-closed direction. Restoring Lucy's signal needs a
- * `ges_staff_id` column on `staff_profile` (an apps/web change; escalated, not assumed).
+ * ⚠ REGISTER STATUS IS NOT COMPUTED HERE, BY CHOICE. The branch signal now turns on the NTC licence
+ * on each row (present on operational `staff_profile.ntc_licence_number`), so per-row register
+ * status IS derivable — but a browse deliberately stays minimal (name, id, post) and defers the
+ * basis to the record path: the licence is read and the register consulted only when a specific row
+ * is opened, so a browse cannot become a bulk establishment-membership export. Every row reports
+ * `NOT_LINKED` on the list; picking one runs the full per-row NTC classification.
  */
 const STAFF_LIST_SQL = `
   select
@@ -389,37 +309,11 @@ export async function fetchStaffList(
   return rows.map((r) => ({ ...r, register_status: "NOT_LINKED" as const }));
 }
 
-/**
- * Resolve the operational tenant uuid the caller claims, and prove it is the school the officer
- * actually picked, by reading back its GES/EMIS code.
- *
- * The analytics DB holds no operational school uuid (no column on `ref_emis_school_register` or
- * `dim_jurisdiction`), so the uuid necessarily arrives with the request — and a request-supplied
- * tenant key is exactly the kind of value that must be checked rather than trusted. The check is
- * possible because operational `ref_school.ges_code` is UNIQUE and equals the EMIS id, and the EMIS
- * id itself was validated against the officer's jurisdiction on the analytics side. Passing both
- * checks means the two agree on one school inside the officer's ceiling; failing either is a denial.
- *
- * (`ref_school` RLS keys on `id = app.current_school`, so this read only succeeds once the GUC is
- * set — i.e. it can confirm the claimed uuid but can never enumerate other schools.)
- */
-export async function confirmSchoolIdentity(
-  tx: ReadbackTx,
-  operationalSchoolId: string,
-  expectedEmisSchoolId: string,
-): Promise<{ ok: boolean; gesCode: string | null; name: string | null }> {
-  const rows = (await tx.unsafe(
-    `select ges_code, name from ref_school where id = $1::uuid limit 1`,
-    [operationalSchoolId],
-  )) as unknown as { ges_code: string; name: string }[];
-  const row = rows[0];
-  if (!row) return { ok: false, gesCode: null, name: null };
-  return {
-    ok: row.ges_code === expectedEmisSchoolId,
-    gesCode: row.ges_code,
-    name: row.name,
-  };
-}
+// `confirmSchoolIdentity` (the old ges_code-equality cross-check) is RETIRED. The operational tenant
+// uuid no longer arrives with the request: it is sourced from `ref_emis_school_register`
+// under the officer's own jurisdiction RLS (school-ref.ts), so there is nothing request-supplied to
+// prove against the register — the register IS the trusted source, and an out-of-subtree school
+// never resolves in the first place (#1 / AC-1.x).
 
 /** Module-load integrity check: the column map must never name a never-released field. */
 export function assertProjectionIntegrity(): void {

@@ -4,7 +4,7 @@ import type { Tx } from "@/lib/db";
 import type { OfficerSession } from "@/lib/oversight/officer";
 import { isReadbackConfigured, withReadbackSchool } from "@/lib/db/readback";
 import {
-  classifyStaffSubjectInTx,
+  classifyStaffSubject,
   type Classification,
   type StaffCategory,
 } from "@/lib/oversight/classify";
@@ -29,15 +29,12 @@ import {
   type LegalBasis,
 } from "@/lib/oversight/target-ref";
 import {
-  bindEstablishmentId,
-  confirmSchoolIdentity,
   fetchScopedStaffRecord,
   fetchStaffList,
-  staffRecordExists,
+  readStaffBasisProbe,
   SOURCELESS_FIELDS,
   UNAVAILABLE_NO_SOURCE,
-  UNVERIFIABLE_NO_LINK_KEY,
-  type EstablishmentBinding,
+  type StaffBasisProbe,
   type StaffListRow,
 } from "@/lib/oversight/staff-projection";
 import { resolveSchoolInTx, type ResolvedSchool } from "@/lib/oversight/school-ref";
@@ -54,25 +51,27 @@ import { resolveSchoolInTx, type ResolvedSchool } from "@/lib/oversight/school-r
  *
  *   1. VALIDATE the gate input (shape, reason code).
  *   2. RESOLVE THE SCHOOL under the OFFICER's own jurisdiction RLS, and refuse outright if it is
- *      outside their subtree; then CLASSIFY the subject against the GES establishment register in
- *      the same transaction. ANALYTICS only — no operational connection exists yet. The school's
- *      jurisdiction node and ownership type come from the register, NOT from the caller.
- *   3. PREFLIGHT ownership: with `E3_NON_PUBLIC_STAFF_DRILLDOWN` off, a PRIVATE/MISSION school is
- *      refused — before any operational connection is opened, unless the request claims an
- *      establishment number (see step 3 in the body for why the claim moves it later).
- *   4. OPEN the read-back transaction, confirm the claimed school, BIND any claimed establishment
- *      number to the row about to be fetched, read the consent row live unless that binding
- *      established the statutory basis, and ask whether the subject exists. Still no staff COLUMN
- *      has been named.
+ *      outside their subtree. ANALYTICS only. The school's jurisdiction node, ownership type AND the
+ *      operational tenant uuid all come from the register, NOT from the caller. A school whose
+ *      register row carries no `operational_school_id` is REFUSED here (AC-1.6) — the gate never
+ *      guesses a tenant.
+ *   3. OPEN the read-back transaction and read the BASIS PROBE off the exact row to be fetched: does
+ *      it exist, its NTC licence, its name. No scoped staff column yet.
+ *   4. CLASSIFY the subject against the GES establishment register, keyed on the licence just read
+ *      (a nested analytics read, AC-3.6). Establishment membership of that licence is the WHOLE
+ *      statutory test — the same-row-same-transaction binding means the licence that confers statute
+ *      belongs, structurally, to the person projected (AC-3.5). Then, for the CONSENT branch only,
+ *      PREFLIGHT ownership and read the live consent row.
  *   5. WRITE THE AUDIT ROW. Outcome, lawful basis, consent ref, fields the reason unlocks.
  *   6. ONLY THEN project the record, inside the SAME read-back transaction.
  *
- * THE STATUTORY BASIS NEEDS A BOUND SUBJECT, NOT A CLAIMED ID. The GES establishment number and the
- * operational staff uuid arrive separately in the request, and an establishment number is not a
- * secret — so "this number is on the register" says nothing about the row being fetched. Both must
- * be bound to the same person (step 4) or the basis stays CONSENT and the consent + ownership gates
- * apply. Today nothing in operational Postgres can bind them, so every direct record fetch resolves
- * to CONSENT. See `bindEstablishmentId` for the full argument and the intended consequence.
+ * THE STATUTORY BASIS IS THE LICENCE ON THE FETCHED ROW — THERE IS NOTHING TO FORGE. The officer
+ * supplies no establishment identifier at all (AC-3.7): the NTC licence is read off the operational
+ * `(school, id)` row in step 3, so "on the register" is a statement about the person being fetched,
+ * not about a request field. GES_TEACHER ⇒ STATUTORY at every ownership type; anything else ⇒ the
+ * CONSENT branch, where ownership preflight and the live consent row apply (AC-3.10). A GES-supplied
+ * `name` on the register entry is cross-checked against the operational name as a detective control
+ * and demotes to CONSENT on mismatch, never up to STATUTORY (OC-NTC-RESIDUAL).
  *
  * THE CEILING IS ENFORCED HERE, NOT BY THE CALLER. Step 2 is an authorization check, and it lives
  * in the choke point precisely so that it cannot be omitted by the next caller — a route handler, a
@@ -118,25 +117,21 @@ export type { OfficerSession } from "@/lib/oversight/officer";
 export interface SchoolGateRef {
   /** The analytics-side key (`ref_emis_school_register.emis_school_id`). */
   emisSchoolId: string;
-  /**
-   * The OPERATIONAL tenant uuid (`ref_school.id`).
-   *
-   * ⚠ Supplied with the request because the analytics DB holds no operational school uuid — there
-   * is no such column on `ref_emis_school_register` or `dim_jurisdiction`. A request-supplied
-   * tenant key is never trusted: step 4 sets it as `app.current_school` and then reads
-   * `ref_school.ges_code` back and requires it to equal `emisSchoolId`, which the officer's
-   * jurisdiction RLS already constrained. (ESCALATED: the ETL should carry the operational uuid
-   * onto the register so this hand-off disappears.)
-   */
-  operationalSchoolId: string;
   /** Display only — never used in a decision. */
   name?: string | null;
 }
 
-/** The school as the GATE resolved it: register-sourced, RLS-filtered, jurisdiction-confirmed. */
+/**
+ * The school as the GATE resolved it: register-sourced, RLS-filtered, jurisdiction-confirmed.
+ *
+ * `operationalSchoolId` comes from the register (`ref_emis_school_register.operational_school_id`),
+ * not from the caller — so it is already inside the officer's ceiling and needs no cross-check. It
+ * is nullable here because a registered school may not (yet) be mapped to a tenant; the gate refuses
+ * the drill-down in that case (AC-1.6) rather than proceed against a guessed uuid.
+ */
 interface GateSchool {
   emisSchoolId: string;
-  operationalSchoolId: string;
+  operationalSchoolId: string | null;
   /** The SCHOOL-level `dim_jurisdiction` node — written to the audit row. */
   jurisdictionId: string;
   ownershipType: OwnershipType | null;
@@ -146,11 +141,6 @@ interface GateSchool {
 export interface GateSubject {
   /** `staff_profile.id`. Required: it is the only key that reaches an operational staff row. */
   operationalStaffId: string;
-  /**
-   * The GES establishment number the officer typed. Its presence does NOT confer the statutory
-   * basis — membership of the register does (classify.ts). Absent ⇒ OTHER_STAFF by construction.
-   */
-  gesStaffId?: string | null;
 }
 
 export interface NamedStaffRecordRequest {
@@ -215,8 +205,8 @@ export type DenialReason =
   | "NON_PUBLIC_FLAG_OFF"
   | "UNKNOWN_OWNERSHIP"
   | "ESTABLISHMENT_STALE"
-  /** The fetched row does not carry the claimed GES establishment number — the forgery shape. */
-  | "ESTABLISHMENT_ID_MISMATCH"
+  /** The register has no operational tenant mapping for this school, so no record can be read. */
+  | "OPERATIONAL_UNMAPPED"
   | "CLASSIFICATION_INDETERMINATE"
   | "REASON_UNLOCKS_NOTHING"
   | "SUBJECT_NOT_FOUND";
@@ -232,8 +222,9 @@ export function isIndividualDrilldownAvailable(): boolean {
 }
 
 /**
- * Raised for a request that never constituted a lawful request at all — malformed input, a tenant
- * key that belongs to another school, or a school outside the officer's jurisdiction.
+ * Raised for a request that never constituted a lawful request at all — malformed input, or a
+ * school outside the officer's jurisdiction. (The old cross-tenant SCHOOL_MISMATCH is gone with the
+ * request-supplied operational uuid: the tenant is now register-sourced under the officer's RLS.)
  *
  * These are NOT access outcomes and do not write an audit row. The distinction is between "you
  * asked for something the gate refused" (a DENIED_* row, because a refusal of a well-formed request
@@ -242,7 +233,7 @@ export function isIndividualDrilldownAvailable(): boolean {
  * officer had no standing to name in the first place.
  */
 export class GateInputError extends Error {
-  readonly code: "INVALID_INPUT" | "SCHOOL_MISMATCH" | "OUT_OF_JURISDICTION";
+  readonly code: "INVALID_INPUT" | "OUT_OF_JURISDICTION";
   constructor(code: GateInputError["code"], message: string) {
     super(message);
     this.code = code;
@@ -278,8 +269,6 @@ function requireUuid(value: string, label: string): string {
  * name this school, so there is nothing about it that belongs in their audit trail.
  */
 async function resolveGateSchoolInTx(tx: Tx, ref: SchoolGateRef): Promise<GateSchool> {
-  requireUuid(ref.operationalSchoolId, "school.operationalSchoolId");
-
   let resolved: ResolvedSchool | null;
   try {
     resolved = await resolveSchoolInTx(tx, ref.emisSchoolId);
@@ -311,7 +300,10 @@ async function resolveGateSchoolInTx(tx: Tx, ref: SchoolGateRef): Promise<GateSc
 
   return {
     emisSchoolId: resolved.emisSchoolId,
-    operationalSchoolId: ref.operationalSchoolId,
+    // From the GES REGISTER (RLS-filtered to the officer's subtree), never from the caller. May be
+    // null when the school is registered but not yet mapped to a tenant — the gate refuses in that
+    // case (AC-1.6), it does not fall back to any request-supplied uuid (there no longer is one).
+    operationalSchoolId: resolved.operationalSchoolId,
     jurisdictionId: resolved.jurisdictionId,
     // From the GES REGISTER, never from the caller and never from the school's own operational row:
     // ownership decides whether the consent branch is offered at all, and neither a caller nor a
@@ -422,43 +414,81 @@ export function assertTargetRefMatchesBasisUnlessRoster(
 
 /**
  * ════════════════════════════════════════════════════════════════════════════════════════════════
- * THE STATUTORY BASIS REQUIRES *TWO* FACTS, AND ONLY ONE OF THEM COMES FROM THE REGISTER.
+ * THE STATUTORY BASIS = "THE FETCHED ROW'S NTC LICENCE IS ON THE ESTABLISHMENT REGISTER".
  * ════════════════════════════════════════════════════════════════════════════════════════════════
  *
- *   (1) the claimed GES establishment number is on this school's current register — `classify.ts`;
- *   (2) the operational row we are about to FETCH is the person that number belongs to —
- *       `bindEstablishmentId` in staff-projection.ts.
+ * Register membership is the WHOLE statutory test (AC-3.1). The licence is read off the operational
+ * row being projected (the basis probe), so the person and the licence are bound by construction —
+ * there is no separate claim to forge (AC-3.5/3.7/3.8). One extra guard sits on top: the
+ * OC-NTC-RESIDUAL identity cross-check. When GES supplied a `name` on the matched establishment
+ * entry, it must agree with the operational name; a mismatch demotes to CONSENT (fail-closed, never
+ * up to STATUTORY) and raises an anomaly. When GES supplied NO name, membership ALONE confers
+ * statute — the RESIDUAL risk (a correct licence attached to the wrong operational person, with no
+ * name to catch it) is accepted here and is DPO-FLAGGED (OC-NTC-RESIDUAL): the honest mitigation is
+ * a name on every establishment entry, which is a GES data-supply matter, not something app code can
+ * manufacture.
  *
- * Fact (1) alone was previously enough to set `legal_basis = STATUTORY`, which is what made the
- * basis forgeable: the two ids arrive separately in the request, and an establishment number is not
- * a secret. Both facts are now required, and fact (2) is UNVERIFIABLE until operational
- * `staff_profile` carries a `ges_staff_id` — so today every direct record fetch resolves to CONSENT.
- *
- * `staff_category` and `record_type` follow the BASIS, not the claim. A subject whose establishment
- * membership could not be bound is recorded as OTHER_STAFF / STAFF, because that is how the access
- * was actually treated — the audit row must describe the basis the gate applied, and a reviewer
- * reading TEACHER must be able to rely on it meaning "verified establishment teacher". The
- * unverified claim is deliberately NOT recorded as a fact anywhere on the row: it is not in
- * `target_ref` (which names the operational uuid actually fetched) and it is not in
- * `is_on_ges_establishment` (which reports UNVERIFIABLE_NO_LINK_KEY).
+ * `staff_category` and `record_type` follow the BASIS: GES_TEACHER + name-check ⇒ TEACHER/STATUTORY,
+ * everything else ⇒ STAFF/CONSENT, because that is how the access was actually treated and a reviewer
+ * reading TEACHER must be able to rely on it.
  */
 function statutoryEstablished(
   classification: Classification,
-  binding: EstablishmentBinding,
+  probe: StaffBasisProbe,
 ): boolean {
-  return classification.category === "GES_TEACHER" && binding.state === "VERIFIED";
+  if (classification.category !== "GES_TEACHER") return false;
+  // No GES-supplied name ⇒ membership alone confers statute (residual accepted, DPO-flagged).
+  if (classification.establishmentName === null) return true;
+  // GES supplied a name ⇒ it must match the operational name, or we fall to CONSENT.
+  return namesMatch(classification.establishmentName, probe.fullName);
+}
+
+/** Normalise for the identity cross-check: trim, lowercase, collapse internal whitespace. */
+function normaliseName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * The OC-NTC-RESIDUAL identity cross-check. A null operational name cannot confirm identity, so it
+ * is treated as a MISMATCH (fail-closed) rather than a pass.
+ */
+function namesMatch(establishmentName: string, operationalName: string | null): boolean {
+  if (operationalName === null) return false;
+  return normaliseName(establishmentName) === normaliseName(operationalName);
+}
+
+/**
+ * Raise the anti-forgery anomaly signal when an on-register licence is attached to an operational
+ * row whose name disagrees with GES's. A structured log line is the observable today; the upgrade
+ * path is a persisted anomaly row an audit dashboard can surface.
+ * ponytail: structured warn only, promote to a persisted anomaly record if/when a rule consumes it.
+ */
+function signalEstablishmentNameMismatch(detail: {
+  emisSchoolId: string;
+  operationalStaffId: string;
+  establishmentName: string;
+}): void {
+  console.warn(
+    "[oversight-anomaly] OC-NTC-RESIDUAL establishment/operational name mismatch — demoted STATUTORY→CONSENT",
+    {
+      signal: "ESTABLISHMENT_NAME_MISMATCH",
+      emisSchoolId: detail.emisSchoolId,
+      operationalStaffId: detail.operationalStaffId,
+      establishmentName: detail.establishmentName,
+    },
+  );
 }
 
 /**
  * THE GATE.
  *
  * Returns a result for every reachable state — GRANTED, or a DENIED_* whose audit row is already
- * written. It throws ONLY for input that never constituted a request: a malformed uuid, a tenant key
- * belonging to another school, a school outside the officer's jurisdiction. An unconfigured
- * read-back is a logged denial rather than a throw, because without it neither consent nor the
- * establishment binding can be established and the request is therefore refused, not merely
- * unserviceable. The page-level "individual drill-down unavailable" state (PROVISIONING §4a-4) is
- * driven by `isIndividualDrilldownAvailable()`, which needs no request.
+ * written. It throws ONLY for input that never constituted a request: a malformed uuid or a school
+ * outside the officer's jurisdiction. An unconfigured read-back, or a school with no operational
+ * tenant mapping, is a logged denial rather than a throw, because without it neither the licence nor
+ * the consent row can be read and the request is therefore refused, not merely unserviceable. The
+ * page-level "individual drill-down unavailable" state (PROVISIONING §4a-4) is driven by
+ * `isIndividualDrilldownAvailable()`, which needs no request.
  */
 export async function requestNamedStaffRecord(
   request: NamedStaffRecordRequest,
@@ -466,9 +496,15 @@ export async function requestNamedStaffRecord(
   const trace: string[] = [];
   const now = request.now ?? new Date();
 
+  const officerScope = {
+    jurisdictionId: request.officer.jurisdictionId,
+    level: request.officer.level,
+    officerId: request.officer.officerId,
+  };
+
   // ── 1. validate ────────────────────────────────────────────────────────────────────────────
+  // The operational school uuid is NOT validated here any more — it is no longer request-supplied.
   requireUuid(request.officer.officerId, "officer.officerId");
-  requireUuid(request.school.operationalSchoolId, "school.operationalSchoolId");
   requireUuid(request.subject.operationalStaffId, "subject.operationalStaffId");
   if (!request.caseReference || request.caseReference.trim().length === 0) {
     throw new GateInputError(
@@ -478,56 +514,48 @@ export async function requestNamedStaffRecord(
   }
   trace.push("validated");
 
-  // ── 2. ceiling + classify, in ONE analytics transaction under the OFFICER's own RLS ─────────
+  // ── 2. ceiling: resolve the school under the OFFICER's own RLS ──────────────────────────────
   //
   // The school is resolved FIRST and the whole request is refused if it is outside the officer's
-  // subtree — before the establishment register is consulted, before any operational connection
-  // exists, and therefore before anything could be disclosed. Note that classification alone would
-  // NOT have caught this: an out-of-subtree school's register row is filtered away by RLS, which
-  // reads as NO_ESTABLISHMENT_ROW and DOWNGRADES the subject to OTHER_STAFF — i.e. the ceiling
-  // failure would have been silently converted into a consent-branch request, not a refusal.
-  const { school, classification } = await withJurisdiction(
-    {
-      jurisdictionId: request.officer.jurisdictionId,
-      level: request.officer.level,
-      officerId: request.officer.officerId,
-    },
-    async (tx) => {
-      const resolvedSchool = await resolveGateSchoolInTx(tx, request.school);
-      return {
-        school: resolvedSchool,
-        classification: await classifyStaffSubjectInTx(tx, {
-          emisSchoolId: resolvedSchool.emisSchoolId,
-          gesStaffId: request.subject.gesStaffId ?? null,
-          now,
-        }),
-      };
-    },
+  // subtree, before any operational connection exists. The register also yields the operational
+  // tenant uuid and the ownership type — both register-sourced, never from the caller.
+  const school = await withJurisdiction(officerScope, (tx) =>
+    resolveGateSchoolInTx(tx, request.school),
   );
   trace.push("school:in-jurisdiction");
-  trace.push(`classified:${classification.category}`);
-
-  const claimedGesStaffId = request.subject.gesStaffId?.trim() || null;
 
   /**
    * THE PESSIMISTIC BASIS, and the only one any DENIAL is ever written under.
    *
-   * A direct record fetch starts as CONSENT and is upgraded to STATUTORY only once the binding is
-   * verified INSIDE the read-back transaction (see `statutoryEstablished`). Every refusal therefore
-   * happens while the request is still a consent-branch request, which is why `deny()` can close
-   * over these constants: the only state that can flip them is the granted path, which computes its
-   * own basis and ref at audit-write time. A denial logged as STATUTORY would assert an
-   * establishment membership the gate had, by definition, failed to establish.
+   * A record fetch starts as CONSENT and is upgraded to STATUTORY only once the fetched row's NTC
+   * licence is found on the establishment register INSIDE the read-back transaction (see
+   * `statutoryEstablished`). Every refusal therefore happens while the request is still a
+   * consent-branch request, which is why `deny()` can close over these constants: the only state
+   * that can flip them is the granted path, which computes its own basis and ref at audit-write
+   * time. A denial logged as STATUTORY would assert an establishment membership the gate never made.
    */
   const legalBasis: LegalBasis = "CONSENT";
   const staffCategory: StaffCategory = "OTHER_STAFF";
   const recordType: GatedRecordType = "STAFF";
 
-  // Names the operational row that will actually be read — never the claimed establishment number.
+  // Names the operational row that will actually be read — never a licence number.
   const targetRef = buildTargetRef(legalBasis, {
     emisSchoolId: school.emisSchoolId,
     operationalStaffId: request.subject.operationalStaffId,
   });
+
+  /**
+   * The classification the RESULT carries. It is computed inside the read-back (keyed on the NTC
+   * read off the row), but `deny()` can fire before that — a bad reason code, a missing tenant
+   * mapping, an unconfigured read-back — so a placeholder stands until the real one is assigned.
+   * `deny()` reads this variable at call time, so a denial after classification reports the real one.
+   */
+  let classification: Classification = {
+    category: "OTHER_STAFF",
+    reason: "NO_NTC_LICENCE",
+    establishmentAsOfDate: null,
+    ageInDays: null,
+  };
 
   /**
    * A denial that has been WRITTEN. Held outside the read-back transaction on purpose.
@@ -593,29 +621,20 @@ export async function requestNamedStaffRecord(
     return deny("DENIED_FIELD_SCOPE", "REASON_UNLOCKS_NOTHING");
   }
 
-  // ── 2c. indeterminate classification fails closed ──────────────────────────────────────────
-  if (classification.category === "INDETERMINATE") {
-    return deny("DENIED_STALE_ESTABLISHMENT", "CLASSIFICATION_INDETERMINATE");
+  // ── 2c. the school must be MAPPED to an operational tenant (AC-1.6) ─────────────────────────
+  // The register knows this school but carries no `operational_school_id`, so there is no tenant to
+  // read a record from. Refuse — fail-closed — and NEVER fall back to a request-supplied uuid
+  // (there no longer is one). A logged denial, because the officer had standing to name the school.
+  if (!school.operationalSchoolId) {
+    trace.push("school:unmapped");
+    return deny("DENIED_NO_CONSENT", "OPERATIONAL_UNMAPPED");
   }
+  const operationalSchoolId = school.operationalSchoolId;
 
-  // ── 3. ownership preflight ──────────────────────────────────────────────────────────────────
-  //
-  // WHEN it runs depends on whether the request claims an establishment number, and that is not
-  // fussiness — it is the only way to keep two properties that pull in opposite directions:
-  //
-  //   · NO claim ⇒ the basis is certainly CONSENT, so the flag can be applied WITHOUT opening any
-  //     operational connection at all. This is the common path, and refusing before touching
-  //     operational data is worth keeping.
-  //   · A claim ⇒ the basis is only decidable inside the read-back transaction (the binding probe
-  //     lives there), and statute is meant to hold at private and mission schools too. Applying the
-  //     non-public flag before knowing the basis would refuse a verified GES teacher at a private
-  //     school, which the flag was never meant to touch. So the preflight moves inside, to run only
-  //     if the binding did NOT confer the statutory basis.
-  //
-  // Today no claim can ever be bound, so the second path always reaches the preflight anyway — it
-  // just reaches it a few statements later, having read no staff column on the way.
-  const preflightBeforeReadback = claimedGesStaffId === null;
-
+  // The ownership preflight applies to the CONSENT branch ONLY (AC-3.10): statute holds at every
+  // ownership type, so a GES-establishment teacher at a private/mission school is NOT touched by the
+  // non-public flag. The basis is only known after the licence is read, so the preflight now lives
+  // inside the read-back, invoked from the consent branch below.
   const runOwnershipPreflight = async (): Promise<DeniedResult | null> => {
     const preflight = ownershipPreflight(school.ownershipType);
     if (preflight.allowed) {
@@ -631,70 +650,71 @@ export async function requestNamedStaffRecord(
     );
   };
 
-  if (preflightBeforeReadback) {
-    const denied = await runOwnershipPreflight();
-    if (denied) return denied;
-  }
-
-  // Read-back unavailable ⇒ neither consent NOR the establishment binding can be established ⇒
-  // denial (logged). There is no branch here that proceeds without the read-back: the statutory
-  // basis needs the binding probe just as much as the consent basis needs the consent row. The
-  // page-level "individual drill-down unavailable" state (PROVISIONING §4a-4) is driven separately
-  // by `isIndividualDrilldownAvailable()`, which needs no request at all.
+  // Read-back unavailable ⇒ neither the licence nor consent can be read ⇒ denial (logged). There is
+  // no branch here that proceeds without the read-back: the statutory basis needs the row's licence
+  // just as much as the consent basis needs the consent row. The page-level "individual drill-down
+  // unavailable" state (PROVISIONING §4a-4) is driven separately by `isIndividualDrilldownAvailable()`.
   if (!isReadbackConfigured()) {
     trace.push("readback:unconfigured");
     return deny("DENIED_NO_CONSENT", "CONSENT_UNREADABLE");
   }
 
-  // ── 4-6. one read-back transaction: confirm school → read consent → AUDIT → project ─────────
+  // ── 3-6. one read-back transaction: probe → classify → (consent) → AUDIT → project ──────────
   try {
-    return await withReadbackSchool(school.operationalSchoolId, async (tx) => {
-      const identity = await confirmSchoolIdentity(
+    return await withReadbackSchool(operationalSchoolId, async (tx) => {
+      // ── 3. BASIS PROBE: existence + NTC licence + name off the exact row to be fetched. No
+      // scoped staff column is selected. Existence is asked here (before the audit INSERT) so the
+      // append-only row can state a truthful `fields_released`: a missing subject must not leave a
+      // permanent entry claiming a DOB and an address were released when nothing was.
+      const probe = await readStaffBasisProbe(
         tx,
-        school.operationalSchoolId,
-        school.emisSchoolId,
-      );
-      if (!identity.ok) {
-        throw new GateInputError(
-          "SCHOOL_MISMATCH",
-          `The supplied operational school uuid does not belong to EMIS school ${school.emisSchoolId}.`,
-        );
-      }
-      trace.push("school:confirmed");
-
-      // ── 4a. BIND the claimed establishment number to the row we are about to fetch ───────────
-      // Selects a boolean, no staff column. Today this always returns UNVERIFIABLE (there is no
-      // `staff_profile.ges_staff_id`), so the statutory basis is unreachable and every direct fetch
-      // stays on the consent branch. See `bindEstablishmentId` for why that is the fix rather than
-      // a stricter check.
-      const binding = await bindEstablishmentId(
-        tx,
-        school.operationalSchoolId,
+        operationalSchoolId,
         request.subject.operationalStaffId,
-        claimedGesStaffId,
       );
-      trace.push(`binding:${binding.state}`);
-
-      if (binding.state === "MISMATCH") {
-        // The column exists and this row does NOT carry the claimed number. That is not a near
-        // miss — it is the forgery shape — so it is refused outright rather than quietly demoted
-        // to the consent branch, and the attempt is logged.
-        return deny("DENIED_STALE_ESTABLISHMENT", "ESTABLISHMENT_ID_MISMATCH");
+      if (!probe.exists) {
+        trace.push("subject:absent");
+        return deny("DENIED_FIELD_SCOPE", "SUBJECT_NOT_FOUND");
       }
 
-      const statutory = statutoryEstablished(classification, binding);
+      // ── 4. CLASSIFY against the establishment register, keyed on the licence just read — a
+      // nested analytics read under the officer's own RLS (AC-3.6). The licence came off the row we
+      // are about to project, so establishment membership binds statute to THIS person (AC-3.5).
+      classification = await classifyStaffSubject(officerScope, {
+        emisSchoolId: school.emisSchoolId,
+        ntcLicenceNumber: probe.ntcLicenceNumber,
+        now,
+      });
+      trace.push(`classified:${classification.category}`);
+      if (classification.category === "INDETERMINATE") {
+        return deny("DENIED_STALE_ESTABLISHMENT", "CLASSIFICATION_INDETERMINATE");
+      }
+
+      // OC-NTC-RESIDUAL detective control: when GES supplied a name on the matched establishment
+      // entry and it disagrees with the operational name, demote to CONSENT and raise an anomaly.
+      // `statutoryEstablished` re-applies the same check, so this block is purely the SIGNAL.
+      if (
+        classification.category === "GES_TEACHER" &&
+        classification.establishmentName !== null &&
+        !namesMatch(classification.establishmentName, probe.fullName)
+      ) {
+        signalEstablishmentNameMismatch({
+          emisSchoolId: school.emisSchoolId,
+          operationalStaffId: request.subject.operationalStaffId,
+          establishmentName: classification.establishmentName,
+        });
+        trace.push("establishment:name-mismatch");
+      }
+
+      const statutory = statutoryEstablished(classification, probe);
 
       let consentRef: string | null = null;
       if (!statutory) {
-        // The claim (if any) could not be bound, so the request is a consent-branch request — and
-        // the non-public flag applies to it. For a claim-carrying request this is where the
-        // ownership preflight happens (see step 3 for why it waits until the basis is known).
-        if (!preflightBeforeReadback) {
-          const deniedByOwnership = await runOwnershipPreflight();
-          if (deniedByOwnership) return deniedByOwnership;
-        }
+        // The row is not a verified establishment teacher, so this is a consent-branch request —
+        // the non-public flag applies to it, and ONLY to it (statute holds everywhere, AC-3.10).
+        const deniedByOwnership = await runOwnershipPreflight();
+        if (deniedByOwnership) return deniedByOwnership;
 
-        const consent = await readConsentInTx(tx, school.operationalSchoolId);
+        const consent = await readConsentInTx(tx, operationalSchoolId);
         trace.push(`consent:${consent.outcome}`);
         if (!isConsentGranted(consent)) {
           const staleFallThrough =
@@ -722,28 +742,14 @@ export async function requestNamedStaffRecord(
       const grantedStaffCategory: StaffCategory = statutory
         ? "GES_TEACHER"
         : "OTHER_STAFF";
+      // The STATUTORY ref names the licence READ OFF the fetched row — never a request field.
+      // `statutory` implies GES_TEACHER, which implies a non-null licence on the probe.
       const grantedTargetRef = statutory
         ? buildTargetRef("STATUTORY", {
             emisSchoolId: school.emisSchoolId,
-            // The id VERIFIED against the fetched row — never the id as claimed.
-            gesStaffId: (binding as { state: "VERIFIED"; gesStaffId: string }).gesStaffId,
+            ntcLicenceNumber: probe.ntcLicenceNumber,
           })
         : targetRef;
-
-      // ── 4b. does the subject exist? NO staff column is selected — see `staffRecordExists`. ───
-      // Asked before the audit INSERT so the append-only row can state a truthful
-      // `fields_released`: a missing subject must not leave a permanent entry claiming that a DOB
-      // and an address were released when nothing was.
-      if (
-        !(await staffRecordExists(
-          tx,
-          school.operationalSchoolId,
-          request.subject.operationalStaffId,
-        ))
-      ) {
-        trace.push("subject:absent");
-        return deny("DENIED_FIELD_SCOPE", "SUBJECT_NOT_FOUND");
-      }
 
       // ── 5. AUDIT FIRST. Nothing below runs if this throws. ────────────────────────────────────
       const exported = Boolean(request.exportFormat);
@@ -768,7 +774,7 @@ export async function requestNamedStaffRecord(
       // ── 6. and only now, the record ───────────────────────────────────────────────────────────
       const row = await fetchScopedStaffRecord(
         tx,
-        school.operationalSchoolId,
+        operationalSchoolId,
         request.subject.operationalStaffId,
         scopedFields,
       );
@@ -795,14 +801,9 @@ export async function requestNamedStaffRecord(
       // Server-derived and sourceless members of the scope, filled after the projection.
       const record: Record<string, unknown> = { ...row };
       if (scopedFields.includes("is_on_ges_establishment")) {
-        // Reports the VERIFIED binding, not the claim. With no link key the honest answer is
-        // neither true nor false — asserting `false` would deny an establishment membership we
-        // cannot rule out, exactly as `true` would assert one we cannot confirm.
-        record.is_on_ges_establishment = statutory
-          ? true
-          : binding.state === "UNVERIFIABLE" || binding.state === "NOT_CLAIMED"
-            ? UNVERIFIABLE_NO_LINK_KEY
-            : false;
+        // Reports whether the gate treated this person as a verified establishment teacher — the
+        // basis it actually applied. A name-mismatch demotion reads `false` here (fail-closed).
+        record.is_on_ges_establishment = statutory;
       }
       if (scopedFields.includes("establishment_as_of_date")) {
         // INDETERMINATE was refused above, so the classification here always carries a vintage field
@@ -892,7 +893,6 @@ export async function requestStaffListBrowse(
   request: StaffListBrowseRequest,
 ): Promise<StaffListBrowseResult> {
   requireUuid(request.officer.officerId, "officer.officerId");
-  requireUuid(request.school.operationalSchoolId, "school.operationalSchoolId");
   if (!request.caseReference || request.caseReference.trim().length === 0) {
     throw new GateInputError(
       "INVALID_INPUT",
@@ -959,6 +959,15 @@ export async function requestStaffListBrowse(
     return denyBrowse("DENIED_FIELD_SCOPE", "REASON_UNLOCKS_NOTHING");
   }
 
+  // The register must map this school to an operational tenant, or there is no list to read (AC-1.6).
+  if (!school.operationalSchoolId) {
+    return denyBrowse("DENIED_NO_CONSENT", "OPERATIONAL_UNMAPPED");
+  }
+  const operationalSchoolId = school.operationalSchoolId;
+
+  // A browse is never a statutory-basis access (there is no single subject to bind), so the
+  // ownership preflight always applies to it — a list of names at a private/mission school needs the
+  // flag on, exactly as a consent-branch record does.
   const preflight = ownershipPreflight(school.ownershipType);
   if (!preflight.allowed) {
     return denyBrowse(
@@ -973,20 +982,8 @@ export async function requestStaffListBrowse(
   }
 
   try {
-    return await withReadbackSchool(school.operationalSchoolId, async (tx) => {
-      const identity = await confirmSchoolIdentity(
-        tx,
-        school.operationalSchoolId,
-        school.emisSchoolId,
-      );
-      if (!identity.ok) {
-        throw new GateInputError(
-          "SCHOOL_MISMATCH",
-          `The supplied operational school uuid does not belong to EMIS school ${school.emisSchoolId}.`,
-        );
-      }
-
-      const consent = await readConsentInTx(tx, school.operationalSchoolId);
+    return await withReadbackSchool(operationalSchoolId, async (tx) => {
+      const consent = await readConsentInTx(tx, operationalSchoolId);
       if (!isConsentGranted(consent)) {
         return denyBrowse(
           "DENIED_NO_CONSENT",
@@ -1016,11 +1013,7 @@ export async function requestStaffListBrowse(
         exportFormat: null,
       });
 
-      const rows = await fetchStaffList(
-        tx,
-        school.operationalSchoolId,
-        request.limit ?? 50,
-      );
+      const rows = await fetchStaffList(tx, operationalSchoolId, request.limit ?? 50);
       return { accessId, outcome: "GRANTED" as const, legalBasis, targetRef, rows };
     });
   } catch (err) {

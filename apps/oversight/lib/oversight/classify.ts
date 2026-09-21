@@ -13,10 +13,15 @@ import type { Tx } from "@/lib/db";
  *                  OPERATIONAL database (lib/oversight/consent.ts).
  *
  * ────────────────────────────────────────────────────────────────────────────────────────────────
- * THE DECISION IS MADE FROM THE GES ESTABLISHMENT REGISTER. NOTHING ELSE.
+ * THE DECISION IS MADE FROM THE GES ESTABLISHMENT REGISTER. NOTHING ELSE. (AC-3.1)
  *
- * Membership of `ref_ges_teacher_establishment.staff_ids` for that `emis_school_id` is the whole
- * test. Two tempting alternatives are BOTH WRONG and are explicitly not used:
+ * Membership of the CURRENT vintage's `ref_ges_teacher_establishment.establishment_teachers` — an
+ * existence test over `establishment_teachers[].ntc_licence_number` for that `emis_school_id` — is
+ * the whole test. The key is the **NTC teacher-licence number** (Ghana's licensure identifier),
+ * which is carried by the operational `staff_profile.ntc_licence_number` of the row being fetched;
+ * the caller reads it there and passes it in (see lib/oversight/named-record-access.ts), so the
+ * licence that confers statute is bound to the exact person projected. Two tempting alternatives are
+ * BOTH WRONG and are explicitly not used (AC-3.11 — role is not statute):
  *
  *   · `ref_role.code` — a school's own role catalogue, free text, editable by a school admin
  *     (apps/web db/schema/identity.ts: "schools can add custom roles on the fly"). If the statutory
@@ -31,11 +36,12 @@ import type { Tx } from "@/lib/db";
  *     NEVER_RELEASE_FIELDS, and PROVISIONING §4a grants no SELECT on it) — keying a lawful basis on
  *     a table we have deliberately made ourselves unable to read would be incoherent.
  *
- * ANALYTICS, NOT READ-BACK. The register lives in the ANALYTICS database (db/schema/ref.ts, loaded
- * per PROVISIONING §3) and is read over `ANALYTICS_DATABASE_URL` under the ordinary jurisdiction
- * RLS. It is explicitly ruled OUT of the operational read-back grant (PROVISIONING §4a, closing
- * note). So classification happens BEFORE the read-back transaction is opened, and a subject can be
- * classified — and refused — without any operational connection existing at all.
+ * ANALYTICS REGISTER, KEYED ON THE OPERATIONAL LICENCE. The register lives in the ANALYTICS database
+ * (db/schema/ref.ts, loaded per PROVISIONING §3) and is read over `ANALYTICS_DATABASE_URL` under the
+ * ordinary jurisdiction RLS — it is explicitly ruled OUT of the operational read-back grant. The NTC
+ * licence the membership turns on is NOT request-supplied: it comes from the operational row itself
+ * (AC-3.4/3.5). So this classification runs as a nested analytics read from inside the read-back
+ * transaction (AC-3.6), once the caller has read the licence off the row it is about to project.
  * ────────────────────────────────────────────────────────────────────────────────────────────────
  */
 
@@ -61,14 +67,14 @@ export const ESTABLISHMENT_STALENESS_CEILING_MONTHS = 6;
 
 /** Why a subject is not on the statutory branch. Recorded so a denial can explain itself. */
 export type OtherStaffReason =
-  /** No `staff_ids` entry for this subject in the school's current register row. */
+  /** The subject's NTC licence is not in the school's current-vintage establishment_teachers. */
   | "NOT_ON_REGISTER"
   /** The school has no establishment row at all (never supplied, or not yet loaded). */
   | "NO_ESTABLISHMENT_ROW"
   /** A row exists and names the subject, but its `as_of_date` breaches the ceiling above. */
   | "STALE_ESTABLISHMENT"
-  /** The lookup carried no GES staff identifier, so register membership cannot even be asked. */
-  | "NO_STAFF_IDENTIFIER";
+  /** The operational row carried no NTC licence number, so register membership cannot be asked. */
+  | "NO_NTC_LICENCE";
 
 export type Classification =
   | {
@@ -76,6 +82,12 @@ export type Classification =
       establishmentAsOfDate: string;
       teachingPostsEstablished: number | null;
       ageInDays: number;
+      /**
+       * The `name` on the matched `establishment_teachers` entry, or null when GES supplied none.
+       * An optional display aid, NEVER authoritative — the caller cross-checks it against the
+       * operational name as a detective control (OC-NTC-RESIDUAL) and falls to CONSENT on mismatch.
+       */
+      establishmentName: string | null;
     }
   | {
       category: "OTHER_STAFF";
@@ -92,8 +104,11 @@ export type Classification =
 
 export interface ClassifyInput {
   emisSchoolId: string;
-  /** The GES establishment staff ID being looked up. Null when the gate had no GES-side id. */
-  gesStaffId: string | null;
+  /**
+   * The subject's NTC licence number, read from their operational `staff_profile` row. Null when
+   * that row carries no licence — a staff member with no NTC licence cannot be on the register.
+   */
+  ntcLicenceNumber: string | null;
   /** Injectable clock — tests pin the staleness boundary; production passes nothing. */
   now?: Date;
 }
@@ -103,6 +118,8 @@ interface EstablishmentRow {
   teaching_posts_established: number | null;
   as_of_date: string;
   on_register: boolean;
+  /** The `name` on the matched establishment_teachers entry, null if absent or not on register. */
+  matched_name: string | null;
 }
 
 function daysBetween(from: Date, to: Date): number {
@@ -130,24 +147,37 @@ export async function classifyStaffSubjectInTx(
 ): Promise<Classification> {
   const now = input.now ?? new Date();
 
-  if (!input.gesStaffId || input.gesStaffId.trim() === "") {
+  if (!input.ntcLicenceNumber || input.ntcLicenceNumber.trim() === "") {
     return {
       category: "OTHER_STAFF",
-      reason: "NO_STAFF_IDENTIFIER",
+      reason: "NO_NTC_LICENCE",
       establishmentAsOfDate: null,
       ageInDays: null,
     };
   }
 
-  const staffId = input.gesStaffId.trim();
+  const ntc = input.ntcLicenceNumber.trim();
   let rows: EstablishmentRow[];
   try {
+    // Membership is an EXISTENCE test over establishment_teachers[].ntc_licence_number, and the
+    // matched entry's optional `name` is returned alongside for the caller's identity cross-check.
+    // `coalesce(..., '[]')` keeps a NULL establishment_teachers from erroring the expansion.
     const result = await tx.execute(sql`
       select
         establishment_id::text            as establishment_id,
         teaching_posts_established        as teaching_posts_established,
         as_of_date::text                  as as_of_date,
-        (staff_ids @> ${JSON.stringify([staffId])}::jsonb) as on_register
+        exists (
+          select 1
+          from jsonb_array_elements(coalesce(establishment_teachers, '[]'::jsonb)) e
+          where e->>'ntc_licence_number' = ${ntc}
+        )                                 as on_register,
+        (
+          select e->>'name'
+          from jsonb_array_elements(coalesce(establishment_teachers, '[]'::jsonb)) e
+          where e->>'ntc_licence_number' = ${ntc}
+          limit 1
+        )                                 as matched_name
       from ref_ges_teacher_establishment
       where emis_school_id = ${input.emisSchoolId}
       order by as_of_date desc
@@ -202,6 +232,7 @@ export async function classifyStaffSubjectInTx(
     establishmentAsOfDate: row.as_of_date,
     teachingPostsEstablished: row.teaching_posts_established,
     ageInDays,
+    establishmentName: row.matched_name,
   };
 }
 

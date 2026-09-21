@@ -10,27 +10,36 @@
  *
  * THE PREFIX MUST MATCH THE LAWFUL BASIS. Two forms, and they are not interchangeable:
  *
- *   STATUTORY → `GES:<ges_staff_id>`
- *       The subject is identified by their GES establishment number, because that is what makes the
- *       basis true: the access was lawful precisely because this id is on the register.
+ *   STATUTORY → `NTC:<ntc_licence_number>`
+ *       The subject is identified by their NTC teacher-licence number, because that is what makes
+ *       the basis true: the access was lawful precisely because this licence is on the GES
+ *       establishment register (and it is the licence carried by the operational row we fetched —
+ *       see the same-row binding in lib/oversight/named-record-access.ts). The old `GES:<staff_id>`
+ *       form is gone with the opaque GES staff id it named.
  *
  *   CONSENT   → `OPS:<emis_school_id>:<operational_staff_uuid>`
- *       There is no GES-side identifier for a non-establishment staff member, so the subject is
+ *       There is no establishment identifier for a non-establishment staff member, so the subject is
  *       named by (school, operational row). The school is part of the ref because consent is a
  *       SCHOOL-level artefact: a reviewer checking the basis needs to know which school's consent
  *       was relied on, and that must be readable from the ref itself.
  *
- * A `GES:` ref on a CONSENT row would assert the subject was on the establishment register while
+ * An `NTC:` ref on a CONSENT row would assert the subject was on the establishment register while
  * claiming the basis that only applies when they are not — a self-contradicting audit entry, and
  * exactly the shape a mis-classification would leave behind. `assertTargetRefMatchesBasis` makes
- * that combination impossible to write, so the invariant can be relied on when reading the log.
+ * that combination (and an `OPS:` ref on a STATUTORY row) impossible to write, so the invariant can
+ * be relied on when reading the log (AC-3.9).
  */
 
 export type LegalBasis = "STATUTORY" | "CONSENT";
 
-/** GES establishment numbers are alphanumeric with separators (e.g. `GES/WR/08841`). No spaces. */
-const GES_STAFF_ID_RE = /^[A-Za-z0-9][A-Za-z0-9/_.-]*$/;
-/** EMIS school ids are likewise id-shaped, and must not contain the `:` we use as a separator. */
+/**
+ * NTC licence numbers: LENIENT presence-only check — non-empty, no whitespace (a name is never a
+ * target_ref, and whitespace is what a name has). The real NTC licence-number format is an open
+ * owner call (OC-NTC-REF-FORMAT); deliberately NOT guessed here. TODO(OC-NTC-REF-FORMAT): tighten to
+ * the confirmed NTC pattern once the owner rules on it.
+ */
+const NTC_LICENCE_RE = /^\S+$/;
+/** EMIS school ids are id-shaped, and must not contain the `:` we use as a separator. */
 const EMIS_SCHOOL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9/_.-]*$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,20 +54,20 @@ export class TargetRefError extends Error {
 export interface TargetRefInput {
   emisSchoolId: string;
   /** Required for STATUTORY (it IS the basis), ignored for CONSENT. */
-  gesStaffId?: string | null;
+  ntcLicenceNumber?: string | null;
   /** Required for CONSENT. The operational `staff_profile.id`. */
   operationalStaffId?: string | null;
 }
 
 export function buildTargetRef(basis: LegalBasis, input: TargetRefInput): string {
   if (basis === "STATUTORY") {
-    const id = input.gesStaffId?.trim();
-    if (!id || !GES_STAFF_ID_RE.test(id)) {
+    const ntc = input.ntcLicenceNumber?.trim();
+    if (!ntc || !NTC_LICENCE_RE.test(ntc)) {
       throw new TargetRefError(
-        "A STATUTORY access must name the subject by GES establishment id; none was supplied (or it is not id-shaped — a name is never a target_ref).",
+        "A STATUTORY access must name the subject by NTC licence number; none was supplied (or it is not id-shaped — a name is never a target_ref).",
       );
     }
-    return `GES:${id}`;
+    return `NTC:${ntc}`;
   }
   const emis = input.emisSchoolId?.trim();
   const opsId = input.operationalStaffId?.trim();
@@ -75,9 +84,12 @@ export function buildTargetRef(basis: LegalBasis, input: TargetRefInput): string
 
 export function isValidTargetRefForBasis(ref: string, basis: LegalBasis): boolean {
   if (basis === "STATUTORY") {
-    if (!ref.startsWith("GES:")) return false;
-    return GES_STAFF_ID_RE.test(ref.slice(4));
+    // A STATUTORY ref is NTC:<ntc> and NOTHING else — in particular an OPS: ref is rejected here
+    // (AC-3.9), so a consent-shaped subject can never be logged under the statutory basis.
+    if (!ref.startsWith("NTC:")) return false;
+    return NTC_LICENCE_RE.test(ref.slice(4));
   }
+  // A CONSENT ref is OPS:<emis>:<uuid> and NOTHING else — an NTC: ref is rejected here (AC-3.9).
   if (!ref.startsWith("OPS:")) return false;
   const parts = ref.split(":");
   if (parts.length !== 3) return false;
@@ -88,7 +100,7 @@ export function isValidTargetRefForBasis(ref: string, basis: LegalBasis): boolea
 export function assertTargetRefMatchesBasis(ref: string, basis: LegalBasis): void {
   if (!isValidTargetRefForBasis(ref, basis)) {
     throw new TargetRefError(
-      `target_ref "${ref}" does not match legal_basis ${basis}. STATUTORY takes GES:<ges_staff_id>; CONSENT takes OPS:<emis_school_id>:<uuid>.`,
+      `target_ref "${ref}" does not match legal_basis ${basis}. STATUTORY takes NTC:<ntc_licence_number>; CONSENT takes OPS:<emis_school_id>:<uuid>.`,
     );
   }
 }

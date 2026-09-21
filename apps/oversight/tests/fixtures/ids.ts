@@ -21,11 +21,17 @@ export const JUR = {
   schoolPrivateNoConsent: "10000000-0000-4000-8000-000000000017",
   /** In the OTHER district: the school a district officer must not be able to reach. */
   schoolOutsideSubtree: "10000000-0000-4000-8000-000000000018",
+  /** In the officer's district but with register operational_school_id NULL — refused (AC-1.6). */
+  schoolUnmappedOperational: "10000000-0000-4000-8000-000000000019",
 } as const;
 
 export const PERIOD_ID = "20000000-0000-4000-8000-000000000001";
 
-/** EMIS ids double as operational `ref_school.ges_code` — that equality is what the gate checks. */
+/**
+ * EMIS ids. Each register row now carries `operational_school_id` mapping the EMIS school to its
+ * operational tenant uuid (the OPS_SCHOOL.* below); the gate reads the tenant from the register, not
+ * from the request. `unmappedOperational` has a NULL mapping so the drill-down is refused (AC-1.6).
+ */
 export const EMIS = {
   publicConsented: "EMIS-PUB-001",
   publicNoConsent: "EMIS-PUB-002",
@@ -35,6 +41,7 @@ export const EMIS = {
   unknownOwnership: "EMIS-UNK-006",
   privateNoConsent: "EMIS-PRI-007",
   outsideSubtree: "EMIS-OUT-008",
+  unmappedOperational: "EMIS-UNM-009",
 } as const;
 
 export const OPS_SCHOOL = {
@@ -58,6 +65,10 @@ export const OPS_USER = {
   staffUnknownOwnership: "40000000-0000-4000-8000-000000000007",
   staffPrivateNoConsent: "40000000-0000-4000-8000-000000000008",
   staffOutsideSubtree: "40000000-0000-4000-8000-000000000009",
+  /** PRIVATE-school teacher ON the establishment, GES name matches → statutory (AC-3.10). */
+  teacherPrivateOnRegister: "40000000-0000-4000-8000-000000000010",
+  /** PRIVATE-school teacher ON the establishment, GES name DISAGREES → demoted to consent. */
+  teacherPrivateNameMismatch: "40000000-0000-4000-8000-000000000011",
 } as const;
 
 /** `staff_profile.id` — the only key that reaches an operational staff row. */
@@ -71,17 +82,28 @@ export const OPS_STAFF = {
   staffUnknownOwnership: "50000000-0000-4000-8000-000000000007",
   staffPrivateNoConsent: "50000000-0000-4000-8000-000000000008",
   staffOutsideSubtree: "50000000-0000-4000-8000-000000000009",
+  teacherPrivateOnRegister: "50000000-0000-4000-8000-000000000010",
+  teacherPrivateNameMismatch: "50000000-0000-4000-8000-000000000011",
   /** A uuid that is a valid shape but no staff_profile row — the SUBJECT_NOT_FOUND probe. */
   absent: "5fffffff-0000-4000-8000-0000000000ff",
 } as const;
 
-export const GES_STAFF_ID = {
-  /** On the consented public school's FRESH establishment row. */
-  onRegister: "GES/WR/00001",
-  /** On the stale school's establishment row — named, but the extract breaches the 6-month ceiling. */
-  onStaleRegister: "GES/WR/00004",
-  /** Syntactically fine, on no register anywhere — "a staff member not on the register". */
-  notOnAnyRegister: "GES/WR/09999",
+/**
+ * NTC teacher-licence numbers — the statutory-basis key. These MATCH the operational
+ * `staff_profile.ntc_licence_number` values in operational-seed.sql; membership over the
+ * establishment register's `establishment_teachers[].ntc_licence_number` is the whole test.
+ */
+export const NTC_LICENCE = {
+  /** teacherOnRegister's licence, on EMIS-PUB-001's FRESH establishment (name matches → statutory). */
+  onRegister: "NTC-2019-004417",
+  /** teacherStaleRegister's licence, on the STALE EMIS-PUB-004 vintage (breaches the 6-month ceiling). */
+  onStaleRegister: "NTC-2015-000981",
+  /** Syntactically fine, on no register anywhere — "a licence not on the register". */
+  notOnAnyRegister: "NTC-9999-000000",
+  /** teacherPrivateOnRegister's licence, on EMIS-PRI-003 with a MATCHING GES name. */
+  privateStatutory: "NTC-PRI-003-STAT",
+  /** teacherPrivateNameMismatch's licence, on EMIS-PRI-003 with a DISAGREEING GES name. */
+  privateNameMismatch: "NTC-PRI-003-MISMATCH",
 } as const;
 
 export const OFFICER = {

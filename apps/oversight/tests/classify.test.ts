@@ -3,7 +3,7 @@ import {
   ESTABLISHMENT_STALENESS_CEILING_MONTHS,
   classifyStaffSubject,
 } from "@/lib/oversight/classify";
-import { EMIS, GES_STAFF_ID, JUR } from "./fixtures/ids";
+import { EMIS, NTC_LICENCE, JUR } from "./fixtures/ids";
 import { adminOperational, districtOfficer, nationalOfficer } from "./helpers";
 
 const scope = {
@@ -13,34 +13,45 @@ const scope = {
 };
 
 describe("Kofi group B — classification comes from the GES establishment register", () => {
-  it("classifies a staff id on the school's fresh register row as GES_TEACHER", async () => {
+  it("classifies an NTC licence on the school's fresh register row as GES_TEACHER", async () => {
     const result = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: GES_STAFF_ID.onRegister,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
     });
     expect(result.category).toBe("GES_TEACHER");
   });
 
-  it("classifies a staff id absent from the register as OTHER_STAFF", async () => {
+  it("carries the matched establishment name for the identity cross-check", async () => {
     const result = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: GES_STAFF_ID.notOnAnyRegister,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
+    });
+    if (result.category !== "GES_TEACHER") throw new Error("expected GES_TEACHER");
+    expect(result.establishmentName).toBe("Ama Boateng");
+  });
+
+  it("classifies an NTC licence absent from the register as OTHER_STAFF (AC-3.2)", async () => {
+    // A licence that is genuinely set on the operational row but is NOT in the school's current
+    // establishment vintage — the consent branch, never statute.
+    const result = await classifyStaffSubject(scope, {
+      emisSchoolId: EMIS.publicConsented,
+      ntcLicenceNumber: NTC_LICENCE.notOnAnyRegister,
     });
     expect(result).toMatchObject({ category: "OTHER_STAFF", reason: "NOT_ON_REGISTER" });
   });
 
-  it("classifies a subject with no GES staff id as OTHER_STAFF (cannot claim statute)", async () => {
+  it("classifies a subject with no NTC licence as OTHER_STAFF (cannot claim statute)", async () => {
     const result = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: null,
+      ntcLicenceNumber: null,
     });
     expect(result).toMatchObject({
       category: "OTHER_STAFF",
-      reason: "NO_STAFF_IDENTIFIER",
+      reason: "NO_NTC_LICENCE",
     });
   });
 
-  it("does NOT use ref_role.code — a school-authored 'TEACHER' role confers nothing", async () => {
+  it("does NOT use ref_role.code — a school-authored 'TEACHER' role confers nothing (AC-3.11)", async () => {
     // The fixture's non-register clerk and the register teacher are at the SAME school; the clerk's
     // role row is a non-teaching one and the register teacher's is 'TEACHER'. Flip the clerk's role
     // to 'TEACHER' in the operational DB and the classification must not move.
@@ -53,7 +64,7 @@ describe("Kofi group B — classification comes from the GES establishment regis
       `;
       const result = await classifyStaffSubject(scope, {
         emisSchoolId: EMIS.publicConsented,
-        gesStaffId: GES_STAFF_ID.notOnAnyRegister,
+        ntcLicenceNumber: NTC_LICENCE.notOnAnyRegister,
       });
       expect(result.category).toBe("OTHER_STAFF");
     } finally {
@@ -79,7 +90,7 @@ describe("Kofi group B — classification comes from the GES establishment regis
     // ... and yet:
     const result = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: GES_STAFF_ID.notOnAnyRegister,
+      ntcLicenceNumber: NTC_LICENCE.notOnAnyRegister,
     });
     expect(result.category).toBe("OTHER_STAFF");
   });
@@ -87,7 +98,7 @@ describe("Kofi group B — classification comes from the GES establishment regis
   it("returns OTHER_STAFF/NO_ESTABLISHMENT_ROW when the school has no register row", async () => {
     const result = await classifyStaffSubject(scope, {
       emisSchoolId: "EMIS-DOES-NOT-EXIST",
-      gesStaffId: GES_STAFF_ID.onRegister,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
     });
     expect(result).toMatchObject({
       category: "OTHER_STAFF",
@@ -97,10 +108,10 @@ describe("Kofi group B — classification comes from the GES establishment regis
 });
 
 describe("Kofi group C — the six-month staleness ceiling fails closed", () => {
-  it("refuses the statutory branch for a staff id on a 400-day-old extract", async () => {
+  it("refuses the statutory branch for an NTC licence on a 400-day-old extract", async () => {
     const result = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicStale,
-      gesStaffId: GES_STAFF_ID.onStaleRegister,
+      ntcLicenceNumber: NTC_LICENCE.onStaleRegister,
     });
     expect(result).toMatchObject({
       category: "OTHER_STAFF",
@@ -111,7 +122,7 @@ describe("Kofi group C — the six-month staleness ceiling fails closed", () => 
   it("is a ceiling, not a cliff at an arbitrary date: fresh data classifies, the same data six months later does not", async () => {
     const fresh = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: GES_STAFF_ID.onRegister,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
     });
     expect(fresh.category).toBe("GES_TEACHER");
 
@@ -120,7 +131,7 @@ describe("Kofi group C — the six-month staleness ceiling fails closed", () => 
     later.setUTCMonth(later.getUTCMonth() + ESTABLISHMENT_STALENESS_CEILING_MONTHS + 1);
     const stale = await classifyStaffSubject(scope, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: GES_STAFF_ID.onRegister,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
       now: later,
     });
     expect(stale).toMatchObject({
@@ -134,7 +145,7 @@ describe("Kofi group C — the six-month staleness ceiling fails closed", () => 
       emisSchoolId: EMIS.publicStale,
       // A subject NOT named on the stale row: staleness is still checked first, because a stale
       // file cannot be trusted to say who is absent from it either.
-      gesStaffId: GES_STAFF_ID.notOnAnyRegister,
+      ntcLicenceNumber: NTC_LICENCE.notOnAnyRegister,
     });
     expect(result).toMatchObject({
       category: "OTHER_STAFF",
@@ -152,7 +163,7 @@ describe("the jurisdiction ceiling holds during classification", () => {
     };
     const result = await classifyStaffSubject(outside, {
       emisSchoolId: EMIS.publicConsented,
-      gesStaffId: GES_STAFF_ID.onRegister,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
     });
     // RLS filters the register row away, so the register simply has nothing to say.
     expect(result).toMatchObject({
@@ -168,7 +179,7 @@ describe("the jurisdiction ceiling holds during classification", () => {
         level: nationalOfficer.level,
         officerId: nationalOfficer.officerId,
       },
-      { emisSchoolId: EMIS.publicConsented, gesStaffId: GES_STAFF_ID.onRegister },
+      { emisSchoolId: EMIS.publicConsented, ntcLicenceNumber: NTC_LICENCE.onRegister },
     );
     expect(result.category).toBe("GES_TEACHER");
   });
