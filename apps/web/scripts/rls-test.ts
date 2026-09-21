@@ -1048,11 +1048,13 @@ async function main() {
     // rolled-back transaction. The read-back role + its grants/policies come from prod-paste-0103 applied
     // to the dev DB; a regression (a widened grant, a dropped CHECK, a removed trigger) turns this red.
     console.log("\nOversight consent + read-back role (behavioral):");
-    // B2 — the column the Oversight statutory binding path feature-detects (PROVISIONING).
+    // B2 — staff_profile.ges_staff_id was DROPPED (migration 0093, OC-GES-STAFF-ID-DISPOSITION): the
+    // Oversight §6 statutory binding is now keyed on ntc_licence_number, so the opaque GES id column
+    // is gone. Assert it is ABSENT — a re-add would resurrect a dead, un-bound classification key.
     const b2 = await sql<{ n: number }[]>`
       select count(*)::int n from information_schema.columns
       where table_name = 'staff_profile' and column_name = 'ges_staff_id'`;
-    assert("B2 staff_profile.ges_staff_id present (feature-detect)", b2[0].n, 1);
+    assert("B2 staff_profile.ges_staff_id is DROPPED (NTC-based binding)", b2[0].n, 0);
 
     // Expected scoped counts (as the superuser owner — pre-RLS truth for the school).
     const [{ n: expUsers }] = await sql<{ n: number }[]>`

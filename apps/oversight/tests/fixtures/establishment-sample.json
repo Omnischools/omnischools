@@ -1,0 +1,9 @@
+{
+  "as_of_date": "2026-09-01",
+  "rows": [
+    { "emis_school_id": "ETL-EST-1", "teaching_posts_established": 42, "ntc_licence_number": "NTC-2019-004417", "teacher_name": "Ama Boateng" },
+    { "emis_school_id": "ETL-EST-1", "teaching_posts_established": 42, "ntc_licence_number": "NTC-2020-118822", "teacher_name": "Kojo Mensah" },
+    { "emis_school_id": "ETL-EST-1", "teaching_posts_established": 42, "ntc_licence_number": "NTC-2018-004410" },
+    { "emis_school_id": "ETL-EST-2", "teaching_posts_established": 17, "ntc_licence_number": "NTC-2021-556677", "teacher_name": "Efua Darko" }
+  ]
+}
