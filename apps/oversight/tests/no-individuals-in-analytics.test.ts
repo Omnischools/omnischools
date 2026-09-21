@@ -10,10 +10,12 @@ import { adminAnalytics } from "./helpers";
  * records", checked here against the live schema rather than against the schema file, so a
  * hand-applied prod migration that added one would be caught too.
  *
- * The one permitted exception is `ref_ges_teacher_establishment.staff_ids`: a GES-supplied JSON
- * array of establishment numbers, which is reference data about POSTS, not a person record. It
- * carries no name, no contact detail and no per-person row, and it is the lookup key the statutory
- * branch is checked against — without it there is no way to tell a GES teacher from anyone else.
+ * The one permitted exception is `ref_ges_teacher_establishment.establishment_teachers`: a
+ * GES-supplied JSON array of `{ ntc_licence_number, name? }`, which is reference data about POSTS,
+ * not a person record. It has no name/contact COLUMN and no per-person row — the optional `name`
+ * inside the jsonb is a GES-supplied display aid on establishment reference data, not an
+ * Omnischools person record — and the NTC licence is the lookup key the statutory branch is checked
+ * against; without it there is no way to tell a GES teacher from anyone else.
  */
 describe("the analytics DB holds no individual-grain table", () => {
   it("has no person-identifying column anywhere except the establishment staff-id list", async () => {
@@ -39,7 +41,7 @@ describe("the analytics DB holds no individual-grain table", () => {
     }
   });
 
-  it("keeps the establishment staff-id list as reference data about posts, not people", async () => {
+  it("keeps the establishment teacher list as reference data about posts, not people", async () => {
     const sql = adminAnalytics();
     try {
       const rows = (await sql`
@@ -50,9 +52,13 @@ describe("the analytics DB holds no individual-grain table", () => {
         order by column_name
       `) as unknown as { column_name: string; data_type: string }[];
       const names = rows.map((r) => r.column_name);
-      expect(names).toContain("staff_ids");
-      expect(rows.find((r) => r.column_name === "staff_ids")!.data_type).toBe("jsonb");
-      // No name, no contact detail, no per-person row: the table's grain is the SCHOOL.
+      expect(names).toContain("establishment_teachers");
+      expect(
+        rows.find((r) => r.column_name === "establishment_teachers")!.data_type,
+      ).toBe("jsonb");
+      // The old opaque `staff_ids` column is gone. And no name/contact/per-person COLUMN exists:
+      // the table's grain is the SCHOOL (the optional name lives inside the jsonb, as reference data).
+      expect(names).not.toContain("staff_ids");
       for (const forbidden of ["full_name", "phone", "email", "date_of_birth"]) {
         expect(names).not.toContain(forbidden);
       }

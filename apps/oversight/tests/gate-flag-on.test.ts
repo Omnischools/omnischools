@@ -40,7 +40,7 @@ describe("with E3_NON_PUBLIC_STAFF_DRILLDOWN on", () => {
       school: SCHOOL.privateConsented,
       reasonCode: "LICENSURE_QUALIFICATION_VERIFICATION",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffPrivateSchool, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffPrivateSchool },
     });
 
     expect(result.outcome).toBe("GRANTED");
@@ -63,7 +63,7 @@ describe("with E3_NON_PUBLIC_STAFF_DRILLDOWN on", () => {
       school: SCHOOL.privateNoConsent,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffPrivateNoConsent, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffPrivateNoConsent },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
     if (result.outcome === "GRANTED") return;
@@ -77,10 +77,54 @@ describe("with E3_NON_PUBLIC_STAFF_DRILLDOWN on", () => {
       school: SCHOOL.unknownOwnership,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.staffUnknownOwnership, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.staffUnknownOwnership },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
     if (result.outcome === "GRANTED") return;
     expect(result.denialReason).toBe("UNKNOWN_OWNERSHIP");
+  });
+
+  it("a name-mismatch teacher demotes to CONSENT — and with the flag on, consent then grants", async () => {
+    // teacherPrivateNameMismatch's NTC IS on EMIS-PRI-003's establishment, so classification is
+    // GES_TEACHER — but GES named that licence "Kwabena Otchere" while the operational row is "Efo
+    // Nyaku", so OC-NTC-RESIDUAL demotes it. With the flag ON at this consenting private school the
+    // consent branch then GRANTS — proving the demotion lands on CONSENT, not STATUTORY.
+    const reference = caseRef("flag-on-name-mismatch");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.privateConsented,
+      reasonCode: "LICENSURE_QUALIFICATION_VERIFICATION",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.teacherPrivateNameMismatch },
+    });
+    expect(result.outcome).toBe("GRANTED");
+    if (result.outcome !== "GRANTED") return;
+    expect(result.legalBasis).toBe("CONSENT");
+    expect(result.staffCategory).toBe("OTHER_STAFF");
+    expect(result.record.full_name).toBe("Efo Nyaku");
+    // The identity cross-check fired, and the record reports it was NOT treated as established.
+    expect(result.trace).toContain("establishment:name-mismatch");
+    expect(result.record.is_on_ges_establishment).toBe(false);
+    const rows = await auditRowsFor(reference);
+    expect(rows[0]).toMatchObject({ legal_basis: "CONSENT", record_type: "STAFF" });
+    expect(rows[0]!.target_ref.startsWith("OPS:")).toBe(true);
+  });
+
+  it("a matching-name establishment teacher is STATUTORY even at a private school", async () => {
+    // The mirror of the demotion: the same private school, but the GES name MATCHES — statute holds,
+    // and consent is not even consulted.
+    const reference = caseRef("flag-on-private-statutory");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.privateConsented,
+      reasonCode: "STATUTORY_AUDIT",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.teacherPrivateOnRegister },
+    });
+    expect(result.outcome).toBe("GRANTED");
+    if (result.outcome !== "GRANTED") return;
+    expect(result.legalBasis).toBe("STATUTORY");
+    expect(result.record.full_name).toBe("Kofi Adomako");
+    expect(result.trace).not.toContain("establishment:name-mismatch");
   });
 });

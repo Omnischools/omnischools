@@ -49,15 +49,6 @@ export function BrowseForm({ schools }: { schools: ResolvedSchool[] }) {
             </label>
 
             <label className="block text-xs text-navy-2">
-              Operational school id (uuid)
-              <input
-                name="operationalSchoolId"
-                required
-                className="mt-1 w-full rounded-md border border-border-2 bg-surface px-3 py-2 font-mono text-sm text-navy"
-              />
-            </label>
-
-            <label className="block text-xs text-navy-2">
               Reason for access
               <select
                 name="reasonCode"
@@ -171,11 +162,11 @@ export function BrowseForm({ schools }: { schools: ResolvedSchool[] }) {
               </tbody>
             </table>
             <p className="mt-3 text-xs text-navy-3">
-              Register status cannot be computed per row: the operational staff record
-              carries no GES establishment id, so there is no key to match the register
-              on. Every row therefore routes to the consent branch — the fail-closed
-              direction. Restoring the GES establishment / Not-on-register signal needs a{" "}
-              <code>ges_staff_id</code> column on the operational staff record.
+              Register status is not shown on the list, by design: a browse stays minimal
+              and defers the lawful basis to the record. Opening a row reads that person&apos;s
+              NTC licence and checks it against the GES establishment register — an
+              establishment teacher opens under statute, everyone else under the school&apos;s
+              DPO consent.
             </p>
           </Panel>
         </>

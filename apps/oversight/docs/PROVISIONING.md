@@ -294,6 +294,15 @@ alter role oversight_readback set default_transaction_read_only = on;
 > **Still not granted, and not requested:** `staff_compensation`, `ref_district`, `ref_region`,
 > `attendance_records`, anything student-side.
 
+> **✅ SUPERSEDED (establishment ETL — NTC pivot). The two notes below are HISTORICAL.** The
+> statutory basis is no longer bound via `staff_profile.ges_staff_id` (added #372, since DROPPED) —
+> it is the teacher's `ntc_licence_number` read off the fetched row and checked for membership
+> against `ref_ges_teacher_establishment.establishment_teachers` inside the read-back tx.
+> `bindEstablishmentId` is retired; the officer supplies nothing bindable. The `ges_code` cross-check
+> is likewise dropped — the operational uuid is register-sourced via
+> `ref_emis_school_register.operational_school_id`. (`staff_category` is derived from register
+> membership, not role — correcting the stale §4a line above too.)
+
 > **⚠ THIS GAP NOW COSTS REACH, NOT JUST CONVENIENCE (revised after security review).** The GES
 > establishment number and the operational staff uuid arrive separately in a gate request, and an
 > establishment number is not a secret — so without a column binding them, "this number is on the

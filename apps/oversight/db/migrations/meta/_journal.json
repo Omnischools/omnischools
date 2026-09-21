@@ -22,6 +22,13 @@
       "when": 1789972888672,
       "tag": "0002_unusual_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790007092565,
+      "tag": "0003_funny_blindfold",
+      "breakpoints": true
     }
   ]
 }

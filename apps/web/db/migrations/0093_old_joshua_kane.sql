@@ -1,0 +1,15 @@
+-- ---------------------------------------------------------------------------
+-- OC-GES-STAFF-ID-DISPOSITION — drop staff_profile.ges_staff_id.
+--
+-- The GES establishment ETL is now NTC-based: the Oversight §6 statutory binding keys on the NTC
+-- licence number (analytics ref_ges_teacher_establishment.establishment_teachers[].ntc_licence_number
+-- ⇄ staff_profile.ntc_licence_number), so the opaque ges_staff_id column is empty and purposeless.
+-- Dropping it is the schema half; the binding CODE retirement (lib/oversight/staff-projection.ts
+-- bindEstablishmentId / hasGesStaffIdColumn) is the implementer's job in apps/oversight.
+--
+-- REACHES PROD VIA MIGRATE — NO RLS PASTE. staff_profile keeps its tenant_isolation RLS unchanged
+-- (dropping a column touches no policy). The oversight_readback grant is UNAFFECTED: it SELECTs
+-- staff_profile table-wide (PROVISIONING §4a), and ntc_licence_number — what the new binding reads —
+-- stays. No prod-paste-*.sql accompanies this migration.
+-- ---------------------------------------------------------------------------
+ALTER TABLE "staff_profile" DROP COLUMN "ges_staff_id";

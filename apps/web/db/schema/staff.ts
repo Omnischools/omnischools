@@ -54,18 +54,12 @@ export const staffProfiles = pgTable(
     nmcLicenceExpiry: date("nmc_licence_expiry"),
     specialisations: text("specialisations"), // comma-separated tags
 
-    /**
-     * GES establishment staff id — the join key the Oversight §6 gate BINDS the statutory-basis check to
-     * (apps/oversight/docs/PROVISIONING.md; a GES-establishment teacher is otherwise routed to the CONSENT
-     * branch because there is no key). AUTHORITATIVE GES data: populated from the GES establishment
-     * register load / ETL, NEVER school data entry — a school that could type this could bind one of its
-     * own employees to an establishment number and expose them to consent-free statutory oversight.
-     * Nullable, no backfill, no default (additive; existing rows stay NULL, i.e. "not on the register").
-     * ponytail: v1 keeps it read-only to the school by APP-LAYER omission (no write path binds it). The
-     * structural column-grant / loader-role split (a GES-only writer, school SELECT-only) is DEFERRED —
-     * owner call OC-5; upgrade path is a column-level GRANT once a distinct GES loader role exists.
-     */
-    gesStaffId: text("ges_staff_id"),
+    // NOTE (OC-GES-STAFF-ID-DISPOSITION): `ges_staff_id` was DROPPED here. The Oversight §6 statutory
+    // binding is now keyed on the NTC licence number (analytics ref_ges_teacher_establishment.
+    // establishment_teachers[].ntc_licence_number ⇄ staff_profile.ntc_licence_number below), so the
+    // opaque GES id column is empty and purposeless. `ntc_licence_number` stays and is what the new
+    // binding reads. The oversight_readback grant SELECTs staff_profile table-wide, so it is
+    // unaffected by the drop and already covers ntc_licence_number.
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -91,7 +91,7 @@ describe("the identity spine still resolves UNDER those policies", () => {
       school: SCHOOL.publicConsented,
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
 
     expect(result.outcome).toBe("GRANTED");
@@ -115,9 +115,10 @@ describe("the identity spine still resolves UNDER those policies", () => {
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
       // A real staff_profile.id — belonging to ANOTHER school.
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
-    // Refused at the consent gate before the subject is even looked for; nothing leaks either way.
+    // The basis probe runs under this tenant's GUC, so the other school's row is invisible: the
+    // subject reads as absent and the request is refused. Nothing leaks either way.
     expect(result.outcome).not.toBe("GRANTED");
     const rows = await auditRowsFor(reference);
     expect(rows[0]!.fields_released).toEqual([]);

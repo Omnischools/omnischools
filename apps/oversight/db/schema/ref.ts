@@ -9,6 +9,7 @@ import {
   numeric,
   jsonb,
   primaryKey,
+  unique,
 } from "drizzle-orm/pg-core";
 import { dimJurisdiction, dimStage, dimSubject } from "./dim";
 import {
@@ -37,6 +38,11 @@ export const refEmisSchoolRegister = pgTable("ref_emis_school_register", {
   ownershipType: ownershipTypeEnum("ownership_type"),
   // Does this registered school have a live Omnischools tenant.
   onSchoolup: boolean("on_schoolup").notNull().default(false),
+  // The operational tenant uuid this EMIS school maps to (apps/web schools.id), when on Schoolup.
+  // Nullable by design: NULL = not (yet) mapped. Lets the §6 gate / ETL resolve an operational
+  // school directly instead of round-tripping ref_school.ges_code (AC-1.1). No FK — it references a
+  // row in the SEPARATE operational database, which Postgres cannot enforce across.
+  operationalSchoolId: uuid("operational_school_id"),
   source: sourceEnum("source").notNull().default("EMIS_EXTRACT"),
   asOfDate: date("as_of_date").notNull(),
 });
@@ -81,20 +87,38 @@ export const refWaecResultsExtract = pgTable("ref_waec_results_extract", {
 
 /**
  * ref_ges_teacher_establishment — GES payroll/HR authorised teaching posts per school, and the
- * staff IDs that make teacher named-record lookup possible (§5.4). Supplies
+ * establishment teacher list that makes teacher named-record lookup possible (§5.4). Supplies
  * teaching_posts_established to fact_staffing.
+ *
+ * NTC-BASED (AC-2.x): the teacher lookup key is now the **NTC licence number** (Ghana's teacher
+ * licensure identifier, present on operational `staff_profile.ntc_licence_number`), not an opaque
+ * GES staff id. `establishment_teachers` is a JSON array of
+ *   { ntc_licence_number: string, name?: string }
+ * so the statutory branch tests membership by a containment/existence query over
+ * `establishment_teachers[].ntc_licence_number` and binds to the operational row on the SAME
+ * licence number. `name` is an optional GES-supplied display aid, never authoritative.
+ *
+ * UNIQUE (emis_school_id, as_of_date): one establishment vintage per school per as-of date. The
+ * current vintage is the row with MAX(as_of_date) for the school (AC-2.3), and the constraint stops
+ * a duplicate same-date load from creating two "current" rows.
  */
-export const refGesTeacherEstablishment = pgTable("ref_ges_teacher_establishment", {
-  establishmentId: uuid("establishment_id").primaryKey().defaultRandom(),
-  emisSchoolId: text("emis_school_id")
-    .notNull()
-    .references(() => refEmisSchoolRegister.emisSchoolId),
-  teachingPostsEstablished: integer("teaching_posts_established").notNull(),
-  // Comma-free JSON array of GES staff IDs on establishment at this school (teacher lookup key, §6).
-  staffIds: jsonb("staff_ids"),
-  source: sourceEnum("source").notNull().default("GES_ESTABLISHMENT"),
-  asOfDate: date("as_of_date").notNull(),
-});
+export const refGesTeacherEstablishment = pgTable(
+  "ref_ges_teacher_establishment",
+  {
+    establishmentId: uuid("establishment_id").primaryKey().defaultRandom(),
+    emisSchoolId: text("emis_school_id")
+      .notNull()
+      .references(() => refEmisSchoolRegister.emisSchoolId),
+    teachingPostsEstablished: integer("teaching_posts_established").notNull(),
+    // JSON array of { ntc_licence_number: string, name?: string } — the establishment roster at this
+    // school as of `as_of_date`. Membership-by-NTC is the whole statutory test (§6). No per-person
+    // row, no contact detail: reference data about POSTS, not a person record.
+    establishmentTeachers: jsonb("establishment_teachers"),
+    source: sourceEnum("source").notNull().default("GES_ESTABLISHMENT"),
+    asOfDate: date("as_of_date").notNull(),
+  },
+  (t) => [unique("uniq_establishment_vintage").on(t.emisSchoolId, t.asOfDate)],
+);
 
 // NOTE: there is deliberately NO school-consent / data-sharing-agreement table. GES and the MoE
 // are statutory regulators with mandatory oversight of curriculum, academic performance, and

@@ -45,7 +45,7 @@ describe("with OPERATIONAL_READBACK_URL unset", () => {
       school: SCHOOL.publicConsented,
       reasonCode: "SAFEGUARDING_MISCONDUCT",
       caseReference: reference,
-      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister, gesStaffId: null },
+      subject: { operationalStaffId: OPS_STAFF.clerkNotOnRegister },
     });
 
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
@@ -74,18 +74,18 @@ describe("with OPERATIONAL_READBACK_URL unset", () => {
     expect(await auditRowsFor(reference)).toHaveLength(1);
   });
 
-  it("a request CLAIMING an establishment number is refused too, and logged", async () => {
-    // The claim cannot be bound without the read-back either, so there is no branch that proceeds.
-    const reference = caseRef("unset-with-claim");
+  it("even a would-be establishment teacher is refused — the licence can't be read without the read-back", async () => {
+    // teacherOnRegister's NTC licence is on the register, so WITH the read-back this would be
+    // STATUTORY. But the licence lives on the operational row, and without the read-back it cannot be
+    // read at all — so the basis is undecidable and the request is refused, logged under the
+    // pessimistic CONSENT basis (no STATUTORY row is ever written for an access that did not happen).
+    const reference = caseRef("unset-would-be-statutory");
     const result = await requestNamedStaffRecord({
       officer: districtOfficer,
       school: SCHOOL.publicConsented,
       reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
       caseReference: reference,
-      subject: {
-        operationalStaffId: OPS_STAFF.teacherOnRegister,
-        gesStaffId: "GES/WR/00001",
-      },
+      subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
     });
     expect(result.outcome).toBe("DENIED_NO_CONSENT");
     if (result.outcome === "GRANTED") return;
@@ -115,7 +115,7 @@ describe("with OPERATIONAL_READBACK_URL unset", () => {
         school: SCHOOL.outsideSubtree,
         reasonCode: "SAFEGUARDING_MISCONDUCT",
         caseReference: reference,
-        subject: { operationalStaffId: OPS_STAFF.staffOutsideSubtree, gesStaffId: null },
+        subject: { operationalStaffId: OPS_STAFF.staffOutsideSubtree },
       }),
     ).rejects.toMatchObject({ code: "OUT_OF_JURISDICTION" });
     expect(await auditRowsFor(reference)).toHaveLength(0);

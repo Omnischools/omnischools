@@ -26,6 +26,12 @@ export interface ResolvedSchool {
   jurisdictionId: string | null;
   districtId: string | null;
   onSchoolup: boolean;
+  /**
+   * The OPERATIONAL tenant uuid this EMIS school maps to, sourced from the register (AC-1.1) and
+   * RLS-filtered to the officer's subtree — never request-supplied. NULL = not (yet) mapped, in
+   * which case the §6 gate REFUSES the individual drill-down rather than guess a tenant (AC-1.6).
+   */
+  operationalSchoolId: string | null;
 }
 
 const SELECT_SCHOOLS = sql`
@@ -35,7 +41,8 @@ const SELECT_SCHOOLS = sql`
     r.ownership_type::text           as ownership_type,
     dj.jurisdiction_id::text         as jurisdiction_id,
     r.district_id::text              as district_id,
-    r.on_schoolup                    as on_schoolup
+    r.on_schoolup                    as on_schoolup,
+    r.operational_school_id::text    as operational_school_id
   from ref_emis_school_register r
   left join dim_jurisdiction dj
     on dj.ges_code = r.emis_school_id and dj.level = 'SCHOOL'
@@ -53,6 +60,7 @@ function mapRow(row: Record<string, unknown>): ResolvedSchool {
     jurisdictionId: (row.jurisdiction_id as string | null) ?? null,
     districtId: (row.district_id as string | null) ?? null,
     onSchoolup: Boolean(row.on_schoolup),
+    operationalSchoolId: (row.operational_school_id as string | null) ?? null,
   };
 }
 

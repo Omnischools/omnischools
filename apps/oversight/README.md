@@ -97,13 +97,14 @@ bind any claimed establishment number to the row about to be fetched, read conse
 read-back transaction, **write the audit row**, and only then project the fields the stated reason
 unlocks. Denials are written rows too, with `fields_released = []`.
 
-**The STATUTORY basis needs a bound subject, not a claimed id.** The establishment number and the
-operational staff uuid arrive separately in a request, so "this number is on the register" says
-nothing about the row being fetched; both must resolve to the same person. Operational
-`staff_profile` has no `ges_staff_id` to bind them with, so **every direct record fetch currently
-resolves to CONSENT** — meaning a GES teacher is reachable only where the school has consented. That
-is a deliberate loss of reach in exchange for a basis nobody can forge; the verification path is
-written and feature-detected, waiting for the column.
+**The STATUTORY basis is a subject bound structurally, not a claimed id.** The basis is the
+teacher's `ntc_licence_number` READ off the exact `staff_profile` row being fetched (never typed by
+the officer), checked for membership against the authoritative GES establishment register inside the
+same read-back transaction. Because the licence comes from the row, statute is structurally bound to
+the person projected — there is nothing to forge. A teacher whose NTC is on the school's current,
+non-stale register resolves to STATUTORY at every ownership type; anyone else resolves to CONSENT
+(fail-closed). A GES-supplied establishment name that disagrees with the operational name demotes to
+CONSENT.
 
 The jurisdiction ceiling is enforced **twice, independently**: in the choke point (so it cannot be
 skipped by a future caller) and in the database, where `audit_insert`'s `WITH CHECK` requires

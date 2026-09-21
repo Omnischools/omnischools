@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { GES_STAFF_ID, OPS_STAFF } from "./fixtures/ids";
+import { OPS_STAFF } from "./fixtures/ids";
 import { SCHOOL } from "./fixtures/schools";
 import { adminAnalytics, auditRowsFor, caseRef, districtOfficer } from "./helpers";
 
@@ -57,10 +57,7 @@ describe("the audit row exists before the record is fetched", () => {
       school,
       reasonCode: "STATUTORY_AUDIT",
       caseReference: currentCaseReference,
-      subject: {
-        operationalStaffId: OPS_STAFF.teacherOnRegister,
-        gesStaffId: GES_STAFF_ID.onRegister,
-      },
+      subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
     });
     expect(result.outcome).toBe("GRANTED");
     expect(fetchCalls).toHaveLength(1);
@@ -84,10 +81,7 @@ describe("a failed audit INSERT means no fetch at all", () => {
           school,
           reasonCode: "STATUTORY_AUDIT",
           caseReference: currentCaseReference,
-          subject: {
-            operationalStaffId: OPS_STAFF.teacherOnRegister,
-            gesStaffId: GES_STAFF_ID.onRegister,
-          },
+          subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
         });
       } catch (err) {
         thrown = err;
@@ -116,10 +110,7 @@ describe("a failed audit INSERT means no fetch at all", () => {
         school,
         reasonCode: "STATUTORY_AUDIT",
         caseReference: currentCaseReference,
-        subject: {
-          operationalStaffId: OPS_STAFF.teacherOnRegister,
-          gesStaffId: GES_STAFF_ID.onRegister,
-        },
+        subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
       }),
     ).rejects.toThrowError();
     expect(fetchCalls).toHaveLength(0);

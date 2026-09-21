@@ -23,6 +23,12 @@ import { describe, expect, it } from "vitest";
  */
 
 const ROOT = process.cwd();
+/**
+ * Project-relative path with POSIX separators. `path.relative` yields backslashes on Windows, which
+ * would spuriously fail the exact-match assertions below against the forward-slash allow-lists; the
+ * allow-list identities are what matter, not the OS separator.
+ */
+const rel = (f: string): string => relative(ROOT, f).replaceAll("\\", "/");
 const READBACK_SPECIFIERS = [
   "@/lib/db/readback",
   "lib/db/readback",
@@ -120,20 +126,20 @@ describe("no aggregate code may import the operational read-back", () => {
   it("direct importers match the allow-list exactly", () => {
     const importers = ALL_SOURCES.filter(
       (f) =>
-        relative(ROOT, f) !== "lib/db/readback.ts" &&
+        rel(f) !== "lib/db/readback.ts" &&
         importSpecifiers(f).some(isReadbackSpecifier),
     )
-      .map((f) => relative(ROOT, f))
+      .map((f) => rel(f))
       .sort();
     expect(importers).toEqual(ALLOWED_DIRECT_IMPORTERS);
   });
 
   it("no App-Router entry point outside the gate reaches it, even transitively", () => {
     const entries = ALL_SOURCES.filter((f) =>
-      /(^|\/)(page|layout|route|actions)\.(ts|tsx)$/.test(relative(ROOT, f)),
+      /(^|\/)(page|layout|route|actions)\.(ts|tsx)$/.test(rel(f)),
     );
     const offenders = entries
-      .map((f) => relative(ROOT, f))
+      .map((f) => rel(f))
       .filter((rel) => !GATED_ENTRY_POINTS.includes(rel))
       .filter((rel) => reachesReadback(join(ROOT, rel)));
     expect(offenders).toEqual([]);

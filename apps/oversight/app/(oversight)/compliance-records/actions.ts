@@ -11,11 +11,7 @@ import {
   type SchoolGateRef,
 } from "@/lib/oversight/named-record-access";
 import { STAFF_REASON_CODES, withheldFields } from "@/lib/oversight/field-scope";
-import {
-  UNAVAILABLE_NO_SOURCE,
-  UNVERIFIABLE_NO_LINK_KEY,
-  type StaffListRow,
-} from "@/lib/oversight/staff-projection";
+import { UNAVAILABLE_NO_SOURCE, type StaffListRow } from "@/lib/oversight/staff-projection";
 
 /**
  * The gate's server actions — the ONLY App-Router code permitted to reach the read-back, and it
@@ -68,7 +64,6 @@ export type GateState =
       accessId: string;
       rows: StaffListRow[];
       emisSchoolId: string;
-      operationalSchoolId: string;
     };
 
 function field(formData: FormData, name: string): string {
@@ -76,14 +71,14 @@ function field(formData: FormData, name: string): string {
 }
 
 /**
- * The school reference handed to the gate: two ids and nothing else.
+ * The school reference handed to the gate: the EMIS id and nothing else.
  *
- * The jurisdiction node and the ownership type are DELIBERATELY not passed. The orchestrator
- * resolves both from the GES register under the officer's own RLS and refuses an out-of-subtree
- * school itself — so this action cannot get the ceiling wrong, and neither can any future caller.
+ * The jurisdiction node, ownership type AND the operational tenant uuid are all resolved by the
+ * orchestrator from the GES register under the officer's own RLS — the caller supplies none of them,
+ * so it cannot get the ceiling or the tenant wrong, and neither can any future caller.
  */
-function gateSchool(emisSchoolId: string, operationalSchoolId: string): SchoolGateRef {
-  return { emisSchoolId, operationalSchoolId };
+function gateSchool(emisSchoolId: string): SchoolGateRef {
+  return { emisSchoolId };
 }
 
 export async function submitStaffGate(
@@ -95,9 +90,7 @@ export async function submitStaffGate(
   const reasonCode = field(formData, "reasonCode");
   const caseReference = field(formData, "caseReference");
   const emisSchoolId = field(formData, "emisSchoolId");
-  const operationalSchoolId = field(formData, "operationalSchoolId");
   const operationalStaffId = field(formData, "operationalStaffId");
-  const gesStaffId = field(formData, "gesStaffId");
   const confirmed = formData.get("confirm") === "on";
   const rosterBrowsed = formData.get("rosterBrowsed") === "true";
   const exportFormat = field(formData, "exportFormat");
@@ -116,10 +109,10 @@ export async function submitStaffGate(
   try {
     const result = await requestNamedStaffRecord({
       officer,
-      school: gateSchool(emisSchoolId, operationalSchoolId),
+      school: gateSchool(emisSchoolId),
       reasonCode,
       caseReference,
-      subject: { operationalStaffId, gesStaffId: gesStaffId || null },
+      subject: { operationalStaffId },
       rosterBrowsed,
       exportFormat: exportFormat || null,
     });
@@ -148,10 +141,9 @@ export async function submitStaffGate(
                 ? "Yes"
                 : "No"
               : String(raw),
-        // Both markers render as the muted "no value to give you, and here is why" state rather
-        // than as a value: one means Omnischools has no source at all, the other that this subject
-        // cannot be bound to the establishment register. Neither is a fact about the person.
-        unavailable: raw === UNAVAILABLE_NO_SOURCE || raw === UNVERIFIABLE_NO_LINK_KEY,
+        // The marker renders as the muted "no value to give you, and here is why" state rather than
+        // as a value: Omnischools has no source at all for the field. Not a fact about the person.
+        unavailable: raw === UNAVAILABLE_NO_SOURCE,
       };
     });
 
@@ -187,7 +179,6 @@ export async function browseStaffListAction(
   const reasonCode = field(formData, "reasonCode");
   const caseReference = field(formData, "caseReference");
   const emisSchoolId = field(formData, "emisSchoolId");
-  const operationalSchoolId = field(formData, "operationalSchoolId");
 
   if (!(STAFF_REASON_CODES as readonly string[]).includes(reasonCode)) {
     return { status: "error", message: "Pick a compliance reason." };
@@ -196,7 +187,7 @@ export async function browseStaffListAction(
   try {
     const result = await requestStaffListBrowse({
       officer,
-      school: gateSchool(emisSchoolId, operationalSchoolId),
+      school: gateSchool(emisSchoolId),
       reasonCode,
       caseReference,
     });
@@ -216,7 +207,6 @@ export async function browseStaffListAction(
       accessId: result.accessId,
       rows: result.rows,
       emisSchoolId,
-      operationalSchoolId,
     };
   } catch (err) {
     if (err instanceof ReadbackUnavailableError) {

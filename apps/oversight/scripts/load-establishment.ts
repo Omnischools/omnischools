@@ -1,0 +1,227 @@
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+import postgres from "postgres";
+
+/**
+ * #2 — GES ESTABLISHMENT FILE LOADER (event-driven, ANALYTICS-WRITE only).
+ *
+ * Loads a GES establishment extract into analytics `ref_ges_teacher_establishment` (db/schema/ref.ts).
+ * The establishment register is what the §6 statutory branch tests membership against, keyed on the
+ * NTC teacher-licence number (`establishment_teachers[].ntc_licence_number`), NOT an opaque GES staff
+ * id (OVERSIGHT_ANALYTICS_SPEC §5.4, lib/oversight/classify.ts).
+ *
+ * ── PRIVILEGE (AC-2.7) ──────────────────────────────────────────────────────────────────────────
+ * This writes ANALYTICS ONLY. It touches exactly one table (`ref_ges_teacher_establishment`) and
+ * never the operational DB. It connects over `ANALYTICS_DATABASE_URL`, which for a maintenance/load
+ * job MUST point at the PRIVILEGED owner/writer (the Direct connection, per docs/PROVISIONING.md §2 —
+ * the same connection db:migrate / db:policies / db:seed use), NEVER the app runtime's read-scoped
+ * pooler and NEVER the §6 `oversight_readback` operational role.
+ *
+ * ── FILE FORMAT (AC-2.6) ────────────────────────────────────────────────────────────────────────
+ * JSON. A file-level `as_of_date` (the extract vintage) and a flat `rows` array, each row keyed by
+ * `(emis_school_id, ntc_licence_number, teacher_name?)` plus the school's `teaching_posts_established`.
+ * A row may carry its own `as_of_date` to override the file vintage (per-school vintage). Example:
+ * tests/fixtures/establishment-sample.json.
+ *
+ *   { "as_of_date": "2026-09-01",
+ *     "rows": [
+ *       { "emis_school_id": "ETL-EST-1", "ntc_licence_number": "NTC-2019-004417",
+ *         "teacher_name": "Ama Boateng", "teaching_posts_established": 42 }, ... ] }
+ */
+
+/** A single teacher row as it arrives in the file. */
+export interface EstablishmentFileRow {
+  emis_school_id?: unknown;
+  ntc_licence_number?: unknown;
+  teacher_name?: unknown;
+  teaching_posts_established?: unknown;
+  as_of_date?: unknown;
+  /** Legacy GES payroll id. Its PRESENCE without an NTC number rejects the whole file (AC-2.8). */
+  ges_staff_id?: unknown;
+}
+
+export interface EstablishmentFile {
+  as_of_date?: unknown;
+  rows?: unknown;
+}
+
+/** One `(emis_school_id, as_of_date)` vintage, ready to upsert. */
+export interface EstablishmentGroup {
+  emisSchoolId: string;
+  asOfDate: string;
+  teachingPostsEstablished: number;
+  /** Sorted by NTC, deduped — so a re-load of the same file is byte-identical (AC-2.2). */
+  teachers: { ntc_licence_number: string; name?: string }[];
+}
+
+/** Thrown for every rejection. The message names the row and the missing/invalid field (fail loud). */
+export class EstablishmentFileError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EstablishmentFileError";
+  }
+}
+
+function nonEmptyString(v: unknown): string | null {
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+/**
+ * Parse + validate the file into per-`(emis, as_of_date)` groups. Pure — no DB. Rejects loudly.
+ *
+ * AC-2.4: every row must carry emis_school_id, ntc_licence_number and a resolved as_of_date.
+ * AC-2.8: if the file uses GES staff ids but carries NO NTC numbers at all, the whole file is
+ *         rejected — un-bindable rows are never silently loaded (the binding is NTC-based).
+ * AC-2.6: teaching_posts_established is the school's post count; it must be a non-negative integer and
+ *         consistent across a school's rows (it describes the post, not the person).
+ * NTC is validated PRESENCE-ONLY (lenient — OC-NTC-REF-FORMAT is open; no format is guessed).
+ */
+export function parseEstablishmentFile(text: string): EstablishmentGroup[] {
+  let parsed: EstablishmentFile;
+  try {
+    parsed = JSON.parse(text) as EstablishmentFile;
+  } catch (err) {
+    throw new EstablishmentFileError(
+      `File is not valid JSON: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.rows)) {
+    throw new EstablishmentFileError('File must be a JSON object with a "rows" array.');
+  }
+  const rows = parsed.rows as EstablishmentFileRow[];
+  if (rows.length === 0) {
+    throw new EstablishmentFileError("File carries no rows.");
+  }
+
+  const fileAsOfDate = nonEmptyString(parsed.as_of_date);
+
+  // AC-2.8 — GES-staff-id-only file: reject the WHOLE file, before per-row validation, so the error
+  // names the real problem (a wrong-key file) rather than 500 individual "missing NTC" complaints.
+  const hasGesStaffIds = rows.some(
+    (r) => r.ges_staff_id !== undefined && r.ges_staff_id !== null && String(r.ges_staff_id).trim() !== "",
+  );
+  const hasAnyNtc = rows.some((r) => nonEmptyString(r.ntc_licence_number) !== null);
+  if (hasGesStaffIds && !hasAnyNtc) {
+    throw new EstablishmentFileError(
+      "File carries GES staff ids but no NTC licence numbers — refusing to load un-bindable rows " +
+        "(AC-2.8). The statutory binding is NTC-based (ref_ges_teacher_establishment." +
+        "establishment_teachers[].ntc_licence_number); re-export the establishment file keyed on NTC.",
+    );
+  }
+
+  // Group by (emis_school_id, resolved as_of_date) — the UNIQUE vintage key.
+  const groups = new Map<string, EstablishmentGroup>();
+  rows.forEach((row, i) => {
+    const emis = nonEmptyString(row.emis_school_id);
+    if (!emis)
+      throw new EstablishmentFileError(`Row ${i}: missing/empty "emis_school_id" (AC-2.4).`);
+    const ntc = nonEmptyString(row.ntc_licence_number);
+    if (!ntc)
+      throw new EstablishmentFileError(
+        `Row ${i} (${emis}): missing/empty "ntc_licence_number" (AC-2.4). NTC presence is the ` +
+          "only bindable key; a row without one cannot be loaded.",
+      );
+    const asOf = nonEmptyString(row.as_of_date) ?? fileAsOfDate;
+    if (!asOf)
+      throw new EstablishmentFileError(
+        `Row ${i} (${emis}): no as_of_date — set a file-level "as_of_date" or a per-row one (AC-2.4).`,
+      );
+
+    const postsRaw = row.teaching_posts_established;
+    if (typeof postsRaw !== "number" || !Number.isInteger(postsRaw) || postsRaw < 0)
+      throw new EstablishmentFileError(
+        `Row ${i} (${emis}): "teaching_posts_established" must be a non-negative integer (AC-2.6).`,
+      );
+
+    const key = `${emis}::${asOf}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { emisSchoolId: emis, asOfDate: asOf, teachingPostsEstablished: postsRaw, teachers: [] };
+      groups.set(key, group);
+    } else if (group.teachingPostsEstablished !== postsRaw) {
+      throw new EstablishmentFileError(
+        `School ${emis} (${asOf}): rows disagree on teaching_posts_established ` +
+          `(${group.teachingPostsEstablished} vs ${postsRaw}) — it is a per-school figure (AC-2.6).`,
+      );
+    }
+    const name = nonEmptyString(row.teacher_name);
+    group.teachers.push(name ? { ntc_licence_number: ntc, name } : { ntc_licence_number: ntc });
+  });
+
+  // Dedup by NTC (first wins) and sort by NTC, so the built jsonb array is deterministic and a
+  // re-load of the same vintage is byte-identical (AC-2.2).
+  for (const group of groups.values()) {
+    const seen = new Set<string>();
+    group.teachers = group.teachers
+      .filter((t) => (seen.has(t.ntc_licence_number) ? false : (seen.add(t.ntc_licence_number), true)))
+      .sort((a, b) => a.ntc_licence_number.localeCompare(b.ntc_licence_number));
+  }
+
+  return [...groups.values()];
+}
+
+/**
+ * Upsert each vintage by the UNIQUE `(emis_school_id, as_of_date)` (AC-2.2 idempotent). Every row is
+ * stamped `source = 'GES_ESTABLISHMENT'` (AC-2.4). Writes analytics only (AC-2.7).
+ */
+export async function loadEstablishmentGroups(
+  sql: postgres.Sql,
+  groups: EstablishmentGroup[],
+): Promise<{ schools: number; teachers: number }> {
+  let teachers = 0;
+  for (const g of groups) {
+    await sql`
+      insert into ref_ges_teacher_establishment
+        (emis_school_id, teaching_posts_established, establishment_teachers, source, as_of_date)
+      values (${g.emisSchoolId}, ${g.teachingPostsEstablished}, ${sql.json(g.teachers)},
+              'GES_ESTABLISHMENT', ${g.asOfDate}::date)
+      on conflict (emis_school_id, as_of_date) do update set
+        teaching_posts_established = excluded.teaching_posts_established,
+        establishment_teachers     = excluded.establishment_teachers,
+        source                     = excluded.source
+    `;
+    teachers += g.teachers.length;
+  }
+  return { schools: groups.length, teachers };
+}
+
+/** Parse a file's text and load it in one transaction. */
+export async function loadEstablishmentFile(
+  sql: postgres.Sql,
+  text: string,
+): Promise<{ schools: number; teachers: number }> {
+  const groups = parseEstablishmentFile(text);
+  return sql.begin((tx) =>
+    loadEstablishmentGroups(tx as unknown as postgres.Sql, groups),
+  ) as unknown as Promise<{ schools: number; teachers: number }>;
+}
+
+async function main(): Promise<void> {
+  const filePath = process.argv[2];
+  if (!filePath) {
+    console.error("usage: tsx scripts/load-establishment.ts <establishment-file.json>");
+    process.exit(2);
+  }
+  // Owner/writer connection. See the PRIVILEGE note above: point ANALYTICS_DATABASE_URL at the
+  // Direct (owner) connection, never the read pooler and never oversight_readback.
+  const url =
+    process.env.ANALYTICS_DATABASE_URL ??
+    "postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev";
+  const text = readFileSync(filePath, "utf8");
+  const sql = postgres(url, { max: 1, prepare: false });
+  try {
+    const result = await loadEstablishmentFile(sql, text);
+    console.log(
+      `✓ Loaded ${result.schools} establishment vintage(s), ${result.teachers} teacher entr(y/ies).`,
+    );
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((err) => {
+    console.error(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
+}
