@@ -69,7 +69,17 @@ No cache. Oversight never writes consent.
   Act 843 for private/mission-school staff. Build the surface + table; the
   Oversight side keeps the non-public branch flag-off until that position exists.
 
-## Add `staff_profile.ges_staff_id` — restores the statutory teacher drill-down
+## ✅ RESOLVED (superseded) — statutory teacher drill-down restored via NTC-licence membership
+
+**Shipped differently than sketched below.** The statutory basis is now the teacher's
+`ntc_licence_number` READ off the fetched `staff_profile` row (never officer-typed) and checked for
+membership against the authoritative GES register (`ref_ges_teacher_establishment.
+establishment_teachers`) inside the read-back transaction. `ges_staff_id` was added (#372) then
+DROPPED; `bindEstablishmentId` is retired; the operational school uuid is register-sourced so the
+`ges_code` cross-check is gone. The original sketch is kept below for history — it no longer
+describes the live design.
+
+### (historical) Add `staff_profile.ges_staff_id` — restores the statutory teacher drill-down
 
 **Why it's now critical, not a convenience.** The Oversight §6 drill-down
 (branch `claude/oversight-individual-drilldown`) derives the STATUTORY basis for
