@@ -197,6 +197,37 @@ alter role oversight_readback set default_transaction_read_only = on;
    that table and the query count on this role should track each other; a divergence means someone
    used the credential outside the gate.
 
+> **⚠ TWO ADDITIONS THE BUILT §6 PATH REQUIRES (added 2026-09, awaiting security sign-off before the
+> role is provisioned).** The grant list above predates the implementation and is one table short on
+> each side of the record. Both additions are narrow, and neither moves toward compensation:
+>
+> - **`ref_user`** — the identity spine's `full_name` (and `phone`, which only
+>   `SAFEGUARDING_MISCONDUCT` unlocks) is NOT on `staff_profile`. Operational identity is global:
+>   `staff_profile` hangs off `ref_user`, which carries the name. Without SELECT here the gate can
+>   return a licence number and an appointment date for a person it cannot name, which is both
+>   useless to the officer and worse for the subject than the alternative.
+> - **`ref_school`** — needed for two things: the school's `name` (the `assigned_school` field), and
+>   `ges_code`, which is how the gate PROVES that the operational tenant uuid arriving with the
+>   request belongs to the EMIS school the officer actually picked. `ref_school`'s own tenant RLS
+>   keys on `id = app.current_school`, so this grant can confirm a claimed school but can never
+>   enumerate others.
+>
+> ```sql
+> grant select on ref_user, ref_school to oversight_readback;
+> ```
+>
+> **Still not granted, and not requested:** `staff_compensation`, `ref_district`, `ref_region`,
+> `attendance_records`, anything student-side.
+
+> **Open schema gap (escalated, not worked around):** operational `staff_profile` carries **no GES
+> establishment staff id** — no column in `apps/web/db/schema/*.ts` holds one. So (a) a staff record
+> cannot be looked up directly by GES staff ID, and (b) the staff-list browse cannot show Lucy's
+> "GES establishment / Not on register" column, because there is no key to join the analytics
+> register on. The built path handles this by requiring the operational `staff_profile.id` with every
+> request (the GES id is an additional key used only for classification) and by routing every
+> browse-picked subject to the CONSENT branch — the fail-closed direction. Adding `ges_staff_id` to
+> `staff_profile` in `apps/web` would restore the direct lookup and the register-status signal.
+
 > **Not covered by this role:** `ref_ges_teacher_establishment` — the GES establishment register
 > that the STATUTORY basis is checked against — lives in the **analytics** DB
 > (`db/schema/ref.ts`), loaded per §3, and is read over `ANALYTICS_DATABASE_URL` under the normal

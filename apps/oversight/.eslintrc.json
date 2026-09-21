@@ -1,3 +1,34 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "overrides": [
+    {
+      "files": [
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "app/**/*.ts",
+        "app/**/*.tsx",
+        "components/**/*.tsx"
+      ],
+      "excludedFiles": [
+        "lib/db/readback.ts",
+        "lib/oversight/named-record-access.ts",
+        "lib/oversight/consent.ts",
+        "lib/oversight/staff-projection.ts",
+        "app/(oversight)/compliance-records/actions.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@/lib/db/readback",
+                "message": "Aggregate code must not import the operational read-back. Go through lib/oversight/named-record-access.ts — the single gated choke point that writes the audit row first."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

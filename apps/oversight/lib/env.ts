@@ -14,7 +14,9 @@ const schema = z.object({
   // The analytics DB (omnischools-analytics-prod). The app's read-only, RLS-scoped connection.
   ANALYTICS_DATABASE_URL: z
     .string()
-    .default("postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev"),
+    .default(
+      "postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev",
+    ),
 
   // The gated named-record read-back to OPERATIONAL Postgres (§6). Separate, scoped, logged.
   // Optional: absent until the compliance surface is wired.
@@ -33,6 +35,23 @@ const schema = z.object({
 
   // Dev-only auth shim toggle. FAIL CLOSED (defaults false), mirroring the operational app.
   AUTH_DEV_BYPASS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
+  /**
+   * E3 feature flag — individual drill-down of NON-GES / non-teaching staff at schools whose
+   * ownership_type is not PUBLIC (PRIVATE / MISSION).
+   *
+   * DEFAULT OFF, and it must stay off in production until a DPO writes the lawful-basis position
+   * (apps/web/Todo.md "Blocked on"): under the Data Protection Act 2012 (Act 843) an employer's
+   * click is not the employee's consent, so a private-school proprietor granting DPO consent may
+   * not be a sufficient basis for GES to read that employee's individual record. The consent
+   * CAPTURE ships regardless; this flag governs whether Oversight will ACT on it for non-public
+   * schools. GES-establishment teachers are unaffected — they are statutory at every ownership
+   * type and never touch this flag.
+   */
+  E3_NON_PUBLIC_STAFF_DRILLDOWN: z
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
