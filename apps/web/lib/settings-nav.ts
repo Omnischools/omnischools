@@ -235,6 +235,15 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         desc: "How long records are kept after a student or staff member leaves, and audit-log retention.",
         href: "/settings/retention",
       },
+      {
+        key: "oversight-consent",
+        name: "GES staff",
+        em: "consent",
+        icon: "GC",
+        tone: "navy",
+        desc: "Authorise — or withdraw — GES individual drill-down of your non-teaching and non-register staff. Gated and audit-logged; aggregate reporting and student records are never affected.",
+        href: "/settings/oversight-consent",
+      },
     ],
   },
   {
