@@ -69,6 +69,12 @@ export const OPS_USER = {
   teacherPrivateOnRegister: "40000000-0000-4000-8000-000000000010",
   /** PRIVATE-school teacher ON the establishment, GES name DISAGREES → demoted to consent. */
   teacherPrivateNameMismatch: "40000000-0000-4000-8000-000000000011",
+  /**
+   * At EMIS-PUB-005 (which HAS a fresh establishment vintage) with a real, non-null NTC licence that
+   * is NOT on that register, holding a school-authored 'TEACHER' role. Register decides, not role or
+   * the mere presence of a licence → CONSENT branch, never STATUTORY (AC-3.2 anti-forgery).
+   */
+  staffSetNtcNotOnRegister: "40000000-0000-4000-8000-000000000012",
 } as const;
 
 /** `staff_profile.id` — the only key that reaches an operational staff row. */
@@ -84,6 +90,8 @@ export const OPS_STAFF = {
   staffOutsideSubtree: "50000000-0000-4000-8000-000000000009",
   teacherPrivateOnRegister: "50000000-0000-4000-8000-000000000010",
   teacherPrivateNameMismatch: "50000000-0000-4000-8000-000000000011",
+  /** Set-but-unregistered NTC at a register-bearing school → CONSENT, never STATUTORY (AC-3.2). */
+  staffSetNtcNotOnRegister: "50000000-0000-4000-8000-000000000012",
   /** A uuid that is a valid shape but no staff_profile row — the SUBJECT_NOT_FOUND probe. */
   absent: "5fffffff-0000-4000-8000-0000000000ff",
 } as const;

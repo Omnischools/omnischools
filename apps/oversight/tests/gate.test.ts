@@ -97,6 +97,48 @@ describe("S1 — the statutory basis is the fetched row's NTC licence; there is 
     // No mismatch/forgery trace token exists any more.
     expect(result.trace.some((t) => /mismatch|binding|MISMATCH/i.test(t))).toBe(false);
   });
+
+  it("(d) a SET but UNREGISTERED NTC licence at a register-bearing school is CONSENT, never STATUTORY (AC-3.2 anti-forgery, end-to-end)", async () => {
+    // staffSetNtcNotOnRegister carries a REAL, non-null NTC licence (NTC-9999-000000) and a
+    // school-authored 'TEACHER' role, at EMIS-PUB-005 — a school that HAS a fresh establishment
+    // vintage which does NOT list that licence. The register decides, not the role and not the mere
+    // presence of a licence: the subject resolves to the CONSENT branch. EMIS-PUB-005's consent is
+    // REVOKED, so the branch DENIES — and the denial is logged under CONSENT with an OPS: ref.
+    //
+    // This is the whole-gate proof of AC-3.2. The classifier consulted the register (a null licence
+    // would have short-circuited before the register was even read) and returned NOT_ON_REGISTER, so
+    // `statutoryEstablished` returned false. Had statute been WRONGLY conferred, the outcome would
+    // have been GRANTED/STATUTORY — statute IGNORES consent entirely, so it would have opened the
+    // record over the revoked consent — with an NTC: ref. It is not: a colleague's establishment
+    // membership cannot be borrowed by wearing a licence the register does not attribute to you.
+    const reference = caseRef("set-ntc-not-on-register");
+    const result = await requestNamedStaffRecord({
+      officer: districtOfficer,
+      school: SCHOOL.publicRevoked,
+      reasonCode: "ESTABLISHMENT_PAYROLL_VERIFICATION",
+      caseReference: reference,
+      subject: { operationalStaffId: OPS_STAFF.staffSetNtcNotOnRegister },
+    });
+    expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    if (result.outcome === "GRANTED") return;
+    expect(result.legalBasis).toBe("CONSENT");
+    expect(result.staffCategory).toBe("OTHER_STAFF");
+    expect(result.recordType).toBe("STAFF");
+    expect(result.denialReason).toBe("CONSENT_REVOKED");
+    // The register WAS consulted and said "not on it" — this is NOT_ON_REGISTER, not NO_NTC_LICENCE.
+    expect(result.classification).toMatchObject({
+      category: "OTHER_STAFF",
+      reason: "NOT_ON_REGISTER",
+    });
+    expect(result.trace).toContain("classified:OTHER_STAFF");
+    expect(result.trace).not.toContain("fetched");
+
+    const rows = await auditRowsFor(reference);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ legal_basis: "CONSENT", staff_category: "OTHER_STAFF" });
+    expect(rows[0]!.target_ref.startsWith("NTC:")).toBe(false);
+    expect(rows[0]!.fields_released).toEqual([]);
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════

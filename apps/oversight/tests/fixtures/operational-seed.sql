@@ -1,7 +1,9 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
--- OPERATIONAL FIXTURES. `ges_code` on each school EQUALS its EMIS id — that equality is what
--- `confirmSchoolIdentity()` checks, and it is the only thing standing between a request-supplied
--- tenant uuid and a cross-tenant read.
+-- OPERATIONAL FIXTURES. `ges_code` on each school EQUALS its EMIS id — that equality is what the #1
+-- populate uses to map analytics `ref_emis_school_register.operational_school_id` (the tenant uuid
+-- the gate reads from the register under the officer's own RLS). The old request-supplied tenant
+-- uuid and its `confirmSchoolIdentity()` ges_code cross-check are RETIRED (nothing request-supplied
+-- to prove against the register any more).
 --
 -- Every staff member has a compensation row. None of it is readable by the read-back role, and no
 -- reason code releases any of it. The rows exist so the tests are refusing something real.
@@ -34,7 +36,9 @@ insert into ref_user (id, phone, email, full_name) values
   -- Two PRIVATE-school (EMIS-PRI-003) teachers: one on the establishment with a MATCHING GES name
   -- (statutory even with the flag off, AC-3.10), one whose GES name DISAGREES (OC-NTC-RESIDUAL).
   ('40000000-0000-4000-8000-000000000010', '+233200000010', 'k.adomako@example.gh',  'Kofi Adomako'),
-  ('40000000-0000-4000-8000-000000000011', '+233200000011', 'e.nyaku@example.gh',    'Efo Nyaku');
+  ('40000000-0000-4000-8000-000000000011', '+233200000011', 'e.nyaku@example.gh',    'Efo Nyaku'),
+  -- staffSetNtcNotOnRegister: a real NTC licence that is NOT on EMIS-PUB-005's fresh register (AC-3.2).
+  ('40000000-0000-4000-8000-000000000012', '+233200000012', 'g.ansah@example.gh',    'Gifty Ansah');
 
 insert into ref_role (id, code, label) values
   ('41000000-0000-4000-8000-000000000001', 'TEACHER',    'Teacher · JHS Maths'),
@@ -54,7 +58,11 @@ insert into role_assignment (id, user_id, school_id, role_id, scope_ref, start_d
   ('42000000-0000-4000-8000-000000000008', '40000000-0000-4000-8000-000000000008', '30000000-0000-4000-8000-000000000007', '41000000-0000-4000-8000-000000000002', null, current_date - 120, null),
   ('42000000-0000-4000-8000-000000000009', '40000000-0000-4000-8000-000000000009', '30000000-0000-4000-8000-000000000008', '41000000-0000-4000-8000-000000000001', null, current_date - 500, null),
   ('42000000-0000-4000-8000-000000000010', '40000000-0000-4000-8000-000000000010', '30000000-0000-4000-8000-000000000003', '41000000-0000-4000-8000-000000000001', null, current_date - 700, null),
-  ('42000000-0000-4000-8000-000000000011', '40000000-0000-4000-8000-000000000011', '30000000-0000-4000-8000-000000000003', '41000000-0000-4000-8000-000000000001', null, current_date - 350, null);
+  ('42000000-0000-4000-8000-000000000011', '40000000-0000-4000-8000-000000000011', '30000000-0000-4000-8000-000000000003', '41000000-0000-4000-8000-000000000001', null, current_date - 350, null),
+  -- staffSetNtcNotOnRegister at EMIS-PUB-005, given the school-authored 'TEACHER' role ON PURPOSE:
+  -- a 'TEACHER' role + a real NTC licence still confers NO statute when the licence is not on the
+  -- register (AC-3.2 anti-forgery, AC-3.11 role-does-not-decide).
+  ('42000000-0000-4000-8000-000000000012', '40000000-0000-4000-8000-000000000012', '30000000-0000-4000-8000-000000000005', '41000000-0000-4000-8000-000000000001', null, current_date - 250, null);
 
 insert into staff_profile (
   id, school_id, user_id, date_of_birth, gender, address, emergency_contact,
@@ -110,7 +118,16 @@ insert into staff_profile (
   ('50000000-0000-4000-8000-000000000011', '30000000-0000-4000-8000-000000000003', '40000000-0000-4000-8000-000000000011',
    '1992-09-14', 'Male', 'Mission house, Wassa', 'Yoofi Nyaku · brother · +233200000111',
    'BACHELORS', 'BSc ICT · KNUST · 2015', 'KNUST',
-   'NTC-PRI-003-MISMATCH', '2026-09-30', null, null, 'ICT');
+   'NTC-PRI-003-MISMATCH', '2026-09-30', null, null, 'ICT'),
+  -- staffSetNtcNotOnRegister at EMIS-PUB-005: ntc_licence_number IS SET (NTC-9999-000000) but that
+  -- licence is on NO register (EMIS-PUB-005's fresh vintage is empty), so the register consult
+  -- returns NOT_ON_REGISTER → OTHER_STAFF → CONSENT branch, never STATUTORY (AC-3.2 end-to-end).
+  -- EMIS-PUB-005's consent is REVOKED, so the CONSENT branch DENIES — and a wrongly-conferred statute
+  -- would instead have BYPASSED the revoked consent and granted, which makes the denial the proof.
+  ('50000000-0000-4000-8000-000000000012', '30000000-0000-4000-8000-000000000005', '40000000-0000-4000-8000-000000000012',
+   '1989-08-03', 'Female', 'Manso Amenfi staff quarters', 'Kwabena Ansah · husband · +233200000112',
+   'BACHELORS', 'BEd Social Studies · UEW · 2011', 'University of Education, Winneba',
+   'NTC-9999-000000', '2028-03-31', null, null, 'Social Studies');
 
 -- Salary rows: present, populated, and unreadable by the read-back role.
 insert into staff_compensation (school_id, user_id, salary_status, monthly_amount, ssnit_deduction, paye_deduction, effective_from, notes)
