@@ -108,6 +108,19 @@ export function buildRosterTargetRef(emisSchoolId: string): string {
   return `OPS:${emis}:ROSTER`;
 }
 
+/**
+ * A RECOGNISER MUST NOT BE LAXER THAN ITS CONSTRUCTOR.
+ *
+ * `buildRosterTargetRef` validates the school slot against `EMIS_SCHOOL_ID_RE`, so this must too —
+ * it is the predicate that EXEMPTS a ref from the basis assertion
+ * (`assertTargetRefMatchesBasisUnlessRoster`), i.e. the narrowest escape hatch in the audit writer.
+ * A recogniser that accepts strings its own producer would refuse is a hole shaped exactly like the
+ * check it is meant to be an exception to: `OPS::ROSTER` and `OPS:not an id:ROSTER` are not refs
+ * this codebase can produce, so they must not be refs it will wave through either.
+ */
 export function isRosterTargetRef(ref: string): boolean {
-  return ref.startsWith("OPS:") && ref.endsWith(":ROSTER") && ref.split(":").length === 3;
+  if (!ref.startsWith("OPS:") || !ref.endsWith(":ROSTER")) return false;
+  const parts = ref.split(":");
+  if (parts.length !== 3) return false;
+  return EMIS_SCHOOL_ID_RE.test(parts[1]!);
 }

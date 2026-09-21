@@ -8,8 +8,10 @@ import {
   assertScopeIntegrity,
   FieldScopeError,
   isNeverReleased,
+  reasonsReleasing,
   withheldFields,
 } from "@/lib/oversight/field-scope";
+import { unlockingReasonFor } from "@/lib/oversight/copy";
 import { buildStaffProjection } from "@/lib/oversight/staff-projection";
 
 const RECORD_TYPES = ["TEACHER", "STAFF"] as const;
@@ -170,6 +172,60 @@ describe("Kofi group K — students are not reachable, and unknown reasons relea
       "SAFEGUARDING_CASEWORK",
     ]) {
       expect(() => allowedFields(studentReason, "STAFF")).toThrowError(FieldScopeError);
+    }
+  });
+});
+
+describe("reasonsReleasing — the ONE derivation of 'which reason would unlock this'", () => {
+  it("agrees with allowedFields for every field × reason pair (it IS the matrix, transposed)", () => {
+    for (const field of ALL_SCOPEABLE_FIELDS) {
+      const derived = reasonsReleasing(field);
+      for (const reason of STAFF_REASON_CODES) {
+        expect(derived.includes(reason), `${reason} / ${field}`).toBe(
+          allowedFields(reason, "STAFF").includes(field),
+        );
+      }
+    }
+  });
+
+  it("covers the qualification fields the old hand-written copy silently missed", () => {
+    // `unlockingReasonFor` used to be a second copy of the matrix written as string-prefix
+    // heuristics. These three are in LICENSURE_FIELDS but began with neither "ntc_" nor "nmc_", so
+    // they matched no branch and the record screen's scope line said nothing about them at all.
+    for (const field of [
+      "qualification_level",
+      "highest_qualification",
+      "undergraduate",
+    ]) {
+      expect(reasonsReleasing(field), field).toEqual([
+        "LICENSURE_QUALIFICATION_VERIFICATION",
+        "STATUTORY_AUDIT",
+      ]);
+      expect(unlockingReasonFor(field), field).toBe(
+        "Licensure & qualification verification, or Statutory audit",
+      );
+    }
+  });
+
+  it("names exactly one reason for the welfare-contact fields", () => {
+    for (const field of ["emergency_contact", "phone"]) {
+      expect(reasonsReleasing(field)).toEqual(["SAFEGUARDING_MISCONDUCT"]);
+      expect(unlockingReasonFor(field)).toBe("Safeguarding / misconduct casework");
+    }
+  });
+
+  it("returns nothing for a never-released field — which is not the same as 'some other reason'", () => {
+    for (const forbidden of NEVER_RELEASE_FIELDS) {
+      expect(reasonsReleasing(forbidden), forbidden).toEqual([]);
+      expect(unlockingReasonFor(forbidden), forbidden).toBeNull();
+    }
+    expect(reasonsReleasing("a_field_that_does_not_exist")).toEqual([]);
+  });
+
+  it("every scopeable field has at least one unlocking reason to name", () => {
+    // The property the drifted copy broke: a withheld field the officer is told nothing about.
+    for (const field of ALL_SCOPEABLE_FIELDS) {
+      expect(unlockingReasonFor(field), field).not.toBeNull();
     }
   });
 });

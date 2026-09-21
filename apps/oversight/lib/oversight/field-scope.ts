@@ -242,6 +242,28 @@ export function allowedFields(
   return SCOPE_BY_REASON[reasonCode];
 }
 
+/**
+ * WHICH REASONS RELEASE THIS FIELD — DERIVED from the matrix above, never restated.
+ *
+ * This exists because the answer was previously written out a second time, by hand, in
+ * `lib/oversight/copy.ts` as a set of string-prefix heuristics (`field.startsWith("ntc_")` …) for
+ * the record screen's scope line. A duplicated policy matrix does not stay duplicated: that copy
+ * had already drifted — `qualification_level`, `highest_qualification` and `undergraduate` are all
+ * in LICENSURE_FIELDS but matched no prefix branch, so the screen told the officer nothing about
+ * which reason would unlock them. The scope line is the one sentence that explains WHY a field is
+ * greyed out; computing it from anything but the map that actually greyed it is how an officer ends
+ * up believing a field is unreachable when it is not.
+ *
+ * Returns the codes, not display copy: this module is pure policy and has no opinion about wording.
+ * `lib/oversight/copy.ts` maps codes to `STAFF_REASON_COPY[code].title`.
+ *
+ * An empty array means no reason releases it — which is true of every NEVER_RELEASE_FIELDS member,
+ * and is a meaningfully different statement from "some other reason would".
+ */
+export function reasonsReleasing(field: string): StaffReasonCode[] {
+  return STAFF_REASON_CODES.filter((reason) => SCOPE_BY_REASON[reason].includes(field));
+}
+
 /** The complement of `allowedFields` — what the record screen renders as Withheld (Lucy C7). */
 export function withheldFields(
   reasonCode: string,

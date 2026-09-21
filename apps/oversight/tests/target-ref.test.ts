@@ -72,6 +72,34 @@ describe("target_ref format and the basis it must match", () => {
     expect(isRosterTargetRef("OPS:EMIS-PUB-001:ROSTER")).toBe(true);
   });
 
+  it("the recogniser is no laxer than the constructor about the school slot", () => {
+    // `buildRosterTargetRef` validates the school id, so `isRosterTargetRef` must too: it is the
+    // predicate that EXEMPTS a ref from the basis assertion, and an exemption that accepts strings
+    // its own producer would refuse is a hole shaped like the check it excepts.
+    for (const bad of [
+      "OPS::ROSTER",
+      "OPS:bad id:ROSTER",
+      "OPS: :ROSTER",
+      "OPS:-x:ROSTER",
+    ]) {
+      expect(isRosterTargetRef(bad), bad).toBe(false);
+      expect(() => buildRosterTargetRef(bad.slice(4, -8))).toThrowError(TargetRefError);
+    }
+    // …and everything the constructor CAN produce is still recognised.
+    for (const emis of ["EMIS-PUB-001", "EMIS_UNK.006", "A1"]) {
+      expect(isRosterTargetRef(buildRosterTargetRef(emis)), emis).toBe(true);
+    }
+  });
+
+  it("a ref the recogniser rejects is NOT exempt from the basis assertion", () => {
+    expect(() =>
+      assertTargetRefMatchesBasisUnlessRoster("OPS::ROSTER", "CONSENT"),
+    ).toThrowError(TargetRefError);
+    expect(() =>
+      assertTargetRefMatchesBasisUnlessRoster("OPS:bad id:ROSTER", "CONSENT"),
+    ).toThrowError(TargetRefError);
+  });
+
   it("the gate's roster exemption cannot be reached by a non-OPS ref", () => {
     // `GES:ROSTER` is valid FOR STATUTORY, so it passes …
     expect(() =>

@@ -1,4 +1,4 @@
-import type { StaffReasonCode } from "@/lib/oversight/field-scope";
+import { reasonsReleasing, type StaffReasonCode } from "@/lib/oversight/field-scope";
 
 /**
  * Authored copy, verbatim from Lucy's design map (docs/design/e3-drilldown-surface-map.md C1/C2/C3).
@@ -82,26 +82,22 @@ export const GATE_BANNER = {
 export const CONSENT_LINE =
   "I confirm this access is for the stated compliance purpose only, that an aggregate view cannot answer it, and that I understand this access will be permanently logged against my name and is subject to GES audit review.";
 
-/** Which reason would unlock a withheld field — the second half of Lucy's scope line. */
+/**
+ * Which reason would unlock a withheld field — the second half of Lucy's scope line (C7).
+ *
+ * DERIVED, never restated. This used to be a hand-written set of string-prefix heuristics: a second
+ * copy of the field-scope matrix living in the copy module, which had already drifted out of step
+ * with the real one (the three qualification fields matched no branch and silently returned null,
+ * so the scope line omitted the unlocking reason for them entirely). It now asks
+ * `reasonsReleasing()` — the single source of truth — and only supplies the wording.
+ *
+ * Returns null when NO reason releases the field. That is the honest answer for the never-released
+ * cluster, and it is a different sentence from "another reason would unlock this", which is why the
+ * caller branches on it.
+ */
 export function unlockingReasonFor(field: string): string | null {
-  if (field === "emergency_contact" || field === "phone") {
-    return "Safeguarding / misconduct casework";
-  }
-  if (field === "date_of_birth" || field === "address") {
-    return "Statutory audit, or safeguarding / misconduct casework";
-  }
-  if (
-    field.startsWith("ntc_") ||
-    field.startsWith("nmc_") ||
-    field === "specialisations"
-  ) {
-    return "Licensure & qualification verification, or statutory audit";
-  }
-  if (field.startsWith("appointment_") || field.startsWith("establishment_")) {
-    return "Establishment & payroll verification, or statutory audit";
-  }
-  if (field === "staff_attendance_facts" || field === "assignment_scope") {
-    return "Teacher-absence investigation";
-  }
-  return null;
+  const titles = reasonsReleasing(field).map((code) => STAFF_REASON_COPY[code].title);
+  if (titles.length === 0) return null;
+  if (titles.length === 1) return titles[0]!;
+  return `${titles.slice(0, -1).join(", ")}, or ${titles[titles.length - 1]}`;
 }

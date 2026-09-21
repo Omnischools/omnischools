@@ -766,10 +766,11 @@ export interface StaffListBrowseResult {
  * the log is append-only, so "the officer browsed, then opened X" is two events and must be two
  * entries. They are tied together by the verbatim case reference.
  *
- * THE LIST IS CONSENT-GATED TOO. A list of names IS individual data. The browse runs the same
- * ownership preflight and the same live consent read, and refuses on the same terms — otherwise
- * the list would be a way to learn every employee's name at a school that refused consent, which
- * is most of what the gate exists to prevent.
+ * THE LIST IS GATED ON THE SAME TERMS AS A RECORD — jurisdiction ceiling, reason code, ownership
+ * preflight, live consent read. A list of names IS individual data, so every check the record path
+ * makes is made here; otherwise the list becomes the cheap way to learn every employee's name at a
+ * school that refused consent, or under a compliance ground nobody recognises, which is most of
+ * what the gate exists to prevent.
  */
 export async function requestStaffListBrowse(
   request: StaffListBrowseRequest,
@@ -831,6 +832,16 @@ export async function requestStaffListBrowse(
     settledDenial = result;
     return result;
   };
+
+  // The SAME reason-code gate the record path applies. A browse releases no scoped FIELD, which is
+  // why it was tempting to leave this to the caller — but the reason code is the compliance ground
+  // the officer is held to, and it is written verbatim into the audit log as the justification for
+  // seeing every name at the school. An unrecognised ground is not a ground: `reason_code =
+  // "banana"` must not buy a staff list, and it must not be this file's assumption that some caller
+  // checked. (Same argument as `resolveGateSchoolInTx` — see the ceiling note in the header.)
+  if (!isStaffReasonCode(request.reasonCode)) {
+    return denyBrowse("DENIED_FIELD_SCOPE", "REASON_UNLOCKS_NOTHING");
+  }
 
   const preflight = ownershipPreflight(school.ownershipType);
   if (!preflight.allowed) {

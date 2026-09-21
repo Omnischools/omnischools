@@ -375,6 +375,45 @@ describe("Lucy C4 — the staff-list browse is logged as a browse", () => {
     expect(rows[0]).toMatchObject({ roster_browsed: true, outcome: "DENIED_NO_CONSENT" });
   });
 
+  it("a browse with an UNRECOGNISED reason code is DENIED and returns no names", async () => {
+    // The consenting school: consent, ownership and ceiling all pass, so the only thing that can
+    // refuse this is the reason code. Without the check in the orchestrator a second caller could
+    // have obtained every staff name here under reason_code = "banana", logged verbatim as the
+    // compliance ground — the record path has always refused it; the browse did not.
+    const reference = caseRef("browse-bad-reason");
+    const result = await requestStaffListBrowse({
+      officer: districtOfficer,
+      school: SCHOOL.publicConsented,
+      reasonCode: "banana",
+      caseReference: reference,
+    });
+
+    expect(result.outcome).toBe("DENIED_FIELD_SCOPE");
+    expect(result.denialReason).toBe("REASON_UNLOCKS_NOTHING");
+    expect(result.rows).toEqual([]);
+
+    const rows = await auditRowsFor(reference);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      outcome: "DENIED_FIELD_SCOPE",
+      roster_browsed: true,
+      reason_code: "banana", // stored verbatim, as every stated ground is
+    });
+    expect(rows[0]!.fields_released).toEqual([]);
+  });
+
+  it("refuses a STUDENT reason code on the staff-list browse too", async () => {
+    const reference = caseRef("browse-student-reason");
+    const result = await requestStaffListBrowse({
+      officer: districtOfficer,
+      school: SCHOOL.publicConsented,
+      reasonCode: "FSHS_CLAIM_VERIFICATION",
+      caseReference: reference,
+    });
+    expect(result.outcome).toBe("DENIED_FIELD_SCOPE");
+    expect(result.rows).toEqual([]);
+  });
+
   it("browse then open writes TWO append-only rows under one case reference", async () => {
     const reference = caseRef("browse-then-open");
     await requestStaffListBrowse({
