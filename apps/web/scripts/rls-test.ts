@@ -1238,6 +1238,94 @@ async function main() {
     } catch (e) {
       if ((e as Error).message !== ROLLBACK_OC) throw e;
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // OVERSIGHT consent TRANSITION (grant → revoke → re-grant) — BEHAVIORAL probe (A6/A7/A8/A10).
+    // Drives the exact SQL primitives the server actions (lib/actions/oversight-consent.ts) use — upsert
+    // the ONE current-state row + append ONE event per transition — as the NON-SUPERUSER omnischools_app,
+    // and proves the transition contract the actions rely on:
+    //   • each transition writes exactly ONE matching event (GRANT / REVOKE / REGRANT);
+    //   • a revoke never leaves a stale GRANTED — the Oversight reader sees REVOKED immediately (A7);
+    //   • a re-grant CLEARS revoked_at and RE-STAMPS granted_at (A8/A10);
+    //   • the (school,scope) row count stays 1 across the whole cycle (upsert, never a 2nd row);
+    //   • a second withdraw is idempotent (0 rows, no duplicate REVOKE) — the action's state='GRANTED' filter.
+    // Explicit timestamps (now() is constant within one tx) make the re-stamp assertion deterministic.
+    // All rows live in one rolled-back transaction, so nothing persists.
+    console.log("\nOversight consent transition (grant→revoke→re-grant, behavioral):");
+    const ROLLBACK_TR = "__oversight_consent_transition_rollback__";
+    const T1 = "2026-01-01T08:00:00.000Z"; // first grant
+    const T2 = "2026-02-01T09:00:00.000Z"; // revoke
+    const T3 = "2026-03-01T10:00:00.000Z"; // re-grant — granted_at must advance to here
+    try {
+      await sql.begin(async (tx) => {
+        await tx`set local role omnischools_app`;
+        await tx`select set_config('app.current_school', ${schoolId}, true)`;
+        const state = async () =>
+          await tx<{ state: string; ra: string | null }[]>`
+            select state, revoked_at::text as ra from school_staff_oversight_consent
+            where school_id = ${schoolId} and scope = 'NON_GES_STAFF'`;
+        const eventTypes = async () =>
+          (
+            await tx<{ event_type: string }[]>`
+              select event_type from school_staff_oversight_consent_event
+              where school_id = ${schoolId} and scope = 'NON_GES_STAFF' order by occurred_at`
+          ).map((r) => r.event_type);
+
+        // (1) GRANT — insert the live grant + one GRANT event.
+        await tx`insert into school_staff_oversight_consent
+                   (school_id, scope, state, granted_by_role, granted_at, revoked_at, consent_statement_version)
+                 values (${schoolId}, 'NON_GES_STAFF', 'GRANTED', 'ADMIN', ${T1}, null, ${STMT})`;
+        await tx`insert into school_staff_oversight_consent_event
+                   (school_id, scope, event_type, actor_role, consent_statement_version, occurred_at)
+                 values (${schoolId}, 'NON_GES_STAFF', 'GRANT', 'ADMIN', ${STMT}, ${T1})`;
+        let s = await state();
+        assert("TR grant: exactly one current-state row", s.length, 1);
+        assertTrue("TR grant: state GRANTED, revoked_at NULL", s[0].state === "GRANTED" && s[0].ra === null);
+        assertTrue("TR grant: exactly one GRANT event", (await eventTypes()).join(",") === "GRANT");
+
+        // (2) REVOKE — flip ONLY a live grant (the action's state='GRANTED' filter) + one REVOKE event.
+        const rev = await tx`update school_staff_oversight_consent set state = 'REVOKED', revoked_at = ${T2}
+                             where school_id = ${schoolId} and scope = 'NON_GES_STAFF' and state = 'GRANTED'`;
+        assert("TR revoke: one live grant flipped", rev.count, 1);
+        await tx`insert into school_staff_oversight_consent_event
+                   (school_id, scope, event_type, actor_role, consent_statement_version, occurred_at)
+                 values (${schoolId}, 'NON_GES_STAFF', 'REVOKE', 'ADMIN', null, ${T2})`;
+        s = await state();
+        assertTrue("TR revoke: no stale GRANTED (reader sees REVOKED at once)", s[0].state === "REVOKED" && s[0].ra !== null);
+        assertTrue("TR revoke: two events (GRANT, REVOKE)", (await eventTypes()).join(",") === "GRANT,REVOKE");
+
+        // (2b) IDEMPOTENT withdraw — a 2nd revoke flips 0 rows and appends no duplicate event.
+        const rev2 = await tx`update school_staff_oversight_consent set state = 'REVOKED', revoked_at = ${T2}
+                              where school_id = ${schoolId} and scope = 'NON_GES_STAFF' and state = 'GRANTED'`;
+        assert("TR idempotent revoke: 0 rows on a second withdraw", rev2.count, 0);
+        assertTrue("TR idempotent revoke: still two events (no duplicate REVOKE)", (await eventTypes()).length === 2);
+
+        // (3) RE-GRANT — upsert back to GRANTED, CLEAR revoked_at, RE-STAMP granted_at; append REGRANT.
+        await tx`insert into school_staff_oversight_consent
+                   (school_id, scope, state, granted_by_role, granted_at, revoked_at, consent_statement_version)
+                 values (${schoolId}, 'NON_GES_STAFF', 'GRANTED', 'HEADMASTER', ${T3}, null, ${STMT})
+                 on conflict (school_id, scope) do update
+                   set state = 'GRANTED', granted_by_role = 'HEADMASTER',
+                       granted_at = ${T3}, revoked_at = null, consent_statement_version = ${STMT}`;
+        await tx`insert into school_staff_oversight_consent_event
+                   (school_id, scope, event_type, actor_role, consent_statement_version, occurred_at)
+                 values (${schoolId}, 'NON_GES_STAFF', 'REGRANT', 'HEADMASTER', ${STMT}, ${T3})`;
+        s = await state();
+        assert("TR re-grant: still exactly one current-state row (upsert, no 2nd)", s.length, 1);
+        assertTrue("TR re-grant: state GRANTED again + revoked_at CLEARED", s[0].state === "GRANTED" && s[0].ra === null);
+        const [{ restamped, advanced }] = await tx<{ restamped: boolean; advanced: boolean }[]>`
+          select (granted_at = ${T3}::timestamptz) as restamped, (granted_at > ${T1}::timestamptz) as advanced
+          from school_staff_oversight_consent where school_id = ${schoolId} and scope = 'NON_GES_STAFF'`;
+        assertTrue("TR re-grant: granted_at RE-STAMPED to the new grant (and advanced past T1)", restamped && advanced);
+
+        // (4) exactly one matching event per transition, in order GRANT → REVOKE → REGRANT.
+        assertTrue("TR: three events in order GRANT, REVOKE, REGRANT", (await eventTypes()).join(",") === "GRANT,REVOKE,REGRANT");
+
+        throw new Error(ROLLBACK_TR); // discard all probe rows
+      });
+    } catch (e) {
+      if ((e as Error).message !== ROLLBACK_TR) throw e;
+    }
   } finally {
     await sql.end();
   }
