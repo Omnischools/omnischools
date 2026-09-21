@@ -1035,6 +1035,209 @@ async function main() {
         if ((e as Error).message !== ROLLBACK_WD) throw e;
       }
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // OVERSIGHT staff-consent capture — BEHAVIORAL RLS probe (apps/web migration 0092 + prod-paste
+    // 0102/0103). Makes the already-merged Oversight §6 drill-down functional; the Oversight side reads
+    // this LIVE and fails closed (apps/oversight/lib/oversight/consent.ts). Two roles are proven here,
+    // both NON-SUPERUSER (the dev superuser owner masks RLS + column grants):
+    //  • oversight_readback — the §6 read-back role (PROVISIONING §4a). C1..C6 + A4.
+    //  • omnischools_app     — the operational app role that WRITES consent. A5 (CHECK), A3 (UNIQUE),
+    //    A11 (append-only trigger), A12 (tenant isolation on both tables).
+    // B2 (feature-detection of staff_profile.ges_staff_id) runs as the owner. All probe rows live in one
+    // rolled-back transaction. The read-back role + its grants/policies come from prod-paste-0103 applied
+    // to the dev DB; a regression (a widened grant, a dropped CHECK, a removed trigger) turns this red.
+    console.log("\nOversight consent + read-back role (behavioral):");
+    // B2 — the column the Oversight statutory binding path feature-detects (PROVISIONING).
+    const b2 = await sql<{ n: number }[]>`
+      select count(*)::int n from information_schema.columns
+      where table_name = 'staff_profile' and column_name = 'ges_staff_id'`;
+    assert("B2 staff_profile.ges_staff_id present (feature-detect)", b2[0].n, 1);
+
+    // Expected scoped counts (as the superuser owner — pre-RLS truth for the school).
+    const [{ n: expUsers }] = await sql<{ n: number }[]>`
+      select count(distinct user_id)::int n from staff_profile where school_id = ${schoolId}`;
+    const [{ n: expRoles }] = await sql<{ n: number }[]>`
+      select count(distinct role_id)::int n from role_assignment where school_id = ${schoolId}`;
+
+    const STMT = "GES individual drill-down of non-GES / non-teaching staff — v-test statement.";
+    const ROLLBACK_OC = "__oversight_consent_probe_rollback__";
+    // captures an expected error; rolls the savepoint back so the outer tx stays usable.
+    const expectErr = async (
+      tx: postgres.TransactionSql,
+      run: (sp: postgres.TransactionSql) => Promise<unknown>,
+    ): Promise<{ denied: boolean; code: string; message: string }> => {
+      try {
+        await tx.savepoint(run as (sp: postgres.TransactionSql) => Promise<unknown>);
+        return { denied: false, code: "", message: "" };
+      } catch (e) {
+        return {
+          denied: true,
+          code: (e as { code?: string }).code ?? "",
+          message: (e as Error).message ?? "",
+        };
+      }
+    };
+    try {
+      await sql.begin(async (tx) => {
+        // ---- superuser setup: one live GRANTED consent row + one GRANT history event ----
+        const [{ id: consentId }] = await tx<{ id: string }[]>`
+          insert into school_staff_oversight_consent
+            (school_id, scope, state, consent_statement_version, granted_by_role)
+          values (${schoolId}, 'NON_GES_STAFF', 'GRANTED', ${STMT}, 'ADMIN')
+          returning id`;
+        await tx`insert into school_staff_oversight_consent_event
+            (school_id, scope, event_type, actor_role, consent_statement_version)
+          values (${schoolId}, 'NON_GES_STAFF', 'GRANT', 'ADMIN', ${STMT})`;
+
+        // ======== READ-BACK ROLE (oversight_readback) ========
+        await tx`set local role oversight_readback`;
+
+        // C1 — no GUC ⇒ zero rows on all three, never an error (never another school's rows).
+        {
+          const [{ n: c }] = await tx<{ n: number }[]>`select count(*)::int n from school_staff_oversight_consent`;
+          const [{ n: u }] = await tx<{ n: number }[]>`select count(*)::int n from ref_user`;
+          const [{ n: r }] = await tx<{ n: number }[]>`select count(*)::int n from ref_role`;
+          assert("C1 readback no-GUC consent = 0", c, 0);
+          assert("C1 readback no-GUC ref_user = 0", u, 0);
+          assert("C1 readback no-GUC ref_role = 0", r, 0);
+        }
+
+        // C2 — scoped to school A ⇒ exactly this school's rows (confirm-not-enumerate).
+        await tx`select set_config('app.current_school', ${schoolId}, true)`;
+        {
+          const [{ n: c }] = await tx<{ n: number }[]>`select count(*)::int n from school_staff_oversight_consent`;
+          const [{ n: u }] = await tx<{ n: number }[]>`select count(*)::int n from ref_user`;
+          const [{ n: r }] = await tx<{ n: number }[]>`select count(*)::int n from ref_role`;
+          assert("C2 readback scoped consent = 1 (our row)", c, 1);
+          assert("C2 readback scoped ref_user = staff_profile users", u, expUsers);
+          assert("C2 readback scoped ref_role = distinct assigned roles", r, expRoles);
+        }
+
+        // A4 — the EXACT Oversight read predicate resolves + casts against the table.
+        {
+          const rows = await tx<
+            {
+              id: string;
+              state: string;
+              revoked_at: string | null;
+              granted_at: string | null;
+              consent_statement_version: string;
+            }[]
+          >`
+            select id::text as id, state::text as state, revoked_at::text as revoked_at,
+                   granted_at::text as granted_at, consent_statement_version
+            from school_staff_oversight_consent
+            where school_id = ${schoolId}::uuid and scope::text = 'NON_GES_STAFF'
+            limit 1`;
+          assert("A4 read predicate returns exactly one row", rows.length, 1);
+          assertTrue(
+            "A4 row is a LIVE grant (state=GRANTED AND revoked_at IS NULL)",
+            rows[0]?.state === "GRANTED" && rows[0]?.revoked_at === null,
+          );
+          assertTrue("A4 consentRef = the inserted id", rows[0]?.id === consentId);
+          assertTrue("A4 statement version round-trips", rows[0]?.consent_statement_version === STMT);
+          assertTrue("A4 granted_at is populated", !!rows[0]?.granted_at);
+        }
+
+        // C2 (isolation direction) — a foreign school ⇒ 0, never another school's rows.
+        await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+        {
+          const [{ n: c }] = await tx<{ n: number }[]>`select count(*)::int n from school_staff_oversight_consent`;
+          const [{ n: u }] = await tx<{ n: number }[]>`select count(*)::int n from ref_user`;
+          assert("C2 readback foreign-school consent = 0", c, 0);
+          assert("C2 readback foreign-school ref_user = 0", u, 0);
+        }
+        await tx`select set_config('app.current_school', ${schoolId}, true)`;
+
+        // C3 — email is unreachable AT THE GRANT (not merely unselected), while a GRANTED column reads.
+        // NB PG 16 phrases an ungranted-column denial as "permission denied for table" (a version wording
+        // change; SQLSTATE is 42501 either way). Asserting the code + that full_name reads proves the grant
+        // is genuinely column-scoped, robust across PG versions.
+        {
+          const fn = await tx<{ full_name: string | null }[]>`select full_name from ref_user limit 1`;
+          assertTrue("C3 a GRANTED column (full_name) IS readable", Array.isArray(fn));
+          const e = await expectErr(tx, (sp) => sp`select email from ref_user limit 1`);
+          assertTrue("C3 email denied at the GRANT (SQLSTATE 42501)", e.denied && e.code === "42501");
+        }
+
+        // C4 — salary is unreadable (no grant on staff_compensation).
+        {
+          const e = await expectErr(tx, (sp) => sp`select 1 from staff_compensation limit 1`);
+          assertTrue("C4 staff_compensation denied to the readback role (42501)", e.denied && e.code === "42501");
+        }
+
+        // C6 — no write path on the consent table (no INSERT/UPDATE/DELETE grant → 42501).
+        {
+          const ei = await expectErr(tx, (sp) => sp`
+            insert into school_staff_oversight_consent (school_id, scope, state, consent_statement_version)
+            values (${schoolId}, 'NON_GES_STAFF', 'GRANTED', 'x')`);
+          assertTrue("C6 readback INSERT consent denied (42501)", ei.denied && ei.code === "42501");
+          const eu = await expectErr(tx, (sp) => sp`update school_staff_oversight_consent set state = 'REVOKED'`);
+          assertTrue("C6 readback UPDATE consent denied (42501)", eu.denied && eu.code === "42501");
+          const ed = await expectErr(tx, (sp) => sp`delete from school_staff_oversight_consent`);
+          assertTrue("C6 readback DELETE consent denied (42501)", ed.denied && ed.code === "42501");
+        }
+        await tx`reset role`;
+
+        // ======== OPERATIONAL APP ROLE (omnischools_app) — A5, A3, A11, A12 ========
+        await tx`set local role omnischools_app`;
+        await tx`select set_config('app.current_school', ${schoolId}, true)`;
+
+        // A5 — the state ⇄ revoked_at CHECK: neither one-sided write is possible (SQLSTATE 23514).
+        {
+          const g = await expectErr(tx, (sp) => sp`
+            insert into school_staff_oversight_consent (school_id, scope, state, consent_statement_version, revoked_at)
+            values (${schoolId}, 'NON_GES_STAFF', 'GRANTED', 'x', now())`);
+          assertTrue("A5 GRANTED + non-null revoked_at rejected (CHECK 23514)", g.denied && g.code === "23514");
+          const r = await expectErr(tx, (sp) => sp`
+            insert into school_staff_oversight_consent (school_id, scope, state, consent_statement_version)
+            values (${schoolId}, 'NON_GES_STAFF', 'REVOKED', 'x')`);
+          assertTrue("A5 REVOKED + null revoked_at rejected (CHECK 23514)", r.denied && r.code === "23514");
+        }
+
+        // A3 — duplicate (school_id, scope) rejected (UNIQUE 23505). Row shape is A5-valid so the failure
+        // is unambiguously the unique key, not the CHECK.
+        {
+          const d = await expectErr(tx, (sp) => sp`
+            insert into school_staff_oversight_consent (school_id, scope, state, consent_statement_version, revoked_at)
+            values (${schoolId}, 'NON_GES_STAFF', 'REVOKED', 'x2', now())`);
+          assertTrue("A3 duplicate (school_id, scope) rejected (UNIQUE 23505)", d.denied && d.code === "23505");
+        }
+
+        // A11 — the history is append-only: UPDATE/DELETE raise the trigger exception (SQLSTATE P0001).
+        {
+          const u = await expectErr(tx, (sp) => sp`
+            update school_staff_oversight_consent_event set actor_role = 'x' where school_id = ${schoolId}`);
+          assertTrue("A11 event UPDATE hits the append-only trigger", u.denied && u.code === "P0001");
+          assertTrue("A11 UPDATE message says append-only", u.message.includes("append-only"));
+          const d = await expectErr(tx, (sp) => sp`
+            delete from school_staff_oversight_consent_event where school_id = ${schoolId}`);
+          assertTrue("A11 event DELETE hits the append-only trigger", d.denied && d.code === "P0001");
+          assertTrue("A11 DELETE message says append-only", d.message.includes("append-only"));
+        }
+
+        // A12 — tenant isolation on BOTH tables: scoped sees the rows, a foreign school sees zero.
+        {
+          const [{ n: c }] = await tx<{ n: number }[]>`
+            select count(*)::int n from school_staff_oversight_consent where school_id = ${schoolId}`;
+          const [{ n: ev }] = await tx<{ n: number }[]>`
+            select count(*)::int n from school_staff_oversight_consent_event where school_id = ${schoolId}`;
+          assert("A12 app scoped sees the consent row", c, 1);
+          assert("A12 app scoped sees the event row", ev, 1);
+          await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+          const [{ n: cf }] = await tx<{ n: number }[]>`select count(*)::int n from school_staff_oversight_consent`;
+          const [{ n: evf }] = await tx<{ n: number }[]>`select count(*)::int n from school_staff_oversight_consent_event`;
+          assert("A12 app foreign-school consent = 0", cf, 0);
+          assert("A12 app foreign-school event = 0", evf, 0);
+        }
+        await tx`reset role`;
+
+        throw new Error(ROLLBACK_OC); // discard all probe rows
+      });
+    } catch (e) {
+      if ((e as Error).message !== ROLLBACK_OC) throw e;
+    }
   } finally {
     await sql.end();
   }

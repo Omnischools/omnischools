@@ -54,6 +54,19 @@ export const staffProfiles = pgTable(
     nmcLicenceExpiry: date("nmc_licence_expiry"),
     specialisations: text("specialisations"), // comma-separated tags
 
+    /**
+     * GES establishment staff id — the join key the Oversight §6 gate BINDS the statutory-basis check to
+     * (apps/oversight/docs/PROVISIONING.md; a GES-establishment teacher is otherwise routed to the CONSENT
+     * branch because there is no key). AUTHORITATIVE GES data: populated from the GES establishment
+     * register load / ETL, NEVER school data entry — a school that could type this could bind one of its
+     * own employees to an establishment number and expose them to consent-free statutory oversight.
+     * Nullable, no backfill, no default (additive; existing rows stay NULL, i.e. "not on the register").
+     * ponytail: v1 keeps it read-only to the school by APP-LAYER omission (no write path binds it). The
+     * structural column-grant / loader-role split (a GES-only writer, school SELECT-only) is DEFERRED —
+     * owner call OC-5; upgrade path is a column-level GRANT once a distinct GES loader role exists.
+     */
+    gesStaffId: text("ges_staff_id"),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
