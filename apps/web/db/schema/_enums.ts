@@ -726,3 +726,23 @@ export const senDiagnosisSourceEnum = pgEnum("sen_diagnosis_source", [
 // (all detail withheld null, DB CHECK-enforced below). NOT NULL. Consent gates the DETAIL, not the
 // census COUNT — getCensusSpecialNeeds counts GRANTED + PENDING alike.
 export const senConsentStateEnum = pgEnum("sen_consent_state", ["GRANTED", "PENDING"]);
+
+// Oversight staff-consent capture (operational side of the GES §6 individual drill-down). The school's
+// DPO grants/revokes GES individual drill-down of NON-GES / non-teaching staff; Oversight reads it live
+// inside its read-back transaction and fails closed on anything but an unambiguous live grant
+// (apps/oversight/lib/oversight/consent.ts). Three small enums, all append-only if a value is ever added.
+//
+// scope: v1 is NON_GES_STAFF ONLY — the column exists so a per-person scope can be added later without a
+// schema change (matches CONSENT_SCOPE_NON_GES_STAFF on the read side).
+export const oversightConsentScopeEnum = pgEnum("oversight_consent_scope", ["NON_GES_STAFF"]);
+// state: GRANTED | REVOKED. DELIBERATELY distinct from senConsentStateEnum (GRANTED | PENDING) — there is
+// no PENDING here: a consent either currently authorises drill-down or it does not. The reader requires
+// state='GRANTED' AND revoked_at IS NULL together, so the two are pinned to agree by a table CHECK.
+export const oversightConsentStateEnum = pgEnum("oversight_consent_state", ["GRANTED", "REVOKED"]);
+// event_type: the append-only history's action. GRANT = first grant; REVOKE = withdrawal; REGRANT = a
+// fresh grant after a prior revoke (the current-state row flips back to GRANTED).
+export const oversightConsentEventTypeEnum = pgEnum("oversight_consent_event_type", [
+  "GRANT",
+  "REVOKE",
+  "REGRANT",
+]);

@@ -203,7 +203,9 @@ BEGIN
     'census_return',
     'sen_register',
     'sen_module_adoption',
-    'sen_support_grant'
+    'sen_support_grant',
+    'school_staff_oversight_consent',
+    'school_staff_oversight_consent_event'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
@@ -2353,3 +2355,20 @@ BEGIN
   END LOOP;
 END
 $$;
+
+-- ============================================================================================
+-- OVERSIGHT CONSENT — append-only history trigger (mirror apps/oversight ov_audit_append_only).
+-- The two consent tables get ENABLE+FORCE+tenant_isolation from the catalog array at the top of this
+-- file (and parent_deny from the catalog loop — no parent_scope). This trigger is the ONE thing those
+-- loops cannot express: the event log must reject UPDATE/DELETE so a grant/revoke/re-grant can only ever
+-- INSERT. Kept here for the db:push dev build; also in migration 0092 + prod-paste-0102 for prod.
+CREATE OR REPLACE FUNCTION oversight_consent_event_append_only() RETURNS trigger
+  LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
+  BEGIN
+    RAISE EXCEPTION 'school_staff_oversight_consent_event is append-only (% rejected)', tg_op;
+  END $$;
+DROP TRIGGER IF EXISTS oversight_consent_event_append_only ON school_staff_oversight_consent_event;
+CREATE TRIGGER oversight_consent_event_append_only
+  BEFORE UPDATE OR DELETE ON school_staff_oversight_consent_event
+  FOR EACH ROW EXECUTE FUNCTION oversight_consent_event_append_only();
