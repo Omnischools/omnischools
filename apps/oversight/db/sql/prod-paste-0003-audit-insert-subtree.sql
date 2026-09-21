@@ -1,0 +1,96 @@
+-- =============================================================================
+-- Omnischools OVERSIGHT — PROD hand-paste 0003: audit_insert gains the SUBTREE predicate
+--   audit_access_log · policy `audit_insert`
+--
+-- ⚠ JURISDICTION RLS IS NOT AUTO-APPLIED ON PROD. `pnpm db:policies`
+-- (scripts/apply-policies.ts → db/sql/policies.sql) only configures LOCAL DEV. This file is the
+-- hand-paste that carries the change to the LIVE `omnischools-analytics-prod` project. Paste it
+-- into the Supabase SQL editor on that project.
+--
+-- It replaces ONE policy. No table, no column, no function, no data. It is idempotent
+-- (drop-if-exists then create) and can be applied at any time AFTER db/sql/policies.sql and after
+-- prod-paste-0002 (which installs the `ov_in_subtree` definition this predicate calls). Applying it
+-- twice is a no-op.
+--
+-- ---------------------------------------------------------------------------
+-- WHAT IT FIXES
+-- ---------------------------------------------------------------------------
+-- The original predicate was:
+--
+--     with check ( officer_id = ov_current_officer() )
+--
+-- which enforces exactly one thing: you cannot write an audit row in another officer's name. It
+-- says NOTHING about which school the row is about. So a district director could log — and,
+-- because the gate writes the audit row BEFORE it fetches (OVERSIGHT_ANALYTICS_SPEC §6 step 2,
+-- lib/oversight/named-record-access.ts), therefore PERFORM — a named-record access against a school
+-- in another region, under their own name, and the database would accept it.
+--
+-- The application now refuses this itself: the gate resolves the target school from
+-- `ref_emis_school_register` under the officer's own RLS and throws `OUT_OF_JURISDICTION` if it is
+-- not in their subtree. This paste is the INDEPENDENT backstop behind that check. The two fail in
+-- different ways and for different reasons, which is the property worth having on a path that
+-- releases a named person's record: the app check is what produces a sensible refusal, and this one
+-- is what holds when a future caller, route handler or job forgets to make it.
+--
+-- ---------------------------------------------------------------------------
+-- WHAT IT DELIBERATELY DOES NOT BLOCK
+-- ---------------------------------------------------------------------------
+-- IN-SUBTREE DENIALS STILL INSERT. A no-consent, stale-establishment or flag-off refusal carries
+-- the TARGET SCHOOL's jurisdiction_id — which is inside the officer's own subtree, because that is
+-- the only kind of school the gate will act on at all. Those rows satisfy the new predicate and are
+-- written exactly as before. This matters: denials are the rows that evidence the gate holding, and
+-- a predicate that silently blocked them would make the system fail closed by becoming unable to
+-- record that it had fired. Verify this after pasting (see below).
+--
+-- NULL jurisdiction_id is rejected below NATIONAL, because ov_in_subtree(null) is false there. That
+-- is intended — an access that names no jurisdiction is an access nobody can review — and the gate
+-- never writes one: it refuses a school with no dim_jurisdiction node before it gets that far.
+--
+-- ---------------------------------------------------------------------------
+-- PRE-CHECK — ov_in_subtree must already exist and be SECURITY DEFINER
+-- ---------------------------------------------------------------------------
+-- (prod-paste-0002 installs it. If this returns 0 rows, apply 0002 FIRST — otherwise this policy
+-- would reference a function that either does not exist or recurses.)
+--
+--     select proname, prosecdef
+--     from pg_proc
+--     where proname = 'ov_in_subtree';
+--     -- expect: ov_in_subtree | t
+--
+-- =============================================================================
+
+alter table audit_access_log enable row level security;
+
+drop policy if exists audit_insert on audit_access_log;
+create policy audit_insert on audit_access_log
+  for insert with check (
+    officer_id = ov_current_officer() and ov_in_subtree(jurisdiction_id)
+  );
+
+-- =============================================================================
+-- VERIFY (run as the read-scoped APP role, not the owner — an owner is exempt from RLS unless the
+-- table is FORCEd, so verifying as the owner proves nothing).
+--
+--   1. the policy reads as expected
+--        select polname, pg_get_expr(polwithcheck, polrelid) as with_check
+--        from pg_policy
+--        where polrelid = 'audit_access_log'::regclass and polname = 'audit_insert';
+--        -- expect: ((officer_id = ov_current_officer()) AND ov_in_subtree(jurisdiction_id))
+--
+--   2. an in-subtree GRANT still inserts, and an in-subtree DENIAL still inserts
+--        begin;
+--        select set_config('app.current_jurisdiction', '<the officer district uuid>', true);
+--        select set_config('app.current_level', 'DISTRICT', true);
+--        select set_config('app.current_officer', '<the officer uuid>', true);
+--        insert into audit_access_log (officer_id, officer_role, jurisdiction_id, reason_code,
+--               record_type, target_ref, fields_released, legal_basis, outcome)
+--        values ('<officer uuid>', 'DISTRICT_DIRECTOR', '<a SCHOOL node in that district>',
+--               'STATUTORY_AUDIT', 'STAFF', 'OPS:EMIS-X:00000000-0000-4000-8000-000000000001',
+--               '[]'::jsonb, 'CONSENT', 'DENIED_NO_CONSENT');
+--        -- expect: INSERT 0 1
+--        rollback;
+--
+--   3. a CROSS-SUBTREE row is refused
+--        (same GUCs, but jurisdiction_id = a school node in ANOTHER district)
+--        -- expect: ERROR: new row violates row-level security policy for table "audit_access_log"
+-- =============================================================================

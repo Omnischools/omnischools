@@ -85,8 +85,59 @@ On `fact_infrastructure`, every presence/categorical attribute is stored as a 0/
 does not roll up: the district answer must be a plain `SUM` reading "N of Y schools". Infrastructure
 is a stock, so it sums spatially (across schools) only, never across periods.
 
+## The §6 individual drill-down
+
+The one surface that shows a named person. Its server-side core lives in `lib/oversight/`, and
+`lib/oversight/named-record-access.ts` is the **single choke point**: nothing else opens the
+operational read-back, and nothing else writes an `audit_access_log` row. In order — resolve the
+school under the officer's own jurisdiction RLS and refuse it outright if it is outside their
+subtree, classify the subject against the GES establishment register, preflight the school's
+ownership (from the **register**, never from the caller) against `E3_NON_PUBLIC_STAFF_DRILLDOWN`,
+bind any claimed establishment number to the row about to be fetched, read consent live inside the
+read-back transaction, **write the audit row**, and only then project the fields the stated reason
+unlocks. Denials are written rows too, with `fields_released = []`.
+
+**The STATUTORY basis needs a bound subject, not a claimed id.** The establishment number and the
+operational staff uuid arrive separately in a request, so "this number is on the register" says
+nothing about the row being fetched; both must resolve to the same person. Operational
+`staff_profile` has no `ges_staff_id` to bind them with, so **every direct record fetch currently
+resolves to CONSENT** — meaning a GES teacher is reachable only where the school has consented. That
+is a deliberate loss of reach in exchange for a basis nobody can forge; the verification path is
+written and feature-detected, waiting for the column.
+
+The jurisdiction ceiling is enforced **twice, independently**: in the choke point (so it cannot be
+skipped by a future caller) and in the database, where `audit_insert`'s `WITH CHECK` requires
+`ov_in_subtree(jurisdiction_id)`. Because the gate logs before it fetches, a row the database
+refuses is an access that cannot happen. On prod that predicate arrives via
+`db/sql/prod-paste-0003-audit-insert-subtree.sql`.
+
+`lib/db/readback.ts` is a second, isolated Postgres client for `OPERATIONAL_READBACK_URL`. It fails
+closed when that is unset and never falls back to the analytics DB. Aggregate code may not import it
+— enforced by an ESLint `no-restricted-imports` override and by `tests/readback-isolation.test.ts`,
+which also checks transitive reachability from every App-Router entry point.
+
+`lib/oversight/suppression.ts` is the small-cell helper for sexed school-grain staff facts
+(`fact_teacher_attendance` + `fact_plc_participation`, treated as ONE disclosure surface). **No
+sexed-staff-fact aggregate surface is built yet — the first one must route its rows through it.**
+
+## Tests
+
+```bash
+pnpm test        # vitest, against REAL Postgres
+```
+
+`tests/setup/global-setup.ts` boots a throwaway cluster (`scripts/test-pg.sh`, or point
+`OVERSIGHT_TEST_DATABASE_URL` at your own server) and provisions two databases: **analytics** from
+this app's own migrations + `db/sql/policies.sql`, connected as a non-owner role so RLS applies; and
+**operational** from `tests/fixtures/operational-schema.sql`, connected as a narrow read-back role
+with the `docs/PROVISIONING.md` §4a grant list — notably no SELECT on `staff_compensation`. The
+consent table does not exist in this repo (it is being built in `apps/web`), so the fixture
+implements the contract in `apps/web/Todo.md`.
+
 ## Status
 
-Scaffold. The schema (23 tables), RLS, config seed, and app shell are in place. Still to build: the
-ETL job (`apps/web`, 02:00 GMT — deferred), the surfaces, and GES-staff auth. See
-`docs/PROVISIONING.md` and `md files/OVERSIGHT_ANALYTICS_SPEC.md` for the full plan.
+Scaffold plus the §6 gated individual-staff drill-down. The schema (23 tables), RLS, config seed,
+app shell, the gate's server-side core and its surfaces are in place. Still to build: the ETL job
+(`apps/web`, 02:00 GMT — deferred), the remaining aggregate surfaces, and GES-staff auth (until it
+exists, `AUTH_DEV_BYPASS=false` means the gate refuses — there is nobody to log an access against).
+See `docs/PROVISIONING.md` and `md files/OVERSIGHT_ANALYTICS_SPEC.md` for the full plan.
