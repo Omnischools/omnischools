@@ -28,8 +28,43 @@ export interface OfficerSession extends GateOfficer {
  */
 export const DEV_OFFICER_ID = "00000000-0000-4000-8000-000000000001";
 
+export class DevBypassInProductionError extends Error {
+  readonly code = "AUTH_DEV_BYPASS_IN_PRODUCTION";
+  constructor() {
+    super(
+      "AUTH_DEV_BYPASS=true with NODE_ENV=production. The dev shim issues a NATIONAL, unfiltered officer session with no authentication — in production that is unauthenticated national access to every named record in Ghana. Refusing to start. Set AUTH_DEV_BYPASS=false.",
+    );
+    this.name = "DevBypassInProductionError";
+  }
+}
+
+/**
+ * ⚠ PRODUCTION HARD-STOP, evaluated at MODULE LOAD.
+ *
+ * The dev shim below does not merely skip a login — it returns a **NATIONAL** officer, the tier with
+ * no jurisdiction filter at all, so with `AUTH_DEV_BYPASS=true` in production every gated surface
+ * would open to anyone who can reach the URL, and each access would be logged against a fabricated
+ * officer id. `.env.example` ships the flag as `true` because that is right for local development,
+ * which is exactly why a deployment that copies it must not merely misbehave.
+ *
+ * It throws rather than silently falling back to "no session" because a silent fallback is
+ * indistinguishable from correct operation until someone notices nobody can log in — whereas a
+ * process that refuses to boot is noticed immediately, by the deploy. Failing at module load rather
+ * than per request means the bad configuration cannot serve even one page.
+ */
+function assertDevBypassNotInProduction(): void {
+  if (env.AUTH_DEV_BYPASS && env.NODE_ENV === "production") {
+    throw new DevBypassInProductionError();
+  }
+}
+
+assertDevBypassNotInProduction();
+
 export async function getOfficerSession(): Promise<OfficerSession | null> {
   if (env.AUTH_DEV_BYPASS) {
+    // Re-checked per call as well as at load: the module-load guard is what fails the deploy, and
+    // this is what holds if anything mutates the environment inside a running process.
+    assertDevBypassNotInProduction();
     return {
       officerId: DEV_OFFICER_ID,
       officerRole: "NATIONAL_OVERSIGHT",

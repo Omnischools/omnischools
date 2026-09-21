@@ -37,6 +37,14 @@ import { isNeverReleased, NEVER_RELEASE_FIELDS } from "@/lib/oversight/field-sco
 export const UNAVAILABLE_NO_SOURCE = "UNAVAILABLE_NO_SOURCE" as const;
 
 /**
+ * A value that COULD be derived, but not for THIS person, because nothing binds the operational
+ * staff row to the GES establishment register. Distinct from `UNAVAILABLE_NO_SOURCE` (no source
+ * exists at all) and from `false` (which would assert that the subject is NOT established — a claim
+ * we are equally unable to make). See `bindEstablishmentId`.
+ */
+export const UNVERIFIABLE_NO_LINK_KEY = "UNVERIFIABLE_NO_LINK_KEY" as const;
+
+/**
  * Canonical field id → SQL expression, evaluated against the FROM clause in `STAFF_RECORD_FROM`.
  *
  * Fields NOT in this map are not operational: they are filled in by the orchestrator from the
@@ -44,28 +52,42 @@ export const UNAVAILABLE_NO_SOURCE = "UNAVAILABLE_NO_SOURCE" as const;
  * sourceless (`staff_attendance_facts` — see the sourcing gate on `fact_teacher_attendance` in
  * db/schema/fact.ts: Omnischools records PLC/PD attendance, not a daily staff register).
  */
-const OPERATIONAL_COLUMN_EXPR: Readonly<Record<string, string>> = Object.freeze({
-  full_name: "u.full_name",
-  staff_id: "sp.id::text",
-  post_role_label: "ra.role_label",
-  assigned_school: "s.name",
-  gender: "sp.gender",
-  appointment_start_date: "ra.start_date::text",
-  appointment_end_date: "ra.end_date::text",
-  assignment_scope: "ra.scope_ref::text",
-  ntc_licence_number: "sp.ntc_licence_number",
-  ntc_licence_expiry: "sp.ntc_licence_expiry::text",
-  nmc_licence_number: "sp.nmc_licence_number",
-  nmc_licence_expiry: "sp.nmc_licence_expiry::text",
-  qualification_level: "sp.qualification_level",
-  highest_qualification: "sp.highest_qualification",
-  undergraduate: "sp.undergraduate",
-  specialisations: "sp.specialisations",
-  date_of_birth: "sp.date_of_birth::text",
-  address: "sp.address",
-  emergency_contact: "sp.emergency_contact",
-  phone: "u.phone",
-});
+/**
+ * ⚠ `Object.create(null)` — a NULL-PROTOTYPE map, not an object literal.
+ *
+ * A plain `{}` inherits from `Object.prototype`, so `map["constructor"]`, `map["__proto__"]` and
+ * `map["toString"]` all resolve to something truthy. A lookup of the form `const expr = MAP[field]`
+ * would then accept those three strings as valid field ids and interpolate a FUNCTION into the
+ * SELECT list instead of throwing `UNKNOWN_FIELD`. Nothing can reach it today — the field list comes
+ * from frozen constants in field-scope.ts — but this map is the third of three deliberately
+ * redundant guards on the one query that reads a named person's record, and a guard that only holds
+ * while its callers stay well-behaved is not a third guard. `buildStaffProjection` additionally
+ * checks `Object.hasOwn` and `typeof expr === "string"`, so all three would have to fail together.
+ */
+const OPERATIONAL_COLUMN_EXPR: Readonly<Record<string, string>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<string, string>, {
+    full_name: "u.full_name",
+    staff_id: "sp.id::text",
+    post_role_label: "ra.role_label",
+    assigned_school: "s.name",
+    gender: "sp.gender",
+    appointment_start_date: "ra.start_date::text",
+    appointment_end_date: "ra.end_date::text",
+    assignment_scope: "ra.scope_ref::text",
+    ntc_licence_number: "sp.ntc_licence_number",
+    ntc_licence_expiry: "sp.ntc_licence_expiry::text",
+    nmc_licence_number: "sp.nmc_licence_number",
+    nmc_licence_expiry: "sp.nmc_licence_expiry::text",
+    qualification_level: "sp.qualification_level",
+    highest_qualification: "sp.highest_qualification",
+    undergraduate: "sp.undergraduate",
+    specialisations: "sp.specialisations",
+    date_of_birth: "sp.date_of_birth::text",
+    address: "sp.address",
+    emergency_contact: "sp.emergency_contact",
+    phone: "u.phone",
+  }),
+);
 
 /** Fields the scope can grant that are filled server-side rather than selected. */
 export const SERVER_DERIVED_FIELDS = Object.freeze([
@@ -138,8 +160,12 @@ export function buildStaffProjection(allowedFields: readonly string[]): StaffPro
     }
     if (SERVER_DERIVED_FIELDS.includes(field) || SOURCELESS_FIELDS.includes(field))
       continue;
-    const expr = OPERATIONAL_COLUMN_EXPR[field];
-    if (!expr) {
+    // `hasOwn` + a string check, on top of the null-prototype map: an inherited member must never
+    // be mistaken for a mapped column, and only a literal SQL fragment may reach the SELECT list.
+    const expr = Object.hasOwn(OPERATIONAL_COLUMN_EXPR, field)
+      ? OPERATIONAL_COLUMN_EXPR[field]
+      : undefined;
+    if (typeof expr !== "string" || expr.length === 0) {
       throw new ProjectionError(
         "UNKNOWN_FIELD",
         `No operational source mapped for field "${field}". A field in scope with no mapping must be declared server-derived or sourceless, never silently dropped.`,
@@ -190,6 +216,104 @@ export async function staffRecordExists(
     [operationalSchoolId, operationalStaffId],
   )) as unknown as unknown[];
   return rows.length > 0;
+}
+
+/**
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
+ * SUBJECT BINDING — does the row we are about to fetch actually carry the claimed GES id?
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * THE HOLE THIS CLOSES. The statutory basis is derived from a GES establishment number, and the
+ * record is fetched by an operational `staff_profile.id`. Both arrive with the request. If nothing
+ * checks that the two describe the SAME person, then supplying any establishment number that is
+ * genuinely on the target school's register — a public fact about a colleague, a number off a
+ * payslip — alongside an arbitrary `staff_profile.id` yields `legal_basis = STATUTORY` for a
+ * completely different subject. That skips the consent read AND the private/mission flag preflight
+ * (statute is meant to hold everywhere), releases the record, and writes an append-only audit row
+ * asserting TEACHER / `GES:<claimed id>` for a person who is neither. It is the whole consent gate
+ * defeated by one extra form field.
+ *
+ * WHY THE FIX IS "ROUTE TO CONSENT" AND NOT "CHECK HARDER". Operational `staff_profile` carries NO
+ * GES establishment id (no column in apps/web/db/schema/*.ts holds one — already escalated). There
+ * is therefore no join key, and no amount of care in this process can establish the binding: it is
+ * UNVERIFIABLE, not merely unchecked. An unverifiable claim must not confer the stronger lawful
+ * basis, so a direct record fetch routes to CONSENT — the same fail-closed direction the staff-list
+ * browse already takes for the same missing key.
+ *
+ * THE INTENDED CONSEQUENCE, STATED PLAINLY: until that column exists, a GES-establishment teacher
+ * is reachable only where the school has recorded consent. That is a real loss of reach, and it is
+ * the honest state — the alternative is a statutory basis that anyone who knows one staff number
+ * can claim for anyone.
+ *
+ * THE DURABLE PATH, GUARDED. When apps/web adds `staff_profile.ges_staff_id`, the binding becomes
+ * checkable against the SAME row being fetched, inside the SAME read-back transaction. The
+ * capability is feature-detected (so this never queries a column that does not exist) and the probe
+ * selects a BOOLEAN — never the stored id, never a name — so it discloses nothing beyond the
+ * yes/no the lawful basis turns on.
+ */
+
+export type EstablishmentBinding =
+  /** No claimed id: the request never asserted the statutory basis. */
+  | { state: "NOT_CLAIMED" }
+  /** No `staff_profile.ges_staff_id` column exists, so no claim can be bound to this row. */
+  | { state: "UNVERIFIABLE" }
+  /** The fetched row carries exactly the claimed id. */
+  | { state: "VERIFIED"; gesStaffId: string }
+  /** The column exists and the row does NOT carry the claimed id. A forgery attempt looks like this. */
+  | { state: "MISMATCH" };
+
+/**
+ * Cached per process: whether `staff_profile.ges_staff_id` exists. A schema fact, so it cannot
+ * change under a running process without a migration — and a migration that adds it is followed by
+ * a deploy, which resets this. `__resetEstablishmentBindingCapability` exists for tests only.
+ */
+let bindingCapability: boolean | null = null;
+
+export function __resetEstablishmentBindingCapability(): void {
+  bindingCapability = null;
+}
+
+async function hasGesStaffIdColumn(tx: ReadbackTx): Promise<boolean> {
+  if (bindingCapability !== null) return bindingCapability;
+  const rows = (await tx.unsafe(
+    `select 1 as present
+       from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'staff_profile'
+        and column_name = 'ges_staff_id'
+      limit 1`,
+  )) as unknown as unknown[];
+  bindingCapability = rows.length > 0;
+  return bindingCapability;
+}
+
+/**
+ * Bind the claimed establishment id to the row that is about to be fetched. Call INSIDE the
+ * read-back transaction, against the same (school, staff) pair the projection will use.
+ */
+export async function bindEstablishmentId(
+  tx: ReadbackTx,
+  operationalSchoolId: string,
+  operationalStaffId: string,
+  claimedGesStaffId: string | null,
+): Promise<EstablishmentBinding> {
+  const claimed = claimedGesStaffId?.trim();
+  if (!claimed) return { state: "NOT_CLAIMED" };
+  if (!(await hasGesStaffIdColumn(tx))) return { state: "UNVERIFIABLE" };
+
+  // Selects a constant, not the stored id: the basis turns on a yes/no, and the yes/no is all this
+  // is entitled to learn.
+  const rows = (await tx.unsafe(
+    `select 1 as bound
+       from staff_profile
+      where school_id = $1::uuid and id = $2::uuid and ges_staff_id = $3
+      limit 1`,
+    [operationalSchoolId, operationalStaffId, claimed],
+  )) as unknown as unknown[];
+
+  return rows.length > 0
+    ? { state: "VERIFIED", gesStaffId: claimed }
+    : { state: "MISMATCH" };
 }
 
 /** Run the projection inside the read-back transaction. Returns null when the subject is absent. */

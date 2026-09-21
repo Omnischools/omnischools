@@ -150,8 +150,12 @@ describe("SELECT on the consent table is REVOKED", () => {
     expect(rows[0]!.fields_released).toEqual([]);
   });
 
-  it("the STATUTORY branch is unaffected — it never reads consent", async () => {
-    const reference = caseRef("statutory-during-revoke");
+  it("a claimed establishment number does NOT route around the unreadable consent table", async () => {
+    // Before S1 this request skipped the consent read entirely and was granted — so an unreadable
+    // consent table was not merely survivable, it was avoidable by adding a staff number. The
+    // statutory branch would still skip consent, but only for a VERIFIED binding, which no request
+    // can obtain today. So this refuses like any other consent-branch request.
+    const reference = caseRef("claim-during-revoke");
     const result = await withConsentSelectRevoked(() =>
       requestNamedStaffRecord({
         officer: districtOfficer,
@@ -164,8 +168,10 @@ describe("SELECT on the consent table is REVOKED", () => {
         },
       }),
     );
-    expect(result.outcome).toBe("GRANTED");
-    if (result.outcome !== "GRANTED") return;
-    expect(result.legalBasis).toBe("STATUTORY");
+    expect(result.outcome).toBe("DENIED_NO_CONSENT");
+    if (result.outcome === "GRANTED") return;
+    expect(result.denialReason).toBe("CONSENT_UNREADABLE");
+    expect(result.legalBasis).toBe("CONSENT");
+    expect(result.trace).not.toContain("fetched");
   });
 });

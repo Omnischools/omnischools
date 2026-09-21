@@ -219,27 +219,95 @@ alter role oversight_readback set default_transaction_read_only = on;
    that table and the query count on this role should track each other; a divergence means someone
    used the credential outside the gate.
 
-> **⚠ TWO ADDITIONS THE BUILT §6 PATH REQUIRES (added 2026-09, awaiting security sign-off before the
-> role is provisioned).** The grant list above predates the implementation and is one table short on
-> each side of the record. Both additions are narrow, and neither moves toward compensation:
+> **⚠ THREE ADDITIONS THE BUILT §6 PATH REQUIRES (added 2026-09; `ref_school` signed off, the other
+> two revised after security review — provision exactly as written below).** The grant list above
+> predates the implementation and is one table short on each side of the record.
 >
-> - **`ref_user`** — the identity spine's `full_name` (and `phone`, which only
->   `SAFEGUARDING_MISCONDUCT` unlocks) is NOT on `staff_profile`. Operational identity is global:
->   `staff_profile` hangs off `ref_user`, which carries the name. Without SELECT here the gate can
->   return a licence number and an appointment date for a person it cannot name, which is both
->   useless to the officer and worse for the subject than the alternative.
-> - **`ref_school`** — needed for two things: the school's `name` (the `assigned_school` field), and
+> - **`ref_school`** — *(signed off)* the school's `name` (the `assigned_school` field) and
 >   `ges_code`, which is how the gate PROVES that the operational tenant uuid arriving with the
->   request belongs to the EMIS school the officer actually picked. `ref_school`'s own tenant RLS
->   keys on `id = app.current_school`, so this grant can confirm a claimed school but can never
->   enumerate others.
+>   request belongs to the EMIS school the officer actually picked. Its own tenant RLS keys on
+>   `id = app.current_school`, so the grant can CONFIRM a claimed school and can never enumerate
+>   others. That shape — confirm, not enumerate — is the template for the other two.
+> - **`ref_user`** — the identity spine's `full_name` (and `phone`, which only
+>   `SAFEGUARDING_MISCONDUCT` unlocks) is NOT on `staff_profile`: operational identity is global, and
+>   `staff_profile` hangs off `ref_user`. **A table-wide grant here would be a platform-wide PII
+>   enumeration primitive** — `ref_user` has no tenant key, so `select full_name, phone from ref_user`
+>   as this role would return every user on the platform, behind the one credential whose purpose is
+>   to fetch a single record. Two things are therefore required and neither is optional:
+>   **(a) column-level grant, excluding `email`** — no reason code releases an email address
+>   (`lib/oversight/field-scope.ts` has no entry for it), and the grant is the only place that can
+>   make that structural rather than a property of the queries we happen to write today;
+>   **(b) a confirm-not-enumerate RLS policy for the role.**
+> - **`ref_role`** — the current post label. Same shape, same reasoning: a role catalogue is global,
+>   so it gets the same policy keyed through `role_assignment`.
 >
 > ```sql
-> grant select on ref_user, ref_school to oversight_readback;
+> grant select on ref_school to oversight_readback;
+> grant select (id, full_name, phone) on ref_user to oversight_readback;  -- NOT email
+> grant select on ref_role to oversight_readback;
+>
+> -- Both tables are already RLS-ENABLED WITH NO POLICY on prod (apps/web prod-paste-0033), i.e.
+> -- deny-all. Do NOT simply grant: add the narrow policy the role needs, and nothing wider.
+> create policy oversight_readback_confirm on ref_user
+>   for select to oversight_readback
+>   using (exists (
+>     select 1 from staff_profile sp
+>     where sp.user_id = ref_user.id
+>       and sp.school_id = nullif(current_setting('app.current_school', true), '')::uuid
+>   ));
+>
+> create policy oversight_readback_confirm on ref_role
+>   for select to oversight_readback
+>   using (exists (
+>     select 1 from role_assignment ra
+>     where ra.role_id = ref_role.id
+>       and ra.school_id = nullif(current_setting('app.current_school', true), '')::uuid
+>   ));
 > ```
+>
+> **⚠ GRANTING WITHOUT THE POLICY IS NOT THE SAFE HALF-STEP IT LOOKS LIKE.** Because those tables
+> are deny-all today, a bare grant returns **zero rows**, the identity spine's INNER join to
+> `ref_user` yields nothing, and the gate — which writes its audit row BEFORE it fetches (§6 step 2)
+> — leaves a GRANTED entry followed by an empty projection. The append-only log then permanently
+> overstates a disclosure that never happened. Grant and policy land together or not at all.
+>
+> **VERIFY, as `oversight_readback` (not as the owner — an owner is exempt from RLS):**
+>
+> ```sql
+> -- 1. no GUC ⇒ nothing at all
+> select count(*) from ref_user;   -- expect 0
+> select count(*) from ref_role;   -- expect 0
+>
+> -- 2. scoped ⇒ exactly this school's people, never the platform total
+> select set_config('app.current_school', '<a school uuid>', false);
+> select count(*) from ref_user;   -- expect = that school's staff_profile count
+> select count(*) from ref_role;   -- expect = that school's distinct assigned roles
+>
+> -- 3. email is unreachable at the GRANT, not merely unselected
+> select email from ref_user limit 1;   -- expect: ERROR permission denied for column email
+> ```
+>
+> The dev/test harness models all three states (`tests/fixtures/operational-schema.sql` +
+> `tests/readback-identity-rls.test.ts`), so a regression fails the suite rather than waiting for a
+> prod audit.
 >
 > **Still not granted, and not requested:** `staff_compensation`, `ref_district`, `ref_region`,
 > `attendance_records`, anything student-side.
+
+> **⚠ THIS GAP NOW COSTS REACH, NOT JUST CONVENIENCE (revised after security review).** The GES
+> establishment number and the operational staff uuid arrive separately in a gate request, and an
+> establishment number is not a secret — so without a column binding them, "this number is on the
+> register" says nothing about the row being fetched. Deriving the STATUTORY basis from the number
+> alone let any caller who knew one real staff number claim it for anyone, skipping both the consent
+> read and the private/mission flag. **The gate therefore routes every direct record fetch to the
+> CONSENT branch until `staff_profile.ges_staff_id` exists**, and the verification path is written
+> and feature-detected, waiting for the column (`bindEstablishmentId` in
+> `lib/oversight/staff-projection.ts`).
+>
+> The intended consequence, stated plainly: **a GES-establishment teacher is reachable only where the
+> school has recorded DPO consent.** That is a real loss of statutory reach and the honest
+> fail-closed state — the alternative is a statutory basis anyone can assert. Adding the column is
+> what restores it.
 
 > **Open schema gap (escalated, not worked around):** operational `staff_profile` carries **no GES
 > establishment staff id** — no column in `apps/web/db/schema/*.ts` holds one. So (a) a staff record

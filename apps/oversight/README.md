@@ -93,8 +93,17 @@ operational read-back, and nothing else writes an `audit_access_log` row. In ord
 school under the officer's own jurisdiction RLS and refuse it outright if it is outside their
 subtree, classify the subject against the GES establishment register, preflight the school's
 ownership (from the **register**, never from the caller) against `E3_NON_PUBLIC_STAFF_DRILLDOWN`,
-read consent live inside the read-back transaction, **write the audit row**, and only then project
-the fields the stated reason unlocks. Denials are written rows too, with `fields_released = []`.
+bind any claimed establishment number to the row about to be fetched, read consent live inside the
+read-back transaction, **write the audit row**, and only then project the fields the stated reason
+unlocks. Denials are written rows too, with `fields_released = []`.
+
+**The STATUTORY basis needs a bound subject, not a claimed id.** The establishment number and the
+operational staff uuid arrive separately in a request, so "this number is on the register" says
+nothing about the row being fetched; both must resolve to the same person. Operational
+`staff_profile` has no `ges_staff_id` to bind them with, so **every direct record fetch currently
+resolves to CONSENT** — meaning a GES teacher is reachable only where the school has consented. That
+is a deliberate loss of reach in exchange for a basis nobody can forge; the verification path is
+written and feature-detected, waiting for the column.
 
 The jurisdiction ceiling is enforced **twice, independently**: in the choke point (so it cannot be
 skipped by a future caller) and in the database, where `audit_insert`'s `WITH CHECK` requires

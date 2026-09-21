@@ -12,7 +12,7 @@ import {
   withheldFields,
 } from "@/lib/oversight/field-scope";
 import { unlockingReasonFor } from "@/lib/oversight/copy";
-import { buildStaffProjection } from "@/lib/oversight/staff-projection";
+import { ProjectionError, buildStaffProjection } from "@/lib/oversight/staff-projection";
 
 const RECORD_TYPES = ["TEACHER", "STAFF"] as const;
 const OWNERSHIP_TYPES = ["PUBLIC", "PRIVATE", "MISSION"] as const;
@@ -147,6 +147,39 @@ describe("Kofi group E — NEVER-RELEASE, across the full reason × record-type 
     expect(() => buildStaffProjection(["full_name", "monthly_amount"])).toThrowError(
       /never-released/i,
     );
+  });
+
+  it("S5 — prototype keys are UNKNOWN_FIELD, not inherited members of the column map", () => {
+    // With an object-literal map, `MAP["constructor"]` is a function and `MAP["__proto__"]` is an
+    // object, so a bare lookup accepts all three as mapped columns and interpolates them into the
+    // SELECT list instead of throwing. Unreachable today (the field list is frozen constants), but
+    // this map is the third of three redundant guards on the query that reads a named record, and
+    // a guard that only holds while its callers behave is not a guard.
+    for (const hostile of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "prototype",
+    ]) {
+      expect(() => buildStaffProjection(["full_name", hostile]), hostile).toThrowError(
+        /No operational source mapped/i,
+      );
+    }
+  });
+
+  it("S5 — an injection-shaped field name never reaches the SQL text", () => {
+    for (const hostile of [
+      "full_name, sp.date_of_birth",
+      "1; drop table staff_profile",
+      "monthly_amount",
+      "",
+    ]) {
+      expect(() => buildStaffProjection(["full_name", hostile]), hostile).toThrowError(
+        ProjectionError,
+      );
+    }
   });
 
   it("module-load integrity check is executable and passes", () => {

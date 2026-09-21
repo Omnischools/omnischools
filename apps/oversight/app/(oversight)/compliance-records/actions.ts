@@ -11,7 +11,11 @@ import {
   type SchoolGateRef,
 } from "@/lib/oversight/named-record-access";
 import { STAFF_REASON_CODES, withheldFields } from "@/lib/oversight/field-scope";
-import type { StaffListRow } from "@/lib/oversight/staff-projection";
+import {
+  UNAVAILABLE_NO_SOURCE,
+  UNVERIFIABLE_NO_LINK_KEY,
+  type StaffListRow,
+} from "@/lib/oversight/staff-projection";
 
 /**
  * The gate's server actions — the ONLY App-Router code permitted to reach the read-back, and it
@@ -144,7 +148,10 @@ export async function submitStaffGate(
                 ? "Yes"
                 : "No"
               : String(raw),
-        unavailable: raw === "UNAVAILABLE_NO_SOURCE",
+        // Both markers render as the muted "no value to give you, and here is why" state rather
+        // than as a value: one means Omnischools has no source at all, the other that this subject
+        // cannot be bound to the establishment register. Neither is a fact about the person.
+        unavailable: raw === UNAVAILABLE_NO_SOURCE || raw === UNVERIFIABLE_NO_LINK_KEY,
       };
     });
 

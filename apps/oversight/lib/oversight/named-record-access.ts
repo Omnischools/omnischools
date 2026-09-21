@@ -2,11 +2,7 @@ import { sql } from "drizzle-orm";
 import { withJurisdiction } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
 import type { OfficerSession } from "@/lib/oversight/officer";
-import {
-  ReadbackUnavailableError,
-  isReadbackConfigured,
-  withReadbackSchool,
-} from "@/lib/db/readback";
+import { isReadbackConfigured, withReadbackSchool } from "@/lib/db/readback";
 import {
   classifyStaffSubjectInTx,
   type Classification,
@@ -33,12 +29,15 @@ import {
   type LegalBasis,
 } from "@/lib/oversight/target-ref";
 import {
+  bindEstablishmentId,
   confirmSchoolIdentity,
   fetchScopedStaffRecord,
   fetchStaffList,
   staffRecordExists,
   SOURCELESS_FIELDS,
   UNAVAILABLE_NO_SOURCE,
+  UNVERIFIABLE_NO_LINK_KEY,
+  type EstablishmentBinding,
   type StaffListRow,
 } from "@/lib/oversight/staff-projection";
 import { resolveSchoolInTx, type ResolvedSchool } from "@/lib/oversight/school-ref";
@@ -58,12 +57,22 @@ import { resolveSchoolInTx, type ResolvedSchool } from "@/lib/oversight/school-r
  *      outside their subtree; then CLASSIFY the subject against the GES establishment register in
  *      the same transaction. ANALYTICS only — no operational connection exists yet. The school's
  *      jurisdiction node and ownership type come from the register, NOT from the caller.
- *   3. PREFLIGHT ownership (CONSENT branch only): with `E3_NON_PUBLIC_STAFF_DRILLDOWN` off, a
- *      PRIVATE/MISSION school is refused here — before any operational connection is opened.
- *   4. OPEN the read-back transaction, confirm the claimed school, (CONSENT branch) read the
- *      consent row live, and ask whether the subject exists. Still no staff COLUMN has been named.
+ *   3. PREFLIGHT ownership: with `E3_NON_PUBLIC_STAFF_DRILLDOWN` off, a PRIVATE/MISSION school is
+ *      refused — before any operational connection is opened, unless the request claims an
+ *      establishment number (see step 3 in the body for why the claim moves it later).
+ *   4. OPEN the read-back transaction, confirm the claimed school, BIND any claimed establishment
+ *      number to the row about to be fetched, read the consent row live unless that binding
+ *      established the statutory basis, and ask whether the subject exists. Still no staff COLUMN
+ *      has been named.
  *   5. WRITE THE AUDIT ROW. Outcome, lawful basis, consent ref, fields the reason unlocks.
  *   6. ONLY THEN project the record, inside the SAME read-back transaction.
+ *
+ * THE STATUTORY BASIS NEEDS A BOUND SUBJECT, NOT A CLAIMED ID. The GES establishment number and the
+ * operational staff uuid arrive separately in the request, and an establishment number is not a
+ * secret — so "this number is on the register" says nothing about the row being fetched. Both must
+ * be bound to the same person (step 4) or the basis stays CONSENT and the consent + ownership gates
+ * apply. Today nothing in operational Postgres can bind them, so every direct record fetch resolves
+ * to CONSENT. See `bindEstablishmentId` for the full argument and the intended consequence.
  *
  * THE CEILING IS ENFORCED HERE, NOT BY THE CALLER. Step 2 is an authorization check, and it lives
  * in the choke point precisely so that it cannot be omitted by the next caller — a route handler, a
@@ -206,6 +215,8 @@ export type DenialReason =
   | "NON_PUBLIC_FLAG_OFF"
   | "UNKNOWN_OWNERSHIP"
   | "ESTABLISHMENT_STALE"
+  /** The fetched row does not carry the claimed GES establishment number — the forgery shape. */
+  | "ESTABLISHMENT_ID_MISMATCH"
   | "CLASSIFICATION_INDETERMINATE"
   | "REASON_UNLOCKS_NOTHING"
   | "SUBJECT_NOT_FOUND";
@@ -409,28 +420,45 @@ export function assertTargetRefMatchesBasisUnlessRoster(
   assertTargetRefMatchesBasis(ref, basis);
 }
 
-function basisFor(classification: Classification): LegalBasis {
-  return classification.category === "GES_TEACHER" ? "STATUTORY" : "CONSENT";
-}
-
-function categoryFor(classification: Classification): StaffCategory {
-  // INDETERMINATE is recorded as OTHER_STAFF: we could not establish the statutory branch, and the
-  // audit row must not read as though we had.
-  return classification.category === "GES_TEACHER" ? "GES_TEACHER" : "OTHER_STAFF";
-}
-
-function recordTypeFor(classification: Classification): GatedRecordType {
-  return classification.category === "GES_TEACHER" ? "TEACHER" : "STAFF";
+/**
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE STATUTORY BASIS REQUIRES *TWO* FACTS, AND ONLY ONE OF THEM COMES FROM THE REGISTER.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ *   (1) the claimed GES establishment number is on this school's current register — `classify.ts`;
+ *   (2) the operational row we are about to FETCH is the person that number belongs to —
+ *       `bindEstablishmentId` in staff-projection.ts.
+ *
+ * Fact (1) alone was previously enough to set `legal_basis = STATUTORY`, which is what made the
+ * basis forgeable: the two ids arrive separately in the request, and an establishment number is not
+ * a secret. Both facts are now required, and fact (2) is UNVERIFIABLE until operational
+ * `staff_profile` carries a `ges_staff_id` — so today every direct record fetch resolves to CONSENT.
+ *
+ * `staff_category` and `record_type` follow the BASIS, not the claim. A subject whose establishment
+ * membership could not be bound is recorded as OTHER_STAFF / STAFF, because that is how the access
+ * was actually treated — the audit row must describe the basis the gate applied, and a reviewer
+ * reading TEACHER must be able to rely on it meaning "verified establishment teacher". The
+ * unverified claim is deliberately NOT recorded as a fact anywhere on the row: it is not in
+ * `target_ref` (which names the operational uuid actually fetched) and it is not in
+ * `is_on_ges_establishment` (which reports UNVERIFIABLE_NO_LINK_KEY).
+ */
+function statutoryEstablished(
+  classification: Classification,
+  binding: EstablishmentBinding,
+): boolean {
+  return classification.category === "GES_TEACHER" && binding.state === "VERIFIED";
 }
 
 /**
  * THE GATE.
  *
- * Returns a result for every reachable state — GRANTED or a DENIED_* with its audit row already
- * written. It throws only for input that never constituted a request (malformed uuids, a forged
- * tenant key) and for `ReadbackUnavailableError` on the statutory branch, which is a capability
- * state, not a refusal: PROVISIONING §4a-4 requires the individual surface to present as closed
- * when `OPERATIONAL_READBACK_URL` is unset.
+ * Returns a result for every reachable state — GRANTED, or a DENIED_* whose audit row is already
+ * written. It throws ONLY for input that never constituted a request: a malformed uuid, a tenant key
+ * belonging to another school, a school outside the officer's jurisdiction. An unconfigured
+ * read-back is a logged denial rather than a throw, because without it neither consent nor the
+ * establishment binding can be established and the request is therefore refused, not merely
+ * unserviceable. The page-level "individual drill-down unavailable" state (PROVISIONING §4a-4) is
+ * driven by `isIndividualDrilldownAvailable()`, which needs no request.
  */
 export async function requestNamedStaffRecord(
   request: NamedStaffRecordRequest,
@@ -479,13 +507,25 @@ export async function requestNamedStaffRecord(
   trace.push("school:in-jurisdiction");
   trace.push(`classified:${classification.category}`);
 
-  const legalBasis = basisFor(classification);
-  const staffCategory = categoryFor(classification);
-  const recordType = recordTypeFor(classification);
+  const claimedGesStaffId = request.subject.gesStaffId?.trim() || null;
 
+  /**
+   * THE PESSIMISTIC BASIS, and the only one any DENIAL is ever written under.
+   *
+   * A direct record fetch starts as CONSENT and is upgraded to STATUTORY only once the binding is
+   * verified INSIDE the read-back transaction (see `statutoryEstablished`). Every refusal therefore
+   * happens while the request is still a consent-branch request, which is why `deny()` can close
+   * over these constants: the only state that can flip them is the granted path, which computes its
+   * own basis and ref at audit-write time. A denial logged as STATUTORY would assert an
+   * establishment membership the gate had, by definition, failed to establish.
+   */
+  const legalBasis: LegalBasis = "CONSENT";
+  const staffCategory: StaffCategory = "OTHER_STAFF";
+  const recordType: GatedRecordType = "STAFF";
+
+  // Names the operational row that will actually be read — never the claimed establishment number.
   const targetRef = buildTargetRef(legalBasis, {
     emisSchoolId: school.emisSchoolId,
-    gesStaffId: request.subject.gesStaffId ?? null,
     operationalStaffId: request.subject.operationalStaffId,
   });
 
@@ -558,29 +598,52 @@ export async function requestNamedStaffRecord(
     return deny("DENIED_STALE_ESTABLISHMENT", "CLASSIFICATION_INDETERMINATE");
   }
 
-  // ── 3. ownership preflight (CONSENT branch only) — BEFORE any operational connection ────────
-  if (legalBasis === "CONSENT") {
-    const preflight = ownershipPreflight(school.ownershipType);
-    if (!preflight.allowed) {
-      trace.push(`preflight:${preflight.reason}`);
-      return deny(
-        "DENIED_NO_CONSENT",
-        preflight.reason === "FLAG_OFF_NON_PUBLIC"
-          ? "NON_PUBLIC_FLAG_OFF"
-          : "UNKNOWN_OWNERSHIP",
-      );
-    }
-    trace.push("preflight:ok");
+  // ── 3. ownership preflight ──────────────────────────────────────────────────────────────────
+  //
+  // WHEN it runs depends on whether the request claims an establishment number, and that is not
+  // fussiness — it is the only way to keep two properties that pull in opposite directions:
+  //
+  //   · NO claim ⇒ the basis is certainly CONSENT, so the flag can be applied WITHOUT opening any
+  //     operational connection at all. This is the common path, and refusing before touching
+  //     operational data is worth keeping.
+  //   · A claim ⇒ the basis is only decidable inside the read-back transaction (the binding probe
+  //     lives there), and statute is meant to hold at private and mission schools too. Applying the
+  //     non-public flag before knowing the basis would refuse a verified GES teacher at a private
+  //     school, which the flag was never meant to touch. So the preflight moves inside, to run only
+  //     if the binding did NOT confer the statutory basis.
+  //
+  // Today no claim can ever be bound, so the second path always reaches the preflight anyway — it
+  // just reaches it a few statements later, having read no staff column on the way.
+  const preflightBeforeReadback = claimedGesStaffId === null;
 
-    // Read-back unavailable ⇒ consent cannot be established ⇒ denial (logged).
-    if (!isReadbackConfigured()) {
-      trace.push("readback:unconfigured");
-      return deny("DENIED_NO_CONSENT", "CONSENT_UNREADABLE");
+  const runOwnershipPreflight = async (): Promise<DeniedResult | null> => {
+    const preflight = ownershipPreflight(school.ownershipType);
+    if (preflight.allowed) {
+      trace.push("preflight:ok");
+      return null;
     }
-  } else if (!isReadbackConfigured()) {
-    // Statutory branch: nothing to refuse, the capability is simply absent. The surface renders
-    // "individual drill-down unavailable" (PROVISIONING §4a-4).
-    throw new ReadbackUnavailableError();
+    trace.push(`preflight:${preflight.reason}`);
+    return deny(
+      "DENIED_NO_CONSENT",
+      preflight.reason === "FLAG_OFF_NON_PUBLIC"
+        ? "NON_PUBLIC_FLAG_OFF"
+        : "UNKNOWN_OWNERSHIP",
+    );
+  };
+
+  if (preflightBeforeReadback) {
+    const denied = await runOwnershipPreflight();
+    if (denied) return denied;
+  }
+
+  // Read-back unavailable ⇒ neither consent NOR the establishment binding can be established ⇒
+  // denial (logged). There is no branch here that proceeds without the read-back: the statutory
+  // basis needs the binding probe just as much as the consent basis needs the consent row. The
+  // page-level "individual drill-down unavailable" state (PROVISIONING §4a-4) is driven separately
+  // by `isIndividualDrilldownAvailable()`, which needs no request at all.
+  if (!isReadbackConfigured()) {
+    trace.push("readback:unconfigured");
+    return deny("DENIED_NO_CONSENT", "CONSENT_UNREADABLE");
   }
 
   // ── 4-6. one read-back transaction: confirm school → read consent → AUDIT → project ─────────
@@ -599,8 +662,38 @@ export async function requestNamedStaffRecord(
       }
       trace.push("school:confirmed");
 
+      // ── 4a. BIND the claimed establishment number to the row we are about to fetch ───────────
+      // Selects a boolean, no staff column. Today this always returns UNVERIFIABLE (there is no
+      // `staff_profile.ges_staff_id`), so the statutory basis is unreachable and every direct fetch
+      // stays on the consent branch. See `bindEstablishmentId` for why that is the fix rather than
+      // a stricter check.
+      const binding = await bindEstablishmentId(
+        tx,
+        school.operationalSchoolId,
+        request.subject.operationalStaffId,
+        claimedGesStaffId,
+      );
+      trace.push(`binding:${binding.state}`);
+
+      if (binding.state === "MISMATCH") {
+        // The column exists and this row does NOT carry the claimed number. That is not a near
+        // miss — it is the forgery shape — so it is refused outright rather than quietly demoted
+        // to the consent branch, and the attempt is logged.
+        return deny("DENIED_STALE_ESTABLISHMENT", "ESTABLISHMENT_ID_MISMATCH");
+      }
+
+      const statutory = statutoryEstablished(classification, binding);
+
       let consentRef: string | null = null;
-      if (legalBasis === "CONSENT") {
+      if (!statutory) {
+        // The claim (if any) could not be bound, so the request is a consent-branch request — and
+        // the non-public flag applies to it. For a claim-carrying request this is where the
+        // ownership preflight happens (see step 3 for why it waits until the basis is known).
+        if (!preflightBeforeReadback) {
+          const deniedByOwnership = await runOwnershipPreflight();
+          if (deniedByOwnership) return deniedByOwnership;
+        }
+
         const consent = await readConsentInTx(tx, school.operationalSchoolId);
         trace.push(`consent:${consent.outcome}`);
         if (!isConsentGranted(consent)) {
@@ -620,6 +713,22 @@ export async function requestNamedStaffRecord(
         }
         consentRef = consent.consentRef;
       }
+
+      // The basis, settled. From here only the GRANTED path runs, so these may differ from the
+      // pessimistic constants `deny()` closes over — which is correct: a grant states the basis it
+      // was actually made under, and `target_ref` names the subject that basis was verified against.
+      const grantedBasis: LegalBasis = statutory ? "STATUTORY" : "CONSENT";
+      const grantedRecordType: GatedRecordType = statutory ? "TEACHER" : "STAFF";
+      const grantedStaffCategory: StaffCategory = statutory
+        ? "GES_TEACHER"
+        : "OTHER_STAFF";
+      const grantedTargetRef = statutory
+        ? buildTargetRef("STATUTORY", {
+            emisSchoolId: school.emisSchoolId,
+            // The id VERIFIED against the fetched row — never the id as claimed.
+            gesStaffId: (binding as { state: "VERIFIED"; gesStaffId: string }).gesStaffId,
+          })
+        : targetRef;
 
       // ── 4b. does the subject exist? NO staff column is selected — see `staffRecordExists`. ───
       // Asked before the audit INSERT so the append-only row can state a truthful
@@ -643,13 +752,13 @@ export async function requestNamedStaffRecord(
         jurisdictionId: school.jurisdictionId,
         reasonCode: request.reasonCode,
         caseReference: request.caseReference,
-        recordType,
-        targetRef,
+        recordType: grantedRecordType,
+        targetRef: grantedTargetRef,
         fieldsReleased: scopedFields,
-        legalBasis,
+        legalBasis: grantedBasis,
         consentRef,
         outcome: "GRANTED",
-        staffCategory,
+        staffCategory: grantedStaffCategory,
         rosterBrowsed: request.rosterBrowsed === true,
         exported,
         exportFormat: request.exportFormat ?? null,
@@ -671,11 +780,11 @@ export async function requestNamedStaffRecord(
         return {
           outcome: "DENIED_FIELD_SCOPE" as const,
           accessId,
-          legalBasis,
+          legalBasis: grantedBasis,
           consentRef: null,
-          staffCategory,
-          recordType,
-          targetRef,
+          staffCategory: grantedStaffCategory,
+          recordType: grantedRecordType,
+          targetRef: grantedTargetRef,
           fieldsReleased: [] as const,
           denialReason: "SUBJECT_NOT_FOUND" as const,
           classification,
@@ -686,7 +795,14 @@ export async function requestNamedStaffRecord(
       // Server-derived and sourceless members of the scope, filled after the projection.
       const record: Record<string, unknown> = { ...row };
       if (scopedFields.includes("is_on_ges_establishment")) {
-        record.is_on_ges_establishment = classification.category === "GES_TEACHER";
+        // Reports the VERIFIED binding, not the claim. With no link key the honest answer is
+        // neither true nor false — asserting `false` would deny an establishment membership we
+        // cannot rule out, exactly as `true` would assert one we cannot confirm.
+        record.is_on_ges_establishment = statutory
+          ? true
+          : binding.state === "UNVERIFIABLE" || binding.state === "NOT_CLAIMED"
+            ? UNVERIFIABLE_NO_LINK_KEY
+            : false;
       }
       if (scopedFields.includes("establishment_as_of_date")) {
         // INDETERMINATE was refused above, so the classification here always carries a vintage field
@@ -706,13 +822,13 @@ export async function requestNamedStaffRecord(
       return {
         outcome: "GRANTED" as const,
         accessId,
-        legalBasis,
+        legalBasis: grantedBasis,
         consentRef,
-        staffCategory,
-        recordType,
-        targetRef,
+        staffCategory: grantedStaffCategory,
+        recordType: grantedRecordType,
+        targetRef: grantedTargetRef,
         fieldsReleased: scopedFields,
-        withheld: withheldFields(request.reasonCode, recordType),
+        withheld: withheldFields(request.reasonCode, grantedRecordType),
         record,
         classification,
         trace,

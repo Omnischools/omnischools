@@ -145,8 +145,43 @@ begin
   end loop;
 end $$;
 
--- ref_user is GLOBAL identity (no school_id) and ref_role is a catalogue: no tenant key, no policy.
--- They are reachable only by joining from a tenant-scoped row, which RLS already filters.
+-- ── ref_user / ref_role: GLOBAL tables, so RLS + a CONFIRM-NOT-ENUMERATE policy ────────────────
+--
+-- These two have NO school_id, so the tenant_isolation idiom above cannot apply — and "reachable
+-- only by joining from a tenant-scoped row" is a statement about the queries WE write, not about
+-- what the role CAN write. With a plain grant and no policy, `select full_name, phone from ref_user`
+-- as the read-back role returns EVERY user on the platform: a cross-tenant PII enumeration
+-- primitive sitting behind the one credential that exists to fetch a single record.
+--
+-- On real prod both tables are RLS-ENABLED WITH NO POLICY (apps/web prod-paste-0033), i.e. deny-all
+-- for every non-owner role. An unqualified grant there returns ZERO rows — which is worse than it
+-- sounds for this gate: the identity spine's INNER join to ref_user yields nothing, so the audit
+-- row is written and the projection then comes back empty, permanently overstating a disclosure
+-- that never happened. THE FIXTURE MUST MODEL BOTH STATES OR THE TESTS PROVE NOTHING, so it enables
+-- RLS exactly as prod does and adds the narrow policy the read-back role actually needs.
+--
+-- The policy is CONFIRM-NOT-ENUMERATE, the same shape as ref_school's: a row is visible only if it
+-- is already reachable from the school in `app.current_school`. With no GUC set, `current_setting`
+-- is empty, the uuid cast yields NULL, the EXISTS is false, and the role sees nothing at all.
+alter table ref_user enable row level security;
+drop policy if exists oversight_readback_confirm on ref_user;
+create policy oversight_readback_confirm on ref_user
+  for select to ov_readback
+  using (exists (
+    select 1 from staff_profile sp
+    where sp.user_id = ref_user.id
+      and sp.school_id = nullif(current_setting('app.current_school', true), '')::uuid
+  ));
+
+alter table ref_role enable row level security;
+drop policy if exists oversight_readback_confirm on ref_role;
+create policy oversight_readback_confirm on ref_role
+  for select to ov_readback
+  using (exists (
+    select 1 from role_assignment ra
+    where ra.role_id = ref_role.id
+      and ra.school_id = nullif(current_setting('app.current_school', true), '')::uuid
+  ));
 
 -- ── the read-back role: PROVISIONING §4a posture ────────────────────────────────────────────────
 do $$
@@ -167,8 +202,15 @@ grant usage on schema public to ov_readback;
 --     global login identity, and the school's name + GES code on the tenant row. Both are required
 --     by the identity spine and by the school-identity confirmation. Flagged in docs/PROVISIONING.md.
 grant select on staff_profile, ref_role, role_assignment, facilities_snapshot,
-                school_staff_oversight_consent, ref_user, ref_school
+                school_staff_oversight_consent, ref_school
   to ov_readback;
+
+-- ref_user is granted COLUMN-BY-COLUMN, not table-wide. `email` is the reason: NO reason code
+-- releases it (lib/oversight/field-scope.ts has no entry for it at all), so the role must not be
+-- able to read it — a grant is the only place that can make "no reason unlocks this" structural
+-- rather than a property of the queries we happen to write today. id/full_name/phone are exactly
+-- what the identity spine and SAFEGUARDING_MISCONDUCT need, and nothing more.
+grant select (id, full_name, phone) on ref_user to ov_readback;
 
 -- staff_compensation is DELIBERATELY ABSENT from the grants above.
 alter role ov_readback set default_transaction_read_only = on;
