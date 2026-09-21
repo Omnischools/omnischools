@@ -63,6 +63,36 @@ Current files:
 
 - `db/sql/prod-paste-0001-fact-domains.sql` — `fact_teacher_attendance`, `fact_infrastructure`,
   `fact_plc_participation` (migration `0001_opposite_mimic`).
+- `db/sql/prod-paste-0002-rls-security-fix.sql` — **replaces the five shared RLS helper functions**
+  (`ov_in_subtree`, `ov_current_jurisdiction`, `ov_current_officer`, `ov_is_national`,
+  `ov_audit_append_only`). No migration; no table or policy is touched.
+
+> **⚠ 0002 SUPERSEDES the helper definitions installed by the first application of
+> `db/sql/policies.sql`, and MUST be applied to `omnischools-analytics-prod`.** It is the one paste
+> in this list that does *not* fail closed into an empty panel — it fixes two coupled defects in the
+> helpers themselves:
+>
+> 1. **Recursion.** `ov_in_subtree()` was not `security definer`, so for a **non-owner** role its
+>    walk over `dim_jurisdiction` re-entered that table's own `jurisdiction_scope` policy →
+>    `ERROR: stack depth limit exceeded`. Since the app runtime *is* a non-owner role (§1), every
+>    tier below `NATIONAL` fails to read **any** jurisdiction-scoped table once the spine has rows.
+>    It is an outage, not a leak — the boundary held — but it is total.
+> 2. **`pg_temp` hijack.** The helpers pinned `search_path = public`; Postgres resolves relation
+>    names against the temp schema *first* unless `pg_temp` is listed, so a planted
+>    `create temp table dim_jurisdiction` could shadow the real spine. Harmless-ish alone; with
+>    fix 1 applied it would be read with **owner** privileges — full RLS bypass. Now pinned
+>    `search_path = public, pg_temp` (**pg_temp last**) on all five. **Never apply one fix without
+>    the other.**
+>
+> **Apply it BEFORE the first ETL load** into the analytics project. Defect 1 is dormant while
+> `dim_jurisdiction` is empty and becomes a hard read failure the moment the spine is populated. If
+> rows are already loaded, apply it now. It is idempotent (`create or replace` only) and touches no
+> data. After pasting, run verification blocks A, B and C at the foot of the file — **as the
+> non-owner app role**, not as the owner, which is exempt from RLS and would show a false pass.
+>
+> Note that `create or replace` preserves the existing function owner, and `ov_in_subtree` now runs
+> *as* that owner. Verification block A prints it: confirm it is the intended privileged schema
+> owner before considering the paste done.
 
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 

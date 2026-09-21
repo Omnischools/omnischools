@@ -12,34 +12,66 @@
 -- IMPORTANT: the Oversight app MUST connect as a NON-OWNER role. A table owner bypasses RLS
 -- unless the table is FORCEd; the nightly ETL loader (a privileged role) is meant to bypass so it
 -- can write, while the read-only app role is subject to every policy below.
+--
+-- ⚠ THIS FILE IS LOCAL DEV ONLY (`pnpm db:policies` is not part of any prod deploy). The helper
+-- function definitions below were changed after go-live and must be re-pasted on the LIVE analytics
+-- DB by hand — see db/sql/prod-paste-0002-rls-security-fix.sql and docs/PROVISIONING.md §2a.
 -- =============================================================================
 
 -- ---- helper functions -------------------------------------------------------
+--
+-- EVERY helper below pins `set search_path = public, pg_temp` with **pg_temp LAST**. This is not
+-- cosmetic. Postgres searches the temporary schema for RELATION names FIRST — before every schema
+-- in search_path — unless pg_temp is listed explicitly, in which case it is searched at the
+-- position given. Leaving it implicit lets any caller who can open a SQL channel as the app role
+-- run `create temp table dim_jurisdiction (...)` and have these functions read THAT table instead
+-- of the real spine (CVE-2018-1058, "pg_temp hijack"). Naming it last makes `public` win, so the
+-- temp schema can never shadow a real relation. Do not drop the `, pg_temp` — and do not move it to
+-- the front.
 
 create or replace function ov_current_jurisdiction() returns uuid
   language sql stable
-  set search_path = public as $$
+  set search_path = public, pg_temp as $$
     select nullif(current_setting('app.current_jurisdiction', true), '')::uuid
   $$;
 
 create or replace function ov_current_officer() returns uuid
   language sql stable
-  set search_path = public as $$
+  set search_path = public, pg_temp as $$
     select nullif(current_setting('app.current_officer', true), '')::uuid
   $$;
 
 create or replace function ov_is_national() returns boolean
   language sql stable
-  set search_path = public as $$
+  set search_path = public, pg_temp as $$
     select coalesce(current_setting('app.current_level', true), '') = 'NATIONAL'
   $$;
 
 -- True when :jid is the current node or any DESCENDANT of it. Walks parent_id upward from :jid;
 -- if the current node appears in that ancestor chain (or equals :jid), the row is in scope.
 -- National short-circuits to true (no filter).
+--
+-- SECURITY DEFINER is LOAD-BEARING, not an optimisation. This function is the USING predicate of
+-- dim_jurisdiction's own `jurisdiction_scope` policy, and its body reads dim_jurisdiction. Called
+-- by a NON-OWNER role (which is how the app connects — see the header note), that inner read is
+-- itself subject to jurisdiction_scope, which calls this function again, which reads
+-- dim_jurisdiction again... => `ERROR: stack depth limit exceeded` on EVERY jurisdiction-scoped
+-- read as soon as the spine has rows. (The owner/ETL role never saw it: an owner is exempt from RLS,
+-- so the inner read is unfiltered and the recursion never starts. NATIONAL never saw it either: it
+-- short-circuits before touching the table.) Running the ancestor walk as the function OWNER makes
+-- the inner read RLS-exempt, which terminates the recursion. It does NOT widen what the caller can
+-- see: the function returns only a boolean, and the outer policy still filters every row.
+--
+-- Because it is SECURITY DEFINER, the `, pg_temp` pin above is upgraded from hygiene to a hard
+-- boundary: without it, a planted temp `dim_jurisdiction` would be read WITH OWNER PRIVILEGES —
+-- full RLS bypass plus privilege escalation. The two changes must stay together.
+--
+-- Corollary for future work: do NOT put dim_jurisdiction into `force row level security`. FORCE
+-- applies RLS to the owner too, which would reintroduce the recursion through this definer body.
 create or replace function ov_in_subtree(jid uuid) returns boolean
   language sql stable
-  set search_path = public as $$
+  security definer
+  set search_path = public, pg_temp as $$
     select ov_is_national()
         or (jid is not null and exists (
           with recursive up as (
@@ -149,7 +181,7 @@ create policy audit_insert on audit_access_log
 -- Append-only: reject UPDATE/DELETE on existing rows. A review only ever INSERTs a linked row.
 create or replace function ov_audit_append_only() returns trigger
   language plpgsql
-  set search_path = public as $$
+  set search_path = public, pg_temp as $$
   begin
     raise exception 'audit_access_log is append-only (% rejected)', tg_op;
   end $$;
