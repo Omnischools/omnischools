@@ -68,3 +68,31 @@ No cache. Oversight never writes consent.
 - DPO position on whether employer consent is a sufficient lawful basis under
   Act 843 for private/mission-school staff. Build the surface + table; the
   Oversight side keeps the non-public branch flag-off until that position exists.
+
+## Add `staff_profile.ges_staff_id` — restores the statutory teacher drill-down
+
+**Why it's now critical, not a convenience.** The Oversight §6 drill-down
+(branch `claude/oversight-individual-drilldown`) derives the STATUTORY basis for
+a GES-establishment teacher from the GES register, but must **bind** that basis
+to the person actually fetched. Operational `staff_profile` carries no GES
+establishment id, so there is no join key — and rather than trust a caller's
+claimed id (a forgeable-basis hole that was found and closed in security review),
+the Oversight side now routes **every** direct staff fetch to the CONSENT branch
+until this column exists. Consequence: **a GES-establishment teacher is currently
+reachable only where the school has recorded DPO consent.** Adding this column
+restores the statutory branch (the Oversight code already has a guarded, verified
+binding path that activates the moment the column is present).
+
+**Build:**
+- Add `ges_staff_id` (text, nullable) to `staff_profile` in `apps/web`.
+- **Populate it from the GES establishment register load / ETL — NOT from school
+  data entry.** If a school could type this field, it could bind one of its own
+  employees to an establishment number GES recorded for that school and thereby
+  expose that employee to consent-free statutory oversight. It must be
+  authoritative GES data, read-only to the school.
+- Also carry the operational school uuid onto the analytics
+  `ref_emis_school_register` via the ETL, so the Oversight gate can drop the
+  `ref_school.ges_code` cross-check compensating control.
+
+**Do NOT** let this column be school-editable, and do not backfill it from any
+school-entered field.
