@@ -15,6 +15,13 @@
       "when": 1789946008545,
       "tag": "0001_opposite_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789972888672,
+      "tag": "0002_unusual_deathstrike",
+      "breakpoints": true
     }
   ]
 }

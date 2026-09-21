@@ -170,6 +170,19 @@ create policy jurisdiction_scope on ref_ges_teacher_establishment
 -- ref_anomaly_rule / ref_assessment_weights are global config: left readable (no RLS).
 
 -- ---- audit_access_log : own rows + subtree, and APPEND-ONLY (§6) -----------
+--
+-- Migration 0002 added four columns (legal_basis, consent_ref, outcome, staff_category) for the
+-- individual drill-down. NOTHING BELOW CHANGES, and there is no prod-paste for that migration: a
+-- policy declared without a column list applies to every column of the table, present and future,
+-- so the two policies and the trigger cover the new columns automatically.
+--
+-- Two properties worth stating explicitly, because the drill-down depends on them:
+--   · DENIALS ARE INSERTS. A refused access writes a row with outcome = DENIED_* and
+--     fields_released = []. audit_insert admits it on the same terms as a grant
+--     (officer_id = ov_current_officer()), so the gate cannot be made quieter by failing.
+--   · consent_ref IS FROZEN. The append-only trigger means a later revocation of the referenced
+--     operational consent can never rewrite this row. That is correct: the log records the basis
+--     relied on AT THE TIME, not the basis that is live now.
 alter table audit_access_log enable row level security;
 drop policy if exists audit_scope on audit_access_log;
 create policy audit_scope on audit_access_log
@@ -179,6 +192,19 @@ create policy audit_insert on audit_access_log
   for insert with check ( officer_id = ov_current_officer() );
 
 -- Append-only: reject UPDATE/DELETE on existing rows. A review only ever INSERTs a linked row.
+--
+-- ⚠ THE TRIGGER IS NOT THE WHOLE GUARD — the GRANT is. Verified on a replay DB (PG 16):
+--   · owner / BYPASSRLS ETL role  → the trigger fires: `audit_access_log is append-only (UPDATE
+--     rejected)`. Loud, which is what you want for the one role that can see every row.
+--   · app role with SELECT+INSERT only (the posture PROVISIONING §1 requires) → `ERROR: permission
+--     denied for table audit_access_log`. Also loud. This is the intended production path.
+--   · app role that has ALSO been granted UPDATE/DELETE → `UPDATE 0` / `DELETE 0`. The rows are
+--     untouched (there is no FOR UPDATE / FOR DELETE policy, so RLS makes zero rows visible to
+--     those commands), but the caller is told the statement SUCCEEDED and the trigger never runs.
+--     Data integrity holds; the ERROR does not. A silent no-op is the wrong signal for a tamper
+--     attempt on an audit table.
+-- So: grant the Oversight app role exactly SELECT and INSERT on audit_access_log, and nothing else.
+-- RLS cannot be made to raise here — only the absent grant can.
 create or replace function ov_audit_append_only() returns trigger
   language plpgsql
   set search_path = public, pg_temp as $$

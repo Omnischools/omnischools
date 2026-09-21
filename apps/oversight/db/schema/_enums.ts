@@ -77,11 +77,40 @@ export const anomalyStatusEnum = pgEnum("ov_anomaly_status", [
 ]);
 
 // Named-record audit path (§6).
-export const recordTypeEnum = pgEnum("record_type", ["STUDENT", "TEACHER"]);
+//
+// TEACHER is reserved for a GES-ESTABLISHMENT teacher — the statutory-basis subject. STAFF is any
+// other school employee (non-teaching staff, or a teacher absent from the GES establishment
+// register, including private/mission staff), whose individual record needs school-DPO consent.
+// Splitting the two makes an audit row self-describing: record_type alone tells a reviewer which
+// lawful basis the access SHOULD have claimed, without re-deriving it from the subject.
+//
+// ⚠ Adding a value to a live enum: Postgres refuses to USE a value added by `ALTER TYPE ... ADD
+// VALUE` inside the transaction that added it ("unsafe use of new value"). So a migration that adds
+// STAFF must not also reference 'STAFF' (e.g. as a column default or in a data backfill). Keep
+// value-adds and value-uses in separate migrations.
+export const recordTypeEnum = pgEnum("record_type", ["STUDENT", "TEACHER", "STAFF"]);
 export const reviewStatusEnum = pgEnum("access_review_status", [
   "CLEARED",
   "QUERIED",
   "PENDING",
+]);
+
+// The lawful basis relied on for an individual drill-down (§6).
+//   STATUTORY — the subject is a GES-establishment teacher; GES oversight is mandatory by law and
+//               no per-school consent exists to gate on (mirrors §5.5: no school-level ETL consent).
+//   CONSENT   — the subject is non-GES / non-teaching staff; access rests on a live school-DPO
+//               consent artefact in the OPERATIONAL database, referenced by consent_ref.
+export const accessLegalBasisEnum = pgEnum("access_legal_basis", ["STATUTORY", "CONSENT"]);
+
+// The outcome of the gated request. DENIALS ARE WRITTEN ROWS, not silent drops: a refusal is the
+// most audit-relevant event there is (it records an officer attempting an access the boundary
+// stopped), and a log that only contains successes cannot evidence that the gate ever held. A denial
+// row carries fields_released = [] — nothing left the operational DB.
+export const accessOutcomeEnum = pgEnum("access_outcome", [
+  "GRANTED",
+  "DENIED_NO_CONSENT", // no GRANTED, unrevoked consent row for (school, NON_GES_STAFF)
+  "DENIED_STALE_ESTABLISHMENT", // claimed STATUTORY but the establishment extract is missing/stale
+  "DENIED_FIELD_SCOPE", // the stated reason code unlocks none of the requested fields
 ]);
 
 export const etlStatusEnum = pgEnum("etl_status", ["RUNNING", "SUCCESS", "FAILED"]);
