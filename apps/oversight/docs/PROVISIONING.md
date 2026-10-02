@@ -30,6 +30,15 @@ carry analytics complexity until you need it).
    statement fails loudly with `permission denied for table audit_access_log`. Verified on a replay
    DB; see the note above the trigger in `db/sql/policies.sql`.
 
+   > **This list is now an artifact, not an instruction:
+   > `db/sql/prod-paste-0006-analytics-app-role.sql`** (§2a) creates the role and installs the posture
+   > idempotently, transcribed from `tests/setup/global-setup.ts`. Two differences from the paragraph
+   > above, both deliberate: **`UPDATE` on `fact_anomaly` is NOT granted yet** — anomaly triage is
+   > increment J, and nothing writes that column, so the app credential stays read-only-plus-one-audit-
+   > `INSERT` for as long as that is true (when J lands, add the grant to 0006 §3 *and* to
+   > `global-setup.ts` in the same change) — and the role must be **non-owner, non-superuser and
+   > non-`BYPASSRLS`**, all three, which 0006 asserts on every re-run.
+
 ## 2 · Apply the schema, policies and config seed
 
 From `apps/oversight`, with `ANALYTICS_DATABASE_URL` pointed at the **Direct** connection string:
@@ -193,6 +202,35 @@ Current files:
 > 6. **`audit_officer_provisioning` is append-only and invisible to GES officers.** Its only SELECT
 >    policy is `TO` the provisioner role; the app role is explicitly `REVOKE`d. An officer who could
 >    read it would hold the roster the directory withholds.
+
+- `db/sql/prod-paste-0006-analytics-app-role.sql` — **the non-owner app role and the Supabase
+  built-in role sweep.** No migration; no table, column, policy or function is touched — it issues
+  only `GRANT`/`REVOKE`/`ALTER DEFAULT PRIVILEGES` and read-only assertions. Apply it **after**
+  0001–0005.
+
+> **⚠ Why it is not optional.** The app was connecting to analytics as `postgres`, the table
+> **owner**, which is RLS-exempt — so every policy in `db/sql/policies.sql` and every posture
+> installed by 0001–0005 was *inert* in production. 0006 installs the posture for the non-owner
+> `oversight_app` role behind `ANALYTICS_DATABASE_URL`, transcribed from `tests/setup/global-setup.ts`
+> so that prod runs the posture CI proves (`tests/prod-paste-0006-app-role.test.ts` compares the two,
+> table by table, and fails if they drift).
+>
+> **It also fixes what 0005's G5 caught.** Supabase auto-grants `ALL` — DELETE and TRUNCATE
+> included — on every `public` table to the built-in `anon`, `authenticated` and `service_role`,
+> which is why G5 failed on first application and was unblocked by hand on two tables. 0006 revokes
+> them across every table, sequence and routine in `public`, and neutralises the **DEFAULT
+> PRIVILEGES** that would otherwise re-grant them on the next migration's first `create table`. The
+> Oversight app reaches analytics only over direct Postgres, never over PostgREST, so those three
+> roles need nothing here.
+>
+> **Re-run it after any migration that adds a table, sequence or routine** — `… ON ALL TABLES IN
+> SCHEMA public` is point-in-time, so a new object is covered by neither the grant nor the sweep. It
+> is fully idempotent. It does **not** set a password: the `oversight_app` credential is set out of
+> band and never written into a file in this repository.
+>
+> **On a project where 0005 has not been applied yet, run 0006 FIRST** — the sweep is what makes
+> 0005's G5 pass, and 0006's checks for 0005's objects are deliberately `WARNING`s so that ordering
+> is possible. Then re-run 0006 so the app role picks up `EXECUTE` on 0005's functions.
 
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 
