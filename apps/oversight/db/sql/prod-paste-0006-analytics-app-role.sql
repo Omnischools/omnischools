@@ -76,11 +76,25 @@
 -- service key. There is no symptom to notice. That asymmetry is the whole reason this is a file in
 -- the repository and not a note in a ticket.
 --
--- ⚠ IF A VERIFICATION BLOCK AT THE FOOT RAISES, THE SUPABASE SQL EDITOR ROLLS BACK THE WHOLE FILE.
--- Nothing is left half-applied. The §5 blocks are LIVE assertions, not commented probes, for the
--- reason prod-paste-0005 gives for its G5/G6: every control in this file is an ABSENCE — a privilege
--- never held — and an absence is the one kind of control that a later well-meaning `grant all`
--- removes with nothing to show for it. Fix the condition the error names, then re-run.
+-- ⚠ IF A VERIFICATION BLOCK RAISES, THE SUPABASE SQL EDITOR ROLLS BACK THE WHOLE FILE. Nothing is
+-- left half-applied. The V0 and §5 blocks are LIVE assertions, not commented probes, for the reason
+-- prod-paste-0005 gives for its G5/G6: every control in this file is an ABSENCE — a privilege never
+-- held — and an absence is the one kind of control that a later well-meaning `grant all` removes with
+-- nothing to show for it. Fix the condition the error names, then re-run.
+--
+-- ⚠ V0 RUNS BEFORE §3 AND GATES IT. §3's blanket `grant select on all tables` is only safe because
+-- every table in `public` has RLS enabled; V0 asserts that invariant rather than assuming it, and it
+-- is placed ahead of §3 so that a database where the invariant is broken never receives the grant.
+-- See the V0 banner for what the broken case actually looks like (an unscoped read with no empty-panel
+-- signature).
+--
+-- ⚠ AND THE LAST STATEMENT IN THIS FILE IS A `SELECT`, NOT A `DO` BLOCK. **READ ITS RESULT SET: ZERO
+-- ROWS = CLEAN.** The Supabase SQL editor renders result sets and errors; it does NOT reliably render
+-- `RAISE NOTICE` / `RAISE WARNING`. So every soft finding in this file — §1's "0005 is not applied",
+-- §4b's un-revoked routines, §4c's and V5's advisory about a default privilege this connection cannot
+-- alter — is ALSO returned as a row by §6, with the exact remediation statement in the last column.
+-- The RAISE lines are kept as well (they are what `psql` and the test harness see), but §6 is the
+-- authoritative report, because a control whose only output is an invisible WARNING is not a control.
 --
 -- SCOPE, STATED NARROWLY SO IT IS NOT WIDENED BY ACCIDENT. This file touches schema `public` ONLY.
 -- It does NOT touch `auth`, `storage`, `realtime`, `graphql`, `vault`, `extensions` or any other
@@ -113,14 +127,14 @@ BEGIN
     RAISE EXCEPTION '0006: ov_in_subtree(uuid) is missing — apply db/sql/policies.sql and prod-paste-0002 to this database first. Granting an app role SELECT on every table in a database with no jurisdiction predicate installed is the opposite of what this file is for.';
   END IF;
   -- prod-paste-0005 applied? ov_resolve_officer is the app role's ONLY read path into the directory,
-  -- and §3 grants EXECUTE on it via `grant execute on all functions`. If it does not exist yet, that
+  -- and §3 grants EXECUTE on it via `grant execute on all routines`. If it does not exist yet, that
   -- blanket grant cannot cover it and SIGN-IN STAYS BROKEN after this file reports success — loudly
   -- (`permission denied for function ov_resolve_officer`), which is the right direction of failure
   -- but is still an outage somebody has to connect back to this paste. A WARNING for the same reason
   -- as the trigger check below: on a project where 0005 has not landed, this file is what unblocks
   -- it, so it must be runnable first.
   IF to_regprocedure('public.ov_resolve_officer(uuid)') IS NULL THEN
-    RAISE WARNING '0006: ov_resolve_officer(uuid) does not exist, so prod-paste-0005-officer-directory.sql has not been applied here. §3''s `grant execute on all functions` cannot cover a function that does not exist: apply 0005 and then RE-RUN THIS FILE, or sign-in will fail with `permission denied for function ov_resolve_officer`.';
+    RAISE WARNING '0006: ov_resolve_officer(uuid) does not exist, so prod-paste-0005-officer-directory.sql has not been applied here. §3''s `grant execute on all routines` cannot cover a function that does not exist: apply 0005 and then RE-RUN THIS FILE, or sign-in will fail with `permission denied for function ov_resolve_officer`. (This WARNING is also returned as a row by the RESIDUAL REPORT at the foot of this file, because the Supabase SQL editor does not render RAISE output.)';
   END IF;
   -- …and the CURRENT 0005, the one that carries the S1 coupling trigger. This file's §4a revokes
   -- DELETE/TRUNCATE on the directory from the Supabase built-ins, which is the residual 0005's G5
@@ -130,7 +144,7 @@ BEGIN
   -- On a project where 0005 has not been applied yet, THE SWEEP IS WHAT UNBLOCKS IT, so refusing to
   -- run until 0005 is in place would be refusing to fix the thing that is stopping 0005. Nothing in
   -- this file depends on the trigger; the only cost of being early is that §3's blanket
-  -- `grant execute on all functions` cannot cover functions that do not exist yet, which is why the
+  -- `grant execute on all routines` cannot cover routines that do not exist yet, which is why the
   -- message says to come back.
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
@@ -138,7 +152,7 @@ BEGIN
        AND tgname  = 'officer_directory_audit_guard'
        AND NOT tgisinternal
   ) THEN
-    RAISE WARNING '0006: officer_directory_audit_guard is missing from ref_oversight_officer, so the CURRENT prod-paste-0005-officer-directory.sql (the one carrying the S1 directory↔audit coupling) has not been applied to this database. That is expected only if you are running this file FIRST to unblock 0005''s G5 check (see the header). Apply 0005, then RE-RUN THIS FILE so the app role picks up EXECUTE on everything 0005 creates.';
+    RAISE WARNING '0006: officer_directory_audit_guard is missing from ref_oversight_officer, so the CURRENT prod-paste-0005-officer-directory.sql (the one carrying the S1 directory↔audit coupling) has not been applied to this database. That is expected only if you are running this file FIRST to unblock 0005''s G5 check (see the header). Apply 0005, then RE-RUN THIS FILE so the app role picks up EXECUTE on everything 0005 creates. (Also returned as a row by the RESIDUAL REPORT at the foot of this file.)';
   END IF;
 END
 $$;
@@ -199,6 +213,88 @@ END
 $$;
 
 -- =============================================================================
+-- V0 · THE RLS INVARIANT THAT §3's BLANKET GRANT RESTS ON — **A GATE, NOT A REPORT**
+--
+-- ⚠ WHY THIS IS NUMBERED WITH THE §5 VERIFICATIONS BUT RUNS UP HERE. It is the same shape as V1…V6
+-- — a read-only assertion that raises — but it must run BEFORE §3, not after it, and the ordering is
+-- the whole point. §3 issues `GRANT SELECT ON ALL TABLES IN SCHEMA public TO oversight_app` and the
+-- header makes re-running §3 MANDATORY after every migration that adds a table. That blanket grant is
+-- safe for exactly one reason: every relation in `public` has RLS ENABLED, so the jurisdiction
+-- policies — not the grant — decide which rows the app role sees. Nothing in this file asserted that
+-- reason. This block is it.
+--
+-- WHAT GOES WRONG WITHOUT IT, precisely. A migration lands and its matching prod-paste (PROVISIONING
+-- §2a) is skipped, or a paste is applied half-way; one table ends up with `relrowsecurity = false`.
+-- Re-run §3 as instructed and the app credential gets SELECT on it. A DISTRICT officer then reads
+-- that table UNSCOPED — national data, every district, no predicate — and there is NO EMPTY PANEL to
+-- notice, because the documented fail-closed signature of a missed paste IS RLS being on with no
+-- policy. This is not a new argument: it is the one the foot of §4c already makes to justify NOT
+-- adding a default privilege for the app role — "a table that slipped through with RLS off and an
+-- automatic SELECT grant is a leak with no signature at all". §3's blanket grant, re-run on a
+-- schedule, is that same automatic grant by another name. So the same argument has to gate it.
+--
+-- TWO CONDITIONS, BOTH FATAL, FOR DIFFERENT REASONS:
+--   · RLS OFF (`relrowsecurity = false`)        — a LEAK. The grant is unscoped read access. Fix:
+--                                                 `alter table <t> enable row level security;` AND
+--                                                 apply the prod-paste that carries its policies.
+--                                                 Enabling RLS alone leaves it deny-all (see below),
+--                                                 which is correct but is an outage, not a fix.
+--   · RLS ON, ZERO POLICIES                     — NOT a leak (deny-all for every non-owner, which is
+--                                                 fail-closed and is the intended empty-panel
+--                                                 signature) but a MISSING PASTE, and therefore a
+--                                                 leak waiting for someone to "fix the empty panel"
+--                                                 by disabling RLS instead of applying the paste.
+--                                                 Raising here names the real cause while the
+--                                                 operator is already in the SQL editor.
+-- `ref_oversight_officer` is NOT this second case and must not be mistaken for it: §3's commentary
+-- calls it "RLS-enabled with NO app-reachable policy", which is true — the policies it does carry are
+-- targeted at `oversight_provisioner`. It has three, so it passes.
+--
+-- SCOPE: `relkind in ('r','p')` — ordinary and partitioned tables, the only relkinds that HAVE an
+-- RLS flag. Views and materialised views (`v`, `m`) have none and are governed by the privileges of
+-- their owner; sequences have none. Schema `public` only, as everywhere in this file, so Supabase's
+-- own `auth`/`storage` tables are not this file's business. Drizzle's own bookkeeping table lives in
+-- schema `drizzle`, not `public`, so it is correctly out of scope.
+--
+-- ⚠ IF THIS BLOCK RAISES, DO NOT "FIX" IT BY DELETING IT. It is reporting that this database is in a
+-- state where re-running §3 would widen access. The repair is upstream: apply the missing paste.
+-- =============================================================================
+DO $$
+DECLARE
+  norls   text;
+  nopol   text;
+  covered int;
+BEGIN
+  SELECT string_agg(c.relname, ', ' ORDER BY c.relname) INTO norls
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p')
+     AND NOT c.relrowsecurity;
+  IF norls IS NOT NULL THEN
+    RAISE EXCEPTION 'V0 FAILED (GATE ON §3): table(s) in schema public have ROW LEVEL SECURITY DISABLED: [%]. §3 below would hand oversight_app SELECT on them, and with RLS off that SELECT is UNSCOPED — a DISTRICT officer would read national data out of those tables with no empty panel and no other symptom to notice, because the empty panel IS the RLS. This file has therefore refused to run §3 at all; nothing is half-applied. Fix: apply the prod-paste that carries those tables'' policies (docs/PROVISIONING.md §2a — a migration and its paste are TWO steps, and this is what the second one is for), then re-run this file. If you believe a table genuinely needs no jurisdiction predicate, it still needs `enable row level security` plus an explicit policy saying so, so that the exemption is written down where the next person reads it.', norls;
+  END IF;
+
+  SELECT string_agg(c.relname, ', ' ORDER BY c.relname) INTO nopol
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p')
+     AND c.relrowsecurity
+     AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid);
+  IF nopol IS NOT NULL THEN
+    RAISE EXCEPTION 'V0 FAILED (GATE ON §3): table(s) in schema public have RLS ENABLED but ZERO POLICIES: [%]. That state is FAIL-CLOSED, not a leak — every non-owner read returns zero rows — so this is not an emergency. It is reported as an error anyway because it is the exact signature of a migration whose prod-paste was never applied, and because the next person to meet it meets it as "the panel is empty", whose tempting fix is `alter table … disable row level security` — which turns a safe outage into the silent unscoped-read described in the block above. Fix: apply the missing prod-paste so the table has its jurisdiction policy, then re-run this file. (Deliberately deny-all? Give it an explicit `create policy … using (false)` so the intent is in the catalogue.)', nopol;
+  END IF;
+
+  SELECT count(*) INTO covered
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p');
+  RAISE NOTICE 'V0 ok — all % table(s) in schema public have RLS enabled and at least one policy, so §3''s blanket `grant select on all tables` is scoped by the policies and not by the grant', covered;
+END
+$$;
+
+-- =============================================================================
 -- §3 · THE APP-ROLE POSTURE — THE HARNESS RECIPE, VERBATIM
 --
 -- ⇩⇩ EDIT THE ROLE NAME BELOW IF YOURS DIFFERS ⇩⇩  (default: `oversight_app`)
@@ -230,10 +326,31 @@ $$;
 --                                              the tamper attempt REPORTS SUCCESS. With the grant
 --                                              withheld the same statement fails loudly. The absent
 --                                              grant, not the append-only trigger, is the guard.
---   · EXECUTE on all functions               — ov_resolve_officer() is the app's only read path into
+--   · EXECUTE on all ROUTINES                — ov_resolve_officer() is the app's only read path into
 --                                              the directory, and policies.sql/0005 revoke EXECUTE on
 --                                              it from PUBLIC. Without this, sign-in fails with
 --                                              `permission denied for function ov_resolve_officer`.
+--                                              ⚠ THE ONE PLACE THIS BLOCK IS NOT A LITERAL
+--                                              TRANSCRIPTION OF THE HARNESS. The harness line is
+--                                              `grant execute on all functions`; this says ALL
+--                                              ROUTINES, which is the same choice (and the same
+--                                              reasoning) as §4a/§4b: ROUTINES is the superset that
+--                                              also covers PROCEDURES, FUNCTIONS does not. The two
+--                                              are IDENTICAL on this schema today — `select distinct
+--                                              prokind from pg_proc join pg_namespace … where nspname
+--                                              = 'public'` is `{f}`, there is not one procedure — so
+--                                              the parity the harness proves is unaffected. The
+--                                              asymmetry mattered the other way round: §4b's revoke
+--                                              loop walks `pg_proc` and therefore ALREADY covers a
+--                                              procedure, so a migration that adds one the app calls
+--                                              would have had EXECUTE revoked from PUBLIC by §4b and
+--                                              NOT re-granted by §3 — a prod outage
+--                                              (`permission denied for procedure …`) caused by this
+--                                              file disagreeing with itself. Fail-closed, but
+--                                              needless. If a procedure is ever added, add the
+--                                              matching `all routines` widening to
+--                                              tests/setup/global-setup.ts so the parity test keeps
+--                                              comparing like with like.
 -- …then NARROWED:
 --   · no INSERT/UPDATE/DELETE on ref_oversight_officer  — self-promotion is prevented by a privilege
 --                                              that was never issued, not by a policy. A policy can
@@ -266,7 +383,7 @@ BEGIN
   EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', app_role);
   EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA public TO %I', app_role);
   EXECUTE format('GRANT INSERT ON audit_access_log TO %I', app_role);
-  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO %I', app_role);
+  EXECUTE format('GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO %I', app_role);
 
   -- ---- then the narrowing (harness lines ~142–145) — AFTER, never before ----
   EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON ref_oversight_officer FROM %I', app_role);
@@ -279,7 +396,7 @@ BEGIN
   EXECUTE format('REVOKE TRUNCATE ON ref_oversight_officer FROM %I', app_role);
   EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON audit_access_log FROM %I', app_role);
 
-  RAISE NOTICE '0006 §3: % — usage+select on public, insert on audit_access_log, execute on all functions; narrowed off ref_oversight_officer (select only) and audit_officer_provisioning (nothing)', app_role;
+  RAISE NOTICE '0006 §3: % — usage+select on public, insert on audit_access_log, execute on all routines; narrowed off ref_oversight_officer (select only) and audit_officer_provisioning (nothing)', app_role;
 END
 $$;
 
@@ -404,7 +521,7 @@ BEGIN
   END LOOP;
 
   IF failures <> '' THEN
-    RAISE WARNING '0006 §4b: EXECUTE could not be revoked from PUBLIC on: %. V5 reports these as findings — resolve them by hand.', failures;
+    RAISE WARNING '0006 §4b: EXECUTE could not be revoked from PUBLIC on: %. These are ALSO returned as rows by §6, the residual report at the foot of this file, because the Supabase SQL editor does not render WARNINGs — resolve them by hand with the statement §6 prints.', failures;
   END IF;
   RAISE NOTICE '0006 §4b: revoked EXECUTE from PUBLIC on % non-extension routine(s) in schema public (the app role and the provisioner keep their direct grants)', done;
 END
@@ -495,7 +612,7 @@ BEGIN
   END LOOP;
 
   IF advisory <> '' THEN
-    RAISE WARNING '0006 §4c: default privileges remain that this connection (%) is not a member of the grantor for. A future object created BY THAT GRANTOR in schema public will be re-granted to a Supabase built-in role. Run these as a role that is a member of the grantor (Supabase support, or `supabase_admin`): %', current_user, advisory;
+    RAISE WARNING '0006 §4c: default privileges remain that this connection (%) is not a member of the grantor for. A future object created BY THAT GRANTOR in schema public will be re-granted to a Supabase built-in role. Run these as a role that is a member of the grantor (Supabase support, or `supabase_admin`): %  — AND SEE §6 at the foot of this file, which returns the same list as a RESULT SET: this WARNING is not rendered by the Supabase SQL editor, which is the whole reason §6 exists.', current_user, advisory;
   END IF;
   IF fixed = 0 AND advisory = '' THEN
     RAISE NOTICE '0006 §4c: no default privileges in schema public (or cluster-wide) grant anything to anon/authenticated/service_role — nothing to neutralise. Expected off Supabase, and expected on EVERY RE-RUN after the first.';
@@ -724,6 +841,9 @@ $$;
 --      The four named tables are checked FIRST so the error message is specific when the sweep
 --      misses the ones that matter most: the officer directory (roster), the provisioning log (who
 --      granted whom national access), and the audit log (the evidence that the gate held).
+--
+--      …and then, separately, that none of the three can SET ROLE its way to a role that holds
+--      everything — the one thing `has_*_privilege()` cannot see. See the S-2 note inside the block.
 DO $$
 DECLARE
   builtins text[] := array['anon', 'authenticated', 'service_role'];
@@ -737,6 +857,8 @@ DECLARE
   p        text;
   rec      record;
   findings text := '';
+  escal    text := '';
+  escal1   text;
   checked  int  := 0;
   active   int  := 0;
 BEGIN
@@ -814,10 +936,51 @@ BEGIN
     RAISE EXCEPTION 'V4 FAILED: Supabase built-in role(s) still hold privileges in schema public: %  — the Oversight app reaches analytics ONLY over direct Postgres as oversight_app/oversight_provisioner, never over PostgREST, so these roles must hold NOTHING here (a REST path into this database is a path around the §6 audit-first gate, and `ALL` includes DELETE and TRUNCATE on the officer directory and the audit log). Fix: re-run §4a/§4b. If a privilege survives the revoke it is arriving INDIRECTLY — check for a grant to PUBLIC (`select grantee, privilege_type from information_schema.role_table_grants where table_schema=''public'' and grantee in (''PUBLIC'',''anon'',''authenticated'',''service_role'')`) and for a role granted to one of these three. Revoke at the source.', findings;
   END IF;
 
+  -- ---- S-2 · AND THEY CANNOT *BECOME* A ROLE THAT HOLDS EVERYTHING -------------------------------
+  -- Everything above is `has_*_privilege()`, and that primitive has one blind spot that matters here:
+  -- it answers "what does this role hold, counting what it INHERITS". A role membership granted
+  -- `WITH INHERIT FALSE`, or granted to a NOINHERIT role, confers NOTHING by inheritance — so
+  -- `has_table_privilege` reports FALSE — and yet the member can still `SET ROLE` to it and then hold
+  -- the lot. The loop above would report a clean sweep for a role that is one `set role postgres`
+  -- away from owning the warehouse.
+  --
+  -- THIS IS NOT HYPOTHETICAL PLUMBING ON SUPABASE: `anon`, `authenticated` and `service_role` are all
+  -- created NOINHERIT, and `authenticator` is a member of all three precisely so that it can SET ROLE
+  -- between them per request. The mechanism is in use on this very project; the only thing standing
+  -- between it and an escalation is that nobody has granted one of the three a membership pointing
+  -- the wrong way. That is an ABSENCE, which is the one kind of control this file exists to assert.
+  --
+  -- The primitive is the one V1 already uses on the app role — `pg_has_role(role, target, 'MEMBER')`,
+  -- where 'MEMBER' is the SET ROLE test and is the WEAKER precondition, so it catches the inheriting
+  -- ('USAGE') case too. Targets: the owners of `public` tables (owner ⇒ RLS-exempt, since we ENABLE
+  -- and never FORCE) plus every `rolsuper`/`rolbypassrls` role (exempt from everything).
+  FOREACH r IN ARRAY builtins LOOP
+    CONTINUE WHEN NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r);
+    SELECT string_agg(DISTINCT x.rolname, ', ') INTO escal1
+      FROM (
+             SELECT o.rolname
+               FROM pg_class c
+               JOIN pg_namespace n ON n.oid = c.relnamespace
+               JOIN pg_roles o ON o.oid = c.relowner
+              WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+             UNION
+             SELECT s.rolname FROM pg_roles s WHERE s.rolsuper OR s.rolbypassrls
+           ) x
+     WHERE x.rolname <> r
+       AND pg_has_role(r, x.rolname, 'MEMBER');
+    IF escal1 IS NOT NULL THEN
+      escal := escal || format('%s can SET ROLE to [%s]; ', r, escal1);
+    END IF;
+  END LOOP;
+
+  IF escal <> '' THEN
+    RAISE EXCEPTION 'V4 FAILED (SET ROLE escalation): %  — these Supabase built-in role(s) hold no privilege of their own in schema public (the sweep above is clean) but can SET ROLE to a role that owns the warehouse tables, or to a SUPERUSER/BYPASSRLS role. An owner is exempt from its own tables'' RLS and a superuser is exempt from everything, so this makes the entire jurisdiction boundary optional for anything that can authenticate as one of these three — i.e. for anything holding the project''s anon or service key, over PostgREST, with no statement anywhere granting it a privilege. `has_table_privilege` does NOT see this, which is why it is checked separately: a membership granted WITH INHERIT FALSE (and all three of these roles are NOINHERIT) confers nothing by inheritance and everything by SET ROLE. Fix: REVOKE <the owner/superuser role> FROM <the built-in>. Do not "fix" it by making the membership NOINHERIT — NOINHERIT is already the state that hides it.', escal;
+  END IF;
+
   IF active = 0 THEN
-    RAISE NOTICE 'V4 ok (vacuously) — none of anon/authenticated/service_role exist on this cluster, so there is nothing for them to hold. Expected off Supabase; on omnischools-analytics-prod all three MUST exist and this NOTICE would mean you are looking at the wrong database.';
+    RAISE NOTICE 'V4 ok (vacuously) — none of anon/authenticated/service_role exist on this cluster, so there is nothing for them to hold and nothing for them to SET ROLE to. Expected off Supabase; on omnischools-analytics-prod all three MUST exist and this NOTICE would mean you are looking at the wrong database.';
   ELSE
-    RAISE NOTICE 'V4 ok — % Supabase built-in role(s) hold no privilege on any of the % relation(s), nor on any sequence or non-extension routine, in schema public', active, checked;
+    RAISE NOTICE 'V4 ok — % Supabase built-in role(s) hold no privilege on any of the % relation(s), nor on any sequence or non-extension routine, in schema public, and none of them can SET ROLE to a table owner, a superuser or a BYPASSRLS role', active, checked;
   END IF;
 END
 $$;
@@ -877,7 +1040,7 @@ BEGIN
     RAISE EXCEPTION 'V5 FAILED: default privileges that THIS connection could have removed are still in place: %  — §4c should have revoked these, so either §4c did not run or something re-added them. Until they are gone, the first `create table` of the next migration silently re-grants ALL (DELETE and TRUNCATE included) on a new analytics table to a Supabase built-in role, with no statement anywhere naming it. Fix: re-run §4c, then this block.', fatal;
   END IF;
   IF advisory <> '' THEN
-    RAISE WARNING 'V5 ADVISORY: default privileges remain whose grantor this connection (%) is not a member of, so §4c could not touch them. A future object created BY THAT GRANTOR in schema public will be granted to a Supabase built-in role. Run these as a member of the grantor: %', current_user, advisory;
+    RAISE WARNING 'V5 ADVISORY: default privileges remain whose grantor this connection (%) is not a member of, so §4c could not touch them. A future object created BY THAT GRANTOR in schema public will be granted to a Supabase built-in role. Run these as a member of the grantor: %  — also returned as ADVISORY rows by §6 at the foot of this file, which is the copy the Supabase SQL editor will actually show you.', current_user, advisory;
     RAISE NOTICE 'V5 partial — present-tense privileges are clean (V4) and the removable default privileges are gone; the advisory above is the residual. Until it is cleared, treat "re-run prod-paste-0006 after every migration that adds a table" as mandatory rather than hygienic.';
   ELSE
     RAISE NOTICE 'V5 ok — no default privilege in schema public (or cluster-wide) grants anything to anon/authenticated/service_role, so a table created by a future migration starts with no privilege for them';
@@ -939,3 +1102,214 @@ BEGIN
   RAISE NOTICE '─────────────────────────────────────────────────────────────────────────────';
 END
 $$;
+
+-- =============================================================================
+-- §6 · THE RESIDUAL REPORT — THE ONE OUTPUT OF THIS FILE THE SQL EDITOR ACTUALLY RENDERS
+--
+-- ⚠ READ THE RESULT SET BELOW. IT IS THE AUTHORITATIVE REPORT. **ZERO ROWS = CLEAN.** Any row is a
+-- finding, and its `remediation_statement` column is the statement that closes it.
+--
+-- WHY THIS EXISTS, AND WHY IT IS NOT MERELY DECORATIVE. Everything above reports in one of two ways:
+-- `RAISE EXCEPTION`, which the Supabase SQL editor shows as an error and which rolls the whole file
+-- back (good — loud, unmissable, fail-closed), or `RAISE NOTICE` / `RAISE WARNING`, WHICH THE SUPABASE
+-- SQL EDITOR DOES NOT RELIABLY RENDER AT ALL. It shows result sets and errors. That is fine for the
+-- NOTICEs, which are narration. It is NOT fine for the soft findings, because every one of them is a
+-- control over an ABSENCE — a privilege nobody should hold, a default privilege nobody should have
+-- left standing — and a control whose only report is an invisible WARNING is not a control. It is a
+-- line of SQL that makes the file feel thorough.
+--
+-- The soft findings that were, until this block existed, emitted ONLY as RAISE output and therefore
+-- silently swallowed on prod:
+--   · §1   — prod-paste-0005 not applied (`ov_resolve_officer` absent), which means sign-in is broken
+--            after this file reports success;
+--   · §1   — the CURRENT 0005 not applied (the S1 directory↔audit coupling trigger is absent);
+--   · §4b  — routines whose EXECUTE could not be revoked from PUBLIC (`anon` can call them over
+--            PostgREST RPC, and `ov_in_subtree` is a SECURITY DEFINER oracle over the GES spine);
+--   · §4c  — a default privilege whose grantor this connection is not a member of, so §4c could
+--            report it but could not fix it (the advisory branch);
+--   · V5   — the same residual, re-derived after the fact.
+-- All of them are below, plus — for the case where someone runs JUST THIS STATEMENT later as a
+-- standing audit query rather than re-pasting the file — the conditions V0 and V4 assert by raising.
+-- Those five branches are unreachable in a full paste (the EXCEPTION rolls the file back before the
+-- editor ever renders a result set); they are here so that this query is a complete posture check on
+-- its own, which is what makes it worth saving in the project's snippets.
+--
+-- WHAT IS DELIBERATELY *NOT* A ROW: V6's "NOT PROVEN BY THIS FILE" checklist above. Those are manual
+-- steps, not residuals — two of them (does ANALYTICS_DATABASE_URL point at `oversight_app`; does the
+-- jurisdiction boundary filter for that role) are undetectable from inside the database BY
+-- CONSTRUCTION, which is exactly why they are listed as unproven. Emitting them as rows on every
+-- clean apply would destroy the only property that makes this report readable at a glance — zero rows
+-- means clean — and would train the operator to ignore it. They stay in V6's NOTICE and in this
+-- file's text, which the person pasting has open in front of them.
+-- =============================================================================
+WITH builtins(rolname) AS (
+  VALUES ('anon'), ('authenticated'), ('service_role')
+),
+-- §4c / V5 · default privileges that will re-grant the NEXT object a migration creates. Same
+-- pg_default_acl/aclexplode query V5 uses, with V5's own FINDING/ADVISORY split: a grantor this
+-- connection could have altered is a bug in §4c (V5 raises on it); one it could not is the advisory.
+default_acl AS (
+  SELECT DISTINCT
+         (CASE WHEN pg_has_role(current_user, d.defaclrole, 'USAGE')
+               THEN 'FINDING' ELSE 'ADVISORY' END)::text              AS severity,
+         pg_get_userbyid(d.defaclrole)::text                          AS grantor,
+         ('DEFAULT ACL ' || CASE d.defaclobjtype
+                              WHEN 'r' THEN 'TABLES'    WHEN 'S' THEN 'SEQUENCES'
+                              WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES'
+                              WHEN 'n' THEN 'SCHEMAS'   ELSE d.defaclobjtype::text
+                            END
+           || CASE WHEN d.defaclnamespace = 0 THEN ' (CLUSTER-WIDE)' ELSE ' (public)' END)::text
+                                                                      AS objtype,
+         pg_get_userbyid(a.grantee)::text                             AS grantee,
+         format('ALTER DEFAULT PRIVILEGES FOR ROLE %I%s REVOKE ALL ON %s FROM %I;',
+                pg_get_userbyid(d.defaclrole),
+                CASE WHEN d.defaclnamespace = 0 THEN '' ELSE ' IN SCHEMA public' END,
+                CASE d.defaclobjtype
+                  WHEN 'r' THEN 'TABLES'    WHEN 'S' THEN 'SEQUENCES'
+                  WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES'
+                  WHEN 'n' THEN 'SCHEMAS'
+                END,
+                pg_get_userbyid(a.grantee))::text                     AS remediation_statement
+    FROM pg_default_acl d
+    CROSS JOIN aclexplode(d.defaclacl) a
+   WHERE (d.defaclnamespace = 0 OR d.defaclnamespace = 'public'::regnamespace::oid)
+     AND a.grantee <> 0
+     AND pg_get_userbyid(a.grantee) IN (SELECT rolname FROM builtins)
+     AND d.defaclobjtype IN ('r', 'S', 'f', 'T', 'n')
+),
+-- §4b · routines that still grant EXECUTE to PUBLIC. §4b wraps each REVOKE individually and collects
+-- the failures into one WARNING; these are those failures, named, with the statement to retry.
+public_execute AS (
+  SELECT 'FINDING'::text                           AS severity,
+         pg_get_userbyid(p.proowner)::text         AS grantor,
+         'ROUTINE EXECUTE'::text                   AS objtype,
+         'PUBLIC'::text                            AS grantee,
+         format('REVOKE EXECUTE ON ROUTINE %s FROM PUBLIC;', p.oid::regprocedure)::text
+                                                   AS remediation_statement
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                      WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+     AND EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+                  WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE')
+),
+-- §1 · the two prod-paste-0005 preconditions that are WARNINGs rather than EXCEPTIONs (deliberately —
+-- see the CHICKEN-AND-EGG note in the header: this file has to be runnable BEFORE 0005 in order to
+-- unblock it). A WARNING the editor never shows is how "apply 0005 and re-run" gets forgotten.
+missing_0005 AS (
+  SELECT 'ADVISORY'::text               AS severity,
+         'n/a'::text                    AS grantor,
+         'PASTE 0005 NOT APPLIED'::text AS objtype,
+         'oversight_app'::text          AS grantee,
+         ('ov_resolve_officer(uuid) is absent: apply db/sql/prod-paste-0005-officer-directory.sql, then RE-RUN THIS FILE. Until then sign-in fails with `permission denied for function ov_resolve_officer`.')::text
+                                        AS remediation_statement
+   WHERE to_regprocedure('public.ov_resolve_officer(uuid)') IS NULL
+  UNION ALL
+  -- Matched through pg_class/pg_namespace rather than a `::regclass` cast: a WHERE clause is not
+  -- evaluated left-to-right, so `'public.ref_oversight_officer'::regclass` could be reached — and
+  -- would ERROR, not return NULL — on a database where the table is absent. That database is exactly
+  -- the one this row exists to report on.
+  SELECT 'ADVISORY'::text, 'n/a'::text, 'PASTE 0005 OUT OF DATE'::text,
+         'ref_oversight_officer'::text,
+         ('officer_directory_audit_guard is absent from ref_oversight_officer: the CURRENT prod-paste-0005 (the one carrying the S1 directory<->audit coupling) has not been applied. Apply it, then RE-RUN THIS FILE.')::text
+   WHERE EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                  WHERE n.nspname = 'public' AND c.relname = 'ref_oversight_officer')
+     AND NOT EXISTS (SELECT 1 FROM pg_trigger t
+                       JOIN pg_class c ON c.oid = t.tgrelid
+                       JOIN pg_namespace n ON n.oid = c.relnamespace
+                      WHERE n.nspname = 'public' AND c.relname = 'ref_oversight_officer'
+                        AND t.tgname = 'officer_directory_audit_guard' AND NOT t.tgisinternal)
+),
+-- V0 · unreachable in a full paste (V0 raises and the file rolls back). Here so that this statement
+-- alone is a complete posture check — the leak with no signature, named.
+rls_off AS (
+  SELECT 'FINDING'::text                      AS severity,
+         pg_get_userbyid(c.relowner)::text    AS grantor,
+         (CASE WHEN NOT c.relrowsecurity THEN 'TABLE RLS DISABLED'
+               ELSE 'TABLE RLS ON, ZERO POLICIES' END)::text AS objtype,
+         'oversight_app'::text                AS grantee,
+         (CASE WHEN NOT c.relrowsecurity
+               THEN format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY; -- and apply the prod-paste carrying its jurisdiction policy: until then oversight_app reads public.%I UNSCOPED', c.relname, c.relname)
+               ELSE format('-- public.%I is deny-all (fail-closed) but has no policy: apply the prod-paste that carries it, do NOT disable RLS', c.relname) END)::text
+                                              AS remediation_statement
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p')
+     AND (NOT c.relrowsecurity
+          OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid))
+),
+-- V4 · likewise unreachable in a full paste, and likewise worth having in a standing audit query:
+-- a built-in holding a privilege in `public`, or able to SET ROLE its way to one that holds all of
+-- them (the S-2 blind spot of `has_*_privilege`).
+builtin_residual AS (
+  SELECT 'FINDING'::text                  AS severity,
+         pg_get_userbyid(c.relowner)::text AS grantor,
+         ('TABLE ' || g.priv)::text        AS objtype,
+         b.rolname::text                   AS grantee,
+         format('REVOKE ALL ON public.%I FROM %I; -- holds %s', c.relname, b.rolname, g.priv)::text
+                                           AS remediation_statement
+    FROM builtins b
+    JOIN pg_roles ro ON ro.rolname = b.rolname
+    CROSS JOIN pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    -- PG 17 adds MAINTAIN (VACUUM/ANALYZE/REINDEX/CLUSTER/REFRESH). The array is chosen BEFORE
+    -- has_table_privilege() is called with it, so naming it here cannot error on PG 16.
+    CROSS JOIN unnest(
+      CASE WHEN current_setting('server_version_num')::int >= 170000
+           THEN array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER',
+                      'MAINTAIN']
+           ELSE array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']
+      END) AS g(priv)
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+     AND has_table_privilege(b.rolname::name, c.oid, g.priv)
+  UNION ALL
+  SELECT 'FINDING'::text, x.rolname::text, 'SET ROLE REACHABLE (RLS-EXEMPT)'::text, b.rolname::text,
+         format('REVOKE %I FROM %I; -- %s can SET ROLE to %s, which owns public tables or is SUPERUSER/BYPASSRLS', x.rolname, b.rolname, b.rolname, x.rolname)::text
+    FROM builtins b
+    JOIN pg_roles ro ON ro.rolname = b.rolname
+    CROSS JOIN (
+           SELECT o.rolname
+             FROM pg_class c
+             JOIN pg_namespace n ON n.oid = c.relnamespace
+             JOIN pg_roles o ON o.oid = c.relowner
+            WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+           UNION
+           SELECT s.rolname FROM pg_roles s WHERE s.rolsuper OR s.rolbypassrls
+         ) x
+   WHERE x.rolname <> b.rolname
+     AND pg_has_role(b.rolname::name, x.rolname, 'MEMBER')
+),
+-- §3 · the decay the header's FIRST bullet warns about, made visible. §3's blanket grant is
+-- point-in-time; a table created by a migration after the last paste is readable by NOBODY, which is
+-- an outage rather than a leak — but it is also the proof that this file has not been re-run.
+-- `audit_officer_provisioning` is EXCLUDED BY NAME because §3 deliberately revokes everything on it
+-- (the ordering trap V2 asserts); it is the one table the app role is supposed to be unable to read.
+app_missing_select AS (
+  SELECT 'ADVISORY'::text            AS severity,
+         pg_get_userbyid(c.relowner)::text AS grantor,
+         'TABLE NOT GRANTED'::text   AS objtype,
+         'oversight_app'::text       AS grantee,
+         format('GRANT SELECT ON public.%I TO oversight_app; -- or just re-run §3 of this file, which is what the header means by "re-run after every migration that CREATES A TABLE"', c.relname)::text
+                                     AS remediation_statement
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p')
+     AND c.relname <> 'audit_officer_provisioning'
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'oversight_app')
+     AND NOT has_table_privilege('oversight_app', c.oid, 'SELECT')
+)
+SELECT severity, grantor, objtype, grantee, remediation_statement
+  FROM (
+    SELECT * FROM default_acl
+    UNION ALL SELECT * FROM public_execute
+    UNION ALL SELECT * FROM missing_0005
+    UNION ALL SELECT * FROM rls_off
+    UNION ALL SELECT * FROM builtin_residual
+    UNION ALL SELECT * FROM app_missing_select
+  ) residual
+ ORDER BY CASE severity WHEN 'FINDING' THEN 1 WHEN 'ADVISORY' THEN 2 ELSE 3 END,
+          objtype, grantee, grantor, remediation_statement;
