@@ -15,11 +15,13 @@ import { SupabaseAuthUnavailableError } from "@/lib/env";
 /**
  * THE AUTH MECHANISM, behind `lib/auth` (increment G · Kofi R5 · Lucy G1).
  *
- * This is the ONLY module besides `lib/auth/index.ts` that calls `supabase.auth.*`. The rule from
- * the top of lib/auth/index.ts — feature code never touches the auth SDK — is what keeps the session
- * shape and the MFA policy in one place; the sign-in surfaces call these functions and never the SDK.
- * tests/auth-supabase-usage.test.ts enforces the boundary textually (and also asserts that nothing
- * anywhere calls `getSession()`).
+ * This is one of FOUR modules permitted to call `supabase.auth.*` — the others being
+ * `lib/auth/index.ts` (session resolution), `lib/provisioning/admin-auth.ts` (the admin console's
+ * own role gate) and `middleware.ts` (the deny-by-default route guard). Nothing else in the app may,
+ * and in particular no feature code: the rule from the top of lib/auth/index.ts is what keeps the
+ * session shape and the MFA policy in one place, so the sign-in surfaces call THESE functions and
+ * never the SDK. tests/auth-boundaries.test.ts pins that four-module allow-list by name and
+ * separately asserts that nothing anywhere calls `getSession()`.
  *
  * ── MFA IS MANDATORY, AND THIS MODULE CANNOT BE ASKED TO SKIP IT ──────────────────────────────────
  * There is deliberately no `rememberDevice`, no `skipMfa`, no "trusted device" parameter, and no

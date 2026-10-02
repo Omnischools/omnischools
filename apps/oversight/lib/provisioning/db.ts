@@ -39,8 +39,9 @@ import { env } from "@/lib/env";
  *     traffic. `statement_timeout` as a CONNECTION parameter so it applies to every statement this
  *     client will ever issue, including ones added later by someone who did not read this comment.
  *  4. NOT IMPORTABLE FROM THE AGGREGATE OR OFFICER SURFACES. Nothing under `app/(oversight)` may
- *     touch it; `tests/provisioning-isolation.test.ts` walks the import graph, exactly as
- *     tests/readback-isolation.test.ts does for the read-back.
+ *     touch it; `tests/provisioning-admin-gate.test.ts` walks the import graph (direct allow-list
+ *     plus transitive reachability), exactly as tests/readback-isolation.test.ts does for the
+ *     read-back.
  */
 
 export const PROVISIONER_STATEMENT_TIMEOUT_MS = 10_000;

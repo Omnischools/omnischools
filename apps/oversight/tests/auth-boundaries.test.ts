@@ -2,7 +2,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scopeFor, withJurisdiction } from "@/lib/db/rls";
-import { districtOfficer } from "./helpers";
+import { openNamedStaffRecord } from "@/lib/oversight/gate-step-up";
+import { districtOfficer, stepUpFixture } from "./helpers";
 
 /**
  * THE STRUCTURAL GUARDS of increment G — the properties that are about the SHAPE of the codebase
@@ -14,9 +15,14 @@ import { districtOfficer } from "./helpers";
  *
  *   1. the jurisdiction SCOPE can only be built from a resolved session (compile-time + textual)
  *   2. an OfficerSession can only be minted in three named places
- *   3. `supabase.auth.*` appears only inside lib/auth + lib/supabase, and `getSession()` NOWHERE
- *   4. the service-role key is not read anywhere in the app
- *   5. the §6 server actions reach the gate only through the step-up choke point
+ *   3. the §6 STEP-UP ASSERTION can only be minted by the resolver (Dex B1)
+ *   4. `supabase.auth.*` appears only inside lib/auth + lib/supabase, and `getSession()` NOWHERE
+ *   5. the service-role key is not read anywhere in the app
+ *   6. the §6 server actions reach the gate only through the step-up choke point
+ *
+ * All three brands (session, scope, step-up assertion) are guarded the SAME way on purpose: a
+ * compile-time `@ts-expect-error` that proves the literal does not typecheck, plus a named importer
+ * allow-list for the mint. A reviewer who has read one of these blocks has read all three.
  */
 
 const ROOT = process.cwd();
@@ -189,7 +195,11 @@ describe("an OfficerSession can only be minted in three named places", () => {
       (f) =>
         rel(f) !== "lib/oversight/officer.ts" &&
         rel(f) !== SELF &&
-        /sealOfficerSession/.test(readRaw(f)),
+        // `read()` (comments stripped), not the raw text: lib/auth/step-up.ts legitimately NAMES
+        // this function in a comment explaining that its own brand follows the same pattern. A scan
+        // that counted prose would be a guard that punishes documentation — and the cheap way to
+        // satisfy it would be to delete the explanation.
+        /sealOfficerSession/.test(read(f)),
     )
       .map(rel)
       .sort();
@@ -206,7 +216,86 @@ describe("an OfficerSession can only be minted in three named places", () => {
   });
 });
 
-// ─── 3 · the auth SDK boundary ──────────────────────────────────────────────────────────────────
+// ─── 3 · the §6 step-up assertion is unforgeable (Dex B1) ───────────────────────────────────────
+
+describe("a §6 step-up assertion can only come from the resolver", () => {
+  it("a literal assertion does not typecheck at the choke point", () => {
+    // THE DEFECT THIS LOCKS SHUT. Before the brand, both server actions called the choke point with
+    // `{ fresh: true }` — so the guard in front of the single irreversible action in the product (a
+    // named record released, a GRANTED row written to an append-only log under an officer's name)
+    // was reading a value the caller had typed. A future action could have done the same, with no
+    // call to the resolver at all, and passed every runtime test in this suite.
+    //
+    // Checked by `pnpm typecheck`, not at runtime: if the literal ever became assignable,
+    // `@ts-expect-error` would itself turn into an error and the build would fail.
+    const request = () => ({
+      officer: districtOfficer,
+      school: { emisSchoolId: "EMIS-PUB-001" },
+      reasonCode: "STATUTORY_AUDIT",
+      caseReference: "typecheck-only — never executed",
+      subject: { operationalStaffId: "50000000-0000-4000-8000-000000000001" },
+      rosterBrowsed: false,
+      exportFormat: null,
+    });
+    const literal = () => ({ fresh: true as const });
+    const refuse = () => {
+      // @ts-expect-error a hand-written step-up assertion must never typecheck
+      void openNamedStaffRecord(request(), literal());
+    };
+    // Never invoked: the assertion above is about the TYPE, and calling it would open a record.
+    expect(typeof refuse).toBe("function");
+  });
+
+  it("the raw shape is NOT exported, so it cannot be named and satisfied either", () => {
+    const source = readRaw(join(ROOT, "lib/auth/step-up.ts"));
+    expect(source).toMatch(/interface RawStepUpAssertion/);
+    expect(source).not.toMatch(/export interface RawStepUpAssertion/);
+    expect(source).toMatch(/export type StepUpAssertion/);
+  });
+
+  it("the importers of sealStepUpAssertion are the test helpers and nothing else", () => {
+    // The production mint is `resolveStepUpAssertion()` in the same module; the seal exists only so
+    // the suite can build a STALE assertion, which is what proves a refused step-up writes no audit
+    // row. A production module appearing here fails the suite.
+    const importers = ALL_SOURCES.filter(
+      (f) =>
+        rel(f) !== "lib/auth/step-up.ts" &&
+        rel(f) !== SELF &&
+        /sealStepUpAssertion/.test(read(f)),
+    )
+      .map(rel)
+      .sort();
+    expect(importers).toEqual(["tests/helpers.ts"]);
+  });
+
+  it("the §6 server actions MINT the assertion rather than describing one", () => {
+    const actions = read(join(ROOT, "app/(oversight)/compliance-records/actions.ts"));
+    expect(actions).toMatch(/resolveStepUpAssertion/);
+    // No `fresh:` anywhere in the actions' CODE: the file no longer has an opinion about freshness,
+    // it reads FormData and passes the minted assertion through.
+    expect(actions).not.toMatch(/fresh\s*:/);
+    // And it hands the choke point the minted object, by name.
+    expect(actions).toMatch(/stepUp\.assertion/);
+  });
+
+  it("nobody casts their way around the brand", () => {
+    const offenders = ALL_SOURCES.filter(
+      (f) => rel(f) !== SELF && /as\s+unknown\s+as\s+StepUpAssertion/.test(read(f)),
+    ).map(rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("a sealed STALE assertion is still refused by the guard — the check is not vacuous", () => {
+    // Presence must not be taken for freshness: the brand says "this was resolved", the boolean says
+    // "and it was fresh". tests/gate-step-up.test.ts proves the consequence (no audit row); this
+    // asserts the distinction exists at all, so a future constructor cannot mint a stale assertion
+    // and have it silently accepted.
+    expect(stepUpFixture(false).fresh).toBe(false);
+    expect(stepUpFixture(true).fresh).toBe(true);
+  });
+});
+
+// ─── 4 · the auth SDK boundary ──────────────────────────────────────────────────────────────────
 
 describe("supabase.auth.* is confined to lib/auth + lib/supabase", () => {
   /**
@@ -247,7 +336,7 @@ describe("supabase.auth.* is confined to lib/auth + lib/supabase", () => {
   });
 });
 
-// ─── 4 · the service-role key is absent ─────────────────────────────────────────────────────────
+// ─── 5 · the service-role key is absent ─────────────────────────────────────────────────────────
 
 describe("SUPABASE_SERVICE_ROLE_KEY is not part of this runtime", () => {
   it("no source file reads it", () => {
@@ -275,7 +364,7 @@ describe("SUPABASE_SERVICE_ROLE_KEY is not part of this runtime", () => {
   });
 });
 
-// ─── 5 · the §6 step-up choke point ─────────────────────────────────────────────────────────────
+// ─── 6 · the §6 step-up choke point ─────────────────────────────────────────────────────────────
 
 describe("the §6 server actions reach the gate only through the step-up choke point", () => {
   const ACTIONS = "app/(oversight)/compliance-records/actions.ts";

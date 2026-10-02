@@ -7,6 +7,7 @@ import {
   type OfficerSession,
   type ResolvedOfficerFields,
 } from "@/lib/oversight/officer";
+import { sealStepUpAssertion, type StepUpAssertion } from "@/lib/auth/step-up";
 
 export const testDbConfig = JSON.parse(
   readFileSync(TEST_DB_CONFIG_PATH, "utf8"),
@@ -111,6 +112,23 @@ export const nationalOfficer: OfficerSession = officerFixture({
   jurisdictionId: null,
   level: "NATIONAL",
 });
+
+/**
+ * THE FIXTURE STEP-UP MINT (Dex B1).
+ *
+ * `StepUpAssertion` is branded, so `{ fresh: true }` no longer typechecks anywhere — including in
+ * the suite. This is the sanctioned test mint, and `tests/auth-boundaries.test.ts` asserts that this
+ * file is its ONLY importer: `resolveStepUpAssertion()` is the production constructor, and it needs
+ * a live Supabase session that the suite does not have.
+ *
+ * A STALE assertion is the interesting fixture, and the only way to make it: it is what proves a
+ * refused step-up writes no audit row and fetches nothing (tests/gate-step-up.test.ts). Production
+ * never constructs one — the server action returns the interstitial instead — so this is also the
+ * only place that can keep the choke point's own `fresh` check from going untested.
+ */
+export function stepUpFixture(fresh: boolean): StepUpAssertion {
+  return sealStepUpAssertion({ fresh });
+}
 
 /** Unique per test, so `auditRowsFor` isolates one test's rows from an append-only shared table. */
 export function caseRef(label: string): string {

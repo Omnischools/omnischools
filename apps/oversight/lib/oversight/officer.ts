@@ -30,7 +30,7 @@ import type { JurisdictionLevel } from "@/lib/db/rls";
  *
  * The ONLY way to obtain one is `sealOfficerSession()` below, and the only callers permitted to use
  * it are the real resolver and the dev shim — enforced by the allow-list in
- * tests/officer-session-mint.test.ts, which fails the suite if a new importer appears. The brand is
+ * tests/auth-boundaries.test.ts, which fails the suite if a new importer appears. The brand is
  * the compile-time half; that test is the review half. Neither is sufficient alone: TypeScript can
  * be defeated with `as unknown as OfficerSession`, which is exactly the kind of line a reviewer can
  * spot once the only legitimate construction site is a named, tested list of two files.
@@ -58,7 +58,7 @@ export type ResolvedOfficerFields = Omit<OfficerSession, typeof DB_RESOLVED>;
  *   · `lib/auth/index.ts`             — the `AUTH_DEV_BYPASS` dev shim, which is hard-stopped in
  *                                       production at module load
  * …plus `tests/helpers.ts`, which is how the suite acts as a fixture officer. Adding a third caller
- * fails tests/officer-session-mint.test.ts. If you need a session somewhere, get it from
+ * fails tests/auth-boundaries.test.ts. If you need a session somewhere, get it from
  * `getOfficerSession()`; if `getOfficerSession()` cannot give you one, the correct behaviour is to
  * refuse, not to build one.
  */

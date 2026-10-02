@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   StepUpRequiredError,
   TierCannotOpenNamedRecordError,
@@ -6,7 +6,13 @@ import {
   openNamedStaffRecord,
 } from "@/lib/oversight/gate-step-up";
 import { EMIS, OPS_STAFF } from "./fixtures/ids";
-import { auditRowCount, caseRef, districtOfficer, officerFixture } from "./helpers";
+import {
+  auditRowCount,
+  caseRef,
+  districtOfficer,
+  officerFixture,
+  stepUpFixture,
+} from "./helpers";
 
 /**
  * THE §6 STEP-UP ORDERING (increment G · Kofi R6 · Lucy G7).
@@ -25,6 +31,15 @@ import { auditRowCount, caseRef, districtOfficer, officerFixture } from "./helpe
  *
  * The happy path (fresh assertion ⇒ one row, one record) is already covered end-to-end by
  * tests/gate.test.ts; what is added here is the refusal.
+ *
+ * ── THE ASSERTION IS BRANDED (Dex B1) ────────────────────────────────────────────────────────────
+ * These tests build their assertions with `stepUpFixture()`, the suite's sanctioned mint, because
+ * `{ fresh: true }` no longer typechecks: the choke point used to be handed that literal by both
+ * server actions, i.e. the guard in front of the product's one irreversible action was reading a
+ * value the caller had typed. The compile-time half of that fix lives in
+ * tests/auth-boundaries.test.ts (a `@ts-expect-error` proving the literal is rejected, plus the
+ * mint's importer allow-list); the RUNTIME half is below, unchanged — a stale assertion is still
+ * refused, and refusing still means nothing is written and nothing is read.
  */
 
 describe("a stale step-up writes NO audit row and fetches nothing", () => {
@@ -42,7 +57,7 @@ describe("a stale step-up writes NO audit row and fetches nothing", () => {
           rosterBrowsed: false,
           exportFormat: null,
         },
-        { fresh: false },
+        stepUpFixture(false),
       ),
     ).rejects.toBeInstanceOf(StepUpRequiredError);
 
@@ -62,7 +77,7 @@ describe("a stale step-up writes NO audit row and fetches nothing", () => {
           reasonCode: "STATUTORY_AUDIT",
           caseReference: caseRef("stepup-roster"),
         },
-        { fresh: false },
+        stepUpFixture(false),
       ),
     ).rejects.toBeInstanceOf(StepUpRequiredError);
 
@@ -83,10 +98,36 @@ describe("a stale step-up writes NO audit row and fetches nothing", () => {
         rosterBrowsed: false,
         exportFormat: null,
       },
-      { fresh: true },
+      stepUpFixture(true),
     );
     expect(result.accessId).toBeTruthy();
     expect(await auditRowCount()).toBe(before + 1);
+  });
+});
+
+describe("the production mint fails closed", () => {
+  it("mints a STALE assertion when there is no verified session to read freshness from", async () => {
+    // `resolveStepUpAssertion()` is the only production constructor. With auth unconfigured (the
+    // suite's posture: AUTH_DEV_BYPASS=false and no Supabase vars) there is no token to measure, so
+    // `getAuthContext().stepUpFresh` is false and the mint yields a stale assertion — which the
+    // choke point then refuses. The important property is the DIRECTION: an unresolvable session
+    // produces a refusal, never a convenient default.
+    vi.resetModules();
+    const { resolveStepUpAssertion } = await import("@/lib/auth/step-up");
+    const resolution = await resolveStepUpAssertion();
+    expect(resolution.fresh).toBe(false);
+    expect(resolution.assertion.fresh).toBe(false);
+    // …and it is a real assertion object, so the caller cannot mistake "stale" for "absent".
+    expect(resolution.factorId).toBeNull();
+  });
+
+  it("mints a stale assertion when a code is submitted and cannot be verified", async () => {
+    vi.resetModules();
+    const { resolveStepUpAssertion } = await import("@/lib/auth/step-up");
+    const resolution = await resolveStepUpAssertion({ code: "000000", factorId: null });
+    expect(resolution.fresh).toBe(false);
+    // The copy the modal shows comes from lib/auth/mfa.ts, not from the gate.
+    expect(resolution.error).toBeTruthy();
   });
 });
 
@@ -113,7 +154,7 @@ describe("the tier ceiling is checked BEFORE the step-up, not after", () => {
           rosterBrowsed: false,
           exportFormat: null,
         },
-        { fresh: true },
+        stepUpFixture(true),
       ),
     ).rejects.toBeInstanceOf(TierCannotOpenNamedRecordError);
 

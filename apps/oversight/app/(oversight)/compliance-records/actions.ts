@@ -1,8 +1,8 @@
 "use server";
 
-import { getAuthContext, requireOfficerSession } from "@/lib/auth";
+import { requireOfficerSession } from "@/lib/auth";
 import { ReadbackUnavailableError } from "@/lib/db/readback";
-import { verifyTotp } from "@/lib/auth/mfa";
+import { resolveStepUpAssertion, type StepUpResolution } from "@/lib/auth/step-up";
 import {
   CONSENT_DENIED_COPY,
   GateInputError,
@@ -41,8 +41,9 @@ import {
  * `requestNamedStaffRecord` / `requestStaffListBrowse` directly. The step-up is an ORDERING
  * requirement — a fresh AAL2 assertion before the audit row and before any read-back — and an
  * ordering enforced by "the action remembers to check first" is not enforced at all. The choke-point
- * module runs the assertion before the gate function is entered; tests/step-up-choke-point.test.ts
- * fails if this file ever reaches past it.
+ * module runs the assertion before the gate function is entered; tests/auth-boundaries.test.ts fails
+ * if this file ever reaches past it — and, since Dex B1, the assertion itself is branded, so this
+ * file cannot describe a step-up it did not resolve.
  *
  * The freshness itself is read from the SESSION (`getAuthContext().stepUpFresh`), i.e. from the
  * last MFA `amr` timestamp in the server-verified token — not from a form field, a cookie or a
@@ -128,32 +129,21 @@ function gateSchool(emisSchoolId: string): SchoolGateRef {
 /**
  * Resolve the §6 step-up for THIS submit (Kofi R6 · Lucy G7).
  *
- * Three outcomes:
- *  · the session's last MFA assertion is inside the 5-minute reuse window ⇒ `{ fresh: true }`, no
- *    modal, submit proceeds (browse → pick → view → export is one assertion, not four).
- *  · a code was supplied with this submit ⇒ verify it NOW through lib/auth/mfa.ts. Success is a
- *    brand-new `amr` entry, so the window restarts from this moment.
- *  · neither ⇒ `{ fresh: false }`, and the caller returns the interstitial having written nothing.
- *
- * The code is verified BEFORE the gate is called, in this function, so a wrong code cannot reach the
- * audit writer at all.
+ * ⚠ THIS FUNCTION DECIDES NOTHING. It unpacks the two form fields and hands them to
+ * `resolveStepUpAssertion()` in `lib/auth/step-up.ts` — the single mint, which reads the session's
+ * own token and, if a code was submitted, verifies it. Previously this file computed freshness
+ * itself and then passed a LITERAL `{ fresh: true }` to the choke point, so the guard at the one
+ * irreversible surface in the product was checking a value this file had typed (Dex B1). The
+ * assertion is now branded and unforgeable; all that is left here is reading `FormData`.
  */
-async function resolveStepUp(
-  formData: FormData,
-): Promise<{ fresh: boolean; factorId: string | null; error?: string }> {
-  const context = await getAuthContext();
-  const code = field(formData, "stepUpCode");
-  const factorId = field(formData, "stepUpFactorId") || null;
-
-  if (context.stepUpFresh && !code) return { fresh: true, factorId };
-  if (!code) return { fresh: false, factorId };
-
-  // The factor id is NOT trusted from the form for authorisation — `verifyTotp` challenges that
-  // factor against the officer's OWN session, so a borrowed id cannot verify anything. It travels in
-  // the form only to spare a second round trip to list the factors.
-  const verified = await verifyTotp(factorId ?? "", code);
-  if (!verified.ok) return { fresh: false, factorId, error: verified.error };
-  return { fresh: true, factorId };
+async function resolveStepUp(formData: FormData): Promise<StepUpResolution> {
+  return resolveStepUpAssertion({
+    code: field(formData, "stepUpCode"),
+    // The factor id is NOT trusted from the form for authorisation — the mint challenges that factor
+    // against the officer's OWN session, so a borrowed id verifies nothing. It travels in the form
+    // only to spare a round trip listing factors.
+    factorId: field(formData, "stepUpFactorId") || null,
+  });
 }
 
 function stepUpFields(formData: FormData, intent: "record" | "roster"): StepUpFields {
@@ -218,7 +208,9 @@ export async function submitStaffGate(
         rosterBrowsed,
         exportFormat: exportFormat || null,
       },
-      { fresh: true },
+      // The assertion MINTED above, not a literal — it carries the derived freshness, so the choke
+      // point re-reads a resolved value rather than this file's opinion of one.
+      stepUp.assertion,
     );
 
     if (result.outcome !== "GRANTED") {
@@ -321,7 +313,7 @@ export async function browseStaffListAction(
         reasonCode,
         caseReference,
       },
-      { fresh: true },
+      stepUp.assertion,
     );
     if (result.outcome !== "GRANTED") {
       return {

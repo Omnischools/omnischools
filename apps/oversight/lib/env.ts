@@ -64,8 +64,9 @@ const schema = z.object({
    * named record and minting any officer — the one thing no amount of careful app code can take
    * back. It is not read here, which means no feature module can reach for it even by accident; the
    * only privileged credential in this app is the PROVISIONER connection below, which is a narrow
-   * Postgres role rather than a project-wide master key. `tests/no-service-role-key.test.ts`
-   * asserts the absence textually, so re-adding it fails the suite rather than review.
+   * Postgres role rather than a project-wide master key. `tests/auth-boundaries.test.ts` asserts the
+   * absence textually — no source file may even mention the name — so re-adding it fails the suite
+   * rather than review.
    */
 
   /**

@@ -43,7 +43,9 @@ import {
  *     cookie store without checking it against the auth server; it is documented as untrustworthy
  *     for exactly this use. `getUser()` (and `getClaims()`, which verifies the JWT signature) are
  *     the two calls that establish identity. A grep for `getSession` in this app should find nothing
- *     — tests/auth-supabase-usage.test.ts asserts that.
+ *     — tests/auth-boundaries.test.ts asserts that, and also pins the four modules allowed to touch
+ *     `supabase.auth.*` at all (this one, lib/auth/mfa.ts, lib/provisioning/admin-auth.ts,
+ *     middleware.ts).
  *  2. TAKE ONLY THE UID. The token contributes `sub` and the chrome's display name. It contributes
  *     NOTHING about scope: jurisdiction, tier and role all come from `ov_resolve_officer(uid)` on
  *     every request. A JWT carrying a custom `level: "NATIONAL"` claim widens nothing, because no

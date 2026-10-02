@@ -1,4 +1,8 @@
 import { canOpenNamedRecord } from "@/lib/auth/roles";
+// TYPE-ONLY, and that matters: `lib/auth/step-up.ts` reaches the Supabase SDK (it verifies TOTP
+// codes), while this module is imported by tests that must run without one. A type import is erased
+// at build, so the brand costs this module no runtime dependency at all.
+import type { StepUpAssertion } from "@/lib/auth/step-up";
 import type { OfficerSession } from "@/lib/oversight/officer";
 import {
   requestNamedStaffRecord,
@@ -19,8 +23,8 @@ import {
  * `requestNamedStaffRecord()` would simply not have it, and no test could tell. So the two gate
  * entry points are re-exported HERE behind the assertion, the server actions import only these, and
  * tests/gate-step-up.test.ts drives this module directly to prove that a refused step-up leaves the
- * audit table byte-identical. tests/step-up-choke-point.test.ts asserts textually that the actions
- * file does not import the raw gate functions.
+ * audit table byte-identical. tests/auth-boundaries.test.ts asserts textually that the actions file
+ * does not import the raw gate functions, and that the assertion it passes cannot be a literal.
  *
  * ── WHAT IT DOES NOT CHANGE ──────────────────────────────────────────────────────────────────────
  * The §6 audit contract is untouched: ONE access, ONE row, written by
@@ -53,22 +57,18 @@ export class TierCannotOpenNamedRecordError extends Error {
 }
 
 /**
- * What the caller must prove. `fresh` comes from `getAuthContext().stepUpFresh`, which is computed
- * from the LAST MFA `amr` timestamp in the server-verified token against the configured 5-minute
- * window (lib/auth/session-policy.ts `stepUpFresh`). It is deliberately a boolean rather than a
- * token this module could be handed: there is nothing here to verify, because the freshness is a
- * property of the session Supabase signed, not of a value the browser sent.
- */
-export interface StepUpAssertion {
-  fresh: boolean;
-}
-
-/**
  * The guard. Throws BEFORE any argument is used for anything.
  *
  * Order: tier first, then freshness. A SCHOOL-tier session must be refused even if it has a perfect
  * step-up — "proved it's you" is not "allowed to do this", and conflating the two is how a step-up
  * becomes an authorisation.
+ *
+ * ⚠ THE ASSERTION IS BRANDED (Dex B1). `StepUpAssertion` carries a `unique symbol` private to
+ * `lib/auth/step-up.ts`, so it cannot be written as a literal: this function used to be handed
+ * `{ fresh: true }` by both server actions, which meant the one irreversible surface in the product
+ * was gated on a value the caller typed. The only production mint is `resolveStepUpAssertion()`,
+ * which derives `fresh` from the server-verified token or from a TOTP code it has just verified.
+ * The check below is unchanged — what changed is that its input can no longer be invented.
  */
 export function assertMayOpenNamedRecord(
   officer: OfficerSession,

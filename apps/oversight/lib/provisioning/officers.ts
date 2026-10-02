@@ -77,6 +77,15 @@ function requireUuid(value: string, label: string): string {
  * node picker a list of nodes; it does NOT authorise anything, because every write guard derives the
  * tier through a SECURITY DEFINER function that ignores GUCs entirely. If this call were deleted the
  * picker would come back empty — nothing would become permitted.
+ *
+ * WHY `resolveNodeTier()` (used by the PROVISION path) may read through this, while
+ * `deactivateOfficer()` deliberately does not: here the node is the CALLER'S INPUT, so a GUC-scoped
+ * read that returns nothing fails the provision closed, and `ov_officer_node_tier()` fires on the
+ * write anyway and refuses any row whose tier disagrees with the node — the database backstops a
+ * wrong answer. On the withdrawal path the tier is read FROM THE EXISTING ROW to decide whether the
+ * two-person rule applies, and nothing downstream re-derives it; a value that depends on the caller
+ * having first granted itself national scope would be the wrong thing to hang that decision on, so
+ * that read goes through the definer function instead.
  */
 export async function withNationalRead<T>(
   sql: postgres.Sql,
