@@ -28,9 +28,36 @@ import { jurisdictionLevelEnum, officerRoleEnum } from "./_enums";
  * cannot authorise a request. Together, every widening of what someone can see is both effective
  * (the directory) and attributable (the log).
  *
+ * ══ AND THE TWO ARE COUPLED IN THE DATABASE, NOT BY CONVENTION (finding S1) ══
+ * "Together" used to be an APPLICATION property: `lib/provisioning/officers.ts` writes both rows in
+ * one transaction. It does, and it is correct, but an app convention binds only the caller that
+ * honours it — a bare `insert into ref_oversight_officer … 'NATIONAL_OVERSIGHT' …` on the
+ * provisioner credential (or any SECURITY DEFINER path) committed happily with no audit row, no
+ * actor and no approver, because the two-person rule and the append-only guarantee are enforced ON
+ * audit_officer_provisioning and skipping that table skipped both.
+ *
+ * It is now a database guarantee: `ov_officer_directory_audit_guard()`, a DEFERRED CONSTRAINT
+ * trigger on ref_oversight_officer (INSERT and UPDATE), requires at COMMIT an
+ * audit_officer_provisioning row from the SAME transaction for the same officer, the same node and
+ * the same resulting `is_active`. Deferred because the legitimate writers must insert the directory
+ * row FIRST (the audit row's `*_before` columns are read from it); the deferral is what lets the
+ * guard refuse the bare write without refusing the correct one. Its second-order effect is the one
+ * that matters: because the matching audit row must name THIS node,
+ * `ov_officer_provisioning_tier_guard()` forces that row's `target_tier` to the node's real level
+ * and `ck_officer_provisioning_two_person` (below) then forces an approver — so a REGION/NATIONAL
+ * DIRECTORY row can no longer exist without a second signature in its own transaction.
+ *
  * NEITHER TABLE IS JURISDICTION-SCOPED, so neither gets the `jurisdiction_scope` policy every
  * fact/ref table carries. Their RLS is bespoke and lives in db/sql/policies.sql — see the
  * "officer auth" block there, and the reasoning below.
+ *
+ * ⚠ THE TRIGGERS AND FUNCTIONS NAMED IN THIS FILE ARE NOT DRIZZLE-MANAGED. drizzle-kit does not
+ * generate triggers, functions or policies, so no numbered migration contains any of them: they
+ * live in db/sql/policies.sql (local dev, via `pnpm db:policies`) and in
+ * db/sql/prod-paste-0005-officer-directory.sql, which is applied to prod BY HAND. Changing a guard
+ * described here therefore means editing both of those files, never a migration — and it means the
+ * prod paste has to be re-run, which for the coupling guard above is the only way it reaches prod at
+ * all (its absence is silent; see that file's RE-PASTE REQUIRED header).
  */
 
 /**
@@ -159,6 +186,10 @@ export const refOversightOfficer = pgTable(
  * · WRITES happen on a privileged provisioner path (owner / BYPASSRLS), app-side. This file models
  *   the table, its constraints and its append-only guard; wiring the writer is the implementer's
  *   (see docs/PROVISIONING.md §4).
+ * · A ROW HERE IS NOT OPTIONAL. `ov_officer_directory_audit_guard()` (see the header, and
+ *   db/sql/policies.sql) makes every ref_oversight_officer INSERT/UPDATE require a matching row in
+ *   this table from the same transaction, so this is no longer a log that a writer may forget — it
+ *   is the thing that makes the directory write legal.
  */
 export const auditOfficerProvisioning = pgTable(
   "audit_officer_provisioning",
@@ -238,6 +269,12 @@ export const auditOfficerProvisioning = pgTable(
     // `target_jurisdiction_id`. The trigger makes the tier unforgeable; this CHECK then rests on a
     // value proven equal to the node's real level. Neither half is sufficient alone — do not remove
     // one because the other exists.
+    //
+    // THERE IS A THIRD HALF, ADDED FOR FINDING S1. Both of the above only bite on a row that is
+    // actually written here, and nothing used to require one: the bare directory INSERT skipped this
+    // table and therefore skipped this rule. `ov_officer_directory_audit_guard()` now makes a
+    // ref_oversight_officer write require a row here for the SAME officer and the SAME node in the
+    // same transaction, which is what carries the approver requirement across to the directory.
     check(
       "ck_officer_provisioning_two_person",
       sql`${t.targetTier} = 'DISTRICT' or ${t.approverId} is not null`,

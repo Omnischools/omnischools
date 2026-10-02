@@ -112,6 +112,16 @@ describe("a GES officer session is refused — at EVERY tier", () => {
     expect(await mod.getAdminSession()).toBeNull();
   });
 
+  it("refuses a REGION officer even if their uid is on the admin allow-list", async () => {
+    // The middle tier was the one this block's title claimed and did not test. A regional director
+    // is the officer most plausibly mistaken for "senior enough to administer the console".
+    const mod = await adminAuthWith({
+      uid: OFFICER.regionId,
+      allowList: `${ADMIN_UID},${OFFICER.regionId}`,
+    });
+    expect(await mod.getAdminSession()).toBeNull();
+  });
+
   it("refuses a NATIONAL officer even if their uid is on the admin allow-list", async () => {
     // The important case. Seniority inside GES is not provisioning authority.
     const mod = await adminAuthWith({

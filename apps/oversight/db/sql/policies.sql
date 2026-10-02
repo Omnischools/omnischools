@@ -496,6 +496,117 @@ create trigger officer_provisioning_append_only
   before update or delete on audit_officer_provisioning
   for each row execute function ov_officer_provisioning_append_only();
 
+-- ---- THE COUPLING: a directory row that nobody signed for does not commit (S1) ---------------
+--
+-- Everything above makes each table individually coherent and NOTHING above tied them to each
+-- other. Found live on a replay DB, as the non-owner PROVISIONER role:
+--
+--   insert into ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
+--   values (gen_random_uuid(), '<the national node>', 'NATIONAL_OVERSIGHT', current_date);
+--   -- COMMIT
+--
+-- A NATIONAL officer — every school in Ghana — with no audit row, no actor, no approver and no
+-- reason. Every guard above fired and every one of them passed, because each only ever asked a
+-- question about ONE row in ONE table. The two-person rule
+-- (ck_officer_provisioning_two_person) and the append-only history live exclusively ON
+-- audit_officer_provisioning, so skipping that table skipped both of them at once.
+--
+-- lib/provisioning/officers.ts does write the directory row and the audit row in a single
+-- transaction, and that is correct — but AN APP CONVENTION IS NOT A DATABASE GUARANTEE. It binds
+-- the one caller that honours it and nothing else: not a psql session on the provisioner
+-- credential, not the next bulk loader, not a SECURITY DEFINER path, not whoever is holding the
+-- console at 02:00 during an incident. The directory write is therefore now a constraint on the
+-- TRANSACTION, not on the row.
+--
+-- ══ WHY A DEFERRED CONSTRAINT TRIGGER, AND NOT A ROW TRIGGER ══
+-- The legitimate writers insert the DIRECTORY row FIRST and the audit row SECOND, and they must:
+-- the audit row's role_before/active_before are read from the directory, and it is the outcome of
+-- provisionOfficer's `on conflict do update` that decides whether the action being logged is a
+-- PROVISION, a ROLE_CHANGE or a REACTIVATE. A plain before/after row trigger would fire while the
+-- audit row does not yet exist and would refuse EVERY legitimate provision — and a guard that
+-- fails closed against the only correct caller is a guard that gets deleted inside a week.
+-- `deferrable initially deferred` moves the question to COMMIT, which is where "did this
+-- transaction also record what it did" is the question actually being asked.
+--
+-- ══ THE PREDICATE, CLAUSE BY CLAUSE — each one load-bearing ══
+--   · a.occurred_at = transaction_timestamp()
+--       THE SAME-TRANSACTION TIE, and the clause that makes this a coupling rather than a weak
+--       existence check. `occurred_at` is `not null default now()`, and now() IS
+--       transaction_timestamp(): fixed for the whole transaction and identical on every row that
+--       transaction appends. WITHOUT this clause, a bare re-provisioning UPDATE of an
+--       already-provisioned officer would be satisfied by the audit row of the ORIGINAL grant —
+--       so silently moving a sitting officer to the national node, or quietly reactivating a
+--       withdrawn one, would still commit. That is the half of the hole that matters.
+--   · a.target_officer_id = new.officer_id — the audit row must be about THIS officer.
+--   · a.target_jurisdiction_id = new.jurisdiction_id — and about THIS node. This clause is also
+--       what finally makes the TWO-PERSON RULE reach the directory:
+--       ov_officer_provisioning_tier_guard() forces that audit row's `target_tier` to equal
+--       dim_jurisdiction.level of this very node, and ck_officer_provisioning_two_person then
+--       forces an approver — distinct from the actor, per
+--       ck_officer_provisioning_distinct_approver — for REGION and NATIONAL. A national directory
+--       row can no longer come into existence without a second signature inside its own
+--       transaction. The chain is: directory row → audit row for the same node → unforgeable tier
+--       → required approver. Removing any link restores the hole.
+--   · a.active_after = new.is_active — COHERENCE: the audit row must describe the state the
+--       directory row now HOLDS. Without it, a withdrawal would be satisfied by that same
+--       transaction's PROVISION row (log says granted, directory says withdrawn), and a
+--       reactivation by a DEACTIVATE row.
+--
+-- ══ SECURITY INVOKER, DELIBERATELY ══
+-- Unlike ov_officer_node_tier() this guard does NOT need to read past RLS: the only policies on
+-- audit_officer_provisioning are role-targeted `to <provisioner> using (true)`, so the legitimate
+-- writer can already see the row it just wrote, and the owner/seed path bypasses RLS anyway. So
+-- definer would buy nothing and cost something — it would let a writer satisfy the coupling with
+-- an audit row that writer cannot itself see, if this table ever acquires a row-level predicate.
+-- As invoker, a writer who holds INSERT on the directory but cannot read the provisioning log is
+-- refused at commit (`permission denied for table audit_officer_provisioning`), which is the
+-- correct direction. `set search_path = public, pg_temp` (PG_TEMP LAST — CVE-2018-1058) is kept
+-- regardless, matching every other function in this file: the search_path pin is what stops a
+-- planted `create temp table audit_officer_provisioning` from being the thing this guard reads.
+--
+-- ══ WHAT IT DOES NOT CLAIM ══
+--   · It is not a replacement for the absent grants. The app role still has NO insert/update on the
+--     directory at all; this guard is the floor under whoever legitimately does.
+--   · A writer holding the provisioner credential can still provision — it must now name an actor,
+--     a reason and (for region/national) a second approver to do it. Attribution, not prevention,
+--     is the property being bought.
+--   · A HISTORICAL/BACKDATED import that supplies `occurred_at` explicitly will be REFUSED. Let the
+--     column default. That is deliberate: a row whose recorded time is not this transaction's time
+--     cannot prove this transaction wrote it.
+--   · `alter table ... disable trigger` (table owner) and `session_replication_role = replica`
+--     (superuser) still switch it off, exactly as they do for every other trigger here. The
+--     provisioner role is neither, which is the whole reason it is a separate role.
+--   · `set constraints all immediate` does NOT dodge it. Verified: the check then fires at statement
+--     time and refuses the LEGITIMATE write too (the audit row does not exist yet). IMMEDIATE can
+--     only make a deferred check happen earlier, never not happen — so the one thing a caller can do
+--     to this guard by hand is make it stricter against themselves.
+create or replace function ov_officer_directory_audit_guard() returns trigger
+  language plpgsql
+  set search_path = public, pg_temp as $$
+  begin
+    if not exists (
+      select 1
+        from audit_officer_provisioning a
+       where a.occurred_at             = transaction_timestamp()
+         and a.target_officer_id       = new.officer_id
+         and a.target_jurisdiction_id  = new.jurisdiction_id
+         and a.active_after            = new.is_active
+    ) then
+      raise exception
+        'officer % (% on node %, is_active=%) has no audit_officer_provisioning row in this transaction — a directory write must be attributable: write the matching audit row (same officer, same node, active_after = is_active, default occurred_at) in the SAME transaction, or it does not commit',
+        new.officer_id, new.officer_role, new.jurisdiction_id, new.is_active;
+    end if;
+    -- after-trigger return value is ignored; null is the convention
+    return null;
+  end $$;
+
+-- `create constraint trigger` has no `or replace`, so drop-then-create is the idempotent form.
+drop trigger if exists officer_directory_audit_guard on ref_oversight_officer;
+create constraint trigger officer_directory_audit_guard
+  after insert or update on ref_oversight_officer
+  deferrable initially deferred
+  for each row execute function ov_officer_directory_audit_guard();
+
 alter table audit_officer_provisioning enable row level security;
 
 -- Read posture: the Omnischools PROVISIONER role context, and nobody else. A GES officer must not

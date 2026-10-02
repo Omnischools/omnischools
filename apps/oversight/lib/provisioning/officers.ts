@@ -85,7 +85,8 @@ function requireUuid(value: string, label: string): string {
  * wrong answer. On the withdrawal path the tier is read FROM THE EXISTING ROW to decide whether the
  * two-person rule applies, and nothing downstream re-derives it; a value that depends on the caller
  * having first granted itself national scope would be the wrong thing to hang that decision on, so
- * that read goes through the definer function instead.
+ * that read goes through the definer function instead — in `deactivateOfficer()` and in
+ * `resolveOfficerNode()`, which is the console's pre-write copy of the same question.
  */
 export async function withNationalRead<T>(
   sql: postgres.Sql,
@@ -169,6 +170,66 @@ export async function resolveNodeTier(
     );
   }
   return level as OfficerTier;
+}
+
+export interface OfficerNode {
+  /** The node on the officer's OWN directory row — the node a withdrawal will actually act on. */
+  jurisdictionId: string;
+  /** Derived by `ov_officer_node_tier()`. Never supplied, never read from a form. */
+  tier: OfficerTier;
+  officerRole: string;
+  isActive: boolean;
+}
+
+/**
+ * The officer's ACTUAL node and tier, read from the directory row (security finding S2b).
+ *
+ * The withdrawal path used to take the node from the submitted form and use it for two things: to
+ * decide whether the two-person rule applied, and to check which node the approval code was signed
+ * for. But `deactivateOfficer()` re-derives the node from the officer's real directory row, so the
+ * two could disagree: a proposer could submit node M, get an approval validated against M, and
+ * cause a withdrawal performed and recorded at node N. The approver would have signed for a node
+ * that had nothing to do with the officer in front of them.
+ *
+ * So the security decision is driven by THIS read, and the submitted field drives nothing. The tier
+ * comes through `ov_officer_node_tier()` — the same RLS-exempt definer path `deactivateOfficer()`
+ * uses inside its transaction, for the reason spelled out there: a correctness-critical value must
+ * not depend on the caller having first granted itself national scope (so NOT `withNationalRead()`,
+ * and NOT a GUC-scoped join to `dim_jurisdiction`).
+ *
+ * No row is a refusal, not a `null`: every caller here is about to make a decision about an officer,
+ * and "there is no such officer" is never an input to one.
+ */
+export async function resolveOfficerNode(
+  sql: postgres.Sql,
+  officerId: string,
+): Promise<OfficerNode> {
+  requireUuid(officerId, "officerId");
+  const rows = (await sql`
+    select o.jurisdiction_id::text                       as jurisdiction_id,
+           ov_officer_node_tier(o.jurisdiction_id)::text as level,
+           o.officer_role::text                          as officer_role,
+           o.is_active                                   as is_active
+      from ref_oversight_officer o
+     where o.officer_id = ${officerId}::uuid
+  `) as unknown as {
+    jurisdiction_id: string;
+    level: string;
+    officer_role: string;
+    is_active: boolean;
+  }[];
+  const row = rows[0];
+  if (!row) {
+    throw new ProvisioningError(
+      `No directory row for ${officerId} — there is no officer to act on. (A uid that was never provisioned and one that was already withdrawn are different states; this is the former.)`,
+    );
+  }
+  return {
+    jurisdictionId: row.jurisdiction_id,
+    tier: row.level as OfficerTier,
+    officerRole: row.officer_role,
+    isActive: Boolean(row.is_active),
+  };
 }
 
 export interface OfficerDirectoryRow {

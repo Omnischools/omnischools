@@ -10,6 +10,10 @@
 --   · ov_officer_directory_guard()               write trigger: node eligible, role matches tier
 --   · ov_officer_provisioning_tier_guard()       write trigger: recorded tier must match the node
 --   · ov_officer_provisioning_append_only()      UPDATE/DELETE refusal on the provisioning log
+--   · ov_officer_directory_audit_guard()         DEFERRED CONSTRAINT trigger (added for security
+--                                                finding S1): a directory INSERT/UPDATE that did not
+--                                                also write its audit row IN THE SAME TRANSACTION
+--                                                does not commit
 --   · RLS posture on both tables + the provisioner read policy
 --   · the GRANT/REVOKE posture, which is where the real security lives
 --
@@ -28,6 +32,16 @@
 -- adding `create policy ... using (true)` on ref_oversight_officer — that converts the app
 -- credential into a GES-officer roster enumeration primitive (name, work email, tier and node for
 -- every officer in Ghana), which is the single thing this design exists to prevent. Paste this file.
+--
+-- ⚠⚠ RE-PASTE REQUIRED (security finding S1). If this file was ALREADY pasted on prod for
+-- increment G, IT MUST BE PASTED AGAIN. It now installs ov_officer_directory_audit_guard() — the
+-- deferred constraint trigger that couples a `ref_oversight_officer` write to its
+-- `audit_officer_provisioning` row. Every other object here fails CLOSED when missing (no
+-- ov_resolve_officer → nobody signs in). THIS ONE DOES NOT: its absence is silent, and what it
+-- leaves behind is the finding itself — a provisioner credential, or any SECURITY DEFINER path, can
+-- mint a NATIONAL officer with no attribution and no second signature, and nothing anywhere will
+-- object. There is no outage to notice. The whole file is idempotent (`create or replace` /
+-- drop-then-create, `enable` re-asserted), so re-running it costs nothing but this.
 --
 -- POSTURE: ENABLE, NEVER FORCE. The provisioner/owner connection writes both tables, and these
 -- policies are written to admit nobody but the provisioner role — FORCE would subject the owner to
@@ -59,6 +73,17 @@ BEGIN
     WHERE table_schema='public' AND table_name='ref_oversight_officer' AND column_name='jurisdiction_id'
   ) THEN
     RAISE EXCEPTION 'ref_oversight_officer.jurisdiction_id missing — migration 0004 did not apply cleanly';
+  END IF;
+  -- The S1 coupling guard below ties the directory write to an audit row via
+  -- `occurred_at = transaction_timestamp()`, which is only a same-transaction tie because the column
+  -- is NOT NULL with a now() DEFAULT. If the default is ever dropped, writers start supplying the
+  -- value and the tie becomes forgeable — refuse rather than install a guard that looks like one.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='audit_officer_provisioning'
+      AND column_name='occurred_at' AND is_nullable='NO' AND column_default IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'audit_officer_provisioning.occurred_at must be NOT NULL with a now() default — the S1 directory/audit coupling guard keys on it (occurred_at = transaction_timestamp()). Stop and resolve this before pasting.';
   END IF;
   -- If a `level` column ever appears here, the derived-tier rule (Kofi R2/AC10) has been broken and
   -- this file's security argument no longer holds. Refuse rather than install over it.
@@ -224,6 +249,95 @@ CREATE TRIGGER officer_provisioning_append_only
   BEFORE UPDATE OR DELETE ON audit_officer_provisioning
   FOR EACH ROW EXECUTE FUNCTION ov_officer_provisioning_append_only();
 
+-- ---- THE COUPLING: a directory row nobody signed for does not commit (finding S1) -------------
+--
+-- ⚠ THIS BLOCK IS WHY YOU ARE RE-PASTING THIS FILE. Everything above makes each table individually
+-- coherent and NOTHING above tied them to each other. Verified live on a replay DB as the non-owner
+-- PROVISIONER role:
+--
+--   insert into ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
+--   values (gen_random_uuid(), '<the national node>', 'NATIONAL_OVERSIGHT', current_date);
+--   -- COMMIT
+--
+-- A NATIONAL officer — every school in Ghana — with no audit row, no actor, no approver and no
+-- reason. Every guard above fired and every one of them passed, because each only ever asked a
+-- question about ONE row in ONE table: the two-person rule (ck_officer_provisioning_two_person) and
+-- the append-only history live exclusively ON audit_officer_provisioning, so skipping that table
+-- skipped both at once. lib/provisioning/officers.ts does write both rows in one transaction, and
+-- that is correct — but an app convention binds the one caller that honours it and nothing else:
+-- not a psql session on the provisioner credential, not the next bulk loader, not a SECURITY
+-- DEFINER path, not whoever is holding the console at 02:00.
+--
+-- DEFERRABLE INITIALLY DEFERRED IS LOAD-BEARING, NOT DECORATION. The legitimate writers insert the
+-- DIRECTORY row FIRST and the audit row SECOND, and they must — the audit row's
+-- role_before/active_before are read from the directory, and it is the outcome of the
+-- `on conflict do update` that decides whether the logged action is PROVISION, ROLE_CHANGE or
+-- REACTIVATE. A plain BEFORE/AFTER row trigger would fire while the audit row does not yet exist
+-- and would refuse EVERY legitimate provision. Do not "simplify" this to a normal trigger: it will
+-- appear to work (nothing can provision, so nothing is wrong) right up to the first real posting.
+--
+-- THE PREDICATE, CLAUSE BY CLAUSE:
+--   · occurred_at = transaction_timestamp()  — the SAME-TRANSACTION tie, and the clause that makes
+--     this a coupling rather than a weak existence check. occurred_at is `not null default now()`,
+--     and now() IS transaction_timestamp(): fixed for the whole transaction and identical on every
+--     row it appends. Without this clause a bare re-provisioning UPDATE of an ALREADY-provisioned
+--     officer would be satisfied by the audit row of the ORIGINAL grant, so silently moving a
+--     sitting officer onto the national node would still commit.
+--   · target_officer_id = NEW.officer_id    — the audit row must be about THIS officer.
+--   · target_jurisdiction_id = NEW.jurisdiction_id — and about THIS node. This is what finally makes
+--     the two-person rule reach the DIRECTORY: ov_officer_provisioning_tier_guard() forces that
+--     audit row's target_tier to equal dim_jurisdiction.level of this very node, and
+--     ck_officer_provisioning_two_person then forces an approver (distinct, per
+--     ck_officer_provisioning_distinct_approver) for REGION and NATIONAL. The chain is
+--     directory row → audit row for the same node → unforgeable tier → required approver; remove
+--     any link and the hole is back.
+--   · active_after = NEW.is_active          — COHERENCE: the audit row must describe the state the
+--     directory row now holds, so a withdrawal cannot be covered by a PROVISION row and vice versa.
+--
+-- SECURITY INVOKER, DELIBERATELY. Unlike ov_officer_node_tier() this guard does not need to read
+-- past RLS: the only policies on audit_officer_provisioning are role-targeted
+-- `TO <provisioner> USING (true)`, so the legitimate writer can already see the row it just wrote.
+-- Definer would buy nothing and would let a writer satisfy the coupling with a row it cannot itself
+-- see if that table ever gains a row-level predicate. The `SET search_path = public, pg_temp`
+-- pin (PG_TEMP LAST — CVE-2018-1058) is kept regardless, as on every function in this file: it is
+-- what stops a planted `create temp table audit_officer_provisioning` from being what gets read.
+--
+-- `SET CONSTRAINTS ALL IMMEDIATE` DOES NOT DODGE IT — verified. The check then fires at statement
+-- time and refuses the legitimate write as well (the audit row does not exist yet). IMMEDIATE can
+-- only make a deferred check happen EARLIER, never not happen. Do not add it to any provisioning
+-- session: the only thing it achieves is breaking provisioning.
+--
+-- OPERATIONAL CONSEQUENCE, READ BEFORE ANY BULK LOAD: a historical/backdated import that supplies
+-- `occurred_at` EXPLICITLY will be refused. Let the column default. Any loader must write the
+-- directory row and its audit row in the same transaction — `pnpm db:load-officers`
+-- (scripts/load-officers.ts → provisionOfficer) already does.
+CREATE OR REPLACE FUNCTION ov_officer_directory_audit_guard() RETURNS trigger
+  LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
+  BEGIN
+    IF NOT EXISTS (
+      SELECT 1
+        FROM audit_officer_provisioning a
+       WHERE a.occurred_at            = transaction_timestamp()
+         AND a.target_officer_id      = new.officer_id
+         AND a.target_jurisdiction_id = new.jurisdiction_id
+         AND a.active_after           = new.is_active
+    ) THEN
+      RAISE EXCEPTION
+        'officer % (% on node %, is_active=%) has no audit_officer_provisioning row in this transaction — a directory write must be attributable: write the matching audit row (same officer, same node, active_after = is_active, default occurred_at) in the SAME transaction, or it does not commit',
+        new.officer_id, new.officer_role, new.jurisdiction_id, new.is_active;
+    END IF;
+    RETURN null;  -- AFTER-trigger return value is ignored
+  END $$;
+
+-- CREATE CONSTRAINT TRIGGER has no OR REPLACE, so drop-then-create is the idempotent form. Safe to
+-- re-run: the DROP is a no-op on a database that has never had it.
+DROP TRIGGER IF EXISTS officer_directory_audit_guard ON ref_oversight_officer;
+CREATE CONSTRAINT TRIGGER officer_directory_audit_guard
+  AFTER INSERT OR UPDATE ON ref_oversight_officer
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION ov_officer_directory_audit_guard();
+
 -- ============================================================================
 -- ⇩⇩ EDIT THESE TWO ROLE NAMES BEFORE RUNNING ⇩⇩
 --
@@ -275,6 +389,10 @@ BEGIN
   -- 3 · THE PROVISIONER: reads the log, appends to it, and maintains the directory. NO DELETE on
   --     either table — offboarding is `is_active = false`, and a correction to the log is a new row.
   EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', provisioner_role);
+  --     ⚠ THE `SELECT` HERE IS NOW LOAD-BEARING, not just a convenience for the console's history
+  --     panel. ov_officer_directory_audit_guard() is SECURITY INVOKER, so at COMMIT it reads this
+  --     table AS THE PROVISIONER. Narrow this to INSERT-only "for tidiness" and every directory
+  --     write fails at commit with `permission denied for table audit_officer_provisioning`.
   EXECUTE format('GRANT SELECT, INSERT ON audit_officer_provisioning TO %I', provisioner_role);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE ON ref_oversight_officer TO %I', provisioner_role);
   EXECUTE format('REVOKE DELETE, TRUNCATE ON ref_oversight_officer FROM %I', provisioner_role);
@@ -352,8 +470,13 @@ $$;
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 --  WHERE n.nspname='public' AND p.proname IN ('ov_resolve_officer','ov_officer_node_tier',
 --        'ov_officer_directory_guard','ov_officer_provisioning_tier_guard',
---        'ov_officer_provisioning_append_only')
+--        'ov_officer_provisioning_append_only','ov_officer_directory_audit_guard')
 --  ORDER BY p.proname;
+--     Expect security_definer = t for ov_resolve_officer and ov_officer_node_tier ONLY. The three
+--     trigger guards and ov_officer_directory_audit_guard are INVOKER by design; a `t` on
+--     ov_officer_directory_audit_guard is a finding (see its note — definer would let the coupling be
+--     satisfied by an audit row the writer cannot see). `proconfig` must be
+--     {search_path=public, pg_temp} on ALL SIX, PG_TEMP LAST.
 --     result_type for ov_resolve_officer must contain officer_id, jurisdiction_id, level,
 --     officer_role and MUST NOT mention full_name or work_email — the app credential has no read
 --     path to the directory's PII, by construction.
@@ -384,3 +507,54 @@ $$;
 -- INSERT INTO ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
 -- VALUES (gen_random_uuid(), '<any SCHOOL node uuid>', 'DISTRICT_OVERSIGHT', current_date);
 --     -- expect: ERROR no SCHOOL-tier oversight officer … (Kofi R1)
+--
+-- G · ⚠ THE S1 COUPLING — the reason for this re-paste. Run this AS THE PROVISIONER ROLE (it also
+--     holds as the owner: constraint triggers are not bypassed by ownership, only by DISABLE TRIGGER
+--     or session_replication_role, neither of which the provisioner can set).
+--
+--   G1 · The trigger exists, is a CONSTRAINT trigger, and is DEFERRED. All three or it is not the
+--        guard it looks like: a non-deferred version would refuse every legitimate provision, and a
+--        plain trigger cannot be deferred at all.
+-- SELECT tgname, tgconstraint <> 0 AS is_constraint_trigger, tgdeferrable, tginitdeferred,
+--        pg_get_triggerdef(oid)
+--   FROM pg_trigger WHERE tgrelid = 'ref_oversight_officer'::regclass AND NOT tgisinternal
+--  ORDER BY tgname;
+--     -- expect officer_directory_audit_guard with is_constraint_trigger=t, tgdeferrable=t,
+--     --        tginitdeferred=t … AFTER INSERT OR UPDATE … DEFERRABLE INITIALLY DEFERRED
+--
+--   G2 · THE HOLE, REFUSED. A bare national grant — no audit row, no actor, no approver, no reason.
+--        This is the exact statement that COMMITTED before this block existed.
+-- BEGIN;
+-- INSERT INTO ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
+-- VALUES (gen_random_uuid(), '<the NATIONAL node uuid>', 'NATIONAL_OVERSIGHT', current_date);
+-- COMMIT;
+--     -- expect the INSERT to report INSERT 0 1 (the check is deferred — this is correct) and
+--     -- COMMIT to fail: ERROR officer … has no audit_officer_provisioning row in this transaction.
+--     -- Then confirm nothing landed:
+-- SELECT count(*) FROM ref_oversight_officer WHERE full_name IS NULL AND source = 'GES_HR_DIRECTORY';
+--
+--   G3 · THE RE-GRANT, REFUSED. Pick an officer who ALREADY has a provisioning history, and move
+--        them with a bare UPDATE. An existence check keyed only on (officer, node) would be
+--        satisfied by their ORIGINAL audit row; the transaction_timestamp() clause is what refuses.
+-- BEGIN;
+-- UPDATE ref_oversight_officer
+--    SET jurisdiction_id = '<the NATIONAL node uuid>', officer_role = 'NATIONAL_OVERSIGHT'
+--  WHERE officer_id = '<an already-provisioned officer uid>';
+-- COMMIT;
+--     -- expect COMMIT to fail with the same error.
+--
+--   G4 · THE LEGITIMATE WRITE STILL COMMITS — do not skip this one. If G2/G3 refuse but G4 also
+--        refuses, provisioning is broken and someone will "fix" it by deleting the trigger.
+-- BEGIN;
+-- INSERT INTO ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
+-- VALUES ('<a test uid>', '<a DISTRICT node uuid>', 'DISTRICT_OVERSIGHT', current_date);
+-- INSERT INTO audit_officer_provisioning
+--   (action, actor_id, approver_id, target_officer_id, target_jurisdiction_id, target_tier,
+--    role_after, active_after, reason)
+-- VALUES ('PROVISION', '<your provisioner uid>', NULL, '<the same test uid>',
+--         '<the same DISTRICT node uuid>', 'DISTRICT', 'DISTRICT_OVERSIGHT', true,
+--         'prod-paste 0005 verification G4');
+-- COMMIT;
+--     -- expect COMMIT to SUCCEED (occurred_at defaulted, so it equals transaction_timestamp()).
+--     -- There is no DELETE grant on either table, so clean up with the OWNER credential or leave the
+--     -- row and withdraw it through the console (which is itself a G4 for the DEACTIVATE path).

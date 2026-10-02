@@ -337,13 +337,49 @@ to `active_after = true`). Overloading either would make a pending grant indisti
 revoked one, or put intentions in a log of facts.
 
 What ships instead is the **synchronous** form of the same rule, and it is a real two-person control:
-the approving administrator, signed in under their own identity, mints a short-lived HMAC approval
-code bound to one (officer uid, node) pair; the proposer submits it; the server verifies the
-signature, the pair, the expiry **and that the two administrators differ**, then writes the directory
-row and the audit row naming both. **Two distinct, independently-authenticated administrators are
-required for every region/national grant and withdrawal.** The gap is the queue: a proposal cannot be
-left waiting, so the hand-off is out of band. Closing it needs a `provisioning_proposal` table —
-a schema decision for Wells, not something to improvise here.
+the approving administrator, signed in under their own identity, chooses **which action** they are
+approving and mints a short-lived HMAC approval code bound to that `(action, officer uid, node)`
+triple; the proposer submits it; the server verifies the signature, the action, the pair, the expiry
+**and that the two administrators differ**, then writes the directory row and the audit row naming
+both. **Two distinct, independently-authenticated administrators are required for every
+region/national grant and withdrawal.** The gap is the queue: a proposal cannot be left waiting, so
+the hand-off is out of band. Closing it needs a `provisioning_proposal` table — a schema decision
+for Wells, not something to improvise here.
+
+**The code names its ACTION, and a withdrawal is bound to the officer's ACTUAL node.** Both were
+security findings against the first cut of this console, and both are now properties of the code
+rather than of the call site:
+
+- `PROVISION` and `DEACTIVATE` are **signed fields**, and each server action verifies against the
+  verb it is about to perform. An approval of a grant does not also approve the withdrawal of the
+  same officer at the same node, or the reverse. There is **no default action**: a mint form (or a
+  caller) that does not name one of the two literals mints nothing, and verification refuses.
+- The withdrawal path takes the node and tier from the officer's **own directory row**
+  (`resolveOfficerNode()`, through the RLS-exempt `ov_officer_node_tier()`), not from the submitted
+  form field. The form's `jurisdictionId` is a claim about state that already exists, so it decides
+  neither whether the two-person rule applies nor what the approver's signature is checked against —
+  otherwise an approval given "at node M" could cause a withdrawal performed and recorded at node N.
+  On the **provision** path the submitted node is still what decides, correctly: there the node *is*
+  the grant being created, and `ov_officer_node_tier()` refuses on the write any row whose recorded
+  tier disagrees with it.
+
+> **⚠ ACCEPTED RESIDUAL — the 15-minute reuse window.** An approval code is a signed string with a
+> TTL (`APPROVAL_CODE_TTL_MS`, 15 minutes) and **no single-use store**, so within its window it can
+> be submitted more than once — but only for the *exact same* `(action, officer, node)` and only by a
+> proposer who is not the approver. It cannot be moved to another officer, another node, the opposite
+> action, or back to the approver themselves. What a replay can therefore do is repeat one approved
+> decision: a second provision of the same officer at the same node (logged as `ROLE_CHANGE` /
+> `REACTIVATE` with the same derived role — no widening of reach), or a second withdrawal of an
+> already-withdrawn officer (`is_active` is already `false`). Every submission writes its own
+> `audit_officer_provisioning` row naming both administrators, so a replay is visible in the log
+> rather than silent.
+>
+> This is accepted rather than fixed because making a code single-use means **storing** it (a
+> consumed-codes table, or a row per proposal), which is the same schema decision as the approval
+> queue above — `provisioning_proposal` is where both belong, and that is Wells's call. Shortening
+> the TTL narrows the window but does not close it. Note the direction of the trade: the code is not
+> stored, so it cannot be stolen from storage, and the window is short enough that it expires inside
+> one hand-off.
 
 **Two-person on WITHDRAWAL is applied** (Lucy R11, flagged as unconfirmed): withdrawing a
 region/national officer takes a second administrator too. The asymmetric alternative would mean the

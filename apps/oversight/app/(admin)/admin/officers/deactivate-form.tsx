@@ -12,15 +12,21 @@ import { deactivateOfficerAction, type AdminActionState } from "./actions";
  *
  * The confirmation is inline rather than a modal because the row it concerns must stay visible —
  * "withdraw access for WHICH of these twelve people" is exactly the question a modal hides.
+ *
+ * NOTE: this form posts the officer uid and NO jurisdiction (security finding S2b). It used to post
+ * a hidden `jurisdictionId`, which the server then used both to decide whether the two-person rule
+ * applied and to check what the approver had signed for — while the withdrawal itself acts on the
+ * node from the officer's directory row. The server now reads that node itself
+ * (`resolveOfficerNode()`), so the field had no legitimate reader left, and a hidden field that
+ * looks security-relevant is how it gets wired back in. `tier` below is for DISPLAY only: it decides
+ * whether to offer the approval-code box, and the server re-derives it regardless.
  */
 export function DeactivateForm({
   officerId,
-  jurisdictionId,
   officerName,
   tier,
 }: {
   officerId: string;
-  jurisdictionId: string;
   officerName: string;
   tier: string;
 }) {
@@ -45,7 +51,6 @@ export function DeactivateForm({
   return (
     <form action={action} className="space-y-2 text-left">
       <input type="hidden" name="officerId" value={officerId} />
-      <input type="hidden" name="jurisdictionId" value={jurisdictionId} />
 
       <p className="text-xs font-semibold text-navy">Withdraw this officer&apos;s access?</p>
       <p className="text-[11px] text-navy-2">
