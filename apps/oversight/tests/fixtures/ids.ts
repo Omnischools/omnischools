@@ -121,6 +121,9 @@ export const OFFICER = {
   /** National tier — no jurisdiction filter. */
   nationalId: "60000000-0000-4000-8000-000000000002",
   nationalRole: "NATIONAL_OVERSIGHT",
+  /** Region tier — the middle tier, ceiling = `JUR.region` (Western Region, analytics-seed.sql). */
+  regionId: "60000000-0000-4000-8000-000000000004",
+  regionRole: "REGIONAL_OVERSIGHT",
 } as const;
 
 export const CONSENT_ID = {

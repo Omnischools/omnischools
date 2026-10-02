@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOfficerSession } from "@/lib/auth";
+import { scopeFor } from "@/lib/db/rls";
 import { getAccessEntry } from "@/lib/oversight/audit-log";
 import { fieldLabel } from "@/lib/oversight/copy";
 import { PageBody, PageHead } from "@/components/oversight/shell";
@@ -32,14 +33,7 @@ export default async function AccessEntryPage({
   const officer = await getOfficerSession();
   if (!officer) notFound();
 
-  const entry = await getAccessEntry(
-    {
-      jurisdictionId: officer.jurisdictionId,
-      level: officer.level,
-      officerId: officer.officerId,
-    },
-    accessId,
-  );
+  const entry = await getAccessEntry(scopeFor(officer), accessId);
   if (!entry) notFound();
 
   const denied = entry.outcome !== "GRANTED";

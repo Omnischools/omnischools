@@ -26,6 +26,14 @@ const ANALYTICS_DB = "oversight_test_analytics";
 const OPERATIONAL_DB = "oversight_test_operational";
 const APP_ROLE = "ov_app";
 const READBACK_ROLE = "ov_readback";
+/**
+ * The Omnischools provisioner (increment G). A THIRD analytics role, distinct from the app role,
+ * because the officer directory's central property is that the credential the web app runs under
+ * cannot grant oversight authority — and "cannot" has to mean a different role, not a different code
+ * path. db/sql/policies.sql installs `audit_officer_provisioning`'s read policy `to` this role if it
+ * exists, so creating it here is what makes that policy testable at all.
+ */
+const PROVISIONER_ROLE = "ov_provisioner";
 
 function repoAppRoot(): string {
   return process.cwd();
@@ -70,7 +78,7 @@ export default async function globalSetup() {
       await admin.unsafe(`create database ${db}`);
     }
     // Roles are cluster-wide, so they survive the database drop above.
-    for (const role of [APP_ROLE, READBACK_ROLE]) {
+    for (const role of [APP_ROLE, READBACK_ROLE, PROVISIONER_ROLE]) {
       await admin.unsafe(
         `do $$ begin if not exists (select from pg_roles where rolname = '${role}') then create role ${role} login; end if; end $$`,
       );
@@ -110,6 +118,53 @@ export default async function globalSetup() {
       grant insert on audit_access_log to ${APP_ROLE};
       grant execute on all functions in schema public to ${APP_ROLE};
     `);
+
+    // ── officer auth (increment G): the grants ARE the security model ─────────────────────────────
+    //
+    // The blanket `grant select on all tables` above is convenient and dangerously broad as soon as
+    // the schema contains tables the app role must not touch, so it is immediately narrowed. These
+    // three statements are not test scaffolding — they are the posture PROVISIONING §2a/§4 requires
+    // on prod, applied here so the suite proves the real thing.
+    //
+    // 1 · NO WRITE ON THE DIRECTORY, EVER. This is what makes self-promotion impossible, and it is a
+    //     missing GRANT rather than a policy on purpose: a policy can be mis-edited into permitting
+    //     an update; a privilege that was never issued cannot. `update ref_oversight_officer set
+    //     officer_role = 'NATIONAL_OVERSIGHT' where officer_id = <me>` must fail with `permission
+    //     denied for table ref_oversight_officer` — before RLS, before the trigger. (The REVOKE is a
+    //     no-op against the SELECT-only grant above; it is here so that widening that grant does not
+    //     silently widen this.) SELECT is left in place per Kofi's "SELECT only" and yields ZERO rows
+    //     anyway — the table is RLS-enabled with no policy, so ov_resolve_officer() is the only read
+    //     path (and the `grant execute on all functions` above is what re-grants it to the app role
+    //     after policies.sql revokes EXECUTE from PUBLIC).
+    // 2 · NOTHING AT ALL ON THE PROVISIONING LOG. policies.sql already revokes it, but the blanket
+    //     grant ran AFTER that file, so it has to be re-revoked here — the ordering trap worth
+    //     noticing when the same grant shape is used on prod.
+    await analyticsAdmin.unsafe(`
+      revoke insert, update, delete on ref_oversight_officer from ${APP_ROLE};
+      revoke all on audit_officer_provisioning from ${APP_ROLE};
+    `);
+
+    // The provisioner, granted exactly the posture db/sql/prod-paste-0005-officer-directory.sql
+    // installs on prod — so a test of the provisioning path exercises the real thing rather than a
+    // convenient superuser.
+    //
+    // NO DELETE on either table (offboarding is `is_active = false`; a deleted directory row orphans
+    // every audit entry naming that uid) and NO UPDATE on the provisioning log (a correction is a new
+    // row). EXECUTE on ov_officer_node_tier is needed because the write triggers call it as the
+    // INVOKER and policies.sql revokes it from PUBLIC — without it every provisioning write fails
+    // with `permission denied for function ov_officer_node_tier`.
+    //
+    // Note the non-obvious part, verified on a replay DB: these GRANTS alone are not enough. RLS
+    // gates writes too, so a non-owner INSERT into an RLS-enabled table with no applicable policy
+    // fails with `new row violates row-level security policy`. The role-targeted write policies
+    // policies.sql installs for this role are what make provisioning possible at all.
+    await analyticsAdmin.unsafe(`
+      grant usage on schema public to ${PROVISIONER_ROLE};
+      grant select, insert on audit_officer_provisioning to ${PROVISIONER_ROLE};
+      grant select, insert, update on ref_oversight_officer to ${PROVISIONER_ROLE};
+      grant select on dim_jurisdiction to ${PROVISIONER_ROLE};
+      grant execute on function ov_officer_node_tier(uuid) to ${PROVISIONER_ROLE};
+    `);
     await analyticsAdmin.unsafe(
       readFileSync(join(repoAppRoot(), "tests/fixtures/analytics-seed.sql"), "utf8"),
     );
@@ -141,6 +196,7 @@ export default async function globalSetup() {
   const config: TestDbConfig = {
     analyticsUrl: withDb(base, ANALYTICS_DB, APP_ROLE),
     operationalUrl: withDb(base, OPERATIONAL_DB, READBACK_ROLE),
+    provisionerAnalyticsUrl: withDb(base, ANALYTICS_DB, PROVISIONER_ROLE),
     superuserAnalyticsUrl: analyticsAdminUrl,
     superuserOperationalUrl: operationalAdminUrl,
   };

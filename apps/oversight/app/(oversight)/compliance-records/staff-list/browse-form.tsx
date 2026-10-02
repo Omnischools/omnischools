@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { browseStaffListAction, type GateState } from "../actions";
 import { STAFF_REASON_COPY } from "@/lib/oversight/copy";
 import { STAFF_REASON_CODES } from "@/lib/oversight/field-scope";
 import { Banner, Panel, Pill } from "@/components/oversight/primitives";
+import { StepUpModal } from "@/components/oversight/step-up-modal";
 import type { ResolvedSchool } from "@/lib/oversight/school-ref";
 
 /**
@@ -26,6 +27,14 @@ export function BrowseForm({ schools }: { schools: ResolvedSchool[] }) {
       status: "idle",
     },
   );
+
+  // G7 — a roster browse is a named-record access too, so it takes the same step-up. See the cancel
+  // note in ../new/gate-form.tsx for why the dismissal is reset on every new server state.
+  const [stepUpDismissed, setStepUpDismissed] = useState(false);
+  useEffect(() => {
+    setStepUpDismissed(false);
+  }, [state]);
+  const showStepUp = state.status === "step_up" && !stepUpDismissed;
 
   return (
     <div className="space-y-6">
@@ -89,6 +98,26 @@ export function BrowseForm({ schools }: { schools: ResolvedSchool[] }) {
           </div>
         </Panel>
       </form>
+
+      {showStepUp && state.status === "step_up" ? (
+        <form action={action}>
+          <StepUpModal
+            fields={state.fields}
+            factorId={state.factorId}
+            error={state.error}
+            pending={pending}
+            schoolLabel={
+              schools.find((s) => s.emisSchoolId === state.fields.emisSchoolId)?.name ??
+              state.fields.emisSchoolId
+            }
+            reasonLabel={
+              STAFF_REASON_COPY[state.fields.reasonCode as keyof typeof STAFF_REASON_COPY]
+                ?.title ?? state.fields.reasonCode
+            }
+            onCancel={() => setStepUpDismissed(true)}
+          />
+        </form>
+      ) : null}
 
       {state.status === "error" ? (
         <Banner tone="warn" glyph="!" title="Check the justification">
@@ -163,10 +192,10 @@ export function BrowseForm({ schools }: { schools: ResolvedSchool[] }) {
             </table>
             <p className="mt-3 text-xs text-navy-3">
               Register status is not shown on the list, by design: a browse stays minimal
-              and defers the lawful basis to the record. Opening a row reads that person&apos;s
-              NTC licence and checks it against the GES establishment register — an
-              establishment teacher opens under statute, everyone else under the school&apos;s
-              DPO consent.
+              and defers the lawful basis to the record. Opening a row reads that
+              person&apos;s NTC licence and checks it against the GES establishment
+              register — an establishment teacher opens under statute, everyone else under
+              the school&apos;s DPO consent.
             </p>
           </Panel>
         </>

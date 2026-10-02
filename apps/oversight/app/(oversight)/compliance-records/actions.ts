@@ -2,16 +2,24 @@
 
 import { requireOfficerSession } from "@/lib/auth";
 import { ReadbackUnavailableError } from "@/lib/db/readback";
+import { resolveStepUpAssertion, type StepUpResolution } from "@/lib/auth/step-up";
 import {
   CONSENT_DENIED_COPY,
   GateInputError,
-  requestNamedStaffRecord,
-  requestStaffListBrowse,
   type DenialReason,
   type SchoolGateRef,
 } from "@/lib/oversight/named-record-access";
+import {
+  browseStaffListGated,
+  openNamedStaffRecord,
+  StepUpRequiredError,
+  TierCannotOpenNamedRecordError,
+} from "@/lib/oversight/gate-step-up";
 import { STAFF_REASON_CODES, withheldFields } from "@/lib/oversight/field-scope";
-import { UNAVAILABLE_NO_SOURCE, type StaffListRow } from "@/lib/oversight/staff-projection";
+import {
+  UNAVAILABLE_NO_SOURCE,
+  type StaffListRow,
+} from "@/lib/oversight/staff-projection";
 
 /**
  * The gate's server actions — the ONLY App-Router code permitted to reach the read-back, and it
@@ -27,6 +35,20 @@ import { UNAVAILABLE_NO_SOURCE, type StaffListRow } from "@/lib/oversight/staff-
  * It has moved INTO the orchestrator (`resolveGateSchoolInTx`): an authorization check that only
  * works because the single current caller remembers to make it is not a check, and this file is not
  * going to stay the only caller. This action now passes two ids and lets the gate decide.
+ *
+ * ── INCREMENT G: THE §6 STEP-UP (Kofi R6 · Lucy G7) ─────────────────────────────────────────────
+ * This file imports the gate ONLY through `lib/oversight/gate-step-up.ts`, never
+ * `requestNamedStaffRecord` / `requestStaffListBrowse` directly. The step-up is an ORDERING
+ * requirement — a fresh AAL2 assertion before the audit row and before any read-back — and an
+ * ordering enforced by "the action remembers to check first" is not enforced at all. The choke-point
+ * module runs the assertion before the gate function is entered; tests/auth-boundaries.test.ts fails
+ * if this file ever reaches past it — and, since Dex B1, the assertion itself is branded, so this
+ * file cannot describe a step-up it did not resolve.
+ *
+ * The freshness itself is read from the SESSION (`getAuthContext().stepUpFresh`), i.e. from the
+ * last MFA `amr` timestamp in the server-verified token — not from a form field, a cookie or a
+ * client claim. Submitting a code re-asserts it through `lib/auth/mfa.ts`; a cancelled or failed
+ * step-up writes nothing and fetches nothing.
  */
 
 export interface ReleasedField {
@@ -64,7 +86,30 @@ export type GateState =
       accessId: string;
       rows: StaffListRow[];
       emisSchoolId: string;
+    }
+  /**
+   * Lucy G7 — the step-up interstitial. NOTHING has been logged and nothing fetched at this point;
+   * the officer's own inputs are echoed back so the modal can resubmit them with a code (and so a
+   * cancel returns them to a filled-in form rather than an empty one). `factorId` is the officer's
+   * enrolled TOTP factor, read server-side; the form never supplies it.
+   */
+  | {
+      status: "step_up";
+      factorId: string | null;
+      error?: string;
+      /** Echoed verbatim, never re-derived — the audit row must reflect what they actually typed. */
+      fields: StepUpFields;
     };
+
+export interface StepUpFields {
+  intent: "record" | "roster";
+  reasonCode: string;
+  caseReference: string;
+  emisSchoolId: string;
+  operationalStaffId: string;
+  rosterBrowsed: boolean;
+  exportFormat: string;
+}
 
 function field(formData: FormData, name: string): string {
   return String(formData.get(name) ?? "").trim();
@@ -80,6 +125,41 @@ function field(formData: FormData, name: string): string {
 function gateSchool(emisSchoolId: string): SchoolGateRef {
   return { emisSchoolId };
 }
+
+/**
+ * Resolve the §6 step-up for THIS submit (Kofi R6 · Lucy G7).
+ *
+ * ⚠ THIS FUNCTION DECIDES NOTHING. It unpacks the two form fields and hands them to
+ * `resolveStepUpAssertion()` in `lib/auth/step-up.ts` — the single mint, which reads the session's
+ * own token and, if a code was submitted, verifies it. Previously this file computed freshness
+ * itself and then passed a LITERAL `{ fresh: true }` to the choke point, so the guard at the one
+ * irreversible surface in the product was checking a value this file had typed (Dex B1). The
+ * assertion is now branded and unforgeable; all that is left here is reading `FormData`.
+ */
+async function resolveStepUp(formData: FormData): Promise<StepUpResolution> {
+  return resolveStepUpAssertion({
+    code: field(formData, "stepUpCode"),
+    // The factor id is NOT trusted from the form for authorisation — the mint challenges that factor
+    // against the officer's OWN session, so a borrowed id verifies nothing. It travels in the form
+    // only to spare a round trip listing factors.
+    factorId: field(formData, "stepUpFactorId") || null,
+  });
+}
+
+function stepUpFields(formData: FormData, intent: "record" | "roster"): StepUpFields {
+  return {
+    intent,
+    reasonCode: field(formData, "reasonCode"),
+    caseReference: field(formData, "caseReference"),
+    emisSchoolId: field(formData, "emisSchoolId"),
+    operationalStaffId: field(formData, "operationalStaffId"),
+    rosterBrowsed: formData.get("rosterBrowsed") === "true",
+    exportFormat: field(formData, "exportFormat"),
+  };
+}
+
+const TIER_REFUSAL =
+  "Your tier cannot open a named individual record. The §6 gate is reachable at district, regional and national tier only.";
 
 export async function submitStaffGate(
   _prev: GateState,
@@ -106,16 +186,32 @@ export async function submitStaffGate(
     return { status: "error", message: "Pick a compliance reason." };
   }
 
+  // ── the step-up, BEFORE anything is logged or fetched ───────────────────────────────────────
+  const stepUp = await resolveStepUp(formData);
+  if (!stepUp.fresh) {
+    return {
+      status: "step_up",
+      factorId: stepUp.factorId,
+      error: stepUp.error,
+      fields: stepUpFields(formData, "record"),
+    };
+  }
+
   try {
-    const result = await requestNamedStaffRecord({
-      officer,
-      school: gateSchool(emisSchoolId),
-      reasonCode,
-      caseReference,
-      subject: { operationalStaffId },
-      rosterBrowsed,
-      exportFormat: exportFormat || null,
-    });
+    const result = await openNamedStaffRecord(
+      {
+        officer,
+        school: gateSchool(emisSchoolId),
+        reasonCode,
+        caseReference,
+        subject: { operationalStaffId },
+        rosterBrowsed,
+        exportFormat: exportFormat || null,
+      },
+      // The assertion MINTED above, not a literal — it carries the derived freshness, so the choke
+      // point re-reads a resolved value rather than this file's opinion of one.
+      stepUp.assertion,
+    );
 
     if (result.outcome !== "GRANTED") {
       return {
@@ -166,6 +262,18 @@ export async function submitStaffGate(
           "Individual drill-down is unavailable — the operational read-back is not configured. The aggregate view remains available.",
       };
     }
+    if (err instanceof StepUpRequiredError) {
+      // Belt to the braces of the explicit check above: if the choke point refuses, the officer
+      // gets the interstitial, never a stack trace and never a silent grant.
+      return {
+        status: "step_up",
+        factorId: null,
+        fields: stepUpFields(formData, "record"),
+      };
+    }
+    if (err instanceof TierCannotOpenNamedRecordError) {
+      return { status: "error", message: TIER_REFUSAL };
+    }
     if (err instanceof GateInputError) return { status: "error", message: err.message };
     throw err;
   }
@@ -184,13 +292,29 @@ export async function browseStaffListAction(
     return { status: "error", message: "Pick a compliance reason." };
   }
 
+  // A roster IS a list of names, and the gate logs it as an access (`roster_browsed`). It therefore
+  // takes the same step-up as a single record — otherwise the longer route to the same names would
+  // be the unguarded one.
+  const stepUp = await resolveStepUp(formData);
+  if (!stepUp.fresh) {
+    return {
+      status: "step_up",
+      factorId: stepUp.factorId,
+      error: stepUp.error,
+      fields: stepUpFields(formData, "roster"),
+    };
+  }
+
   try {
-    const result = await requestStaffListBrowse({
-      officer,
-      school: gateSchool(emisSchoolId),
-      reasonCode,
-      caseReference,
-    });
+    const result = await browseStaffListGated(
+      {
+        officer,
+        school: gateSchool(emisSchoolId),
+        reasonCode,
+        caseReference,
+      },
+      stepUp.assertion,
+    );
     if (result.outcome !== "GRANTED") {
       return {
         status: "denied",
@@ -215,6 +339,16 @@ export async function browseStaffListAction(
         message:
           "Individual drill-down is unavailable — the operational read-back is not configured. The aggregate view remains available.",
       };
+    }
+    if (err instanceof StepUpRequiredError) {
+      return {
+        status: "step_up",
+        factorId: null,
+        fields: stepUpFields(formData, "roster"),
+      };
+    }
+    if (err instanceof TierCannotOpenNamedRecordError) {
+      return { status: "error", message: TIER_REFUSAL };
     }
     if (err instanceof GateInputError) return { status: "error", message: err.message };
     throw err;

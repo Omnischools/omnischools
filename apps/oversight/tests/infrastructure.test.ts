@@ -9,12 +9,10 @@ import {
 } from "@/lib/oversight/infrastructure";
 import { JUR } from "./fixtures/ids";
 import { adminOperational, auditRowCount, districtOfficer } from "./helpers";
+import { scopeFor } from "@/lib/db/rls";
 
-const scope = {
-  jurisdictionId: districtOfficer.jurisdictionId,
-  level: districtOfficer.level,
-  officerId: districtOfficer.officerId,
-};
+// The scope can only come from a session now (lib/db/rls.ts) — no literal typechecks.
+const scope = scopeFor(districtOfficer);
 
 describe("Lucy C5 — the infrastructure drill is NOT gated", () => {
   it("returns the school's census row", async () => {
@@ -35,7 +33,7 @@ describe("Lucy C5 — the infrastructure drill is NOT gated", () => {
   });
 
   it("respects the jurisdiction ceiling like every other aggregate read", async () => {
-    const outside = { ...scope, jurisdictionId: JUR.otherDistrict };
+    const outside = scopeFor({ ...districtOfficer, jurisdictionId: JUR.otherDistrict });
     expect(
       await getSchoolFacilitiesCensus(outside, JUR.schoolPublicConsented),
     ).toBeNull();

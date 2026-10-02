@@ -24,15 +24,39 @@ const NAV = [
   },
 ] as const;
 
+/**
+ * THE IDENTITY STRIP (Lucy G2), as of increment G.
+ *
+ * The shell used to be handed three fallback strings (`"Not signed in"` / `"—"` / `"Ghana Education
+ * Service"`) because there was no real session to read. It now takes the resolved officer, and the
+ * fallbacks are gone: an unauthenticated request never reaches this component (the route guard
+ * redirects it), and an authenticated-but-unprovisioned one renders the G4 state with
+ * `jurisdiction: "Pending set-up"` and NO nav — because no jurisdiction means there is nothing to
+ * scope a read to, and offering drill targets that cannot resolve would be inviting the officer to
+ * discover that for themselves.
+ */
+export interface ShellIdentity {
+  name: string;
+  /** Human role label (lib/auth/roles.ts). Never the raw directory code. */
+  role: string;
+  /** Tier noun — District / Region / National · Ministry of Education. */
+  tier: string;
+  /** "Ghana Education Service", or "Ministry of Education" at national tier (Lucy G2 / e3 §0). */
+  institution: string;
+  jurisdiction: string;
+}
+
 export function Shell({
-  officerName,
-  officerRole,
-  jurisdictionName,
+  identity,
+  showNav = true,
+  signOut,
   children,
 }: {
-  officerName: string;
-  officerRole: string;
-  jurisdictionName: string;
+  identity: ShellIdentity;
+  /** G4/G5: the degraded strip renders the name but no nav. */
+  showNav?: boolean;
+  /** The sign-out server action (Lucy G3). Omitted only where there is no session to end. */
+  signOut?: () => Promise<void>;
   children: ReactNode;
 }) {
   return (
@@ -45,7 +69,7 @@ export function Shell({
             </span>
             <div className="leading-tight">
               <div className="font-display text-sm">Omnischools Oversight</div>
-              <div className="text-bg/60 text-[10px]">{jurisdictionName}</div>
+              <div className="text-bg/60 text-[10px]">{identity.institution}</div>
             </div>
           </div>
 
@@ -53,10 +77,10 @@ export function Shell({
             <div className="text-[9px] uppercase tracking-wide text-gold">
               Your jurisdiction
             </div>
-            <div className="mt-0.5">{jurisdictionName}</div>
+            <div className="mt-0.5">{identity.jurisdiction}</div>
           </div>
 
-          <nav className="mt-6 space-y-5">
+          <nav className={showNav ? "mt-6 space-y-5" : "hidden"}>
             {NAV.map((section) => (
               <div key={section.group}>
                 <div className="text-bg/40 text-[9px] uppercase tracking-[0.14em]">
@@ -80,8 +104,26 @@ export function Shell({
         </div>
 
         <div className="text-bg/60 text-[10px]">
-          <div className="text-xs text-bg">{officerName}</div>
-          <div>{officerRole}</div>
+          <div className="text-xs text-bg">{identity.name}</div>
+          <div>{identity.role}</div>
+          {/* NEW in G: the tier, as a quiet gold line. It is the single most consequential fact
+              about an officer's session — how much of Ghana they can see — and until now the shell
+              showed the role (a label) without it. */}
+          <div className="border-gold-soft/50 bg-gold/10 mt-1 inline-flex items-center rounded-pill border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-gold">
+            {identity.tier}
+          </div>
+          {signOut ? (
+            // A quiet ghost control, not a prominent button (Lucy G3): this is a long-session
+            // desktop tool, and sign-out is routine rather than something to invite.
+            <form action={signOut} className="mt-3">
+              <button
+                type="submit"
+                className="text-bg/60 text-[10px] underline hover:text-bg"
+              >
+                Sign out
+              </button>
+            </form>
+          ) : null}
           <div className="mt-3">
             Powered by <span className="accent-italic">Omnischools</span>
           </div>

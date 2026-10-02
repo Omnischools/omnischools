@@ -80,6 +80,137 @@ insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, tea
 insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, teaching_posts_established, establishment_teachers, source, as_of_date) values
   ('80000000-0000-4000-8000-000000000004', 'EMIS-PUB-004', 19, '[{"ntc_licence_number":"NTC-2015-000981","name":"Abena Asare"}]'::jsonb, 'GES_ESTABLISHMENT', current_date - 400);
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- OFFICER DIRECTORY (increment G) — the tier matrix the bootstrap read has to get right.
+--
+-- ⚠ THIS FILE MUST BE APPLIED AS A SINGLE TRANSACTION. The five directory rows and their five audit
+-- rows are separate statements, and that only satisfies the deferred S1 coupling guard
+-- (ov_officer_directory_audit_guard) because tests/setup/global-setup.ts hands the WHOLE file to
+-- postgres.js `unsafe()` as one implicit transaction — one transaction_timestamp(), which is the
+-- value the guard matches audit_officer_provisioning.occurred_at against at COMMIT. Split this file
+-- statement-by-statement (the way global-setup splits MIGRATIONS on `--> statement-breakpoint`) and
+-- the very first directory insert fails with the coupling error: each statement would be its own
+-- transaction, so no audit row ever shares a timestamp with its directory row.
+--
+-- officer_id IS the Supabase auth uid (Kofi AC14): the same value that becomes
+-- OfficerSession.officerId, that withJurisdiction() writes to app.current_officer, and that lands in
+-- audit_access_log.officer_id. The two 6000…-0001/0002 uids are the SAME officers the pre-existing
+-- §6 gate tests already act as (tests/fixtures/ids.ts OFFICER.districtId / OFFICER.nationalId), so
+-- those rows now have a directory entry to resolve from instead of an identity invented by the test.
+--
+-- There is deliberately NO `level` column to seed: the tier is derived from the joined
+-- dim_jurisdiction.level (Kofi R2/AC10), which is what the matrix below actually exercises.
+--
+--   6000…0001  DISTRICT   Wassa Amenfi West   active        → DISTRICT_OVERSIGHT
+--   6000…0002  NATIONAL   Ghana               active        → NATIONAL_OVERSIGHT  (national #1)
+--   6000…0003  NATIONAL   Ghana               active        → NATIONAL_OVERSIGHT  (national #2 —
+--              two of them, so "exactly one row for a uid" is a real claim and not an artefact of
+--              there being only one national officer to find)
+--   6000…0004  REGION     Western Region      active        → REGIONAL_OVERSIGHT
+--   6000…0005  DISTRICT   Sekondi-Takoradi    is_active=f   → resolves to ZERO rows
+--   6000…00ff  —          (no row at all)                   → resolves to ZERO rows
+--
+-- The deactivated officer and the unprovisioned uid are indistinguishable through
+-- ov_resolve_officer() by design: both are "no session", and the function is not an account-state
+-- oracle. Note 6000…0005 sits in the OTHER district, so a test that accidentally resolved them would
+-- also be crossing the jurisdiction ceiling — two failures for the price of one assertion.
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+
+insert into ref_oversight_officer (officer_id, jurisdiction_id, officer_role, is_active, full_name, work_email, source, as_of_date) values
+  ('60000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'DISTRICT_OVERSIGHT', true,  'Akua Mensah',   'akua.mensah@ges.gov.gh',   'GES_HR_DIRECTORY', current_date - 60),
+  ('60000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'NATIONAL_OVERSIGHT', true,  'Yaw Darko',     'yaw.darko@moe.gov.gh',     'GES_HR_DIRECTORY', current_date - 60),
+  ('60000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'NATIONAL_OVERSIGHT', true,  'Efua Owusu',    'efua.owusu@moe.gov.gh',    'GES_HR_DIRECTORY', current_date - 45),
+  ('60000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'REGIONAL_OVERSIGHT', true,  'Kwesi Appiah',  'kwesi.appiah@ges.gov.gh',  'GES_HR_DIRECTORY', current_date - 30),
+  -- Offboarded: the row STAYS (audit attribution must survive offboarding) but resolves to nothing.
+  ('60000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000004', 'DISTRICT_OVERSIGHT', false, 'Abena Tetteh',  'abena.tetteh@ges.gov.gh',  'GES_HR_DIRECTORY', current_date - 400);
+
+-- A provisioning history for the matrix above. The two NATIONAL grants and the REGION grant carry an
+-- approver (the two-person rule, ck_officer_provisioning_two_person); the DISTRICT one does not, and
+-- must still insert. The DEACTIVATE row is what offboarding looks like in the log.
+insert into audit_officer_provisioning
+  (action, actor_id, approver_id, target_officer_id, target_jurisdiction_id, target_tier,
+   role_before, role_after, active_before, active_after, reason) values
+  ('PROVISION',  '90000000-0000-4000-8000-000000000001', null,
+   '60000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'DISTRICT',
+   null, 'DISTRICT_OVERSIGHT', null, true, 'GES posting letter WAW/2026/011 — district director'),
+  ('PROVISION',  '90000000-0000-4000-8000-000000000001', '90000000-0000-4000-8000-000000000002',
+   '60000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'NATIONAL',
+   null, 'NATIONAL_OVERSIGHT', null, true, 'MoE directive 2026/04 — national oversight desk'),
+  ('PROVISION',  '90000000-0000-4000-8000-000000000001', '90000000-0000-4000-8000-000000000002',
+   '60000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'NATIONAL',
+   null, 'NATIONAL_OVERSIGHT', null, true, 'MoE directive 2026/05 — national oversight desk'),
+  ('PROVISION',  '90000000-0000-4000-8000-000000000002', '90000000-0000-4000-8000-000000000001',
+   '60000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'REGION',
+   null, 'REGIONAL_OVERSIGHT', null, true, 'Western Region deputy director posting'),
+  ('DEACTIVATE', '90000000-0000-4000-8000-000000000001', null,
+   '60000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000004', 'DISTRICT',
+   'DISTRICT_OVERSIGHT', 'DISTRICT_OVERSIGHT', true, false, 'Transferred out of GES oversight — offboarded');
+
+-- ---- FIXTURE SELF-CHECKS: the write-side guards must actually refuse ---------------------------
+--
+-- These run as the OWNER, which is the only role that can write these tables at all — and that is
+-- the point. Owners bypass RLS but NOT triggers or CHECKs, so this asserts the guards hold against
+-- the most privileged writer there is. If a future change loses one of them, global-setup fails
+-- loudly here, before any test runs, rather than the suite passing against a schema that no longer
+-- enforces Kofi R1 / the two-person rule.
+do $$
+begin
+  -- 1 · NO SCHOOL-TIER OFFICER (Kofi R1). jurisdiction 10000000-…-0011 is a SCHOOL node.
+  begin
+    insert into ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
+    values ('6fffffff-0000-4000-8000-0000000000f1', '10000000-0000-4000-8000-000000000011',
+            'DISTRICT_OVERSIGHT', current_date);
+    raise exception 'FIXTURE SELF-CHECK FAILED: a SCHOOL-node officer was accepted (Kofi R1 guard lost)';
+  exception when others then
+    if sqlerrm not like '%SCHOOL-tier oversight officer%' then raise; end if;
+  end;
+
+  -- 2 · ROLE MUST MATCH THE NODE'S DERIVED TIER. A district node cannot hold a national post.
+  begin
+    insert into ref_oversight_officer (officer_id, jurisdiction_id, officer_role, as_of_date)
+    values ('6fffffff-0000-4000-8000-0000000000f2', '10000000-0000-4000-8000-000000000003',
+            'NATIONAL_OVERSIGHT', current_date);
+    raise exception 'FIXTURE SELF-CHECK FAILED: officer_role/tier mismatch was accepted';
+  exception when others then
+    if sqlerrm not like '%contradicts the%' then raise; end if;
+  end;
+
+  -- 3 · TWO-PERSON RULE: a NATIONAL grant with no approver must be refused.
+  begin
+    insert into audit_officer_provisioning
+      (action, actor_id, approver_id, target_officer_id, target_jurisdiction_id, target_tier,
+       role_after, active_after, reason)
+    values ('PROVISION', '90000000-0000-4000-8000-000000000001', null,
+            '6fffffff-0000-4000-8000-0000000000f3', '10000000-0000-4000-8000-000000000001',
+            'NATIONAL', 'NATIONAL_OVERSIGHT', true, 'no approver — must fail');
+    raise exception 'FIXTURE SELF-CHECK FAILED: an unapproved NATIONAL grant was accepted';
+  exception when others then
+    if sqlerrm not like '%ck_officer_provisioning_two_person%' then raise; end if;
+  end;
+
+  -- 4 · AND THE TIER IT KEYS ON IS NOT FORGEABLE: claiming DISTRICT for a NATIONAL node (which would
+  --     dodge check 3 entirely) is refused by the tier guard.
+  begin
+    insert into audit_officer_provisioning
+      (action, actor_id, approver_id, target_officer_id, target_jurisdiction_id, target_tier,
+       role_after, active_after, reason)
+    values ('PROVISION', '90000000-0000-4000-8000-000000000001', null,
+            '6fffffff-0000-4000-8000-0000000000f4', '10000000-0000-4000-8000-000000000001',
+            'DISTRICT', 'NATIONAL_OVERSIGHT', true, 'forged tier — must fail');
+    raise exception 'FIXTURE SELF-CHECK FAILED: a forged target_tier was accepted (two-person rule bypassable)';
+  exception when others then
+    if sqlerrm not like '%does not match dim_jurisdiction.level%' then raise; end if;
+  end;
+
+  -- 5 · APPEND-ONLY: the provisioning log cannot be rewritten, even by the owner.
+  begin
+    update audit_officer_provisioning set reason = 'rewritten';
+    raise exception 'FIXTURE SELF-CHECK FAILED: audit_officer_provisioning accepted an UPDATE';
+  exception when others then
+    if sqlerrm not like '%append-only%' then raise; end if;
+  end;
+end $$;
+
 -- Facilities census for the NON-GATED C5 drill. The analytics fact carries no `captured_by` and no
 -- `caterer_name` at all — the ETL never brings them across — which is the structural floor under
 -- the query-boundary exclusion in lib/oversight/infrastructure.ts.
@@ -110,3 +241,55 @@ insert into fact_infrastructure (
   1, 1, 1,
   'OPERATIONAL_AGG', now() - interval '30 days'
 );
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- TIER-MATRIX FIXTURES (increment G runtime) — rows on BOTH sides of the district boundary.
+--
+-- Everything above seeds the §6 gate, which only ever needed data inside ONE district (plus the
+-- single out-of-subtree school used as the ceiling probe). Proving the RLS tier matrix — "each tier
+-- sees exactly its subtree, across dim / fact / ref / audit" — needs the opposite shape: comparable
+-- rows in Wassa Amenfi West AND in Sekondi-Takoradi Metro, so "the district officer sees 1 of 2" is
+-- a measurement rather than an absence.
+--
+-- Why a fact table and a ref table, not just dim_jurisdiction: the predicate is written once
+-- (`ov_in_subtree`) but APPLIED per table, through a different column each time —
+-- `jurisdiction_id` on fact_*, `district_id` on ref_gss_population, a join through the register for
+-- the establishment extract. A policy attached to the wrong column, or not attached at all (a new
+-- table added without its policy), is invisible to a test that only reads the spine.
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+
+insert into dim_stage (stage, official_age_low, official_age_high, display_order) values
+  ('JHS', 12, 14, 3)
+on conflict (stage) do nothing;
+
+-- fact_enrolment: one school row in EACH district. Headcounts differ so a leak is identifiable by
+-- value, not only by count.
+insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date) values
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 410, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 720, 'OPERATIONAL_AGG', now());
+
+-- ref_gss_population: scoped on `district_id`, not `jurisdiction_id` — a different column for the
+-- same predicate, which is exactly the kind of difference a per-table policy gets wrong.
+insert into ref_gss_population (district_id, stage, population, source, as_of_date) values
+  ('10000000-0000-4000-8000-000000000003', 'JHS', 9100, 'GSS_CENSUS', current_date - 365),
+  ('10000000-0000-4000-8000-000000000004', 'JHS', 15400, 'GSS_CENSUS', current_date - 365);
+
+-- audit_access_log: one historical row per district, written as the OWNER (the only writer that can
+-- place a row for an officer other than the current one). The matrix then asserts the `audit_scope`
+-- policy — own rows OR subtree — rather than only the INSERT predicate that audit-insert-rls covers.
+insert into audit_access_log
+  (officer_id, officer_role, jurisdiction_id, reason_code, case_reference, record_type, target_ref,
+   fields_released, legal_basis, outcome, staff_category)
+--
+-- legal_basis = CONSENT with an `OPS:` target_ref, deliberately: tests/gate.test.ts asserts a
+-- WHOLE-LOG invariant (AC-3.9) that every STATUTORY row carries an `NTC:` ref and record_type
+-- TEACHER, and every CONSENT row does not. A fixture row is as much part of "the whole log" as a
+-- row the gate wrote, so these two have to satisfy the same shape — which is the invariant doing
+-- its job.
+values
+  ('60000000-0000-4000-8000-000000000001', 'DISTRICT_OVERSIGHT', '10000000-0000-4000-8000-000000000011',
+   'STATUTORY_AUDIT', 'CASE-MATRIX-IN', 'STAFF', 'OPS:EMIS-PUB-001:50000000-0000-4000-8000-000000000001',
+   '[]'::jsonb, 'CONSENT', 'GRANTED', 'OTHER_STAFF'),
+  ('60000000-0000-4000-8000-000000000005', 'DISTRICT_OVERSIGHT', '10000000-0000-4000-8000-000000000018',
+   'STATUTORY_AUDIT', 'CASE-MATRIX-OUT', 'STAFF', 'OPS:EMIS-OUT-008:50000000-0000-4000-8000-000000000009',
+   '[]'::jsonb, 'CONSENT', 'GRANTED', 'OTHER_STAFF');

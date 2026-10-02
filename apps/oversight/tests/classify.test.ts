@@ -5,12 +5,9 @@ import {
 } from "@/lib/oversight/classify";
 import { EMIS, NTC_LICENCE, JUR } from "./fixtures/ids";
 import { adminOperational, districtOfficer, nationalOfficer } from "./helpers";
+import { scopeFor } from "@/lib/db/rls";
 
-const scope = {
-  jurisdictionId: districtOfficer.jurisdictionId,
-  level: districtOfficer.level,
-  officerId: districtOfficer.officerId,
-};
+const scope = scopeFor(districtOfficer);
 
 describe("Kofi group B — classification comes from the GES establishment register", () => {
   it("classifies an NTC licence on the school's fresh register row as GES_TEACHER", async () => {
@@ -156,11 +153,7 @@ describe("Kofi group C — the six-month staleness ceiling fails closed", () => 
 
 describe("the jurisdiction ceiling holds during classification", () => {
   it("a district officer cannot classify against a school outside the subtree", async () => {
-    const outside = {
-      jurisdictionId: JUR.otherDistrict,
-      level: "DISTRICT" as const,
-      officerId: districtOfficer.officerId,
-    };
+    const outside = scopeFor({ ...districtOfficer, jurisdictionId: JUR.otherDistrict });
     const result = await classifyStaffSubject(outside, {
       emisSchoolId: EMIS.publicConsented,
       ntcLicenceNumber: NTC_LICENCE.onRegister,
@@ -173,14 +166,10 @@ describe("the jurisdiction ceiling holds during classification", () => {
   });
 
   it("the national tier sees every school's register", async () => {
-    const result = await classifyStaffSubject(
-      {
-        jurisdictionId: nationalOfficer.jurisdictionId,
-        level: nationalOfficer.level,
-        officerId: nationalOfficer.officerId,
-      },
-      { emisSchoolId: EMIS.publicConsented, ntcLicenceNumber: NTC_LICENCE.onRegister },
-    );
+    const result = await classifyStaffSubject(scopeFor(nationalOfficer), {
+      emisSchoolId: EMIS.publicConsented,
+      ntcLicenceNumber: NTC_LICENCE.onRegister,
+    });
     expect(result.category).toBe("GES_TEACHER");
   });
 });

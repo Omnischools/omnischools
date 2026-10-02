@@ -23,7 +23,62 @@
             "paths": [
               {
                 "name": "@/lib/db/readback",
-                "message": "Aggregate code must not import the operational read-back. Go through lib/oversight/named-record-access.ts — the single gated choke point that writes the audit row first."
+                "message": "Aggregate code must not import the operational read-back. Go through lib/oversight/named-record-access.ts \u2014 the single gated choke point that writes the audit row first."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "app/(oversight)/**/*.ts",
+        "app/(oversight)/**/*.tsx",
+        "app/sign-in/**/*.ts",
+        "app/sign-in/**/*.tsx",
+        "lib/oversight/**/*.ts",
+        "lib/auth/**/*.ts",
+        "components/**/*.tsx"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@/lib/db/readback",
+                "message": "Aggregate code must not import the operational read-back. Go through lib/oversight/named-record-access.ts \u2014 the single gated choke point that writes the audit row first."
+              },
+              {
+                "name": "@/lib/provisioning/db",
+                "message": "The provisioner connection writes the officer directory. It belongs to the Omnischools admin console (app/(admin)) only \u2014 officer-facing code must never be able to grant or widen authority."
+              },
+              {
+                "name": "@/lib/provisioning/officers",
+                "message": "Officer provisioning is an Omnischools admin capability. Officer-facing code reads its session through lib/auth and must not import the provisioning write path."
+              }
+            ]
+          }
+        ]
+      },
+      "excludedFiles": [
+        "lib/db/readback.ts",
+        "lib/oversight/named-record-access.ts",
+        "lib/oversight/consent.ts",
+        "lib/oversight/staff-projection.ts",
+        "app/(oversight)/compliance-records/actions.ts"
+      ]
+    },
+    {
+      "files": ["app/(oversight)/compliance-records/actions.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@/lib/provisioning/db",
+                "message": "The provisioner connection writes the officer directory and has no place in the \u00a76 gate."
               }
             ]
           }

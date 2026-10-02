@@ -29,6 +29,13 @@
       "when": 1790007092565,
       "tag": "0003_funny_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790900562683,
+      "tag": "0004_white_eternity",
+      "breakpoints": true
     }
   ]
 }

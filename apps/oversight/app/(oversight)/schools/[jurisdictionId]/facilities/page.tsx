@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOfficerSession } from "@/lib/auth";
+import { scopeFor } from "@/lib/db/rls";
 import { getSchoolFacilitiesCensus } from "@/lib/oversight/infrastructure";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Panel, Provenance, RecField } from "@/components/oversight/primitives";
@@ -26,14 +27,7 @@ export default async function SchoolFacilitiesPage({
   const officer = await getOfficerSession();
   if (!officer) notFound();
 
-  const census = await getSchoolFacilitiesCensus(
-    {
-      jurisdictionId: officer.jurisdictionId,
-      level: officer.level,
-      officerId: officer.officerId,
-    },
-    jurisdictionId,
-  );
+  const census = await getSchoolFacilitiesCensus(scopeFor(officer), jurisdictionId);
   if (!census) notFound();
 
   const yesNo = (v: boolean) => (v ? "Yes" : "No");
