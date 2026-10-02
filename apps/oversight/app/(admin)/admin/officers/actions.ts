@@ -40,7 +40,12 @@ export type AdminActionState =
       status: "approval_required";
       message: string;
       tier: string;
-      /** Echoed so the form can be resubmitted with a code rather than retyped. */
+      /**
+       * Echoed so the form can be resubmitted with a code rather than retyped. On the WITHDRAWAL
+       * path `jurisdictionId` is not what was submitted — the form posts no node at all — but the
+       * node the server proved off the directory row, which `DeactivateForm` shows so the proposer
+       * asks the approver to mint for that node and not for one read off the table.
+       */
       fields: { officerId: string; jurisdictionId: string; fullName: string; workEmail: string; reason: string };
     }
   | {
@@ -158,6 +163,13 @@ export async function provisionOfficerAction(
  * disagree, so a proposer could have an approval validated against a node they chose and a
  * withdrawal performed against the node the officer actually holds: a national withdrawal approved
  * as a district one. `resolveOfficerNode()` is read FIRST and is the only thing that decides.
+ *
+ * ⚠ AND THAT READ IS RE-VALIDATED UNDER THE LOCK (Dex's TOCTOU residual). It happens before
+ * `deactivateOfficer()` takes its `for update`, so a concurrent re-provisioning could move the
+ * officer in between — the approval would have been checked against a node the withdrawal no longer
+ * acts on. The node proved here is therefore passed down as `expectedJurisdictionId` and compared to
+ * the locked row, which makes this read a convenience for the approval check and the lock the single
+ * decision point. A race now ends in a refusal with nothing written, not in a mis-attributed grant.
  */
 export async function deactivateOfficerAction(
   _prev: AdminActionState,
@@ -206,6 +218,9 @@ export async function deactivateOfficerAction(
       actorId: admin.adminId,
       approverId,
       reason,
+      // The node this action proved and verified the approval code against. If the locked row
+      // disagrees, the write is refused rather than performed at whichever node it moved to.
+      expectedJurisdictionId: actual.jurisdictionId,
     });
 
     revalidatePath("/admin/officers");

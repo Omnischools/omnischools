@@ -52,7 +52,7 @@ export function ApprovalForm({
           </label>
 
           <label className="block text-xs text-navy-2">
-            Officer identity being granted (Supabase auth uid)
+            Officer identity this code authorises (Supabase auth uid)
             <input
               name="officerId"
               required

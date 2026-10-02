@@ -558,3 +558,145 @@ $$;
 --     -- expect COMMIT to SUCCEED (occurred_at defaulted, so it equals transaction_timestamp()).
 --     -- There is no DELETE grant on either table, so clean up with the OWNER credential or leave the
 --     -- row and withdraw it through the console (which is itself a G4 for the DEACTIVATE path).
+--
+--   G5 and G6 below are the two STANDING ASSUMPTIONS the coupling guard rests on, and unlike
+--   G1–G4 they are LIVE STATEMENTS rather than commented probes. G1–G4 have to be hand-run: they
+--   need real node and officer uuids, and G2/G3/G4 write. G5/G6 need neither — they are read-only
+--   catalogue assertions with no parameters but the role name, so they run as part of the paste and
+--   raise on the spot. That is deliberate: both of these protect an ABSENCE (a grant never issued, a
+--   privilege never held), and an absence is the one kind of control that a later well-meaning
+--   `grant all` or `alter role` removes with nothing to show for it. A check the owner has to
+--   remember to uncomment is a check that silently stops being run.
+--
+--   Both are safe to re-run and alter NOTHING — no grant, no role, no policy is touched. They are
+--   also callable by ANY role (has_table_privilege / pg_has_role / pg_class.relacl are readable by
+--   all), so they report the same answer whether you paste as the owner or run them later as the
+--   provisioner.
+
+--   G5 · NO DELETE GRANT ON THE DIRECTORY ─────────────────────────────────────────────────────────
+--        officer_directory_audit_guard is AFTER INSERT OR UPDATE. It has NO DELETE ARM, and cannot
+--        usefully have one: the audit row describes the state the directory row now holds
+--        (active_after = NEW.is_active), and a deleted row holds no state to match. So an UNAUDITED
+--        REMOVAL — an officer erased from the roster, leaving every audit_officer_provisioning entry
+--        naming that uid dangling, and the removal itself recorded nowhere — is prevented by exactly
+--        two things, both of them absences: no DELETE grant, and RLS enabled with no DELETE policy.
+--        The grant block above issues the REVOKE; this asserts it actually took, and keeps asserting
+--        it on every re-paste.
+--
+--        TRUNCATE is checked in the same breath because it is the same residual through a different
+--        door: TRUNCATE fires no row triggers at all, so it would empty the whole directory without
+--        the coupling guard, the tier guard or the Kofi R1 guard ever running.
+DO $$
+DECLARE
+  provisioner_role text := 'oversight_provisioner';  -- ⇦ keep in sync with the role block above
+  granted          text;
+BEGIN
+  IF to_regclass('public.ref_oversight_officer') IS NULL THEN
+    RAISE EXCEPTION 'G5: ref_oversight_officer is not present — run migration 0004 and the body of this file first';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = provisioner_role) THEN
+    RAISE EXCEPTION 'G5: provisioner role % does not exist — this block carries its OWN copy of the role name, so if you edited provisioner_role in the role block above, edit it here too', provisioner_role;
+  END IF;
+
+  -- has_table_privilege() rather than a scan of role_table_grants for this role's own name: it
+  -- accounts for the privilege arriving INDIRECTLY, via a granted role or via a grant to PUBLIC,
+  -- which is how this comes back in practice. (It also sees through the view's own visibility
+  -- filtering, so the answer does not depend on who is running the check.)
+  --
+  -- The breadth has one cost worth naming in the message rather than in a comment nobody reads:
+  -- has_table_privilege() also answers true for a SUPERUSER or for the TABLE OWNER, where there is
+  -- no grant to revoke. That is G6's case, and G6 says so in one line — but G5 raises first and
+  -- aborts the script, so it has to point at G6 or it sends the owner hunting for a phantom GRANT.
+  IF has_table_privilege(provisioner_role, 'public.ref_oversight_officer', 'DELETE') THEN
+    RAISE EXCEPTION
+      'G5 FAILED: role % holds DELETE on ref_oversight_officer. officer_directory_audit_guard is AFTER INSERT OR UPDATE and has NO DELETE ARM, so this is an unaudited path to erasing an officer from the roster. Fix: REVOKE DELETE ON ref_oversight_officer FROM %. Then find out who granted it — look for an INDIRECT grant (a role granted to this one, or a grant to PUBLIC), not only a direct one. IF THERE IS NO SUCH GRANT, % is a superuser or the owner of this table and therefore holds DELETE unconditionally: run G6 below on its own, which names that case directly, and fix it there.',
+      provisioner_role, provisioner_role, provisioner_role;
+  END IF;
+  IF has_table_privilege(provisioner_role, 'public.ref_oversight_officer', 'TRUNCATE') THEN
+    RAISE EXCEPTION
+      'G5 FAILED: role % holds TRUNCATE on ref_oversight_officer. TRUNCATE fires NO row triggers, so this empties the entire officer directory with the coupling guard, the tier guard and the Kofi R1 guard all unconsulted. Fix: REVOKE TRUNCATE ON ref_oversight_officer FROM %.',
+      provisioner_role, provisioner_role;
+  END IF;
+
+  -- …and nobody ELSE either. Read straight off pg_class.relacl (unfiltered, and readable by every
+  -- role) with the table owner excluded — the owner necessarily holds both, which is what G6 is
+  -- about. Any OTHER grantee here, PUBLIC included, is a removal path this file does not know about.
+  SELECT string_agg(DISTINCT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END, ', ')
+    INTO granted
+    FROM pg_class c
+    CROSS JOIN aclexplode(c.relacl) a
+   WHERE c.oid = 'public.ref_oversight_officer'::regclass
+     AND a.privilege_type IN ('DELETE', 'TRUNCATE')
+     AND a.grantee <> c.relowner;
+  IF granted IS NOT NULL THEN
+    RAISE EXCEPTION
+      'G5 FAILED: DELETE/TRUNCATE on ref_oversight_officer is granted to non-owner role(s) [%]. Each one is an unaudited removal path. Revoke them — or, if one is a legitimate new maintenance role, give officer_directory_audit_guard a DELETE arm (and a DELETE action in audit_officer_provisioning) FIRST, then come back.',
+      granted;
+  END IF;
+
+  RAISE NOTICE 'G5 ok — % holds neither DELETE nor TRUNCATE on ref_oversight_officer, and no other non-owner role does either', provisioner_role;
+END
+$$;
+
+--   G6 · THE PROVISIONER IS NEITHER SUPERUSER NOR THE TABLE OWNER ─────────────────────────────────
+--        A constraint trigger is not bypassed by ownership — but it IS switchable off by the table
+--        owner (`ALTER TABLE ref_oversight_officer DISABLE TRIGGER officer_directory_audit_guard`)
+--        and by a superuser (additionally `SET session_replication_role = replica`). That residual
+--        is noted as acceptable in the S1 write-up for exactly one reason: the provisioner is
+--        neither. It is a plain login role holding SELECT/INSERT/UPDATE and nothing more, so the
+--        coupling is enforced AGAINST it rather than merely advised to it. The whole argument moves
+--        from "enforced" to "trusted" the day that stops being true — silently, with the trigger
+--        still sitting there in pg_trigger looking exactly as it does now. Hence the assertion.
+--
+--        Ownership is tested with pg_has_role(..., 'USAGE'), not just `relowner = provisioner`:
+--        MEMBERSHIP in the owning role confers the owner's privileges by inheritance, so "not the
+--        owner" has to mean "does not reach the owner". Membership in a superuser role is checked
+--        the same way with 'MEMBER' (SET ROLE), since a role that can become superuser on demand has
+--        the capability whether or not rolsuper is set on it.
+DO $$
+DECLARE
+  provisioner_role text := 'oversight_provisioner';  -- ⇦ keep in sync with the role block above
+  table_owner      name;
+  super_roles      text;
+BEGIN
+  IF to_regclass('public.ref_oversight_officer') IS NULL THEN
+    RAISE EXCEPTION 'G6: ref_oversight_officer is not present — run migration 0004 and the body of this file first';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = provisioner_role) THEN
+    RAISE EXCEPTION 'G6: provisioner role % does not exist — this block carries its OWN copy of the role name, so if you edited provisioner_role in the role block above, edit it here too', provisioner_role;
+  END IF;
+
+  IF (SELECT rolsuper FROM pg_roles WHERE rolname = provisioner_role) THEN
+    RAISE EXCEPTION
+      'G6 FAILED: provisioner role % is a SUPERUSER. It can DISABLE TRIGGER officer_directory_audit_guard, or SET session_replication_role = replica, and then write the directory with no audit row at all — finding S1 reopened, by the very credential provisioning runs under. Fix: ALTER ROLE % NOSUPERUSER, or point provisioner_role at the separate unprivileged login role this design requires.',
+      provisioner_role, provisioner_role;
+  END IF;
+
+  SELECT string_agg(r.rolname, ', ') INTO super_roles
+    FROM pg_roles r
+   WHERE r.rolsuper AND r.rolname <> provisioner_role
+     AND pg_has_role(provisioner_role, r.rolname, 'MEMBER');
+  IF super_roles IS NOT NULL THEN
+    RAISE EXCEPTION
+      'G6 FAILED: provisioner role % can SET ROLE to superuser role(s) [%] — superuser whenever it chooses to be, with the same consequence as being one. Fix: revoke that role membership.',
+      provisioner_role, super_roles;
+  END IF;
+
+  SELECT pg_get_userbyid(c.relowner) INTO table_owner
+    FROM pg_class c WHERE c.oid = 'public.ref_oversight_officer'::regclass;
+
+  IF table_owner = provisioner_role THEN
+    RAISE EXCEPTION
+      'G6 FAILED: provisioner role % OWNS ref_oversight_officer. The owner can DISABLE (and DROP) the constraint trigger, so the S1 coupling is advisory against this role rather than enforced. Fix: ALTER TABLE ref_oversight_officer OWNER TO <the migration owner>; the provisioner must be a grantee, never the owner.',
+      provisioner_role;
+  END IF;
+
+  IF pg_has_role(provisioner_role, table_owner, 'USAGE') THEN
+    RAISE EXCEPTION
+      'G6 FAILED: provisioner role % is a member of %, the owner of ref_oversight_officer, and so holds the owner''s privileges by inheritance — including ALTER TABLE ... DISABLE TRIGGER. Fix: revoke the % membership from %.',
+      provisioner_role, table_owner, table_owner, provisioner_role;
+  END IF;
+
+  RAISE NOTICE 'G6 ok — % is not a superuser, cannot SET ROLE to one, and neither is nor inherits %, the owner of ref_oversight_officer', provisioner_role, table_owner;
+END
+$$;

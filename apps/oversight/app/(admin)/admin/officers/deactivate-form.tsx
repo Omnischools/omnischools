@@ -24,10 +24,13 @@ import { deactivateOfficerAction, type AdminActionState } from "./actions";
 export function DeactivateForm({
   officerId,
   officerName,
+  jurisdictionName,
   tier,
 }: {
   officerId: string;
   officerName: string;
+  /** Display only — the node the server proved is echoed alongside it when an approval is needed. */
+  jurisdictionName: string;
   tier: string;
 }) {
   const [state, action, pending] = useActionState<AdminActionState, FormData>(
@@ -76,6 +79,20 @@ export function DeactivateForm({
 
       {state.status === "error" || state.status === "approval_required" ? (
         <p className="text-[11px] text-terra">{state.message}</p>
+      ) : null}
+      {/*
+        The node the SERVER proved, so the proposer asks for a code for the right one. The approver's
+        form mints against one specific node, and a code for any other is refused at this end — so
+        "which node" is the one thing the proposer has to get right, and guessing it from the table is
+        exactly the guess finding S2b was about.
+      */}
+      {state.status === "approval_required" ? (
+        <p className="text-[11px] text-navy-2">
+          Ask a second administrator for a <strong>Withdraw</strong> code for{" "}
+          <strong className="text-navy">{jurisdictionName || "this officer's node"}</strong> —{" "}
+          <span className="font-mono">{state.fields.jurisdictionId}</span>. That is the node this
+          officer holds on the directory; a code for any other node will be refused.
+        </p>
       ) : null}
       {state.status === "success" ? (
         <p className="text-[11px] text-green">{state.message}</p>

@@ -121,6 +121,7 @@ export default async function AdminOfficersPage() {
                         <DeactivateForm
                           officerId={o.officerId}
                           officerName={o.fullName ?? o.officerId}
+                          jurisdictionName={o.jurisdictionName ?? ""}
                           tier={o.tier ?? ""}
                         />
                       ) : null}

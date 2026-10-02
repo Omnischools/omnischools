@@ -177,8 +177,6 @@ export interface OfficerNode {
   jurisdictionId: string;
   /** Derived by `ov_officer_node_tier()`. Never supplied, never read from a form. */
   tier: OfficerTier;
-  officerRole: string;
-  isActive: boolean;
 }
 
 /**
@@ -199,6 +197,12 @@ export interface OfficerNode {
  *
  * No row is a refusal, not a `null`: every caller here is about to make a decision about an officer,
  * and "there is no such officer" is never an input to one.
+ *
+ * THIS READ IS NOT THE DECISION POINT — the row lock is. It happens before `deactivateOfficer()`
+ * takes its `for update`, so a concurrent re-provisioning could move the officer between the two.
+ * Callers therefore hand what they read here to `deactivateOfficer()` as `expectedJurisdictionId`,
+ * and the locked row re-validates it (see there). What this function is FOR is knowing which node the
+ * approval has to be signed against before asking for one; it is not trusted on its own.
  */
 export async function resolveOfficerNode(
   sql: postgres.Sql,
@@ -207,16 +211,12 @@ export async function resolveOfficerNode(
   requireUuid(officerId, "officerId");
   const rows = (await sql`
     select o.jurisdiction_id::text                       as jurisdiction_id,
-           ov_officer_node_tier(o.jurisdiction_id)::text as level,
-           o.officer_role::text                          as officer_role,
-           o.is_active                                   as is_active
+           ov_officer_node_tier(o.jurisdiction_id)::text as level
       from ref_oversight_officer o
      where o.officer_id = ${officerId}::uuid
   `) as unknown as {
     jurisdiction_id: string;
     level: string;
-    officer_role: string;
-    is_active: boolean;
   }[];
   const row = rows[0];
   if (!row) {
@@ -227,8 +227,6 @@ export async function resolveOfficerNode(
   return {
     jurisdictionId: row.jurisdiction_id,
     tier: row.level as OfficerTier,
-    officerRole: row.officer_role,
-    isActive: Boolean(row.is_active),
   };
 }
 
@@ -496,6 +494,15 @@ export interface DeactivateInput {
   actorId: string;
   approverId?: string | null;
   reason: string;
+  /**
+   * OPTIONAL — the node the caller already proved and took its approval against.
+   *
+   * Supply it and the LOCKED row must still hold it, or the withdrawal is refused (see below). It is
+   * optional because a caller with no approval step to protect has nothing to compare against:
+   * `scripts/load-officers.ts` reads nothing before calling this, so there is no earlier read for the
+   * lock to contradict, and requiring a value there would only invite passing a made-up one.
+   */
+  expectedJurisdictionId?: string;
 }
 
 /**
@@ -508,12 +515,22 @@ export interface DeactivateInput {
  * and flags it as unconfirmed; the asymmetric alternative would mean the control that protects the
  * broadest access can be removed by one person acting alone, which is the wrong default to ship
  * while the question is open. It is a one-line change here if the owner rules the other way.
+ *
+ * ⚠ THE LOCK IS THE SINGLE DECISION POINT (Dex's TOCTOU residual). The console has to read the
+ * officer's node BEFORE this call — it needs to know which node the approval must be signed against —
+ * and that read is not inside this transaction, so a concurrent re-provisioning could move the
+ * officer between the approval and the lock. `expectedJurisdictionId` closes it: the node the
+ * approval was validated against is re-checked against the row this transaction actually holds, so
+ * the earlier read can only ever cause a REFUSAL, never a withdrawal at a node nobody approved.
  */
 export async function deactivateOfficer(
   sql: postgres.Sql,
   input: DeactivateInput,
 ): Promise<{ provisioningId: string; tier: OfficerTier }> {
   requireUuid(input.officerId, "officerId");
+  if (input.expectedJurisdictionId !== undefined) {
+    requireUuid(input.expectedJurisdictionId, "expectedJurisdictionId");
+  }
   if (!input.reason?.trim()) {
     throw new ProvisioningError(
       "A reason is required for a withdrawal — it is an internal control record (not shown to the officer; Lucy R5).",
@@ -552,6 +569,25 @@ export async function deactivateOfficer(
         `No directory row for ${input.officerId} — nothing to withdraw. (A uid that was never provisioned and one that was already withdrawn are different states; this is the former.)`,
       );
     }
+    /*
+     * The node the approval was taken against must be the node this transaction is holding.
+     *
+     * Checked BEFORE the two-person rule, because a moved node invalidates the whole approval rather
+     * than just the signature count: an officer re-provisioned REGION → DISTRICT between the approval
+     * and this lock would need no second administrator at all, so a two-person check that ran first
+     * would wave through a withdrawal approved for a node the officer no longer holds. Refusing is
+     * the only safe answer — the approver signed for a state of the world that no longer exists, and
+     * nothing here can know whether they would sign for this one.
+     */
+    if (
+      input.expectedJurisdictionId &&
+      input.expectedJurisdictionId.toLowerCase() !== before.jurisdiction_id.toLowerCase()
+    ) {
+      throw new ProvisioningError(
+        `This officer's node changed between the approval and the withdrawal: the approval was taken against ${input.expectedJurisdictionId}, but the officer now holds ${before.jurisdiction_id}. Nothing was withdrawn — re-approve against the officer's current node.`,
+      );
+    }
+
     const tier = before.level as OfficerTier;
     assertTwoPersonRule(tier, input.actorId, input.approverId);
 

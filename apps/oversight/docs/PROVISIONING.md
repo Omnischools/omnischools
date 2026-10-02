@@ -367,12 +367,28 @@ rather than of the call site:
 > TTL (`APPROVAL_CODE_TTL_MS`, 15 minutes) and **no single-use store**, so within its window it can
 > be submitted more than once — but only for the *exact same* `(action, officer, node)` and only by a
 > proposer who is not the approver. It cannot be moved to another officer, another node, the opposite
-> action, or back to the approver themselves. What a replay can therefore do is repeat one approved
-> decision: a second provision of the same officer at the same node (logged as `ROLE_CHANGE` /
-> `REACTIVATE` with the same derived role — no widening of reach), or a second withdrawal of an
-> already-withdrawn officer (`is_active` is already `false`). Every submission writes its own
-> `audit_officer_provisioning` row naming both administrators, so a replay is visible in the log
-> rather than silent.
+> action, or back to the approver themselves. What a replay can therefore do is re-apply one approved
+> decision at the same node: a second provision of the same officer at the same node (logged as
+> `ROLE_CHANGE` / `REACTIVATE` with the same derived role — no widening of the *node* reach), or a
+> second withdrawal of an already-withdrawn officer (`is_active` is already `false`).
+>
+> **This is NOT limited to repeating the current state — a replay can REVERSE an interleaved action.**
+> Concretely: an approver mints a `PROVISION` code for (officer, node M) at 09:58; the officer is
+> withdrawn at M at 10:00 under a proper two-person withdrawal; at 10:05 a single admin replays the
+> still-valid 09:58 code against the provision path — it verifies (right action, officer, node,
+> unexpired, proposer ≠ approver), `on conflict do update` sets `is_active = true`, logged as
+> `REACTIVATE`. So **a withdrawal can be undone for up to the TTL by one admin holding a code minted
+> before it**, using an approval whose signer never consented to reversing anything. Access is
+> restored, not merely repeated. (Severity LOW: both the withdrawal and the reactivation are logged
+> with named administrators, so it is auditable rather than silent, and it takes an admin-level
+> proposer holding a live code — but the owner is accepting *this*, not only a no-op repeat, and it is
+> the strongest argument for a TTL shorter than fifteen minutes in the interim.)
+>
+> Every submission writes its own `audit_officer_provisioning` row naming both administrators, so a
+> replay is visible in the log rather than silent. **Operational note:** with no proposal queue the
+> code is a bearer token in whatever channel the two administrators use to pass it — pasted into a
+> shared channel, "two distinct administrators" degrades toward "anyone with access to that channel."
+> Do not post approval codes in shared channels.
 >
 > This is accepted rather than fixed because making a code single-use means **storing** it (a
 > consumed-codes table, or a row per proposal), which is the same schema decision as the approval
@@ -384,6 +400,19 @@ rather than of the call site:
 **Two-person on WITHDRAWAL is applied** (Lucy R11, flagged as unconfirmed): withdrawing a
 region/national officer takes a second administrator too. The asymmetric alternative would mean the
 control protecting the broadest access can be removed by one person acting alone.
+
+**The withdrawal re-validates the approved node under the row lock.** The server resolves the
+officer's node (`resolveOfficerNode`), verifies the approval code against it, then hands that node to
+`deactivateOfficer` as `expectedJurisdictionId`; inside the `select … for update` transaction the
+locked row's `jurisdiction_id` must still match or the withdrawal rolls back with nothing written.
+This closes the narrow window (flagged by Dex, severity-ruled by Sarah) in which a concurrent
+re-provisioning could move the officer between the pre-lock read the approval was taken against and
+the locked write — the lock, not the earlier read, is the single decision point. The check runs
+**before** the two-person assertion deliberately: a region→district move inside the window would
+otherwise make the withdrawal single-signature and wave through an approval taken for a node the
+officer no longer holds. The S1 coupling guard independently forces the audit row to name the node
+actually acted on, so attribution held even before this; the re-validation makes the *consent* precise
+as well.
 
 ## 4a · The read-back role behind `OPERATIONAL_READBACK_URL` (§6 individual drill-down)
 

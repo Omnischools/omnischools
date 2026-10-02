@@ -1,6 +1,7 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import {
+  deactivateOfficer,
   listOfficers,
   listProvisioningAudit,
   provisionOfficer,
@@ -63,7 +64,7 @@ function form(fields: Record<string, string>): FormData {
  * `revalidatePath` (no Next request context). `getProvisionerClient` is pointed at the same
  * provisioner connection the CLI loader uses, so every refusal below is a real refusal.
  */
-async function consoleAs(adminId: string) {
+async function consoleAs(adminId: string, extraMocks?: () => void) {
   vi.resetModules();
   vi.stubEnv("PROVISIONING_APPROVAL_SECRET", SECRET);
   vi.doMock("next/cache", () => ({ revalidatePath: () => {} }));
@@ -75,6 +76,9 @@ async function consoleAs(adminId: string) {
     getProvisionerClient: () => sql,
     ProvisionerUnavailableError: class ProvisionerUnavailableError extends Error {},
   }));
+  // Registered before the import, so a caller can bend ONE collaborator (see the TOCTOU block,
+  // which freezes the pre-lock read to simulate the race window and mocks nothing else).
+  extraMocks?.();
   return import("@/app/(admin)/admin/officers/actions");
 }
 
@@ -119,11 +123,9 @@ describe("a withdrawal is bound to the officer's ACTUAL node, never the submitte
       reason: "regional director — the node under test",
     });
     // Derived server-side through ov_officer_node_tier(), with no GUC set and no form involved.
-    expect(await resolveOfficerNode(sql, uid)).toMatchObject({
+    expect(await resolveOfficerNode(sql, uid)).toEqual({
       jurisdictionId: JUR.region,
       tier: "REGION",
-      officerRole: "REGIONAL_OVERSIGHT",
-      isActive: true,
     });
   });
 
@@ -377,5 +379,180 @@ describe("a code approves ONE action, and the console names which (S2a)", () => 
       /cannot approve your own proposal/,
     );
     expect(await isActive(uid)).toBe(true);
+  });
+});
+
+// ─── The TOCTOU residual: the LOCK decides, not the read before it ──────────────────────────────
+
+/**
+ * S2b made the officer's ACTUAL node the only input to a withdrawal, but that node was read before
+ * `deactivateOfficer()` took its `for update` — so a re-provisioning landing in between left the
+ * approval validated against one node and the withdrawal performed at another. Attribution survived
+ * (the S1 coupling guard forces the audit row to name the node actually acted on), but the approval
+ * did not: a second administrator would have signed for a node nobody withdrew.
+ *
+ * `expectedJurisdictionId` makes the locked row re-check the node the approval was taken against, so
+ * the pre-lock read can only ever cause a REFUSAL. The first four tests pin the guard itself (and
+ * that it stays optional for the CLI loader); the last one drives the race through the console by
+ * freezing the pre-lock read — the only thing mocked is WHEN that read happened, which is precisely
+ * the window.
+ */
+describe("the withdrawal lock re-validates the approved node (TOCTOU residual)", () => {
+  it("REFUSES when the approved node is not the node the lock holds — nothing written", async () => {
+    const uid = newUid();
+    await provisionOfficer(sql, {
+      officerId: uid,
+      jurisdictionId: JUR.region,
+      actorId: PROPOSER,
+      approverId: APPROVER,
+      reason: "regional director",
+    });
+
+    await expect(
+      deactivateOfficer(sql, {
+        officerId: uid,
+        actorId: PROPOSER,
+        approverId: APPROVER,
+        reason: "approved against a node this officer does not hold",
+        expectedJurisdictionId: JUR.national,
+      }),
+    ).rejects.toThrow(/node changed between the approval and the withdrawal/);
+
+    // The transaction rolled back: the officer is untouched and the log gained nothing.
+    expect(await isActive(uid)).toBe(true);
+    expect(await withdrawalRow(uid)).toBeUndefined();
+  });
+
+  it("…and refuses BEFORE the two-person rule, so a move to DISTRICT cannot slip through alone", async () => {
+    // The ordering that matters: a REGION → DISTRICT re-provisioning in the window would make the
+    // withdrawal single-signature, so a two-person check running first would find nothing wrong.
+    const uid = newUid();
+    await provisionOfficer(sql, {
+      officerId: uid,
+      jurisdictionId: JUR.district,
+      actorId: PROPOSER,
+      reason: "district officer — the node the officer now holds",
+    });
+
+    await expect(
+      deactivateOfficer(sql, {
+        officerId: uid,
+        actorId: PROPOSER,
+        // No approver: a DISTRICT withdrawal needs none, which is exactly why the node check has to
+        // be the thing that refuses.
+        reason: "approved as a region, held as a district",
+        expectedJurisdictionId: JUR.region,
+      }),
+    ).rejects.toThrow(/node changed between the approval and the withdrawal/);
+
+    expect(await isActive(uid)).toBe(true);
+    expect(await withdrawalRow(uid)).toBeUndefined();
+  });
+
+  it("commits normally when the approved node IS the locked node", async () => {
+    const uid = newUid();
+    await provisionOfficer(sql, {
+      officerId: uid,
+      jurisdictionId: JUR.region,
+      actorId: PROPOSER,
+      approverId: APPROVER,
+      reason: "regional director",
+    });
+
+    const result = await deactivateOfficer(sql, {
+      officerId: uid,
+      actorId: PROPOSER,
+      approverId: APPROVER,
+      reason: "post abolished — approval and lock agree",
+      expectedJurisdictionId: JUR.region,
+    });
+
+    expect(result.tier).toBe("REGION");
+    expect(await isActive(uid)).toBe(false);
+    expect(await withdrawalRow(uid)).toMatchObject({
+      targetJurisdictionId: JUR.region,
+      targetTier: "REGION",
+      approverId: APPROVER,
+    });
+  });
+
+  it("is OPTIONAL: a caller that supplies no expectation is unaffected (the CLI loader)", async () => {
+    // `scripts/load-officers.ts` reads nothing before withdrawing, so it has no earlier read for the
+    // lock to contradict. Omitting the field must stay a full withdrawal, not a refusal.
+    const uid = newUid();
+    await provisionOfficer(sql, {
+      officerId: uid,
+      jurisdictionId: JUR.district,
+      actorId: PROPOSER,
+      reason: "district officer",
+    });
+
+    await deactivateOfficer(sql, {
+      officerId: uid,
+      actorId: PROPOSER,
+      reason: "CSV offboarding, no console approval involved",
+    });
+
+    expect(await isActive(uid)).toBe(false);
+    expect(await withdrawalRow(uid)).toMatchObject({
+      targetJurisdictionId: JUR.district,
+    });
+  });
+
+  it("the CONSOLE passes the node it proved, so a re-provisioning in the window is refused", async () => {
+    const uid = newUid();
+    await provisionOfficer(sql, {
+      officerId: uid,
+      jurisdictionId: JUR.region,
+      actorId: PROPOSER,
+      approverId: APPROVER,
+      reason: "regional director",
+    });
+    // The approver signs a withdrawal at the officer's node AS IT STOOD when the proposer asked.
+    const code = await mintedCode("DEACTIVATE", uid, JUR.region);
+
+    // THE RACE: the officer is re-provisioned to the national node after the console's pre-lock read
+    // and before its transaction. The stub below freezes that read at the pre-move value, which is
+    // what a real interleaving produces; everything after it is the real code against the real row.
+    await provisionOfficer(sql, {
+      officerId: uid,
+      jurisdictionId: JUR.national,
+      actorId: APPROVER,
+      approverId: PROPOSER,
+      reason: "promoted to the national desk, concurrently",
+    });
+
+    try {
+      const proposerConsole = await consoleAs(PROPOSER, () => {
+        vi.doMock("@/lib/provisioning/officers", async (importOriginal) => {
+          const real =
+            await importOriginal<typeof import("@/lib/provisioning/officers")>();
+          return {
+            ...real,
+            resolveOfficerNode: async () => ({
+              jurisdictionId: JUR.region,
+              tier: "REGION" as const,
+            }),
+          };
+        });
+      });
+      const state = await proposerConsole.deactivateOfficerAction(
+        { status: "idle" },
+        form({ officerId: uid, reason: "post abolished", approvalCode: code }),
+      );
+
+      // The approval check passes (the stale read and the code agree on the region) and the LOCK is
+      // what refuses — which is the whole point of the change.
+      expect(state.status).toBe("error");
+      expect(state.status === "error" && state.message).toMatch(
+        /node changed between the approval and the withdrawal/,
+      );
+      expect(await isActive(uid)).toBe(true);
+      expect(await withdrawalRow(uid)).toBeUndefined();
+    } finally {
+      // The stub is file-scoped once registered; every other test here needs the real resolver.
+      vi.doUnmock("@/lib/provisioning/officers");
+      vi.resetModules();
+    }
   });
 });

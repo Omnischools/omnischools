@@ -83,6 +83,15 @@ insert into ref_ges_teacher_establishment (establishment_id, emis_school_id, tea
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- OFFICER DIRECTORY (increment G) — the tier matrix the bootstrap read has to get right.
 --
+-- ⚠ THIS FILE MUST BE APPLIED AS A SINGLE TRANSACTION. The five directory rows and their five audit
+-- rows are separate statements, and that only satisfies the deferred S1 coupling guard
+-- (ov_officer_directory_audit_guard) because tests/setup/global-setup.ts hands the WHOLE file to
+-- postgres.js `unsafe()` as one implicit transaction — one transaction_timestamp(), which is the
+-- value the guard matches audit_officer_provisioning.occurred_at against at COMMIT. Split this file
+-- statement-by-statement (the way global-setup splits MIGRATIONS on `--> statement-breakpoint`) and
+-- the very first directory insert fails with the coupling error: each statement would be its own
+-- transaction, so no audit row ever shares a timestamp with its directory row.
+--
 -- officer_id IS the Supabase auth uid (Kofi AC14): the same value that becomes
 -- OfficerSession.officerId, that withJurisdiction() writes to app.current_officer, and that lands in
 -- audit_access_log.officer_id. The two 6000…-0001/0002 uids are the SAME officers the pre-existing
