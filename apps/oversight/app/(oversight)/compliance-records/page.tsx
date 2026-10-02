@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getOfficerSession } from "@/lib/auth";
+import { scopeFor } from "@/lib/db/rls";
 import { listOwnAccesses } from "@/lib/oversight/audit-log";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import {
@@ -41,11 +42,7 @@ export default async function ComplianceRecordsPage() {
     );
   }
 
-  const entries = await listOwnAccesses({
-    jurisdictionId: officer.jurisdictionId,
-    level: officer.level,
-    officerId: officer.officerId,
-  });
+  const entries = await listOwnAccesses(scopeFor(officer));
 
   return (
     <>

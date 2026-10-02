@@ -1,0 +1,97 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { deactivateOfficerAction, type AdminActionState } from "./actions";
+
+/**
+ * G8.c — withdraw an officer's access.
+ *
+ * This is THE ONE PLACE in increment G where terra/destructive styling is correct: it is a
+ * deliberate withdrawal taken by an administrator, not a message to a blameless officer. Everywhere
+ * an officer is told something has not been set up or has ended, the idiom is calm gold.
+ *
+ * The confirmation is inline rather than a modal because the row it concerns must stay visible —
+ * "withdraw access for WHICH of these twelve people" is exactly the question a modal hides.
+ */
+export function DeactivateForm({
+  officerId,
+  jurisdictionId,
+  officerName,
+  tier,
+}: {
+  officerId: string;
+  jurisdictionId: string;
+  officerName: string;
+  tier: string;
+}) {
+  const [state, action, pending] = useActionState<AdminActionState, FormData>(
+    deactivateOfficerAction,
+    { status: "idle" },
+  );
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[11px] text-terra underline"
+      >
+        Deactivate
+      </button>
+    );
+  }
+
+  return (
+    <form action={action} className="space-y-2 text-left">
+      <input type="hidden" name="officerId" value={officerId} />
+      <input type="hidden" name="jurisdictionId" value={jurisdictionId} />
+
+      <p className="text-xs font-semibold text-navy">Withdraw this officer&apos;s access?</p>
+      <p className="text-[11px] text-navy-2">
+        {officerName} will no longer be able to use Oversight. Their audit history is preserved
+        and is never deleted. This can be reversed by re-provisioning.
+      </p>
+
+      <textarea
+        name="reason"
+        required
+        rows={2}
+        placeholder="Internal reason (not shown to the officer)"
+        className="w-full rounded-md border border-border-2 bg-surface px-2 py-1 text-[11px] text-navy"
+      />
+
+      {tier === "REGION" || tier === "NATIONAL" ? (
+        <input
+          name="approvalCode"
+          placeholder="Approval code from a second administrator"
+          className="w-full rounded-md border border-border-2 bg-surface px-2 py-1 font-mono text-[11px] text-navy"
+        />
+      ) : null}
+
+      {state.status === "error" || state.status === "approval_required" ? (
+        <p className="text-[11px] text-terra">{state.message}</p>
+      ) : null}
+      {state.status === "success" ? (
+        <p className="text-[11px] text-green">{state.message}</p>
+      ) : null}
+
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-[11px] text-navy-3 underline"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-terra px-3 py-1 text-[11px] font-semibold text-bg disabled:opacity-40"
+        >
+          {pending ? "Withdrawing…" : "Withdraw access"}
+        </button>
+      </div>
+    </form>
+  );
+}

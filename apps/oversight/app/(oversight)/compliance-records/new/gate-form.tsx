@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { submitStaffGate, type GateState } from "../actions";
 import {
@@ -21,6 +21,7 @@ import {
   RecField,
   ScopeLine,
 } from "@/components/oversight/primitives";
+import { StepUpModal } from "@/components/oversight/step-up-modal";
 import { cn } from "@/lib/utils";
 import type { ResolvedSchool } from "@/lib/oversight/school-ref";
 
@@ -39,6 +40,17 @@ export function GateForm({ schools }: { schools: ResolvedSchool[] }) {
   });
   const [reason, setReason] = useState<string>("");
   const [confirmed, setConfirmed] = useState(false);
+  /**
+   * G7 cancel. `useActionState` has no reset, so a cancelled step-up is tracked locally and the
+   * flag is cleared whenever a NEW state arrives from the server — otherwise cancelling once would
+   * suppress the modal for the rest of the page's life, which would silently turn the step-up off.
+   */
+  const [stepUpDismissed, setStepUpDismissed] = useState(false);
+  useEffect(() => {
+    setStepUpDismissed(false);
+  }, [state]);
+
+  const showStepUp = state.status === "step_up" && !stepUpDismissed;
 
   return (
     <div className="space-y-6">
@@ -143,8 +155,8 @@ export function GateForm({ schools }: { schools: ResolvedSchool[] }) {
                 their record by its operational id. You supply nothing that decides the
                 lawful basis: the record&apos;s own NTC licence is checked against the GES
                 establishment register inside the read-back — an establishment teacher is
-                covered by statute, everyone else by the school&apos;s DPO consent. The role
-                a school typed does not decide it.
+                covered by statute, everyone else by the school&apos;s DPO consent. The
+                role a school typed does not decide it.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label className="block text-xs text-navy-2 sm:col-span-2">
@@ -207,6 +219,29 @@ export function GateForm({ schools }: { schools: ResolvedSchool[] }) {
         </Panel>
       </form>
 
+      {showStepUp && state.status === "step_up" ? (
+        // A SEPARATE form targeting the same action: it carries the echoed fields plus the code, so
+        // the posted FormData has exactly one value per field (a modal nested inside the main form
+        // would post every field twice and leave "which one wins" to DOM order).
+        <form action={action}>
+          <StepUpModal
+            fields={state.fields}
+            factorId={state.factorId}
+            error={state.error}
+            pending={pending}
+            schoolLabel={
+              schools.find((s) => s.emisSchoolId === state.fields.emisSchoolId)?.name ??
+              state.fields.emisSchoolId
+            }
+            reasonLabel={
+              STAFF_REASON_COPY[state.fields.reasonCode as keyof typeof STAFF_REASON_COPY]
+                ?.title ?? state.fields.reasonCode
+            }
+            onCancel={() => setStepUpDismissed(true)}
+          />
+        </form>
+      ) : null}
+
       <GateResult state={state} />
     </div>
   );
@@ -214,6 +249,9 @@ export function GateForm({ schools }: { schools: ResolvedSchool[] }) {
 
 function GateResult({ state }: { state: GateState }) {
   if (state.status === "idle") return null;
+  // The step-up renders as a modal over the form, not as a result below it — nothing has happened
+  // yet, and a "result" panel would imply something had.
+  if (state.status === "step_up") return null;
 
   if (state.status === "error") {
     return (

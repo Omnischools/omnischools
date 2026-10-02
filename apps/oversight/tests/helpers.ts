@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import { TEST_DB_CONFIG_PATH, type TestDbConfig } from "./setup/paths";
 import { JUR, OFFICER } from "./fixtures/ids";
-import type { OfficerSession } from "@/lib/oversight/officer";
+import {
+  sealOfficerSession,
+  type OfficerSession,
+  type ResolvedOfficerFields,
+} from "@/lib/oversight/officer";
 
 export const testDbConfig = JSON.parse(
   readFileSync(TEST_DB_CONFIG_PATH, "utf8"),
@@ -74,20 +78,39 @@ export async function auditRowCount(): Promise<number> {
   }
 }
 
+/**
+ * THE FIXTURE OFFICER MINT.
+ *
+ * `OfficerSession` carries a resolution brand (lib/oversight/officer.ts), so it cannot be written as
+ * an object literal — including here. That is deliberate: the suite is one of exactly three places
+ * allowed to mint a session, and tests/officer-session-mint.test.ts asserts the list. A test that
+ * needs a differently-scoped officer derives it from one of these (`{ ...districtOfficer,
+ * jurisdictionId: JUR.otherDistrict }` keeps the brand) rather than inventing a shape.
+ *
+ * ⚠ `OFFICER.role` is still the legacy `DISTRICT_DIRECTOR` string, while a REAL session now carries
+ * the DIRECTORY's `officer_role` — `DISTRICT_OVERSIGHT` (Wells's expected cosmetic drift). The
+ * fixture keeps the old value on purpose so the pre-existing §6 audit-row assertions keep asserting
+ * what they were written to assert; the live value is covered by tests/officer-resolver-rls.test.ts,
+ * which reads it from the database rather than from this file.
+ */
+export function officerFixture(fields: ResolvedOfficerFields): OfficerSession {
+  return sealOfficerSession(fields);
+}
+
 /** A district director scoped to Wassa Amenfi West — the ordinary officer in the fixtures. */
-export const districtOfficer: OfficerSession = {
+export const districtOfficer: OfficerSession = officerFixture({
   officerId: OFFICER.districtId,
   officerRole: OFFICER.role,
   jurisdictionId: JUR.district,
   level: "DISTRICT",
-};
+});
 
-export const nationalOfficer: OfficerSession = {
+export const nationalOfficer: OfficerSession = officerFixture({
   officerId: OFFICER.nationalId,
   officerRole: OFFICER.nationalRole,
   jurisdictionId: null,
   level: "NATIONAL",
-};
+});
 
 /** Unique per test, so `auditRowsFor` isolates one test's rows from an append-only shared table. */
 export function caseRef(label: string): string {

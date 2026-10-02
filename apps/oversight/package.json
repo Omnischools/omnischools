@@ -16,12 +16,16 @@
     "db:policies": "tsx scripts/apply-policies.ts",
     "db:seed": "tsx db/seed/config.ts",
     "db:load-establishment": "tsx scripts/load-establishment.ts",
+    "db:load-officers": "tsx scripts/load-officers.ts",
     "db:populate-op-ids": "tsx scripts/populate-operational-school-ids.ts",
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/config.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:rls-test": "vitest run tests/rls-tier-matrix.test.ts tests/officer-resolver-rls.test.ts tests/officer-session-forgery.test.ts tests/audit-insert-rls.test.ts tests/readback-identity-rls.test.ts tests/no-individuals-in-analytics.test.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.117.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

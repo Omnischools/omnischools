@@ -232,3 +232,55 @@ insert into fact_infrastructure (
   1, 1, 1,
   'OPERATIONAL_AGG', now() - interval '30 days'
 );
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- TIER-MATRIX FIXTURES (increment G runtime) — rows on BOTH sides of the district boundary.
+--
+-- Everything above seeds the §6 gate, which only ever needed data inside ONE district (plus the
+-- single out-of-subtree school used as the ceiling probe). Proving the RLS tier matrix — "each tier
+-- sees exactly its subtree, across dim / fact / ref / audit" — needs the opposite shape: comparable
+-- rows in Wassa Amenfi West AND in Sekondi-Takoradi Metro, so "the district officer sees 1 of 2" is
+-- a measurement rather than an absence.
+--
+-- Why a fact table and a ref table, not just dim_jurisdiction: the predicate is written once
+-- (`ov_in_subtree`) but APPLIED per table, through a different column each time —
+-- `jurisdiction_id` on fact_*, `district_id` on ref_gss_population, a join through the register for
+-- the establishment extract. A policy attached to the wrong column, or not attached at all (a new
+-- table added without its policy), is invisible to a test that only reads the spine.
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+
+insert into dim_stage (stage, official_age_low, official_age_high, display_order) values
+  ('JHS', 12, 14, 3)
+on conflict (stage) do nothing;
+
+-- fact_enrolment: one school row in EACH district. Headcounts differ so a leak is identifiable by
+-- value, not only by count.
+insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date) values
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 410, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 720, 'OPERATIONAL_AGG', now());
+
+-- ref_gss_population: scoped on `district_id`, not `jurisdiction_id` — a different column for the
+-- same predicate, which is exactly the kind of difference a per-table policy gets wrong.
+insert into ref_gss_population (district_id, stage, population, source, as_of_date) values
+  ('10000000-0000-4000-8000-000000000003', 'JHS', 9100, 'GSS_CENSUS', current_date - 365),
+  ('10000000-0000-4000-8000-000000000004', 'JHS', 15400, 'GSS_CENSUS', current_date - 365);
+
+-- audit_access_log: one historical row per district, written as the OWNER (the only writer that can
+-- place a row for an officer other than the current one). The matrix then asserts the `audit_scope`
+-- policy — own rows OR subtree — rather than only the INSERT predicate that audit-insert-rls covers.
+insert into audit_access_log
+  (officer_id, officer_role, jurisdiction_id, reason_code, case_reference, record_type, target_ref,
+   fields_released, legal_basis, outcome, staff_category)
+--
+-- legal_basis = CONSENT with an `OPS:` target_ref, deliberately: tests/gate.test.ts asserts a
+-- WHOLE-LOG invariant (AC-3.9) that every STATUTORY row carries an `NTC:` ref and record_type
+-- TEACHER, and every CONSENT row does not. A fixture row is as much part of "the whole log" as a
+-- row the gate wrote, so these two have to satisfy the same shape — which is the invariant doing
+-- its job.
+values
+  ('60000000-0000-4000-8000-000000000001', 'DISTRICT_OVERSIGHT', '10000000-0000-4000-8000-000000000011',
+   'STATUTORY_AUDIT', 'CASE-MATRIX-IN', 'STAFF', 'OPS:EMIS-PUB-001:50000000-0000-4000-8000-000000000001',
+   '[]'::jsonb, 'CONSENT', 'GRANTED', 'OTHER_STAFF'),
+  ('60000000-0000-4000-8000-000000000005', 'DISTRICT_OVERSIGHT', '10000000-0000-4000-8000-000000000018',
+   'STATUTORY_AUDIT', 'CASE-MATRIX-OUT', 'STAFF', 'OPS:EMIS-OUT-008:50000000-0000-4000-8000-000000000009',
+   '[]'::jsonb, 'CONSENT', 'GRANTED', 'OTHER_STAFF');

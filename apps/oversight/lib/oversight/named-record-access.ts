@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction } from "@/lib/db/rls";
+import { withJurisdiction, scopeFor } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
 import type { OfficerSession } from "@/lib/oversight/officer";
 import { isReadbackConfigured, withReadbackSchool } from "@/lib/db/readback";
@@ -353,12 +353,11 @@ interface AuditRowInput {
  */
 async function writeAuditRow(input: AuditRowInput): Promise<string> {
   assertTargetRefMatchesBasisUnlessRoster(input.targetRef, input.legalBasis);
-  const scope = {
-    jurisdictionId: input.officer.jurisdictionId,
-    level: input.officer.level,
-    officerId: input.officer.officerId,
-  };
-  return withJurisdiction(scope, async (tx) => {
+  // The scope comes from the SESSION, whole — not from three fields copied off it. `scopeFor()` is
+  // the only constructor of a `JurisdictionScope` and it takes an `OfficerSession`, which cannot be
+  // written as a literal (lib/oversight/officer.ts). So the GUCs this transaction sets are provably
+  // the resolved officer's own ceiling.
+  return withJurisdiction(scopeFor(input.officer), async (tx) => {
     const result = await tx.execute(sql`
       insert into audit_access_log (
         officer_id, officer_role, jurisdiction_id, reason_code, case_reference,
@@ -496,11 +495,7 @@ export async function requestNamedStaffRecord(
   const trace: string[] = [];
   const now = request.now ?? new Date();
 
-  const officerScope = {
-    jurisdictionId: request.officer.jurisdictionId,
-    level: request.officer.level,
-    officerId: request.officer.officerId,
-  };
+  const officerScope = scopeFor(request.officer);
 
   // ── 1. validate ────────────────────────────────────────────────────────────────────────────
   // The operational school uuid is NOT validated here any more — it is no longer request-supplied.
@@ -903,13 +898,8 @@ export async function requestStaffListBrowse(
   // Same ceiling as the record path: the school is resolved under the OFFICER's own RLS, and a
   // school outside their subtree is refused before anything else happens. A staff list is a list of
   // names, so browsing one outside your jurisdiction is the same wrong as opening a record there.
-  const school = await withJurisdiction(
-    {
-      jurisdictionId: request.officer.jurisdictionId,
-      level: request.officer.level,
-      officerId: request.officer.officerId,
-    },
-    (tx) => resolveGateSchoolInTx(tx, request.school),
+  const school = await withJurisdiction(scopeFor(request.officer), (tx) =>
+    resolveGateSchoolInTx(tx, request.school),
   );
 
   const targetRef = buildRosterTargetRef(school.emisSchoolId);

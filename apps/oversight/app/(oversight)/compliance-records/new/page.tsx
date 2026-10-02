@@ -1,4 +1,5 @@
 import { getOfficerSession } from "@/lib/auth";
+import { scopeFor } from "@/lib/db/rls";
 import { listSchoolsInJurisdiction } from "@/lib/oversight/school-ref";
 import { isIndividualDrilldownAvailable } from "@/lib/oversight/named-record-access";
 import { PageBody, PageHead } from "@/components/oversight/shell";
@@ -36,11 +37,7 @@ export default async function NewComplianceRecordPage() {
     );
   }
 
-  const schools = await listSchoolsInJurisdiction({
-    jurisdictionId: officer.jurisdictionId,
-    level: officer.level,
-    officerId: officer.officerId,
-  });
+  const schools = await listSchoolsInJurisdiction(scopeFor(officer));
 
   return (
     <>

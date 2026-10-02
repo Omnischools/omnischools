@@ -1,4 +1,5 @@
 import { getOfficerSession } from "@/lib/auth";
+import { scopeFor } from "@/lib/db/rls";
 import { listSchoolsInJurisdiction } from "@/lib/oversight/school-ref";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner } from "@/components/oversight/primitives";
@@ -31,11 +32,7 @@ export default async function StaffListPage() {
     );
   }
 
-  const schools = await listSchoolsInJurisdiction({
-    jurisdictionId: officer.jurisdictionId,
-    level: officer.level,
-    officerId: officer.officerId,
-  });
+  const schools = await listSchoolsInJurisdiction(scopeFor(officer));
 
   return (
     <>
