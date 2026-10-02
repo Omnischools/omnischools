@@ -66,7 +66,11 @@ export const feeCategoryEnum = pgEnum("ov_fee_category", [
   "OTHER",
 ]);
 
-export const anomalySeverityEnum = pgEnum("ov_anomaly_severity", ["HIGH", "MEDIUM", "LOW"]);
+export const anomalySeverityEnum = pgEnum("ov_anomaly_severity", [
+  "HIGH",
+  "MEDIUM",
+  "LOW",
+]);
 
 export const anomalyStatusEnum = pgEnum("ov_anomaly_status", [
   "NEW",
@@ -100,7 +104,10 @@ export const reviewStatusEnum = pgEnum("access_review_status", [
 //               no per-school consent exists to gate on (mirrors §5.5: no school-level ETL consent).
 //   CONSENT   — the subject is non-GES / non-teaching staff; access rests on a live school-DPO
 //               consent artefact in the OPERATIONAL database, referenced by consent_ref.
-export const accessLegalBasisEnum = pgEnum("access_legal_basis", ["STATUTORY", "CONSENT"]);
+export const accessLegalBasisEnum = pgEnum("access_legal_basis", [
+  "STATUTORY",
+  "CONSENT",
+]);
 
 // The outcome of the gated request. DENIALS ARE WRITTEN ROWS, not silent drops: a refusal is the
 // most audit-relevant event there is (it records an officer attempting an access the boundary
@@ -114,3 +121,35 @@ export const accessOutcomeEnum = pgEnum("access_outcome", [
 ]);
 
 export const etlStatusEnum = pgEnum("etl_status", ["RUNNING", "SUCCESS", "FAILED"]);
+
+// ---- officer auth (increment G) ---------------------------------------------
+//
+// The oversight officer's post, as held in the officer DIRECTORY (ref_oversight_officer).
+//
+// THREE VALUES, AND DELIBERATELY NO SCHOOL ONE (Kofi R1). There is no school-tier oversight
+// officer: a head teacher is an operational user of apps/web, not a GES supervisor of their own
+// school, and giving the school tier an oversight post would make "oversight of X" and "running X"
+// the same credential. SCHOOL remains a perfectly valid `jurisdiction_level` — the spine, the RLS
+// predicate and every fact table still key on school nodes — it is only ineligible as an officer's
+// OWN node. That is enforced at write time by the ov_officer_node_valid() trigger
+// (db/sql/policies.sql), not by this enum, because the ineligible thing is the JURISDICTION ROW's
+// level, which lives in another table and so is beyond the reach of any CHECK.
+//
+// WHY AN ENUM HERE BUT TEXT ON THE AUDIT TABLES. This is the live authority record: the set of
+// legal postings is closed, small, and a typo'd role must fail the INSERT rather than create an
+// officer nobody's code recognises. `audit_access_log.officer_role` and
+// `audit_officer_provisioning.role_before/role_after` stay TEXT (Kofi R2) for the opposite reason:
+// they are frozen historical claims that must still be writable/readable when the vocabulary has
+// moved on — an audit row recording a post that has since been retired must not become
+// unrepresentable, and widening an enum on an audit write path costs two migrations (see the
+// `record_type` note above).
+//
+// This type is CREATED by migration 0004, so 0004 may use it immediately (column type, CHECK,
+// default). The "unsafe use of new value" restriction applies only to `ALTER TYPE ... ADD VALUE` on
+// a PRE-EXISTING type. Adding a fourth post later DOES hit that restriction — keep the value-add and
+// its first use in separate migrations.
+export const officerRoleEnum = pgEnum("ov_officer_role", [
+  "DISTRICT_OVERSIGHT",
+  "REGIONAL_OVERSIGHT",
+  "NATIONAL_OVERSIGHT",
+]);

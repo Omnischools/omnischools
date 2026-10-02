@@ -19,4 +19,11 @@ export interface TestDbConfig {
   operationalUrl: string;
   superuserAnalyticsUrl: string;
   superuserOperationalUrl: string;
+  /**
+   * The analytics DB as the Omnischools PROVISIONER role (increment G) — a third, non-owner role
+   * that holds exactly SELECT on `audit_officer_provisioning` and nothing on the officer directory.
+   * Needed so a test can assert the provisioning log IS readable in the provisioner role context and
+   * is NOT readable through `analyticsUrl` (the app role), which is the whole posture.
+   */
+  provisionerAnalyticsUrl: string;
 }

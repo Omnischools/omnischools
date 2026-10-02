@@ -40,9 +40,13 @@ pnpm db:generate     # first time only — emit db/migrations/* from db/schema (
 pnpm db:setup        # drizzle-kit migrate  +  apply-policies (RLS)  +  seed config
 ```
 
-`db:setup` creates all `dim_*`, `fact_*`, `ref_*`, `etl_run`, `audit_access_log`; enables
-jurisdiction RLS and the append-only `audit_access_log` guard; and seeds the config tables
-(`dim_stage`, `dim_subject`, `ref_anomaly_rule`).
+`db:setup` creates all `dim_*`, `fact_*`, `ref_*`, `etl_run`, `audit_access_log`, and the officer-auth
+pair (`ref_oversight_officer`, `audit_officer_provisioning`); enables jurisdiction RLS, the
+append-only `audit_access_log` guard, and the officer-directory posture (§4b); and seeds the config
+tables (`dim_stage`, `dim_subject`, `ref_anomaly_rule`).
+
+Note that `db:setup` is for a **fresh** database. On a live prod project every migration *and* every
+`prod-paste-*.sql` is applied by hand, in order — see §2a.
 
 ### 2a · After prod is live: the RLS hand-paste step (⚠ not automated)
 
@@ -136,6 +140,60 @@ Current files:
 > file's verification block checks exactly this, and the dev/test harness boots from
 > `db/sql/policies.sql`, which carries the same predicate.
 
+- `db/sql/prod-paste-0005-officer-directory.sql` — **officer auth** (increment G): the RLS posture,
+  the five functions and the GRANT/REVOKE posture for `ref_oversight_officer` and
+  `audit_officer_provisioning`. Pairs with migration **`0004_white_eternity`** (purely additive: one
+  new enum type `ov_officer_role`, two new tables, two FKs, three indexes, and a hand-appended
+  `ENABLE ROW LEVEL SECURITY` on both tables).
+
+> **Apply 0004 then 0005, in that order, and do not stop after the migration.** 0005 needs the two
+> role names edited at the marked block before it will run (the app role behind
+> `ANALYTICS_DATABASE_URL`, and a **separate** `oversight_provisioner` role — create it first if it
+> does not exist). The block raises rather than installing half a posture.
+>
+> **This paste does NOT fail closed into an empty panel — it fails closed into "nobody can sign
+> in".** The migration creates both tables RLS-enabled with no policy, so nothing leaks in the
+> window; but the officer directory's *only* read path is `ov_resolve_officer(uuid)`, which 0005
+> creates. Skip it and every sign-in raises `function ov_resolve_officer(uuid) does not exist`. That
+> is a total, immediately visible outage, which is the right direction of failure — and it is a
+> different signature from the empty panel described above, so recognise it for what it is.
+>
+> **⚠ If sign-in is broken, do NOT "fix" it with `create policy … using (true)` on
+> `ref_oversight_officer`.** That one statement turns the app credential into a GES-officer roster
+> enumeration primitive — name, work email, tier and node for every oversight officer in Ghana —
+> behind whatever leaks a connection string. 0005 re-drops any such policy every time it is run.
+>
+> **What the design rests on, so a future change does not quietly remove it:**
+>
+> 1. **The bootstrap read is a `SECURITY DEFINER` function, not a policy.** Resolving the officer is
+>    the one read that runs with **no** `app.current_jurisdiction` set — it is the read that produces
+>    it. A policy-based alternative (`app.current_auth_user` GUC + `using (auth_user_id = …)`) was
+>    rejected because it cannot derive the officer's **tier**: tier comes from a join to
+>    `dim_jurisdiction`, which is itself scoped by `ov_in_subtree()`, which needs the GUC that does
+>    not exist yet. The only escapes would be storing `level` on the directory (a second writable
+>    source of truth for how much of Ghana someone can read) or widening the spine's own policy. A
+>    definer body is RLS-exempt and does both jobs in one statement no caller can decompose. It
+>    pins `search_path = public, pg_temp` with **pg_temp last**, for the CVE-2018-1058 reason in
+>    `db/sql/policies.sql`'s header — here it is sharper still: a planted temp
+>    `ref_oversight_officer` read with owner privileges would be *authority forgery*.
+> 2. **Self-promotion is prevented by an absent GRANT, not by a policy.** The app role holds
+>    `SELECT` on the directory and nothing else — no `INSERT`, no `UPDATE`, no `DELETE`, ever. Same
+>    argument as `audit_access_log` in §1: a policy can be mis-edited into permitting an update, a
+>    privilege that was never issued cannot. Verification block D in the paste proves it raises
+>    `permission denied`.
+> 3. **The officer's tier is DERIVED, never stored.** There is no `level` column on the directory;
+>    the paste's pre-check *refuses to install* if one appears.
+> 4. **No school-tier oversight officer.** A trigger (not a `CHECK` — the disqualifying fact lives in
+>    `dim_jurisdiction`) refuses a SCHOOL node, and refuses an `officer_role` that contradicts the
+>    node's tier. `SCHOOL` remains a perfectly valid `jurisdiction_level` everywhere else.
+> 5. **The two-person rule is a CHECK plus a trigger.** `ck_officer_provisioning_two_person` requires
+>    an approver (distinct from the actor) for REGION/NATIONAL grants, and
+>    `ov_officer_provisioning_tier_guard()` refuses a `target_tier` that disagrees with the node —
+>    without which the rule would be dodgeable by recording a national grant as a district one.
+> 6. **`audit_officer_provisioning` is append-only and invisible to GES officers.** Its only SELECT
+>    policy is `TO` the provisioner role; the app role is explicitly `REVOKE`d. An officer who could
+>    read it would hold the roster the directory withholds.
+
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 
 These are **external data-agreement** loads, not part of the seed. Load with each source's own
@@ -157,8 +215,76 @@ Set on the Vercel `omnischools-oversight` project (see repo root, and `apps/over
 
 - `ANALYTICS_DATABASE_URL` → the pooler connection for the read-scoped role (secret).
 - `NEXT_PUBLIC_SITE_URL` → `https://oversight.omnischools.gh`.
-- Supabase auth vars for the **GES-staff** auth (the analytics project's own auth), when built.
-- `AUTH_DEV_BYPASS=false` in production.
+- Supabase auth vars for the **GES-staff** auth — the analytics project's **own** Supabase Auth, not
+  `omnischools-prod`'s. See §4b: the database half is built (migration 0004 + paste 0005); the
+  runtime half (`getOfficerSession()`) is in progress.
+- `AUTH_DEV_BYPASS=false` in production. `lib/auth/index.ts` throws at module load if this is `true`
+  with `NODE_ENV=production` — the dev shim issues an unauthenticated **NATIONAL** session.
+
+### 4b · GES-staff auth: the officer directory (increment G)
+
+Authentication is **Supabase Auth on the analytics project**; authorisation is the
+`ref_oversight_officer` table in the analytics DB. Nothing about who may see what is carried in a
+JWT claim, a cookie, or app config — it is a row, and that row's node is the RLS ceiling.
+
+**The identity is ONE uid.** `ref_oversight_officer.officer_id` **is** the Supabase auth uid. The
+same value becomes `OfficerSession.officerId`, is written to `app.current_officer` by
+`withJurisdiction()` (`lib/db/rls.ts`), and is stored on `audit_access_log.officer_id`. There is
+deliberately no second surrogate key: with two candidate ids, some future writer stamps the wrong one
+onto an audit row and attribution silently stops working.
+
+**Sign-in resolves in one call:**
+
+```sql
+select * from ov_resolve_officer(<auth uid>);
+-- → 0 or 1 row: (officer_id, jurisdiction_id, level, officer_role)
+```
+
+- **0 rows ⇒ no session.** Fail closed. An authenticated Supabase user with no directory row is not
+  an officer; neither is a deactivated one (the function filters `is_active`), and the two are
+  deliberately indistinguishable — it is not an account-state oracle.
+- **`level` is DERIVED** from the joined `dim_jurisdiction.level` on every call. It is not stored,
+  and no code path may set it independently.
+- The function returns **no name and no email**. The session's display name comes from the Supabase
+  JWT — the officer's own identity, which they already hold. `full_name` / `work_email` exist on the
+  table for the provisioner (reconciling against a GES HR list, answering "who is this uid" in an
+  audit) and are reachable only by the owner/provisioner connection.
+
+**Provisioning is a privileged, two-person, logged operation — never a self-service one.**
+
+- Writes go through a **separate `oversight_provisioner` role**, not the app role. The app role has
+  no `INSERT`/`UPDATE`/`DELETE` on the directory at all, which is what makes self-promotion
+  impossible (see §2a, point 2).
+- That role needs **both** its grants *and* the role-targeted write policies paste 0005 installs.
+  RLS gates writes as well as reads: a non-owner `INSERT` into an RLS-enabled table with no
+  applicable policy fails with `new row violates row-level security policy`. If provisioning writes
+  start failing that way, the paste was not applied — do **not** reach for the owner credential
+  instead. Because every policy on these two tables carries a `TO oversight_provisioner` clause,
+  none of them is ever considered for the app role, so they widen nothing.
+- The write guards work for a non-owner provisioner because `ov_officer_node_tier()` is
+  `SECURITY DEFINER`: a non-owner's lookup of `dim_jurisdiction` would otherwise be filtered by
+  jurisdiction RLS (needing a GUC that means nothing during provisioning) and the guard would refuse
+  every legitimate write. The provisioner's own *reads* of the spine do need
+  `app.current_level = 'NATIONAL'` — a convenience for its UI, which nothing security-critical
+  depends on.
+- Every provision / role change / deactivation / approval appends a row to
+  `audit_officer_provisioning` (append-only; a correction is a new row). A **REGION or NATIONAL**
+  grant requires a named `approver_id`, distinct from `actor_id` — enforced by a CHECK, with a
+  trigger making the recorded tier unforgeable.
+- **Offboarding is `is_active = false`, never `DELETE`** — on both the directory row and the Supabase
+  auth user. Deleting the row would orphan every audit entry attributed to that uid.
+- There is **no school-tier officer**. A head teacher is an operational user of `apps/web`; one
+  credential must not both run a school and oversee it.
+
+**Still to wire (the runtime half — not provisioned by this section):**
+
+- `getOfficerSession()` in `lib/auth/index.ts` currently returns the dev shim or `null`. It needs to
+  read the Supabase session, call `ov_resolve_officer(uid)`, and return `null` on zero rows.
+  `jurisdictionName` (chrome only) is a separate `dim_jurisdiction` read.
+- A provisioning surface (or runbook) for the provisioner role, writing the directory row and the
+  `audit_officer_provisioning` row **in one transaction**.
+- The ordering of an `APPROVE` row relative to the `PROVISION` it authorises is deliberately not
+  constrained by the schema — decide it when the provisioning path is built.
 
 ## 4a · The read-back role behind `OPERATIONAL_READBACK_URL` (§6 individual drill-down)
 
@@ -338,9 +464,16 @@ alter role oversight_readback set default_transaction_read_only = on;
 - Stand up the ETL cron in `apps/web` (02:00 GMT) writing into this DB (deferred — separate work).
 - Run it nightly against a **staging** analytics DB; verify roll-ups equal hand-computed sums and
   coverage equals register-minus-onboarded (`OVERSIGHT_ANALYTICS_SPEC.md` §10.3).
-- Provision the first GES users national → regional → district.
+- Provision the first GES officers national → regional → district, per §4b: a Supabase auth user,
+  then a `ref_oversight_officer` row keyed by that uid, then the `audit_officer_provisioning` row —
+  with an approver for the national and regional ones. The directory is **deny-by-default**: an
+  authenticated user with no row has no session, so there is no window in which a new officer sees
+  more than intended.
 
 ## Deferred in this scaffold
 
 - **The ETL job** (`OVERSIGHT_ANALYTICS_SPEC.md` §7) — explicitly skipped for now.
-- **The 13 Oversight surfaces** and **GES-staff auth** — built on `withJurisdiction()` reads next.
+- **The 13 Oversight surfaces** — built on `withJurisdiction()` reads next.
+- **GES-staff auth:** the database half is BUILT (migration `0004_white_eternity` +
+  `db/sql/prod-paste-0005-officer-directory.sql`, §4b). Outstanding: `getOfficerSession()` against
+  Supabase Auth + `ov_resolve_officer()`, and the provisioning write path.
