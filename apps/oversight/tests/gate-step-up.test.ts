@@ -161,6 +161,49 @@ describe("the tier ceiling is checked BEFORE the step-up, not after", () => {
     expect(await auditRowCount()).toBe(before);
   });
 
+  it("when BOTH refusals apply, the TIER one wins — this pins the order, not just the check", async () => {
+    // The test above passes a FRESH assertion, so it proves the tier is checked AT ALL. It cannot
+    // prove the tier is checked FIRST: swap the two `if`s in `assertMayOpenNamedRecord()` and it
+    // still passes. Here both conditions are violated at once — a SCHOOL-tier session AND a stale
+    // step-up — so the ORDER is the only thing that decides which error comes back.
+    //
+    // Why the order is worth a test of its own. `StepUpRequiredError` is a RECOVERABLE state: the
+    // server action turns it into the G7 interstitial, which invites the officer to enter a code and
+    // try again. For a tier that may never open a named record that is the wrong conversation — it
+    // offers a remedy to someone whose problem is not remediable, and a future reader of the auth
+    // telemetry would see repeated step-up challenges where the truth is a refused authorisation.
+    // "Proved it's you" must never be reachable as an answer to "may you do this".
+    const before = await auditRowCount();
+    const schoolTier = officerFixture({ ...districtOfficer, level: "SCHOOL" });
+
+    const error = await openNamedStaffRecord(
+      {
+        officer: schoolTier,
+        school: { emisSchoolId: EMIS.publicConsented },
+        reasonCode: "STATUTORY_AUDIT",
+        caseReference: caseRef("stepup-tier-before-freshness"),
+        subject: { operationalStaffId: OPS_STAFF.teacherOnRegister },
+        rosterBrowsed: false,
+        exportFormat: null,
+      },
+      stepUpFixture(false),
+    ).then(
+      () => null,
+      (err: unknown) => err,
+    );
+
+    expect(error).toBeInstanceOf(TierCannotOpenNamedRecordError);
+    expect((error as TierCannotOpenNamedRecordError).code).toBe(
+      "TIER_CANNOT_OPEN_NAMED_RECORD",
+    );
+    // Stated as a negative too, because the whole point is WHICH refusal was raised.
+    expect(error).not.toBeInstanceOf(StepUpRequiredError);
+
+    // And the refusal is still a refusal: no audit row, and the read-back is never opened (it is
+    // opened inside the gate, which was never entered).
+    expect(await auditRowCount()).toBe(before);
+  });
+
   it("the refusal names the rule, so an operator reading a log knows why", () => {
     const error = new TierCannotOpenNamedRecordError("SCHOOL");
     expect(error.message).toMatch(/no SCHOOL-tier oversight officer/i);
