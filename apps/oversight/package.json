@@ -18,6 +18,8 @@
     "db:load-establishment": "tsx scripts/load-establishment.ts",
     "db:load-officers": "tsx scripts/load-officers.ts",
     "db:populate-op-ids": "tsx scripts/populate-operational-school-ids.ts",
+    "db:seed-demo": "tsx scripts/seed-demo-data.ts",
+    "etl:run": "tsx scripts/run-etl.ts",
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/config.ts",
     "test": "vitest run",
     "test:watch": "vitest",

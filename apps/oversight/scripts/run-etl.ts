@@ -1,0 +1,103 @@
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+import postgres from "postgres";
+import { runInfrastructureEtl } from "@/lib/etl/pipeline";
+import { DEMO_EMIS_EXTRACT_PATH, DEMO_TERMS } from "@/scripts/seed-demo-data";
+
+/**
+ * THE ETL ENTRY POINT for the `fact_infrastructure` slice.
+ *
+ * ── PRIVILEGE ───────────────────────────────────────────────────────────────────────────────────
+ * `ANALYTICS_DATABASE_URL` must point at the PRIVILEGED owner/writer (the Direct connection, the same
+ * one `db:migrate` / `db:policies` / `db:load-establishment` use) — never the app runtime's
+ * read-scoped pooler, which has no INSERT on the fact tables at all, and never the §6
+ * `oversight_readback` operational role.
+ *
+ * ── WHERE THE ETL LIVES (scope §7 Q12, open for Dex) ────────────────────────────────────────────
+ * Here, in `apps/oversight/scripts/`, alongside every other loader. Spec §7 suggests a cron in
+ * `apps/web`; this slice does not settle that, and nothing about the decision is baked in: the
+ * pipeline is a plain function over a `postgres.Sql`, so a cron in either app, or a generic HTTP
+ * POST + shared-secret job runner, calls the same `runInfrastructureEtl()`. Scheduling is task H21.
+ *
+ * ── THE SOURCE SCHEMA ARGUMENT ──────────────────────────────────────────────────────────────────
+ * `--source-schema` defaults to `demo_source`, the operational stand-in the demo generator writes
+ * (`db/seed/demo/demo-source-schema.sql` explains why it is a stand-in and exactly what is stood in).
+ * In real operation it becomes `public` on an `oversight_etl` connection — scope task H1, which does
+ * not exist yet and is the reason the demo path exists at all.
+ *
+ *   usage: tsx scripts/run-etl.ts [--extract <file.json>] [--source-schema <name>]
+ */
+
+interface Args {
+  extract: string;
+  sourceSchema: string;
+}
+
+function parseArgs(argv: string[]): Args {
+  const args: Args = { extract: DEMO_EMIS_EXTRACT_PATH, sourceSchema: "demo_source" };
+  for (let i = 0; i < argv.length; i += 2) {
+    const flag = argv[i];
+    const value = argv[i + 1];
+    if (!value) throw new Error(`Missing value for ${flag}`);
+    if (flag === "--extract") args.extract = value;
+    else if (flag === "--source-schema") args.sourceSchema = value;
+    else throw new Error(`Unknown flag ${flag}`);
+  }
+  return args;
+}
+
+async function main(): Promise<void> {
+  const args = parseArgs(process.argv.slice(2));
+  const url =
+    process.env.ANALYTICS_DATABASE_URL ??
+    "postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev";
+  const sql = postgres(url, { max: 1, prepare: false });
+  try {
+    const report = await runInfrastructureEtl(sql, {
+      emisExtractText: readFileSync(args.extract, "utf8"),
+      periods: DEMO_TERMS.map((t) => ({
+        academicYear: t.academicYear,
+        term: t.term,
+        startsOn: t.startsOn,
+        endsOn: t.endsOn,
+        isCurrent: t.isCurrent,
+      })),
+      sourceSchema: args.sourceSchema,
+    });
+
+    const { coverage } = report;
+    console.log(`✓ etl_run ${report.runId} → ${report.status}`);
+    console.log(
+      `  register ${report.registerRows} rows · coverage ${coverage.onSchoolup}/${coverage.registered} ` +
+        `(${((coverage.onSchoolup / coverage.registered) * 100).toFixed(1)}%) on Schoolup · ` +
+        `${coverage.included} in the inclusion set`,
+    );
+    if (coverage.unmapped.length > 0)
+      console.log(
+        `  ⚠ ${coverage.unmapped.length} on-Schoolup school(s) have no operational_school_id`,
+      );
+    if (coverage.unresolved.length > 0)
+      console.log(
+        `  ⚠ ${coverage.unresolved.length} on-Schoolup school(s) have no dim_jurisdiction node`,
+      );
+    for (const p of report.periods) {
+      console.log(
+        `  ${p.academicYear} T${p.term} · source ${p.sourceRows} → fact_infrastructure ` +
+          `${p.inserted} inserted (${p.deleted} replaced)` +
+          (p.failures.length > 0
+            ? ` · ${p.failures.length} school(s) failed compute`
+            : ""),
+      );
+    }
+    if (report.errorText) console.log(`  note: ${report.errorText}`);
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((err) => {
+    console.error(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
+}
