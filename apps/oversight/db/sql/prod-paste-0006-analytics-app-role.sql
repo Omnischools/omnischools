@@ -300,7 +300,7 @@ $$;
 -- ⇩⇩ EDIT THE ROLE NAME BELOW IF YOURS DIFFERS ⇩⇩  (default: `oversight_app`)
 --
 -- THIS IS NOT A DESIGN DECISION TAKEN IN THIS FILE. It is a transcription. The whole oversight test
--- suite — 372 tests, including every RLS, gate, audit and officer-auth test — runs as a NON-OWNER
+-- suite — every RLS, gate, audit and officer-auth test — runs as a NON-OWNER
 -- role (`ov_app`) against the real db/sql/policies.sql, provisioned with exactly these statements in
 -- tests/setup/global-setup.ts (~lines 112–145). If prod matches this list, prod matches the thing CI
 -- proves. If it does not, CI is proving a posture nobody is running.

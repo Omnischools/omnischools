@@ -747,6 +747,11 @@ describe("prod-paste-0006 — replayed from empty", () => {
      */
     it("warns, does not raise, and the un-fixable default privilege still bites", async () => {
       const { sql: operatorConn, messages } = connectCollecting(withDb(adminBase, PP_DB));
+      // Roles are cluster-wide — only drop `anon` in the finally if WE created it, so a cluster
+      // where `anon` legitimately pre-exists is left untouched (matches the sibling tests).
+      const [{ present: anonPreexisted }] = await ppAdmin.unsafe(
+        `select exists (select 1 from pg_roles where rolname = 'anon') as present`,
+      );
       try {
         await ppAdmin.unsafe(`
           do $$ begin
@@ -822,7 +827,10 @@ describe("prod-paste-0006 — replayed from empty", () => {
           `alter default privileges for role plat_admin in schema public revoke all on tables from anon`,
         );
         await ppAdmin.unsafe(`revoke create, usage on schema public from plat_admin`);
-        for (const role of ["plat_admin", "pp_operator", "anon"]) {
+        const toDrop = anonPreexisted
+          ? ["plat_admin", "pp_operator"]
+          : ["plat_admin", "pp_operator", "anon"];
+        for (const role of toDrop) {
           await ppAdmin.unsafe(`drop owned by ${role}`);
           await ppAdmin.unsafe(`drop role if exists ${role}`);
         }
