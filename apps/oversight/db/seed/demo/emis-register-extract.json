@@ -1,0 +1,4415 @@
+{
+  "as_of_date": "2026-09-01",
+  "rows": [
+    {
+      "emis_school_id": "GH-GA-0001",
+      "name": "Gomoa Basic School",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000001"
+    },
+    {
+      "emis_school_id": "GH-GA-0002",
+      "name": "Half Assini Community KG",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000002"
+    },
+    {
+      "emis_school_id": "GH-GA-0003",
+      "name": "Nandom Primary School",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000003"
+    },
+    {
+      "emis_school_id": "GH-GA-0004",
+      "name": "Half Assini Community Primary School",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000004"
+    },
+    {
+      "emis_school_id": "GH-GA-0005",
+      "name": "Asokore KG",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000005"
+    },
+    {
+      "emis_school_id": "GH-GA-0006",
+      "name": "Dadieso JHS",
+      "region": "Greater Accra",
+      "district": "Tema Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000006"
+    },
+    {
+      "emis_school_id": "GH-GA-0007",
+      "name": "Fumesua Model JHS",
+      "region": "Greater Accra",
+      "district": "Tema Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000007"
+    },
+    {
+      "emis_school_id": "GH-GA-0008",
+      "name": "Suhum Primary School",
+      "region": "Greater Accra",
+      "district": "Tema Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000008"
+    },
+    {
+      "emis_school_id": "GH-GA-0009",
+      "name": "Sampa Community Primary School",
+      "region": "Greater Accra",
+      "district": "Tema Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000009"
+    },
+    {
+      "emis_school_id": "GH-GA-0010",
+      "name": "Dunkwa International Primary School",
+      "region": "Greater Accra",
+      "district": "Tema Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000010"
+    },
+    {
+      "emis_school_id": "GH-GA-0011",
+      "name": "Lawra Primary School",
+      "region": "Greater Accra",
+      "district": "Tema Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000011"
+    },
+    {
+      "emis_school_id": "GH-GA-0012",
+      "name": "Ayeduase Model KG",
+      "region": "Greater Accra",
+      "district": "Ga East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000012"
+    },
+    {
+      "emis_school_id": "GH-GA-0013",
+      "name": "Kwadaso Academy KG",
+      "region": "Greater Accra",
+      "district": "Ga East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000013"
+    },
+    {
+      "emis_school_id": "GH-GA-0014",
+      "name": "Abesim JHS",
+      "region": "Greater Accra",
+      "district": "Ga East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000014"
+    },
+    {
+      "emis_school_id": "GH-GA-0015",
+      "name": "Tafo Model Primary School",
+      "region": "Greater Accra",
+      "district": "Ga East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000015"
+    },
+    {
+      "emis_school_id": "GH-GA-0016",
+      "name": "Dambai Islamic Primary School",
+      "region": "Greater Accra",
+      "district": "Ga East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000016"
+    },
+    {
+      "emis_school_id": "GH-GA-0017",
+      "name": "Manhyia JHS",
+      "region": "Greater Accra",
+      "district": "Ga East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000017"
+    },
+    {
+      "emis_school_id": "GH-GA-0018",
+      "name": "Saboba International Primary School",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000018"
+    },
+    {
+      "emis_school_id": "GH-GA-0019",
+      "name": "Bogoso Community Basic School",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-GA-0020",
+      "name": "Dambai Model Primary School",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-GA-0021",
+      "name": "Breman JHS",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000021"
+    },
+    {
+      "emis_school_id": "GH-GA-0022",
+      "name": "Tanoso Community Primary School",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-GA-0023",
+      "name": "Ayeduase JHS",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000023"
+    },
+    {
+      "emis_school_id": "GH-GA-0024",
+      "name": "Kpandai Academy Senior High School",
+      "region": "Greater Accra",
+      "district": "Ga West Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000024"
+    },
+    {
+      "emis_school_id": "GH-GA-0025",
+      "name": "Tumu Senior High School",
+      "region": "Greater Accra",
+      "district": "Ledzokuku Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000025"
+    },
+    {
+      "emis_school_id": "GH-GA-0026",
+      "name": "Akropong Primary School",
+      "region": "Greater Accra",
+      "district": "Ledzokuku Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000026"
+    },
+    {
+      "emis_school_id": "GH-GA-0027",
+      "name": "Saboba Primary School",
+      "region": "Greater Accra",
+      "district": "Ledzokuku Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000027"
+    },
+    {
+      "emis_school_id": "GH-GA-0028",
+      "name": "Kasoa St. Peter KG",
+      "region": "Greater Accra",
+      "district": "Ledzokuku Municipal",
+      "school_type": "KG",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000028"
+    },
+    {
+      "emis_school_id": "GH-GA-0029",
+      "name": "Manhyia Basic School",
+      "region": "Greater Accra",
+      "district": "Ledzokuku Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000029"
+    },
+    {
+      "emis_school_id": "GH-GA-0030",
+      "name": "Gomoa International JHS",
+      "region": "Greater Accra",
+      "district": "Adentan Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000030"
+    },
+    {
+      "emis_school_id": "GH-GA-0031",
+      "name": "Lawra Primary School 2",
+      "region": "Greater Accra",
+      "district": "Adentan Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000031"
+    },
+    {
+      "emis_school_id": "GH-GA-0032",
+      "name": "Suhum KG",
+      "region": "Greater Accra",
+      "district": "Adentan Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000032"
+    },
+    {
+      "emis_school_id": "GH-GA-0033",
+      "name": "Kpandai Community Primary School",
+      "region": "Greater Accra",
+      "district": "Adentan Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000033"
+    },
+    {
+      "emis_school_id": "GH-GA-0034",
+      "name": "Jamasi Model JHS",
+      "region": "Greater Accra",
+      "district": "Adentan Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000034"
+    },
+    {
+      "emis_school_id": "GH-GA-0035",
+      "name": "Nyankpala Primary School",
+      "region": "Greater Accra",
+      "district": "Adentan Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0036",
+      "name": "Kasoa Primary School",
+      "region": "Ashanti",
+      "district": "Kumasi Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000036"
+    },
+    {
+      "emis_school_id": "GH-AS-0037",
+      "name": "Agbogba JHS",
+      "region": "Ashanti",
+      "district": "Kumasi Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000037"
+    },
+    {
+      "emis_school_id": "GH-AS-0038",
+      "name": "Akropong Model KG",
+      "region": "Ashanti",
+      "district": "Kumasi Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000038"
+    },
+    {
+      "emis_school_id": "GH-AS-0039",
+      "name": "Sogakope Academy JHS",
+      "region": "Ashanti",
+      "district": "Kumasi Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000039"
+    },
+    {
+      "emis_school_id": "GH-AS-0040",
+      "name": "Nsawam Academy Primary School",
+      "region": "Ashanti",
+      "district": "Kumasi Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0041",
+      "name": "Mamobi KG",
+      "region": "Ashanti",
+      "district": "Obuasi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000041"
+    },
+    {
+      "emis_school_id": "GH-AS-0042",
+      "name": "Zebilla Model Primary School",
+      "region": "Ashanti",
+      "district": "Obuasi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000042"
+    },
+    {
+      "emis_school_id": "GH-AS-0043",
+      "name": "Saboba International KG",
+      "region": "Ashanti",
+      "district": "Obuasi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000043"
+    },
+    {
+      "emis_school_id": "GH-AS-0044",
+      "name": "Gushegu Primary School",
+      "region": "Ashanti",
+      "district": "Obuasi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000044"
+    },
+    {
+      "emis_school_id": "GH-AS-0045",
+      "name": "Suhum Model Primary School",
+      "region": "Ashanti",
+      "district": "Obuasi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000045"
+    },
+    {
+      "emis_school_id": "GH-AS-0046",
+      "name": "Agbogba Islamic Senior High School",
+      "region": "Ashanti",
+      "district": "Ejisu Municipal",
+      "school_type": "SHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000046"
+    },
+    {
+      "emis_school_id": "GH-AS-0047",
+      "name": "Saboba Community KG",
+      "region": "Ashanti",
+      "district": "Ejisu Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000047"
+    },
+    {
+      "emis_school_id": "GH-AS-0048",
+      "name": "Fumesua Model Primary School",
+      "region": "Ashanti",
+      "district": "Ejisu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000048"
+    },
+    {
+      "emis_school_id": "GH-AS-0049",
+      "name": "Wulensi JHS",
+      "region": "Ashanti",
+      "district": "Ejisu Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000049"
+    },
+    {
+      "emis_school_id": "GH-AS-0050",
+      "name": "Mampong Community KG",
+      "region": "Ashanti",
+      "district": "Ejisu Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000050"
+    },
+    {
+      "emis_school_id": "GH-AS-0051",
+      "name": "Tanoso Community JHS",
+      "region": "Ashanti",
+      "district": "Offinso Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000051"
+    },
+    {
+      "emis_school_id": "GH-AS-0052",
+      "name": "Dadieso Model Senior High School",
+      "region": "Ashanti",
+      "district": "Offinso Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000052"
+    },
+    {
+      "emis_school_id": "GH-AS-0053",
+      "name": "Fumesua KG",
+      "region": "Ashanti",
+      "district": "Offinso Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000053"
+    },
+    {
+      "emis_school_id": "GH-AS-0054",
+      "name": "Suhum Community JHS",
+      "region": "Ashanti",
+      "district": "Offinso Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0055",
+      "name": "Pokuase Presby Primary School",
+      "region": "Ashanti",
+      "district": "Offinso Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0056",
+      "name": "Weija Model Primary School",
+      "region": "Ashanti",
+      "district": "Bekwai Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000056"
+    },
+    {
+      "emis_school_id": "GH-AS-0057",
+      "name": "Zebilla JHS",
+      "region": "Ashanti",
+      "district": "Bekwai Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0058",
+      "name": "Obomeng Model JHS",
+      "region": "Ashanti",
+      "district": "Bekwai Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000058"
+    },
+    {
+      "emis_school_id": "GH-AS-0059",
+      "name": "Tafo KG",
+      "region": "Ashanti",
+      "district": "Bekwai Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000059"
+    },
+    {
+      "emis_school_id": "GH-AS-0060",
+      "name": "Asawase Academy Basic School",
+      "region": "Ashanti",
+      "district": "Bekwai Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0061",
+      "name": "Gomoa Model KG",
+      "region": "Ashanti",
+      "district": "Bekwai Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0062",
+      "name": "Suhum KG 2",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000062"
+    },
+    {
+      "emis_school_id": "GH-AS-0063",
+      "name": "Agbogba Basic School",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000063"
+    },
+    {
+      "emis_school_id": "GH-AS-0064",
+      "name": "Suhum Model Primary School 2",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AS-0065",
+      "name": "Abesim JHS 2",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000065"
+    },
+    {
+      "emis_school_id": "GH-AS-0066",
+      "name": "Weija International JHS",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000066"
+    },
+    {
+      "emis_school_id": "GH-AS-0067",
+      "name": "Kaleo Primary School",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000067"
+    },
+    {
+      "emis_school_id": "GH-AS-0068",
+      "name": "Akropong Model Primary School",
+      "region": "Ashanti",
+      "district": "Asante Akim North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-WR-0069",
+      "name": "Gomoa KG",
+      "region": "Western",
+      "district": "Sekondi-Takoradi Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000069"
+    },
+    {
+      "emis_school_id": "GH-WR-0070",
+      "name": "Adjei Kojo Community KG",
+      "region": "Western",
+      "district": "Sekondi-Takoradi Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000070"
+    },
+    {
+      "emis_school_id": "GH-WR-0071",
+      "name": "Teshie Community KG",
+      "region": "Western",
+      "district": "Sekondi-Takoradi Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000071"
+    },
+    {
+      "emis_school_id": "GH-WR-0072",
+      "name": "Abesim JHS 3",
+      "region": "Western",
+      "district": "Sekondi-Takoradi Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000072"
+    },
+    {
+      "emis_school_id": "GH-WR-0073",
+      "name": "Zuarungu International Primary School",
+      "region": "Western",
+      "district": "Sekondi-Takoradi Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000073"
+    },
+    {
+      "emis_school_id": "GH-WR-0074",
+      "name": "Mampong Community Primary School",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000074"
+    },
+    {
+      "emis_school_id": "GH-WR-0075",
+      "name": "Kaleo Basic School",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-WR-0076",
+      "name": "Manhyia Primary School",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000076"
+    },
+    {
+      "emis_school_id": "GH-WR-0077",
+      "name": "Tongo Community Primary School",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000077"
+    },
+    {
+      "emis_school_id": "GH-WR-0078",
+      "name": "Nandom Academy Primary School",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000078"
+    },
+    {
+      "emis_school_id": "GH-WR-0079",
+      "name": "Saboba Model JHS",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000079"
+    },
+    {
+      "emis_school_id": "GH-WR-0080",
+      "name": "Nsawam St. Augustine Senior High School",
+      "region": "Western",
+      "district": "Tarkwa-Nsuaem Municipal",
+      "school_type": "SHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000080"
+    },
+    {
+      "emis_school_id": "GH-WR-0081",
+      "name": "Anomabo Model Senior High School",
+      "region": "Western",
+      "district": "Ahanta West Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000081"
+    },
+    {
+      "emis_school_id": "GH-WR-0082",
+      "name": "Mampong KG",
+      "region": "Western",
+      "district": "Ahanta West Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000082"
+    },
+    {
+      "emis_school_id": "GH-WR-0083",
+      "name": "Weija Primary School",
+      "region": "Western",
+      "district": "Ahanta West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-WR-0084",
+      "name": "Abesim Model Primary School",
+      "region": "Western",
+      "district": "Ahanta West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000084"
+    },
+    {
+      "emis_school_id": "GH-WR-0085",
+      "name": "Half Assini Model Primary School",
+      "region": "Western",
+      "district": "Ahanta West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000085"
+    },
+    {
+      "emis_school_id": "GH-WR-0086",
+      "name": "Anomabo Community JHS",
+      "region": "Western",
+      "district": "Ahanta West Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000086"
+    },
+    {
+      "emis_school_id": "GH-WR-0087",
+      "name": "Navrongo Primary School",
+      "region": "Western",
+      "district": "Nzema East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000087"
+    },
+    {
+      "emis_school_id": "GH-WR-0088",
+      "name": "Gushegu Primary School 2",
+      "region": "Western",
+      "district": "Nzema East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000088"
+    },
+    {
+      "emis_school_id": "GH-WR-0089",
+      "name": "Tongo Community Primary School 2",
+      "region": "Western",
+      "district": "Nzema East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000089"
+    },
+    {
+      "emis_school_id": "GH-WR-0090",
+      "name": "Half Assini Community JHS",
+      "region": "Western",
+      "district": "Nzema East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000090"
+    },
+    {
+      "emis_school_id": "GH-WR-0091",
+      "name": "Anomabo Community Basic School",
+      "region": "Western",
+      "district": "Nzema East Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000091"
+    },
+    {
+      "emis_school_id": "GH-WR-0092",
+      "name": "Dunkwa Primary School",
+      "region": "Western",
+      "district": "Nzema East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000092"
+    },
+    {
+      "emis_school_id": "GH-WR-0093",
+      "name": "Atonsu Model Senior High School",
+      "region": "Western",
+      "district": "Wassa Amenfi West",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000093"
+    },
+    {
+      "emis_school_id": "GH-WR-0094",
+      "name": "Kpandai Holy Child Primary School",
+      "region": "Western",
+      "district": "Wassa Amenfi West",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000094"
+    },
+    {
+      "emis_school_id": "GH-WR-0095",
+      "name": "Salaga Primary School",
+      "region": "Western",
+      "district": "Wassa Amenfi West",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000095"
+    },
+    {
+      "emis_school_id": "GH-WR-0096",
+      "name": "Adjei Kojo JHS",
+      "region": "Western",
+      "district": "Wassa Amenfi West",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000096"
+    },
+    {
+      "emis_school_id": "GH-WR-0097",
+      "name": "Manhyia Primary School 2",
+      "region": "Western",
+      "district": "Wassa Amenfi West",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000097"
+    },
+    {
+      "emis_school_id": "GH-CR-0098",
+      "name": "Buipe International JHS",
+      "region": "Central",
+      "district": "Cape Coast Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000098"
+    },
+    {
+      "emis_school_id": "GH-CR-0099",
+      "name": "Lawra JHS",
+      "region": "Central",
+      "district": "Cape Coast Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000099"
+    },
+    {
+      "emis_school_id": "GH-CR-0100",
+      "name": "Pokuase Model Basic School",
+      "region": "Central",
+      "district": "Cape Coast Metropolitan",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000100"
+    },
+    {
+      "emis_school_id": "GH-CR-0101",
+      "name": "Mamobi KG 2",
+      "region": "Central",
+      "district": "Cape Coast Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000101"
+    },
+    {
+      "emis_school_id": "GH-CR-0102",
+      "name": "Weija Community Primary School",
+      "region": "Central",
+      "district": "Cape Coast Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000102"
+    },
+    {
+      "emis_school_id": "GH-CR-0103",
+      "name": "Sogakope Primary School",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000103"
+    },
+    {
+      "emis_school_id": "GH-CR-0104",
+      "name": "Abesim Basic School",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000104"
+    },
+    {
+      "emis_school_id": "GH-CR-0105",
+      "name": "Sogakope Community Senior High School",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000105"
+    },
+    {
+      "emis_school_id": "GH-CR-0106",
+      "name": "Mampong Model Primary School",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000106"
+    },
+    {
+      "emis_school_id": "GH-CR-0107",
+      "name": "Pokuase Primary School",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000107"
+    },
+    {
+      "emis_school_id": "GH-CR-0108",
+      "name": "Fumesua Primary School",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000108"
+    },
+    {
+      "emis_school_id": "GH-CR-0109",
+      "name": "Fumesua Community JHS",
+      "region": "Central",
+      "district": "Mfantsiman Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000109"
+    },
+    {
+      "emis_school_id": "GH-CR-0110",
+      "name": "Ejura Primary School",
+      "region": "Central",
+      "district": "Agona West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000110"
+    },
+    {
+      "emis_school_id": "GH-CR-0111",
+      "name": "Dambai Senior High School",
+      "region": "Central",
+      "district": "Agona West Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000111"
+    },
+    {
+      "emis_school_id": "GH-CR-0112",
+      "name": "Jamasi Community Primary School",
+      "region": "Central",
+      "district": "Agona West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000112"
+    },
+    {
+      "emis_school_id": "GH-CR-0113",
+      "name": "Asokore Primary School",
+      "region": "Central",
+      "district": "Agona West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000113"
+    },
+    {
+      "emis_school_id": "GH-CR-0114",
+      "name": "Walewale Model Senior High School",
+      "region": "Central",
+      "district": "Agona West Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000114"
+    },
+    {
+      "emis_school_id": "GH-CR-0115",
+      "name": "Breman Primary School",
+      "region": "Central",
+      "district": "Awutu Senya East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000115"
+    },
+    {
+      "emis_school_id": "GH-CR-0116",
+      "name": "Nungua KG",
+      "region": "Central",
+      "district": "Awutu Senya East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000116"
+    },
+    {
+      "emis_school_id": "GH-CR-0117",
+      "name": "Fumesua Model KG",
+      "region": "Central",
+      "district": "Awutu Senya East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000117"
+    },
+    {
+      "emis_school_id": "GH-CR-0118",
+      "name": "Salaga Model Primary School",
+      "region": "Central",
+      "district": "Awutu Senya East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000118"
+    },
+    {
+      "emis_school_id": "GH-CR-0119",
+      "name": "Jamasi Basic School",
+      "region": "Central",
+      "district": "Awutu Senya East Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000119"
+    },
+    {
+      "emis_school_id": "GH-CR-0120",
+      "name": "Half Assini Model JHS",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000120"
+    },
+    {
+      "emis_school_id": "GH-CR-0121",
+      "name": "Dunkwa JHS",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000121"
+    },
+    {
+      "emis_school_id": "GH-CR-0122",
+      "name": "Anomabo JHS",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000122"
+    },
+    {
+      "emis_school_id": "GH-CR-0123",
+      "name": "Nsawam Methodist Primary School",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000123"
+    },
+    {
+      "emis_school_id": "GH-CR-0124",
+      "name": "Gbewaa Primary School",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000124"
+    },
+    {
+      "emis_school_id": "GH-CR-0125",
+      "name": "Walewale International Primary School",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000125"
+    },
+    {
+      "emis_school_id": "GH-CR-0126",
+      "name": "Ayeduase International Basic School",
+      "region": "Central",
+      "district": "Komenda-Edina-Eguafo-Abirem",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000126"
+    },
+    {
+      "emis_school_id": "GH-ER-0127",
+      "name": "Zebilla Model Primary School 2",
+      "region": "Eastern",
+      "district": "New Juaben Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000127"
+    },
+    {
+      "emis_school_id": "GH-ER-0128",
+      "name": "Sampa Primary School",
+      "region": "Eastern",
+      "district": "New Juaben Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000128"
+    },
+    {
+      "emis_school_id": "GH-ER-0129",
+      "name": "Suhum Primary School 2",
+      "region": "Eastern",
+      "district": "New Juaben Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000129"
+    },
+    {
+      "emis_school_id": "GH-ER-0130",
+      "name": "Walewale Academy KG",
+      "region": "Eastern",
+      "district": "New Juaben Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000130"
+    },
+    {
+      "emis_school_id": "GH-ER-0131",
+      "name": "Akropong Community JHS",
+      "region": "Eastern",
+      "district": "New Juaben Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000131"
+    },
+    {
+      "emis_school_id": "GH-ER-0132",
+      "name": "Fumesua Anglican Basic School",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000132"
+    },
+    {
+      "emis_school_id": "GH-ER-0133",
+      "name": "Tongo International KG",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000133"
+    },
+    {
+      "emis_school_id": "GH-ER-0134",
+      "name": "Saboba Primary School 2",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-ER-0135",
+      "name": "Wulensi KG",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000135"
+    },
+    {
+      "emis_school_id": "GH-ER-0136",
+      "name": "Manhyia Primary School 3",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000136"
+    },
+    {
+      "emis_school_id": "GH-ER-0137",
+      "name": "Oyibi KG",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000137"
+    },
+    {
+      "emis_school_id": "GH-ER-0138",
+      "name": "Lawra Model Basic School",
+      "region": "Eastern",
+      "district": "Kwahu West Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000138"
+    },
+    {
+      "emis_school_id": "GH-ER-0139",
+      "name": "Bantama KG",
+      "region": "Eastern",
+      "district": "Birim Central Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000139"
+    },
+    {
+      "emis_school_id": "GH-ER-0140",
+      "name": "Akropong Community Primary School",
+      "region": "Eastern",
+      "district": "Birim Central Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000140"
+    },
+    {
+      "emis_school_id": "GH-ER-0141",
+      "name": "Navrongo JHS",
+      "region": "Eastern",
+      "district": "Birim Central Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000141"
+    },
+    {
+      "emis_school_id": "GH-ER-0142",
+      "name": "Manhyia St. Peter Senior High School",
+      "region": "Eastern",
+      "district": "Birim Central Municipal",
+      "school_type": "SHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000142"
+    },
+    {
+      "emis_school_id": "GH-ER-0143",
+      "name": "Teshie Academy KG",
+      "region": "Eastern",
+      "district": "Birim Central Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000143"
+    },
+    {
+      "emis_school_id": "GH-ER-0144",
+      "name": "Walewale Academy Basic School",
+      "region": "Eastern",
+      "district": "Birim Central Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000144"
+    },
+    {
+      "emis_school_id": "GH-ER-0145",
+      "name": "Jamasi Model KG",
+      "region": "Eastern",
+      "district": "Lower Manya Krobo Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000145"
+    },
+    {
+      "emis_school_id": "GH-ER-0146",
+      "name": "Bawjiase Community Primary School",
+      "region": "Eastern",
+      "district": "Lower Manya Krobo Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000146"
+    },
+    {
+      "emis_school_id": "GH-ER-0147",
+      "name": "Obomeng Community Senior High School",
+      "region": "Eastern",
+      "district": "Lower Manya Krobo Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000147"
+    },
+    {
+      "emis_school_id": "GH-ER-0148",
+      "name": "Ayeduase KG",
+      "region": "Eastern",
+      "district": "Lower Manya Krobo Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000148"
+    },
+    {
+      "emis_school_id": "GH-ER-0149",
+      "name": "Ejura JHS",
+      "region": "Eastern",
+      "district": "Lower Manya Krobo Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000149"
+    },
+    {
+      "emis_school_id": "GH-ER-0150",
+      "name": "Wulensi JHS 2",
+      "region": "Eastern",
+      "district": "Akuapem North",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-ER-0151",
+      "name": "Gbewaa Academy Basic School",
+      "region": "Eastern",
+      "district": "Akuapem North",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000151"
+    },
+    {
+      "emis_school_id": "GH-ER-0152",
+      "name": "Oyibi Community Primary School",
+      "region": "Eastern",
+      "district": "Akuapem North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000152"
+    },
+    {
+      "emis_school_id": "GH-ER-0153",
+      "name": "Nsawam Community Primary School",
+      "region": "Eastern",
+      "district": "Akuapem North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000153"
+    },
+    {
+      "emis_school_id": "GH-ER-0154",
+      "name": "Sogakope St. Peter JHS",
+      "region": "Eastern",
+      "district": "Akuapem North",
+      "school_type": "JHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000154"
+    },
+    {
+      "emis_school_id": "GH-VR-0155",
+      "name": "Breman JHS 2",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0156",
+      "name": "Breman Primary School 2",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0157",
+      "name": "Obomeng Community Primary School",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0158",
+      "name": "Breman Model JHS",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000158"
+    },
+    {
+      "emis_school_id": "GH-VR-0159",
+      "name": "Obomeng Community JHS",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000159"
+    },
+    {
+      "emis_school_id": "GH-VR-0160",
+      "name": "Lawra KG",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0161",
+      "name": "Ayeduase International Primary School",
+      "region": "Volta",
+      "district": "Ho Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000161"
+    },
+    {
+      "emis_school_id": "GH-VR-0162",
+      "name": "Tongo Community Primary School 3",
+      "region": "Volta",
+      "district": "Hohoe Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0163",
+      "name": "Dambai Primary School",
+      "region": "Volta",
+      "district": "Hohoe Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000163"
+    },
+    {
+      "emis_school_id": "GH-VR-0164",
+      "name": "Agbogba Model Basic School",
+      "region": "Volta",
+      "district": "Hohoe Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000164"
+    },
+    {
+      "emis_school_id": "GH-VR-0165",
+      "name": "Weija Community KG",
+      "region": "Volta",
+      "district": "Hohoe Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000165"
+    },
+    {
+      "emis_school_id": "GH-VR-0166",
+      "name": "Ahinsan JHS",
+      "region": "Volta",
+      "district": "Hohoe Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000166"
+    },
+    {
+      "emis_school_id": "GH-VR-0167",
+      "name": "Yagaba JHS",
+      "region": "Volta",
+      "district": "Hohoe Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000167"
+    },
+    {
+      "emis_school_id": "GH-VR-0168",
+      "name": "Asawase Model JHS",
+      "region": "Volta",
+      "district": "Keta Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000168"
+    },
+    {
+      "emis_school_id": "GH-VR-0169",
+      "name": "Saboba Primary School 3",
+      "region": "Volta",
+      "district": "Keta Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000169"
+    },
+    {
+      "emis_school_id": "GH-VR-0170",
+      "name": "Buipe Community JHS",
+      "region": "Volta",
+      "district": "Keta Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000170"
+    },
+    {
+      "emis_school_id": "GH-VR-0171",
+      "name": "Breman Academy Senior High School",
+      "region": "Volta",
+      "district": "Keta Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000171"
+    },
+    {
+      "emis_school_id": "GH-VR-0172",
+      "name": "Ejura Community Senior High School",
+      "region": "Volta",
+      "district": "Keta Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000172"
+    },
+    {
+      "emis_school_id": "GH-VR-0173",
+      "name": "Teshie Model JHS",
+      "region": "Volta",
+      "district": "Ketu South Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000173"
+    },
+    {
+      "emis_school_id": "GH-VR-0174",
+      "name": "Weija KG",
+      "region": "Volta",
+      "district": "Ketu South Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0175",
+      "name": "Ayeduase Community Primary School",
+      "region": "Volta",
+      "district": "Ketu South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000175"
+    },
+    {
+      "emis_school_id": "GH-VR-0176",
+      "name": "Gushegu Community Primary School",
+      "region": "Volta",
+      "district": "Ketu South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000176"
+    },
+    {
+      "emis_school_id": "GH-VR-0177",
+      "name": "Lawra Primary School 3",
+      "region": "Volta",
+      "district": "Ketu South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0178",
+      "name": "Bawjiase Academy Primary School",
+      "region": "Volta",
+      "district": "Ketu South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000178"
+    },
+    {
+      "emis_school_id": "GH-VR-0179",
+      "name": "Yagaba Primary School",
+      "region": "Volta",
+      "district": "South Tongu",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000179"
+    },
+    {
+      "emis_school_id": "GH-VR-0180",
+      "name": "Akropong JHS",
+      "region": "Volta",
+      "district": "South Tongu",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000180"
+    },
+    {
+      "emis_school_id": "GH-VR-0181",
+      "name": "Nungua Community Primary School",
+      "region": "Volta",
+      "district": "South Tongu",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000181"
+    },
+    {
+      "emis_school_id": "GH-VR-0182",
+      "name": "Tanoso Academy Primary School",
+      "region": "Volta",
+      "district": "South Tongu",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000182"
+    },
+    {
+      "emis_school_id": "GH-VR-0183",
+      "name": "Nungua Primary School",
+      "region": "Volta",
+      "district": "South Tongu",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-VR-0184",
+      "name": "Dunkwa Community Basic School",
+      "region": "Volta",
+      "district": "South Tongu",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NR-0185",
+      "name": "Ayeduase Basic School",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000185"
+    },
+    {
+      "emis_school_id": "GH-NR-0186",
+      "name": "Kpandai KG",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000186"
+    },
+    {
+      "emis_school_id": "GH-NR-0187",
+      "name": "Adabraka JHS",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000187"
+    },
+    {
+      "emis_school_id": "GH-NR-0188",
+      "name": "Wulensi Community JHS",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000188"
+    },
+    {
+      "emis_school_id": "GH-NR-0189",
+      "name": "Ayeduase Primary School",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000189"
+    },
+    {
+      "emis_school_id": "GH-NR-0190",
+      "name": "Ejura JHS 2",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NR-0191",
+      "name": "Navrongo Primary School 2",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000191"
+    },
+    {
+      "emis_school_id": "GH-NR-0192",
+      "name": "Tafo Senior High School",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NR-0193",
+      "name": "Salaga St. Augustine Primary School",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000193"
+    },
+    {
+      "emis_school_id": "GH-NR-0194",
+      "name": "Tafo Primary School",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000194"
+    },
+    {
+      "emis_school_id": "GH-NR-0195",
+      "name": "Tongo Senior High School",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000195"
+    },
+    {
+      "emis_school_id": "GH-NR-0196",
+      "name": "Anomabo Model Primary School",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000196"
+    },
+    {
+      "emis_school_id": "GH-NR-0197",
+      "name": "Saboba JHS",
+      "region": "Northern",
+      "district": "Sagnarigu Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000197"
+    },
+    {
+      "emis_school_id": "GH-NR-0198",
+      "name": "Bawjiase Model Primary School",
+      "region": "Northern",
+      "district": "Yendi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000198"
+    },
+    {
+      "emis_school_id": "GH-NR-0199",
+      "name": "Tanoso JHS",
+      "region": "Northern",
+      "district": "Yendi Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000199"
+    },
+    {
+      "emis_school_id": "GH-NR-0200",
+      "name": "Dambai Basic School",
+      "region": "Northern",
+      "district": "Yendi Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000200"
+    },
+    {
+      "emis_school_id": "GH-NR-0201",
+      "name": "Pokuase Model Primary School",
+      "region": "Northern",
+      "district": "Yendi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000201"
+    },
+    {
+      "emis_school_id": "GH-NR-0202",
+      "name": "Buipe Community KG",
+      "region": "Northern",
+      "district": "Yendi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000202"
+    },
+    {
+      "emis_school_id": "GH-NR-0203",
+      "name": "Jamasi Basic School 2",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000203"
+    },
+    {
+      "emis_school_id": "GH-NR-0204",
+      "name": "Nyankpala Primary School 2",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NR-0205",
+      "name": "Gbewaa Community KG",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000205"
+    },
+    {
+      "emis_school_id": "GH-NR-0206",
+      "name": "Adjei Kojo Community Senior High School",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000206"
+    },
+    {
+      "emis_school_id": "GH-NR-0207",
+      "name": "Ejura Primary School 2",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000207"
+    },
+    {
+      "emis_school_id": "GH-NR-0208",
+      "name": "Nungua Primary School 2",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000208"
+    },
+    {
+      "emis_school_id": "GH-NR-0209",
+      "name": "Kaleo Community KG",
+      "region": "Northern",
+      "district": "Savelugu Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000209"
+    },
+    {
+      "emis_school_id": "GH-NR-0210",
+      "name": "Agbogba Model Primary School",
+      "region": "Northern",
+      "district": "Kumbungu",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NR-0211",
+      "name": "Atonsu JHS",
+      "region": "Northern",
+      "district": "Kumbungu",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000211"
+    },
+    {
+      "emis_school_id": "GH-NR-0212",
+      "name": "Nsawam Model Primary School",
+      "region": "Northern",
+      "district": "Kumbungu",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000212"
+    },
+    {
+      "emis_school_id": "GH-NR-0213",
+      "name": "Mamobi International KG",
+      "region": "Northern",
+      "district": "Kumbungu",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000213"
+    },
+    {
+      "emis_school_id": "GH-NR-0214",
+      "name": "Ahinsan Community Senior High School",
+      "region": "Northern",
+      "district": "Kumbungu",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000214"
+    },
+    {
+      "emis_school_id": "GH-UE-0215",
+      "name": "Weija Primary School 2",
+      "region": "Upper East",
+      "district": "Bolgatanga Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000215"
+    },
+    {
+      "emis_school_id": "GH-UE-0216",
+      "name": "Lawra Primary School 4",
+      "region": "Upper East",
+      "district": "Bolgatanga Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000216"
+    },
+    {
+      "emis_school_id": "GH-UE-0217",
+      "name": "Bogoso Primary School",
+      "region": "Upper East",
+      "district": "Bolgatanga Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000217"
+    },
+    {
+      "emis_school_id": "GH-UE-0218",
+      "name": "Pokuase Anglican Basic School",
+      "region": "Upper East",
+      "district": "Bolgatanga Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000218"
+    },
+    {
+      "emis_school_id": "GH-UE-0219",
+      "name": "Jamasi KG",
+      "region": "Upper East",
+      "district": "Bolgatanga Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000219"
+    },
+    {
+      "emis_school_id": "GH-UE-0220",
+      "name": "Asawase Primary School",
+      "region": "Upper East",
+      "district": "Bawku Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-UE-0221",
+      "name": "Sampa Primary School 2",
+      "region": "Upper East",
+      "district": "Bawku Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000221"
+    },
+    {
+      "emis_school_id": "GH-UE-0222",
+      "name": "Walewale Model Primary School",
+      "region": "Upper East",
+      "district": "Bawku Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000222"
+    },
+    {
+      "emis_school_id": "GH-UE-0223",
+      "name": "Zebilla Model JHS",
+      "region": "Upper East",
+      "district": "Bawku Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000223"
+    },
+    {
+      "emis_school_id": "GH-UE-0224",
+      "name": "Teshie JHS",
+      "region": "Upper East",
+      "district": "Bawku Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000224"
+    },
+    {
+      "emis_school_id": "GH-UE-0225",
+      "name": "Suhum Academy JHS",
+      "region": "Upper East",
+      "district": "Bawku Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000225"
+    },
+    {
+      "emis_school_id": "GH-UE-0226",
+      "name": "Tanoso Primary School",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000226"
+    },
+    {
+      "emis_school_id": "GH-UE-0227",
+      "name": "Kasoa Community Basic School",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000227"
+    },
+    {
+      "emis_school_id": "GH-UE-0228",
+      "name": "Jamasi Senior High School",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000228"
+    },
+    {
+      "emis_school_id": "GH-UE-0229",
+      "name": "Akropong KG",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000229"
+    },
+    {
+      "emis_school_id": "GH-UE-0230",
+      "name": "Asokore Ahmadiyya JHS",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "JHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000230"
+    },
+    {
+      "emis_school_id": "GH-UE-0231",
+      "name": "Pokuase Primary School 2",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000231"
+    },
+    {
+      "emis_school_id": "GH-UE-0232",
+      "name": "Amanfrom JHS",
+      "region": "Upper East",
+      "district": "Kassena-Nankana Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000232"
+    },
+    {
+      "emis_school_id": "GH-UE-0233",
+      "name": "Bawjiase Academy JHS",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000233"
+    },
+    {
+      "emis_school_id": "GH-UE-0234",
+      "name": "Nyankpala Primary School 3",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000234"
+    },
+    {
+      "emis_school_id": "GH-UE-0235",
+      "name": "Buipe Academy Primary School",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000235"
+    },
+    {
+      "emis_school_id": "GH-UE-0236",
+      "name": "Tanoso Islamic JHS",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "JHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000236"
+    },
+    {
+      "emis_school_id": "GH-UE-0237",
+      "name": "Anomabo Community Primary School",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000237"
+    },
+    {
+      "emis_school_id": "GH-UE-0238",
+      "name": "Suhum Primary School 3",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000238"
+    },
+    {
+      "emis_school_id": "GH-UE-0239",
+      "name": "Wulensi Primary School",
+      "region": "Upper East",
+      "district": "Builsa North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000239"
+    },
+    {
+      "emis_school_id": "GH-UW-0240",
+      "name": "Adabraka Model Senior High School",
+      "region": "Upper West",
+      "district": "Wa Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000240"
+    },
+    {
+      "emis_school_id": "GH-UW-0241",
+      "name": "Mampong Primary School",
+      "region": "Upper West",
+      "district": "Wa Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000241"
+    },
+    {
+      "emis_school_id": "GH-UW-0242",
+      "name": "Pokuase JHS",
+      "region": "Upper West",
+      "district": "Wa Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000242"
+    },
+    {
+      "emis_school_id": "GH-UW-0243",
+      "name": "Gomoa Basic School 2",
+      "region": "Upper West",
+      "district": "Wa Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000243"
+    },
+    {
+      "emis_school_id": "GH-UW-0244",
+      "name": "Bantama Academy Primary School",
+      "region": "Upper West",
+      "district": "Wa Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000244"
+    },
+    {
+      "emis_school_id": "GH-UW-0245",
+      "name": "Bogoso Academy Primary School",
+      "region": "Upper West",
+      "district": "Jirapa Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000245"
+    },
+    {
+      "emis_school_id": "GH-UW-0246",
+      "name": "Zuarungu Primary School",
+      "region": "Upper West",
+      "district": "Jirapa Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000246"
+    },
+    {
+      "emis_school_id": "GH-UW-0247",
+      "name": "Tanoso Senior High School",
+      "region": "Upper West",
+      "district": "Jirapa Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000247"
+    },
+    {
+      "emis_school_id": "GH-UW-0248",
+      "name": "Teshie Primary School",
+      "region": "Upper West",
+      "district": "Jirapa Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000248"
+    },
+    {
+      "emis_school_id": "GH-UW-0249",
+      "name": "Gomoa Community Primary School",
+      "region": "Upper West",
+      "district": "Jirapa Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000249"
+    },
+    {
+      "emis_school_id": "GH-UW-0250",
+      "name": "Dambai Model KG",
+      "region": "Upper West",
+      "district": "Jirapa Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000250"
+    },
+    {
+      "emis_school_id": "GH-UW-0251",
+      "name": "Bogoso International Primary School",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000251"
+    },
+    {
+      "emis_school_id": "GH-UW-0252",
+      "name": "Mamobi Community Primary School",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-UW-0253",
+      "name": "Ayeduase International Primary School 2",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000253"
+    },
+    {
+      "emis_school_id": "GH-UW-0254",
+      "name": "Bogoso KG",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000254"
+    },
+    {
+      "emis_school_id": "GH-UW-0255",
+      "name": "Breman KG",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-UW-0256",
+      "name": "Adjei Kojo Primary School",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000256"
+    },
+    {
+      "emis_school_id": "GH-UW-0257",
+      "name": "Ahinsan Model JHS",
+      "region": "Upper West",
+      "district": "Sissala East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000257"
+    },
+    {
+      "emis_school_id": "GH-UW-0258",
+      "name": "Bogoso Basic School",
+      "region": "Upper West",
+      "district": "Nadowli-Kaleo",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-UW-0259",
+      "name": "Nyankpala KG",
+      "region": "Upper West",
+      "district": "Nadowli-Kaleo",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000259"
+    },
+    {
+      "emis_school_id": "GH-UW-0260",
+      "name": "Amanfrom Community Primary School",
+      "region": "Upper West",
+      "district": "Nadowli-Kaleo",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-UW-0261",
+      "name": "Saboba Model JHS 2",
+      "region": "Upper West",
+      "district": "Nadowli-Kaleo",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-UW-0262",
+      "name": "Nandom Model Primary School",
+      "region": "Upper West",
+      "district": "Nadowli-Kaleo",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000262"
+    },
+    {
+      "emis_school_id": "GH-UW-0263",
+      "name": "Pokuase JHS 2",
+      "region": "Upper West",
+      "district": "Nadowli-Kaleo",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000263"
+    },
+    {
+      "emis_school_id": "GH-BO-0264",
+      "name": "Mamobi Model JHS",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BO-0265",
+      "name": "Salaga Community Basic School",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000265"
+    },
+    {
+      "emis_school_id": "GH-BO-0266",
+      "name": "Kasoa Basic School",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000266"
+    },
+    {
+      "emis_school_id": "GH-BO-0267",
+      "name": "Saboba Community Basic School",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000267"
+    },
+    {
+      "emis_school_id": "GH-BO-0268",
+      "name": "Dadieso Community Primary School",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000268"
+    },
+    {
+      "emis_school_id": "GH-BO-0269",
+      "name": "Suhum JHS",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000269"
+    },
+    {
+      "emis_school_id": "GH-BO-0270",
+      "name": "Breman Model Primary School",
+      "region": "Bono",
+      "district": "Sunyani Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000270"
+    },
+    {
+      "emis_school_id": "GH-BO-0271",
+      "name": "Mampong Methodist Basic School",
+      "region": "Bono",
+      "district": "Dormaa Central Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000271"
+    },
+    {
+      "emis_school_id": "GH-BO-0272",
+      "name": "Kasoa Model Primary School",
+      "region": "Bono",
+      "district": "Dormaa Central Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000272"
+    },
+    {
+      "emis_school_id": "GH-BO-0273",
+      "name": "Atonsu Academy JHS",
+      "region": "Bono",
+      "district": "Dormaa Central Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000273"
+    },
+    {
+      "emis_school_id": "GH-BO-0274",
+      "name": "Kwadaso Model KG",
+      "region": "Bono",
+      "district": "Dormaa Central Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BO-0275",
+      "name": "Zebilla Model Primary School 3",
+      "region": "Bono",
+      "district": "Dormaa Central Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000275"
+    },
+    {
+      "emis_school_id": "GH-BO-0276",
+      "name": "Mamobi International KG 2",
+      "region": "Bono",
+      "district": "Dormaa Central Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000276"
+    },
+    {
+      "emis_school_id": "GH-BO-0277",
+      "name": "Walewale Model Primary School 2",
+      "region": "Bono",
+      "district": "Berekum East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000277"
+    },
+    {
+      "emis_school_id": "GH-BO-0278",
+      "name": "Ahinsan Anglican Primary School",
+      "region": "Bono",
+      "district": "Berekum East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BO-0279",
+      "name": "Sogakope Senior High School",
+      "region": "Bono",
+      "district": "Berekum East Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000279"
+    },
+    {
+      "emis_school_id": "GH-BO-0280",
+      "name": "Navrongo JHS 2",
+      "region": "Bono",
+      "district": "Berekum East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000280"
+    },
+    {
+      "emis_school_id": "GH-BO-0281",
+      "name": "Atonsu International JHS",
+      "region": "Bono",
+      "district": "Berekum East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000281"
+    },
+    {
+      "emis_school_id": "GH-BO-0282",
+      "name": "Asokore Model Senior High School",
+      "region": "Bono",
+      "district": "Berekum East Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000282"
+    },
+    {
+      "emis_school_id": "GH-BO-0283",
+      "name": "Anomabo Community Primary School 2",
+      "region": "Bono",
+      "district": "Wenchi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BO-0284",
+      "name": "Kpandai Primary School",
+      "region": "Bono",
+      "district": "Wenchi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000284"
+    },
+    {
+      "emis_school_id": "GH-BO-0285",
+      "name": "Breman Primary School 3",
+      "region": "Bono",
+      "district": "Wenchi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BO-0286",
+      "name": "Ahinsan Model Primary School",
+      "region": "Bono",
+      "district": "Wenchi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000286"
+    },
+    {
+      "emis_school_id": "GH-BO-0287",
+      "name": "Suhum KG 3",
+      "region": "Bono",
+      "district": "Wenchi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BO-0288",
+      "name": "Fumesua Primary School 2",
+      "region": "Bono",
+      "district": "Wenchi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000288"
+    },
+    {
+      "emis_school_id": "GH-BE-0289",
+      "name": "Dunkwa Community Primary School",
+      "region": "Bono East",
+      "district": "Techiman Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000289"
+    },
+    {
+      "emis_school_id": "GH-BE-0290",
+      "name": "Salaga KG",
+      "region": "Bono East",
+      "district": "Techiman Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000290"
+    },
+    {
+      "emis_school_id": "GH-BE-0291",
+      "name": "Sampa Community KG",
+      "region": "Bono East",
+      "district": "Techiman Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-BE-0292",
+      "name": "Kaleo JHS",
+      "region": "Bono East",
+      "district": "Techiman Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000292"
+    },
+    {
+      "emis_school_id": "GH-BE-0293",
+      "name": "Nyankpala Academy JHS",
+      "region": "Bono East",
+      "district": "Techiman Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000293"
+    },
+    {
+      "emis_school_id": "GH-BE-0294",
+      "name": "Oyibi Community JHS",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000294"
+    },
+    {
+      "emis_school_id": "GH-BE-0295",
+      "name": "Adabraka Model Primary School",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000295"
+    },
+    {
+      "emis_school_id": "GH-BE-0296",
+      "name": "Anomabo Academy Basic School",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000296"
+    },
+    {
+      "emis_school_id": "GH-BE-0297",
+      "name": "Akropong Model Primary School 2",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000297"
+    },
+    {
+      "emis_school_id": "GH-BE-0298",
+      "name": "Fumesua Our Lady of Mercy Primary School",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000298"
+    },
+    {
+      "emis_school_id": "GH-BE-0299",
+      "name": "Pokuase Academy JHS",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000299"
+    },
+    {
+      "emis_school_id": "GH-BE-0300",
+      "name": "Kaleo Academy KG",
+      "region": "Bono East",
+      "district": "Kintampo North Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000300"
+    },
+    {
+      "emis_school_id": "GH-BE-0301",
+      "name": "Asokore Community KG",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000301"
+    },
+    {
+      "emis_school_id": "GH-BE-0302",
+      "name": "Asawase KG",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000302"
+    },
+    {
+      "emis_school_id": "GH-BE-0303",
+      "name": "Asokore Model KG",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000303"
+    },
+    {
+      "emis_school_id": "GH-BE-0304",
+      "name": "Kasoa International Primary School",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000304"
+    },
+    {
+      "emis_school_id": "GH-BE-0305",
+      "name": "Adabraka JHS 2",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000305"
+    },
+    {
+      "emis_school_id": "GH-BE-0306",
+      "name": "Bantama Model JHS",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000306"
+    },
+    {
+      "emis_school_id": "GH-BE-0307",
+      "name": "Pokuase Methodist Senior High School",
+      "region": "Bono East",
+      "district": "Nkoranza South Municipal",
+      "school_type": "SHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000307"
+    },
+    {
+      "emis_school_id": "GH-BE-0308",
+      "name": "Tongo Model KG",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000308"
+    },
+    {
+      "emis_school_id": "GH-BE-0309",
+      "name": "Oyibi International Primary School",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000309"
+    },
+    {
+      "emis_school_id": "GH-BE-0310",
+      "name": "Saboba KG",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000310"
+    },
+    {
+      "emis_school_id": "GH-BE-0311",
+      "name": "Saboba Community JHS",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000311"
+    },
+    {
+      "emis_school_id": "GH-BE-0312",
+      "name": "Manhyia Model KG",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000312"
+    },
+    {
+      "emis_school_id": "GH-BE-0313",
+      "name": "Tafo KG 2",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000313"
+    },
+    {
+      "emis_school_id": "GH-BE-0314",
+      "name": "Agbogba Community JHS",
+      "region": "Bono East",
+      "district": "Atebubu-Amantin Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000314"
+    },
+    {
+      "emis_school_id": "GH-AH-0315",
+      "name": "Navrongo Senior High School",
+      "region": "Ahafo",
+      "district": "Asunafo North Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000315"
+    },
+    {
+      "emis_school_id": "GH-AH-0316",
+      "name": "Zebilla Model Primary School 4",
+      "region": "Ahafo",
+      "district": "Asunafo North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AH-0317",
+      "name": "Wulensi Primary School 2",
+      "region": "Ahafo",
+      "district": "Asunafo North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000317"
+    },
+    {
+      "emis_school_id": "GH-AH-0318",
+      "name": "Navrongo Methodist JHS",
+      "region": "Ahafo",
+      "district": "Asunafo North Municipal",
+      "school_type": "JHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000318"
+    },
+    {
+      "emis_school_id": "GH-AH-0319",
+      "name": "Pokuase International JHS",
+      "region": "Ahafo",
+      "district": "Asunafo North Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000319"
+    },
+    {
+      "emis_school_id": "GH-AH-0320",
+      "name": "Agbogba Model Primary School 2",
+      "region": "Ahafo",
+      "district": "Asunafo North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000320"
+    },
+    {
+      "emis_school_id": "GH-AH-0321",
+      "name": "Breman Model JHS 2",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000321"
+    },
+    {
+      "emis_school_id": "GH-AH-0322",
+      "name": "Breman Community KG",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000322"
+    },
+    {
+      "emis_school_id": "GH-AH-0323",
+      "name": "Bogoso Model Basic School",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000323"
+    },
+    {
+      "emis_school_id": "GH-AH-0324",
+      "name": "Dadieso Model Primary School",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000324"
+    },
+    {
+      "emis_school_id": "GH-AH-0325",
+      "name": "Kpong Community Primary School",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000325"
+    },
+    {
+      "emis_school_id": "GH-AH-0326",
+      "name": "Obomeng Community Senior High School 2",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AH-0327",
+      "name": "Nyankpala JHS",
+      "region": "Ahafo",
+      "district": "Tano North Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000327"
+    },
+    {
+      "emis_school_id": "GH-AH-0328",
+      "name": "Walewale Methodist Basic School",
+      "region": "Ahafo",
+      "district": "Asunafo South",
+      "school_type": "COMBINED",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000328"
+    },
+    {
+      "emis_school_id": "GH-AH-0329",
+      "name": "Akropong Community Primary School 2",
+      "region": "Ahafo",
+      "district": "Asunafo South",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000329"
+    },
+    {
+      "emis_school_id": "GH-AH-0330",
+      "name": "Agbogba JHS 2",
+      "region": "Ahafo",
+      "district": "Asunafo South",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000330"
+    },
+    {
+      "emis_school_id": "GH-AH-0331",
+      "name": "Adabraka Community Primary School",
+      "region": "Ahafo",
+      "district": "Asunafo South",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000331"
+    },
+    {
+      "emis_school_id": "GH-AH-0332",
+      "name": "Dunkwa Community KG",
+      "region": "Ahafo",
+      "district": "Asunafo South",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-AH-0333",
+      "name": "Half Assini KG",
+      "region": "Ahafo",
+      "district": "Asunafo South",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000333"
+    },
+    {
+      "emis_school_id": "GH-AH-0334",
+      "name": "Bogoso Model Senior High School",
+      "region": "Ahafo",
+      "district": "Asutifi North",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000334"
+    },
+    {
+      "emis_school_id": "GH-AH-0335",
+      "name": "Agbogba Primary School",
+      "region": "Ahafo",
+      "district": "Asutifi North",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000335"
+    },
+    {
+      "emis_school_id": "GH-AH-0336",
+      "name": "Adjei Kojo JHS 2",
+      "region": "Ahafo",
+      "district": "Asutifi North",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000336"
+    },
+    {
+      "emis_school_id": "GH-AH-0337",
+      "name": "Nsawam Community KG",
+      "region": "Ahafo",
+      "district": "Asutifi North",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000337"
+    },
+    {
+      "emis_school_id": "GH-AH-0338",
+      "name": "Abesim Community JHS",
+      "region": "Ahafo",
+      "district": "Asutifi North",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000338"
+    },
+    {
+      "emis_school_id": "GH-WN-0339",
+      "name": "Gomoa Senior High School",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000339"
+    },
+    {
+      "emis_school_id": "GH-WN-0340",
+      "name": "Lawra Model JHS",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000340"
+    },
+    {
+      "emis_school_id": "GH-WN-0341",
+      "name": "Ahinsan Primary School",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000341"
+    },
+    {
+      "emis_school_id": "GH-WN-0342",
+      "name": "Wulensi Primary School 3",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000342"
+    },
+    {
+      "emis_school_id": "GH-WN-0343",
+      "name": "Gbewaa Model JHS",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000343"
+    },
+    {
+      "emis_school_id": "GH-WN-0344",
+      "name": "Asawase Community Primary School",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000344"
+    },
+    {
+      "emis_school_id": "GH-WN-0345",
+      "name": "Mampong JHS",
+      "region": "Western North",
+      "district": "Sefwi Wiawso Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000345"
+    },
+    {
+      "emis_school_id": "GH-WN-0346",
+      "name": "Bawjiase KG",
+      "region": "Western North",
+      "district": "Aowin Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-WN-0347",
+      "name": "Jamasi Senior High School 2",
+      "region": "Western North",
+      "district": "Aowin Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000347"
+    },
+    {
+      "emis_school_id": "GH-WN-0348",
+      "name": "Jamasi Methodist Primary School",
+      "region": "Western North",
+      "district": "Aowin Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000348"
+    },
+    {
+      "emis_school_id": "GH-WN-0349",
+      "name": "Manhyia International JHS",
+      "region": "Western North",
+      "district": "Aowin Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000349"
+    },
+    {
+      "emis_school_id": "GH-WN-0350",
+      "name": "Atonsu JHS 2",
+      "region": "Western North",
+      "district": "Aowin Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000350"
+    },
+    {
+      "emis_school_id": "GH-WN-0351",
+      "name": "Pokuase Model JHS",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000351"
+    },
+    {
+      "emis_school_id": "GH-WN-0352",
+      "name": "Zebilla Model JHS 2",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000352"
+    },
+    {
+      "emis_school_id": "GH-WN-0353",
+      "name": "Dadieso Primary School",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000353"
+    },
+    {
+      "emis_school_id": "GH-WN-0354",
+      "name": "Bawjiase Academy Primary School 2",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000354"
+    },
+    {
+      "emis_school_id": "GH-WN-0355",
+      "name": "Asokore Academy JHS",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000355"
+    },
+    {
+      "emis_school_id": "GH-WN-0356",
+      "name": "Bogoso JHS",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000356"
+    },
+    {
+      "emis_school_id": "GH-WN-0357",
+      "name": "Ayeduase JHS 2",
+      "region": "Western North",
+      "district": "Bia West",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000357"
+    },
+    {
+      "emis_school_id": "GH-WN-0358",
+      "name": "Mamobi International JHS",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000358"
+    },
+    {
+      "emis_school_id": "GH-WN-0359",
+      "name": "Tongo Model KG 2",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000359"
+    },
+    {
+      "emis_school_id": "GH-WN-0360",
+      "name": "Tumu Model JHS",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000360"
+    },
+    {
+      "emis_school_id": "GH-WN-0361",
+      "name": "Nsawam Community Primary School 2",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000361"
+    },
+    {
+      "emis_school_id": "GH-WN-0362",
+      "name": "Salaga International Senior High School",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000362"
+    },
+    {
+      "emis_school_id": "GH-WN-0363",
+      "name": "Akropong International Primary School",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000363"
+    },
+    {
+      "emis_school_id": "GH-WN-0364",
+      "name": "Breman JHS 3",
+      "region": "Western North",
+      "district": "Juaboso",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000364"
+    },
+    {
+      "emis_school_id": "GH-OT-0365",
+      "name": "Dadieso JHS 2",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000365"
+    },
+    {
+      "emis_school_id": "GH-OT-0366",
+      "name": "Agbogba Primary School 2",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000366"
+    },
+    {
+      "emis_school_id": "GH-OT-0367",
+      "name": "Asawase Community JHS",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000367"
+    },
+    {
+      "emis_school_id": "GH-OT-0368",
+      "name": "Dunkwa Model Basic School",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000368"
+    },
+    {
+      "emis_school_id": "GH-OT-0369",
+      "name": "Bogoso International Primary School 2",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000369"
+    },
+    {
+      "emis_school_id": "GH-OT-0370",
+      "name": "Zuarungu JHS",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000370"
+    },
+    {
+      "emis_school_id": "GH-OT-0371",
+      "name": "Pokuase Primary School 3",
+      "region": "Oti",
+      "district": "Nkwanta South Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-OT-0372",
+      "name": "Atonsu Senior High School",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000372"
+    },
+    {
+      "emis_school_id": "GH-OT-0373",
+      "name": "Mamobi Senior High School",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000373"
+    },
+    {
+      "emis_school_id": "GH-OT-0374",
+      "name": "Kpong Community Primary School 2",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000374"
+    },
+    {
+      "emis_school_id": "GH-OT-0375",
+      "name": "Kaleo Senior High School",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000375"
+    },
+    {
+      "emis_school_id": "GH-OT-0376",
+      "name": "Tanoso JHS 2",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000376"
+    },
+    {
+      "emis_school_id": "GH-OT-0377",
+      "name": "Salaga Academy Primary School",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000377"
+    },
+    {
+      "emis_school_id": "GH-OT-0378",
+      "name": "Tongo Model KG 3",
+      "region": "Oti",
+      "district": "Krachi East Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000378"
+    },
+    {
+      "emis_school_id": "GH-OT-0379",
+      "name": "Tongo Community Senior High School",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000379"
+    },
+    {
+      "emis_school_id": "GH-OT-0380",
+      "name": "Navrongo Senior High School 2",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000380"
+    },
+    {
+      "emis_school_id": "GH-OT-0381",
+      "name": "Fumesua Model KG 2",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-OT-0382",
+      "name": "Yagaba Model JHS",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000382"
+    },
+    {
+      "emis_school_id": "GH-OT-0383",
+      "name": "Obomeng Senior High School",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000383"
+    },
+    {
+      "emis_school_id": "GH-OT-0384",
+      "name": "Oyibi KG 2",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000384"
+    },
+    {
+      "emis_school_id": "GH-OT-0385",
+      "name": "Pokuase Model Primary School 2",
+      "region": "Oti",
+      "district": "Kadjebi",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000385"
+    },
+    {
+      "emis_school_id": "GH-OT-0386",
+      "name": "Tongo Primary School",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000386"
+    },
+    {
+      "emis_school_id": "GH-OT-0387",
+      "name": "Pokuase Model Senior High School",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-OT-0388",
+      "name": "Mamobi Holy Child Primary School",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "PRIMARY",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000388"
+    },
+    {
+      "emis_school_id": "GH-OT-0389",
+      "name": "Sogakope International Primary School",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000389"
+    },
+    {
+      "emis_school_id": "GH-OT-0390",
+      "name": "Kaleo Basic School 2",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000390"
+    },
+    {
+      "emis_school_id": "GH-OT-0391",
+      "name": "Tongo St. Augustine KG",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "KG",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000391"
+    },
+    {
+      "emis_school_id": "GH-OT-0392",
+      "name": "Walewale Community Primary School",
+      "region": "Oti",
+      "district": "Biakoye",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000392"
+    },
+    {
+      "emis_school_id": "GH-SV-0393",
+      "name": "Lawra Community KG",
+      "region": "Savannah",
+      "district": "West Gonja Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000393"
+    },
+    {
+      "emis_school_id": "GH-SV-0394",
+      "name": "Agbogba KG",
+      "region": "Savannah",
+      "district": "West Gonja Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000394"
+    },
+    {
+      "emis_school_id": "GH-SV-0395",
+      "name": "Salaga Community Basic School 2",
+      "region": "Savannah",
+      "district": "West Gonja Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000395"
+    },
+    {
+      "emis_school_id": "GH-SV-0396",
+      "name": "Mamobi Community Primary School 2",
+      "region": "Savannah",
+      "district": "West Gonja Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000396"
+    },
+    {
+      "emis_school_id": "GH-SV-0397",
+      "name": "Kasoa Model Primary School 2",
+      "region": "Savannah",
+      "district": "West Gonja Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000397"
+    },
+    {
+      "emis_school_id": "GH-SV-0398",
+      "name": "Saboba Methodist Basic School",
+      "region": "Savannah",
+      "district": "West Gonja Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000398"
+    },
+    {
+      "emis_school_id": "GH-SV-0399",
+      "name": "Ahinsan Ahmadiyya JHS",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "JHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000399"
+    },
+    {
+      "emis_school_id": "GH-SV-0400",
+      "name": "Dambai Primary School 2",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000400"
+    },
+    {
+      "emis_school_id": "GH-SV-0401",
+      "name": "Half Assini JHS",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-SV-0402",
+      "name": "Adabraka Model KG",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000402"
+    },
+    {
+      "emis_school_id": "GH-SV-0403",
+      "name": "Abesim Senior High School",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000403"
+    },
+    {
+      "emis_school_id": "GH-SV-0404",
+      "name": "Tanoso Academy Senior High School",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000404"
+    },
+    {
+      "emis_school_id": "GH-SV-0405",
+      "name": "Zuarungu Primary School 2",
+      "region": "Savannah",
+      "district": "East Gonja Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-SV-0406",
+      "name": "Gomoa Community Primary School 2",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-SV-0407",
+      "name": "Kpandai Model Primary School",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-SV-0408",
+      "name": "Fumesua International JHS",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-SV-0409",
+      "name": "Fumesua International KG",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000409"
+    },
+    {
+      "emis_school_id": "GH-SV-0410",
+      "name": "Ayeduase Senior High School",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000410"
+    },
+    {
+      "emis_school_id": "GH-SV-0411",
+      "name": "Nsawam Community Primary School 3",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000411"
+    },
+    {
+      "emis_school_id": "GH-SV-0412",
+      "name": "Asawase JHS",
+      "region": "Savannah",
+      "district": "Bole",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000412"
+    },
+    {
+      "emis_school_id": "GH-SV-0413",
+      "name": "Bantama Community JHS",
+      "region": "Savannah",
+      "district": "Sawla-Tuna-Kalba",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000413"
+    },
+    {
+      "emis_school_id": "GH-SV-0414",
+      "name": "Agbogba Community KG",
+      "region": "Savannah",
+      "district": "Sawla-Tuna-Kalba",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000414"
+    },
+    {
+      "emis_school_id": "GH-SV-0415",
+      "name": "Teshie Model KG",
+      "region": "Savannah",
+      "district": "Sawla-Tuna-Kalba",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000415"
+    },
+    {
+      "emis_school_id": "GH-SV-0416",
+      "name": "Salaga Community JHS",
+      "region": "Savannah",
+      "district": "Sawla-Tuna-Kalba",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000416"
+    },
+    {
+      "emis_school_id": "GH-SV-0417",
+      "name": "Gushegu Model JHS",
+      "region": "Savannah",
+      "district": "Sawla-Tuna-Kalba",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000417"
+    },
+    {
+      "emis_school_id": "GH-NE-0418",
+      "name": "Tafo Primary School 2",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000418"
+    },
+    {
+      "emis_school_id": "GH-NE-0419",
+      "name": "Atonsu Community Senior High School",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "SHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000419"
+    },
+    {
+      "emis_school_id": "GH-NE-0420",
+      "name": "Akropong Model Basic School",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000420"
+    },
+    {
+      "emis_school_id": "GH-NE-0421",
+      "name": "Agbogba KG 2",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000421"
+    },
+    {
+      "emis_school_id": "GH-NE-0422",
+      "name": "Gushegu International Basic School",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000422"
+    },
+    {
+      "emis_school_id": "GH-NE-0423",
+      "name": "Abesim International Primary School",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NE-0424",
+      "name": "Yagaba KG",
+      "region": "North East",
+      "district": "East Mamprusi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000424"
+    },
+    {
+      "emis_school_id": "GH-NE-0425",
+      "name": "Weija Primary School 3",
+      "region": "North East",
+      "district": "West Mamprusi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000425"
+    },
+    {
+      "emis_school_id": "GH-NE-0426",
+      "name": "Gbewaa Primary School 2",
+      "region": "North East",
+      "district": "West Mamprusi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000426"
+    },
+    {
+      "emis_school_id": "GH-NE-0427",
+      "name": "Kpong St. Monica JHS",
+      "region": "North East",
+      "district": "West Mamprusi Municipal",
+      "school_type": "JHS",
+      "ownership_type": "MISSION",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000427"
+    },
+    {
+      "emis_school_id": "GH-NE-0428",
+      "name": "Half Assini Model Primary School 2",
+      "region": "North East",
+      "district": "West Mamprusi Municipal",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000428"
+    },
+    {
+      "emis_school_id": "GH-NE-0429",
+      "name": "Akropong Model KG 2",
+      "region": "North East",
+      "district": "West Mamprusi Municipal",
+      "school_type": "KG",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NE-0430",
+      "name": "Amanfrom Model Basic School",
+      "region": "North East",
+      "district": "West Mamprusi Municipal",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000430"
+    },
+    {
+      "emis_school_id": "GH-NE-0431",
+      "name": "Wulensi Model JHS",
+      "region": "North East",
+      "district": "Chereponi",
+      "school_type": "JHS",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000431"
+    },
+    {
+      "emis_school_id": "GH-NE-0432",
+      "name": "Jamasi Primary School",
+      "region": "North East",
+      "district": "Chereponi",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000432"
+    },
+    {
+      "emis_school_id": "GH-NE-0433",
+      "name": "Ejura Community Primary School",
+      "region": "North East",
+      "district": "Chereponi",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000433"
+    },
+    {
+      "emis_school_id": "GH-NE-0434",
+      "name": "Dambai International KG",
+      "region": "North East",
+      "district": "Chereponi",
+      "school_type": "KG",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000434"
+    },
+    {
+      "emis_school_id": "GH-NE-0435",
+      "name": "Amanfrom Academy Primary School",
+      "region": "North East",
+      "district": "Chereponi",
+      "school_type": "PRIMARY",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000435"
+    },
+    {
+      "emis_school_id": "GH-NE-0436",
+      "name": "Gushegu Community Primary School 2",
+      "region": "North East",
+      "district": "Yunyoo-Nasuan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": false,
+      "operational_school_id": null
+    },
+    {
+      "emis_school_id": "GH-NE-0437",
+      "name": "Nungua Basic School",
+      "region": "North East",
+      "district": "Yunyoo-Nasuan",
+      "school_type": "COMBINED",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000437"
+    },
+    {
+      "emis_school_id": "GH-NE-0438",
+      "name": "Sogakope Basic School",
+      "region": "North East",
+      "district": "Yunyoo-Nasuan",
+      "school_type": "COMBINED",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000438"
+    },
+    {
+      "emis_school_id": "GH-NE-0439",
+      "name": "Ejura JHS 3",
+      "region": "North East",
+      "district": "Yunyoo-Nasuan",
+      "school_type": "JHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000439"
+    },
+    {
+      "emis_school_id": "GH-NE-0440",
+      "name": "Asawase Primary School 2",
+      "region": "North East",
+      "district": "Yunyoo-Nasuan",
+      "school_type": "PRIMARY",
+      "ownership_type": "PUBLIC",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000440"
+    },
+    {
+      "emis_school_id": "GH-NE-0441",
+      "name": "Ayeduase Senior High School 2",
+      "region": "North East",
+      "district": "Yunyoo-Nasuan",
+      "school_type": "SHS",
+      "ownership_type": "PRIVATE",
+      "on_schoolup": true,
+      "operational_school_id": "a1000000-0000-4000-8000-000000000441"
+    }
+  ]
+}
