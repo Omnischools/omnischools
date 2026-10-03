@@ -263,9 +263,21 @@ const OWNERSHIP_MIX: readonly (readonly [DemoOwnership, number])[] = Object.free
 /** P(a registered school is live on Omnischools). Below 1 on purpose — see the header. */
 const ON_SCHOOLUP_RATE = 0.875;
 
-/** Schools generated per district. A few hundred total: enough for real roll-ups, fast to load. */
-const SCHOOLS_PER_DISTRICT_MIN = 5;
-const SCHOOLS_PER_DISTRICT_MAX = 7;
+/**
+ * Schools generated per district — ~950 across the 73 districts.
+ *
+ * THE DENSITY IS A STATISTICAL DECISION, NOT A SIZE PREFERENCE. At 5–7 schools per district the
+ * REGIONAL roll-ups read well (n ≈ 25) but a DISTRICT drill-down is pure small-sample noise: with 5
+ * schools and P(ICT lab) ≈ 0.26, "Accra Metropolitan: 0% ICT" is a perfectly likely draw and reads as
+ * a data bug to anyone looking at it. Since the district tier is the one a district director actually
+ * works in, the demo has to be credible there. 10–16 per district puts districts at n ≈ 13 and regions
+ * at n ≈ 55, which is where the percentages stop jumping around.
+ *
+ * Cost: ~950 register rows and ~1,650 census rows per term. The seed and the ETL both stay comfortably
+ * inside a couple of seconds, so there is nothing to trade off against.
+ */
+const SCHOOLS_PER_DISTRICT_MIN = 10;
+const SCHOOLS_PER_DISTRICT_MAX = 16;
 
 function schoolName(
   rng: Rng,

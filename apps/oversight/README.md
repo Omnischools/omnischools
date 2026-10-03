@@ -131,7 +131,7 @@ sexed-staff-fact aggregate surface is built yet — the first one must route its
 (`infrastructure.ts`), and the run sequence (`pipeline.ts`).
 
 ```bash
-# 1 · generate the grounded DEMO dataset (deterministic; 16 real regions, real MMDAs, ~440 schools)
+# 1 · generate the grounded DEMO dataset (deterministic; 16 real regions, real MMDAs, ~970 schools)
 #     → writes db/seed/demo/emis-register-extract.json and the demo_source stand-in tables
 ANALYTICS_DATABASE_URL=<owner/writer> pnpm db:seed-demo
 

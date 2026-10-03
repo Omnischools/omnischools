@@ -737,8 +737,21 @@ describe("the demo generator is reproducible", () => {
   it("holds the grounded shape: 16 regions, a basic-heavy type mix, ~70% public, coverage < 100%", () => {
     const d = generateDemoDataset();
     expect(new Set(d.schools.map((s) => s.regionName)).size).toBe(16);
-    expect(d.schools.length).toBeGreaterThan(300);
-    expect(d.schools.length).toBeLessThan(600);
+    expect(d.schools.length).toBeGreaterThan(800);
+    expect(d.schools.length).toBeLessThan(1200);
+
+    // THE DENSITY FLOOR IS WHAT THIS PINS, not the total. Every tier the product renders has to be
+    // readable, and the smallest one is the DISTRICT — so the binding constraint is schools PER
+    // DISTRICT, not schools overall. Below ~10 a district drill-down is small-sample noise ("0% ICT
+    // across 5 schools" is a likely draw, and reads as a data bug), which is the one way grounded dummy
+    // data can still mislead the audience it was built for.
+    const perDistrict = new Map<string, number>();
+    for (const s of d.schools) {
+      const key = `${s.regionName}/${s.districtName}`;
+      perDistrict.set(key, (perDistrict.get(key) ?? 0) + 1);
+    }
+    expect(perDistrict.size).toBe(73);
+    expect(Math.min(...perDistrict.values())).toBeGreaterThanOrEqual(10);
 
     const share = (p: (s: DemoSchool) => boolean) =>
       d.schools.filter(p).length / d.schools.length;
