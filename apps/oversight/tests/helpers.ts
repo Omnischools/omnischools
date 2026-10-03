@@ -29,6 +29,25 @@ export function adminOperational(): postgres.Sql {
   return postgres(testDbConfig.superuserOperationalUrl, { max: 1, prepare: false });
 }
 
+/**
+ * The increment-H ETL database (owner connection) — a THIRD analytics DB, built from the same
+ * migrations but carrying no policies and no §6 fixtures. See `demoAnalyticsUrl` in
+ * tests/setup/paths.ts for why the ETL cannot run against the shared fixture DB.
+ *
+ * Owner, not `ov_app`, on purpose and not for convenience: the ETL's real credential is the privileged
+ * analytics owner/writer (scope §3), because the app role has no INSERT on any fact table at all. A
+ * test that ran the loader as `ov_app` would be testing a credential the pipeline will never hold.
+ */
+export function adminDemoAnalytics(): postgres.Sql {
+  // `onnotice` is silenced because the demo source schema is DROP-then-CREATEd, and "schema does not
+  // exist, skipping" on the first run is expected, not information.
+  return postgres(testDbConfig.demoAnalyticsUrl, {
+    max: 1,
+    prepare: false,
+    onnotice: () => {},
+  });
+}
+
 export interface AuditRow {
   access_id: string;
   officer_id: string;

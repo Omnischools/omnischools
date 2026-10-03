@@ -1,3 +1,6 @@
+import { getOfficerSession } from "@/lib/auth";
+import { scopeFor } from "@/lib/db/rls";
+import { formatAsOf, getLatestSuccessfulEtlRun } from "@/lib/oversight/etl-status";
 import { cn } from "@/lib/utils";
 
 // Oversight reads only the analytics DB (populated nightly by the ETL). This scaffold page renders
@@ -41,7 +44,28 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
   );
 }
 
-export default function OversightHome() {
+/**
+ * THE AS-OF BANNER (increment H, task H20). The card's value was a hard-coded `"—"`; it now reads the
+ * latest SUCCESS `etl_run`.
+ *
+ * THE FALLBACK IS HONEST, NOT COSMETIC. With no successful run the card says "No successful run yet",
+ * never a dash: a dash on a regulator's dashboard is ambiguous between "no data", "loading" and
+ * "broken", and the first thing an officer needs to know about a figure is whether it was ever
+ * computed. The read itself is fail-soft (a null, never a thrown page) for the same reason the
+ * jurisdiction-chrome read is: losing the vintage label must degrade the chrome, not take down the
+ * landing page.
+ *
+ * NOT TOUCHED HERE: the "Reporting coverage" card, still `"— of —"`. The coverage figure is real and
+ * available (`ref_emis_school_register`), but wiring it is its own slice — it needs Lucy's copy for the
+ * sub-line at each tier and a ruling on whether a district officer's card shows their district's
+ * coverage or the national one. Left honestly blank rather than guessed.
+ */
+export default async function OversightHome() {
+  const officer = await getOfficerSession();
+  const latestRun = officer
+    ? await getLatestSuccessfulEtlRun(scopeFor(officer)).catch(() => null)
+    : null;
+
   return (
     <main className="mx-auto max-w-page px-4 py-10 md:px-8">
       <header className="mb-8 border-b border-border-1 pb-6">
@@ -70,7 +94,11 @@ export default function OversightHome() {
           sub="Schools live on Omnischools ÷ EMIS register"
         />
         <StatCard label="Regions" value="16" sub="Ghana administrative regions" />
-        <StatCard label="Data as of" value="—" sub="Latest successful nightly ETL run" />
+        <StatCard
+          label="Data as of"
+          value={formatAsOf(latestRun)}
+          sub="Latest successful nightly ETL run"
+        />
       </section>
 
       <section aria-label="Jurisdiction tiers" className="mt-10">
