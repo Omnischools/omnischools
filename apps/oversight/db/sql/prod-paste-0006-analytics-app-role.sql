@@ -96,6 +96,11 @@
 -- The RAISE lines are kept as well (they are what `psql` and the test harness see), but §6 is the
 -- authoritative report, because a control whose only output is an invisible WARNING is not a control.
 --
+-- ⚠ THERE IS NOTHING IN THIS FILE TO EDIT BEFORE PASTING IT. In particular the app role name is
+-- FIXED at `oversight_app` — it is written thirteen times in executable code, seven of them as SQL
+-- literals in §6 that no plpgsql variable can reach, and a partial rename makes §6 report CLEAN when
+-- it is not. See the §3 banner. (prod-paste-0005 does have an edit point; this one does not.)
+--
 -- SCOPE, STATED NARROWLY SO IT IS NOT WIDENED BY ACCIDENT. This file touches schema `public` ONLY.
 -- It does NOT touch `auth`, `storage`, `realtime`, `graphql`, `vault`, `extensions` or any other
 -- Supabase-managed schema; it does not revoke anything from the owner, from `oversight_app` or from
@@ -182,7 +187,9 @@ $$;
 -- =============================================================================
 DO $$
 DECLARE
-  app_role text := 'oversight_app';  -- ⇦ the ANALYTICS_DATABASE_URL role (keep in sync with §3/§5)
+  app_role text := 'oversight_app';  -- ⇦ the ANALYTICS_DATABASE_URL role. FIXED, not configurable:
+                                     --    see the §3 banner for why renaming it produces a FALSE
+                                     --    CLEAN from §6.
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
     BEGIN
@@ -272,7 +279,7 @@ BEGIN
      AND c.relkind IN ('r', 'p')
      AND NOT c.relrowsecurity;
   IF norls IS NOT NULL THEN
-    RAISE EXCEPTION 'V0 FAILED (GATE ON §3): table(s) in schema public have ROW LEVEL SECURITY DISABLED: [%]. §3 below would hand oversight_app SELECT on them, and with RLS off that SELECT is UNSCOPED — a DISTRICT officer would read national data out of those tables with no empty panel and no other symptom to notice, because the empty panel IS the RLS. This file has therefore refused to run §3 at all; nothing is half-applied. Fix: apply the prod-paste that carries those tables'' policies (docs/PROVISIONING.md §2a — a migration and its paste are TWO steps, and this is what the second one is for), then re-run this file. If you believe a table genuinely needs no jurisdiction predicate, it still needs `enable row level security` plus an explicit policy saying so, so that the exemption is written down where the next person reads it.', norls;
+    RAISE EXCEPTION 'V0 FAILED (GATE ON §3): table(s) in schema public have ROW LEVEL SECURITY DISABLED: [%]. §3 below would hand oversight_app SELECT on them, and with RLS off that SELECT is UNSCOPED — a DISTRICT officer would read national data out of those tables with no empty panel and no other symptom to notice, because the empty panel IS the RLS. This file has therefore refused to run §3 at all; nothing is half-applied. Fix: apply the prod-paste that carries those tables'' policies (docs/PROVISIONING.md §2a — a migration and its RLS paste are SEPARATE steps, and step 2 is what this is about), then re-run this file. If you believe a table genuinely needs no jurisdiction predicate, it still needs `enable row level security` plus an explicit policy saying so, so that the exemption is written down where the next person reads it.', norls;
   END IF;
 
   SELECT string_agg(c.relname, ', ' ORDER BY c.relname) INTO nopol
@@ -297,7 +304,28 @@ $$;
 -- =============================================================================
 -- §3 · THE APP-ROLE POSTURE — THE HARNESS RECIPE, VERBATIM
 --
--- ⇩⇩ EDIT THE ROLE NAME BELOW IF YOURS DIFFERS ⇩⇩  (default: `oversight_app`)
+-- ⚠ THE APP ROLE NAME IS **FIXED** AT `oversight_app` THROUGHOUT THIS FILE. DO NOT EDIT IT. An
+-- earlier version of this banner invited you to edit it "if yours differs", and that invitation was
+-- a trap rather than a convenience. The name appears THIRTEEN times in executable code: six plpgsql
+-- DECLAREs (§2, §3, V1, V2, V3, V6) and seven SQL literals inside §6's residual report — and a
+-- plpgsql variable CANNOT reach the §6 ones, because §6 is a single `SELECT` whose result-set column
+-- literals are not parameterisable from a DO block. (The test that pins this file asserts both
+-- counts, so a new §6 row source naming the role makes this banner go red rather than stale.) So
+-- renaming the role is not one edit, it is thirteen, and getting it partly right FAILS SILENTLY IN
+-- THE WORST DIRECTION: §6's `app_missing_select` row source is gated on `EXISTS (SELECT 1 FROM
+-- pg_roles WHERE rolname = 'oversight_app')`, so with the role renamed and §6 un-edited that source
+-- yields ZERO ROWS and §6 REPORTS CLEAN. That is a FALSE CLEAN against the one contract this file
+-- asks you to read — "zero rows = clean" — while every other §6 row goes on labelling findings with
+-- a role nobody is using.
+-- A fixed name has no such failure mode, and `omnischools-analytics-prod` uses the default, so there
+-- is nothing to edit.
+--
+-- IF A SITE'S ANALYTICS APP ROLE IS CALLED SOMETHING ELSE, rename the ROLE, not the file:
+--     alter role <theirs> rename to oversight_app;   -- then re-set its password out of band
+--                                                    -- (RENAME clears an md5-stored one) and update
+--                                                    -- ANALYTICS_DATABASE_URL
+-- Or fork this file and change all thirteen occurrences together, plus the prose in V0's and V4's
+-- error messages and in §4c's closing comment. Do not change a subset.
 --
 -- THIS IS NOT A DESIGN DECISION TAKEN IN THIS FILE. It is a transcription. The whole oversight test
 -- suite — every RLS, gate, audit and officer-auth test — runs as a NON-OWNER
@@ -373,10 +401,10 @@ $$;
 -- =============================================================================
 DO $$
 DECLARE
-  app_role text := 'oversight_app';  -- ⇦ keep in sync with §2 and §5
+  app_role text := 'oversight_app';  -- ⇦ FIXED (see the §3 banner above), not an edit point
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
-    RAISE EXCEPTION '§3: role % does not exist — §2 above should have created it; if you edited the name in one block, edit it in all of them (§2, §3, V1, V2, V3)', app_role;
+    RAISE EXCEPTION '§3: role % does not exist — §2 above should have created it, so either §2 was skipped or this connection lacks CREATEROLE. Create it by hand (`create role % login;`) and re-run. The name is FIXED at oversight_app throughout this file and must not be edited: see the §3 banner.', app_role, app_role;
   END IF;
 
   -- ---- the blanket grants (harness lines ~115–120) --------------------------
@@ -620,8 +648,9 @@ BEGIN
 
   -- NOT DONE, AND NOT AN OVERSIGHT: no default privilege is ADDED for `oversight_app`. It is
   -- tempting (`alter default privileges in schema public grant select on tables to oversight_app`)
-  -- and it is the wrong shape for this codebase. A new jurisdiction-scoped table is TWO deliberate
-  -- steps — migration, then the matching prod-paste with its RLS (PROVISIONING §2a) — and a default
+  -- and it is the wrong shape for this codebase. A new jurisdiction-scoped table is THREE deliberate
+  -- steps — the migration, the matching prod-paste with its RLS, then a re-paste of THIS file
+  -- (docs/PROVISIONING.md §2a, steps 1-3) — and a default
   -- privilege would hand the app credential SELECT on it in step one, during the window before its
   -- policy exists. The documented fail-closed signature of a missed paste is an EMPTY PANEL, which
   -- depends on RLS being enabled in the migration; a table that slipped through with RLS off and an
@@ -658,14 +687,14 @@ $$;
 --      nothing to show for it.
 DO $$
 DECLARE
-  app_role      text := 'oversight_app';          -- ⇦ keep in sync with §2/§3
-  prov_role     text := 'oversight_provisioner';  -- ⇦ keep in sync with prod-paste-0005
+  app_role      text := 'oversight_app';          -- ⇦ FIXED (see the §3 banner), not an edit point
+  prov_role     text := 'oversight_provisioner';  -- ⇦ likewise fixed; matches prod-paste-0005
   reachable     text;
   owned         text;
   owner_roles   text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
-    RAISE EXCEPTION 'V1: role % does not exist — this block carries its OWN copy of the role name, so if you edited it in §2/§3, edit it here too', app_role;
+    RAISE EXCEPTION 'V1: role % does not exist — §2 creates it and §3 refuses without it, so reaching V1 at all means something dropped it mid-file. The name is FIXED at oversight_app here as everywhere in this file (see the §3 banner).', app_role;
   END IF;
 
   IF (SELECT rolsuper FROM pg_roles WHERE rolname = app_role) THEN
@@ -740,14 +769,14 @@ $$;
 --      enumeration primitive and this block is what says so.
 DO $$
 DECLARE
-  app_role text := 'oversight_app';  -- ⇦ keep in sync with §2/§3
+  app_role text := 'oversight_app';  -- ⇦ FIXED (see the §3 banner), not an edit point
   writes   text[] := array['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
   allpriv  text[] := array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
   p        text;
   held     text := '';
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
-    RAISE EXCEPTION 'V2: role % does not exist (this block carries its own copy of the name)', app_role;
+    RAISE EXCEPTION 'V2: role % does not exist — see V1''s message; the name is FIXED throughout this file', app_role;
   END IF;
 
   IF NOT has_table_privilege(app_role, 'public.ref_oversight_officer', 'SELECT') THEN
@@ -785,7 +814,7 @@ $$;
 --      outage and this file is the thing that would have caused it.
 DO $$
 DECLARE
-  app_role text := 'oversight_app';  -- ⇦ keep in sync with §2/§3
+  app_role text := 'oversight_app';  -- ⇦ FIXED (see the §3 banner), not an edit point
   reads    text[] := array['public.dim_jurisdiction', 'public.fact_enrolment',
                            'public.ref_emis_school_register', 'public.audit_access_log'];
   mutates  text[] := array['UPDATE', 'DELETE', 'TRUNCATE'];
@@ -794,7 +823,7 @@ DECLARE
   held     text := '';
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
-    RAISE EXCEPTION 'V3: role % does not exist (this block carries its own copy of the name)', app_role;
+    RAISE EXCEPTION 'V3: role % does not exist — see V1''s message; the name is FIXED throughout this file', app_role;
   END IF;
 
   FOREACH t IN ARRAY reads LOOP
@@ -1054,8 +1083,8 @@ $$;
 --      not match the intent above is itself the finding.
 DO $$
 DECLARE
-  app_role  text := 'oversight_app';          -- ⇦ keep in sync with §2/§3
-  prov_role text := 'oversight_provisioner';  -- ⇦ keep in sync with prod-paste-0005
+  app_role  text := 'oversight_app';          -- ⇦ FIXED (see the §3 banner), not an edit point
+  prov_role text := 'oversight_provisioner';  -- ⇦ likewise fixed; matches prod-paste-0005
   builtins  int;
   tables    int;
   routines  int;
@@ -1130,9 +1159,25 @@ $$;
 --   · V5   — the same residual, re-derived after the fact.
 -- All of them are below, plus — for the case where someone runs JUST THIS STATEMENT later as a
 -- standing audit query rather than re-pasting the file — the conditions V0 and V4 assert by raising.
--- Those five branches are unreachable in a full paste (the EXCEPTION rolls the file back before the
+-- Those branches are unreachable in a full paste (the EXCEPTION rolls the file back before the
 -- editor ever renders a result set); they are here so that this query is a complete posture check on
 -- its own, which is what makes it worth saving in the project's snippets.
+--
+-- ⚠ "COMPLETE ON ITS OWN" IS A CLAIM WITH A CHECKLIST BEHIND IT, so here is the checklist. V4
+-- asserts four things about the Supabase built-ins and §6 must have a row source for each, or this
+-- banner is wider than the query:
+--   · a built-in holding any privilege on a TABLE / view / matview / foreign table  → `builtin_residual`
+--   · a built-in holding USAGE / SELECT / UPDATE on a SEQUENCE                      → `builtin_sequence`
+--   · a built-in holding EXECUTE on one of our routines                             → `builtin_execute`
+--                                                                                     (direct or
+--                                                                                     inherited) and
+--                                                                                     `public_execute`
+--                                                                                     (via PUBLIC)
+--   · a built-in that can SET ROLE to a table owner / SUPERUSER / BYPASSRLS role    → `builtin_residual`
+-- The middle two were MISSING until this revision, and their absence was precisely the kind of
+-- finding this file is about: §6 said it covered what V4 covers, V4 would have raised on a built-in
+-- holding `nextval` on a sequence or a direct `grant execute … to anon`, and §6 would have returned
+-- zero rows — reporting CLEAN for a residual the file itself treats as fatal.
 --
 -- WHAT IS DELIBERATELY *NOT* A ROW: V6's "NOT PROVEN BY THIS FILE" checklist above. Those are manual
 -- steps, not residuals — two of them (does ANALYTICS_DATABASE_URL point at `oversight_app`; does the
@@ -1153,10 +1198,17 @@ default_acl AS (
          (CASE WHEN pg_has_role(current_user, d.defaclrole, 'USAGE')
                THEN 'FINDING' ELSE 'ADVISORY' END)::text              AS severity,
          pg_get_userbyid(d.defaclrole)::text                          AS grantor,
+         -- The two CASEs over `defaclobjtype` in this row source — this label and the remediation
+         -- statement below — enumerate THE SAME five codes with NO `ELSE`, deliberately. The final
+         -- `defaclobjtype IN ('r','S','f','T','n')` predicate makes an out-of-list code unreachable;
+         -- if a future Postgres adds a sixth and the predicate is widened without these, BOTH
+         -- columns go NULL together and the row is obviously broken. The earlier version gave the
+         -- label an `ELSE d.defaclobjtype::text` and the remediation none, which would have produced
+         -- a row that LOOKED like a real finding with a NULL remediation.
          ('DEFAULT ACL ' || CASE d.defaclobjtype
                               WHEN 'r' THEN 'TABLES'    WHEN 'S' THEN 'SEQUENCES'
                               WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES'
-                              WHEN 'n' THEN 'SCHEMAS'   ELSE d.defaclobjtype::text
+                              WHEN 'n' THEN 'SCHEMAS'
                             END
            || CASE WHEN d.defaclnamespace = 0 THEN ' (CLUSTER-WIDE)' ELSE ' (public)' END)::text
                                                                       AS objtype,
@@ -1282,6 +1334,61 @@ builtin_residual AS (
    WHERE x.rolname <> b.rolname
      AND pg_has_role(b.rolname::name, x.rolname, 'MEMBER')
 ),
+-- V4 · the SEQUENCE half of the same sweep. `builtin_residual` above is TABLES ONLY, and until this
+-- source existed §6 claimed V4's coverage without it: Supabase's project setup issues `grant all on
+-- all sequences in schema public to anon, authenticated, service_role` exactly as it does on tables,
+-- §4a revokes it, and V4 asserts it — so a built-in left holding a sequence privilege was a residual
+-- V4 would raise on and §6 would report as CLEAN. It is not a cosmetic gap: USAGE on a sequence is
+-- `nextval()`, i.e. a WRITE, reachable over PostgREST RPC by a role that is supposed to hold nothing
+-- here. `has_sequence_privilege` is used rather than an ACL scan for the reason §5's banner gives:
+-- it sees a privilege arriving indirectly (through PUBLIC, or through a granted role), which is how
+-- this class of finding actually comes back.
+builtin_sequence AS (
+  SELECT 'FINDING'::text                   AS severity,
+         pg_get_userbyid(c.relowner)::text AS grantor,
+         ('SEQUENCE ' || g.priv)::text     AS objtype,
+         b.rolname::text                   AS grantee,
+         format('REVOKE ALL ON SEQUENCE public.%I FROM %I; -- holds %s', c.relname, b.rolname, g.priv)::text
+                                           AS remediation_statement
+    FROM builtins b
+    JOIN pg_roles ro ON ro.rolname = b.rolname
+    CROSS JOIN pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN unnest(array['USAGE', 'SELECT', 'UPDATE']) AS g(priv)
+   WHERE n.nspname = 'public'
+     AND c.relkind = 'S'
+     AND has_sequence_privilege(b.rolname::name, c.oid, g.priv)
+),
+-- V4 · and the ROUTINE half, for a grantee that is NOT PUBLIC. `public_execute` above matches only
+-- `grantee = 0`; a plain `grant execute on function ov_in_subtree(uuid) to anon` is a different ACL
+-- entry entirely, which §4a's point-in-time `revoke all on all routines` removes and nothing in §6
+-- used to report. V4 catches it (its loop is `has_function_privilege(r, oid, 'EXECUTE')`), so §6
+-- must too, or the "complete snapshot on its own" claim in the banner is false for the sharpest
+-- object in the schema: `ov_in_subtree` is SECURITY DEFINER, a jurisdiction-tree membership oracle
+-- over the GES spine.
+--
+-- The `NOT EXISTS (… grantee = 0 …)` predicate keeps this source DISJOINT from `public_execute`:
+-- while a routine still grants EXECUTE to PUBLIC, that one fact is reported ONCE (as PUBLIC) rather
+-- than four times (PUBLIC plus each built-in that inherits it). Remediate the PUBLIC row, re-run,
+-- and any surviving direct grant appears here — the report converges rather than double-counting.
+builtin_execute AS (
+  SELECT 'FINDING'::text                  AS severity,
+         pg_get_userbyid(p.proowner)::text AS grantor,
+         'ROUTINE EXECUTE'::text          AS objtype,
+         b.rolname::text                  AS grantee,
+         format('REVOKE EXECUTE ON ROUTINE %s FROM %I;', p.oid::regprocedure, b.rolname)::text
+                                          AS remediation_statement
+    FROM builtins b
+    JOIN pg_roles ro ON ro.rolname = b.rolname
+    CROSS JOIN pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                      WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+     AND NOT EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+                      WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE')
+     AND has_function_privilege(b.rolname::name, p.oid, 'EXECUTE')
+),
 -- §3 · the decay the header's FIRST bullet warns about, made visible. §3's blanket grant is
 -- point-in-time; a table created by a migration after the last paste is readable by NOBODY, which is
 -- an outage rather than a leak — but it is also the proof that this file has not been re-run.
@@ -1309,6 +1416,8 @@ SELECT severity, grantor, objtype, grantee, remediation_statement
     UNION ALL SELECT * FROM missing_0005
     UNION ALL SELECT * FROM rls_off
     UNION ALL SELECT * FROM builtin_residual
+    UNION ALL SELECT * FROM builtin_sequence
+    UNION ALL SELECT * FROM builtin_execute
     UNION ALL SELECT * FROM app_missing_select
   ) residual
  ORDER BY CASE severity WHEN 'FINDING' THEN 1 WHEN 'ADVISORY' THEN 2 ELSE 3 END,

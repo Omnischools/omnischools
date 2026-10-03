@@ -59,19 +59,48 @@ Note that `db:setup` is for a **fresh** database. On a live prod project every m
 
 ### 2a · After prod is live: the RLS hand-paste step (⚠ not automated)
 
-Once `omnischools-analytics-prod` exists, adding a jurisdiction-scoped table is **two** steps, not
+Once `omnischools-analytics-prod` exists, adding a jurisdiction-scoped table is **three** steps, not
 one. `db:policies` is a **local-dev** runner — it is not part of any prod deploy — so every table
 added after go-live needs its RLS pasted by hand:
 
 1. Apply the migration to prod (`pnpm db:migrate` against the **Direct** connection string).
 2. Paste the matching `db/sql/prod-paste-XXXX-*.sql` into the Supabase SQL editor on the prod
    project, **after** the migration, and run the verification query at the foot of that file.
+3. **Re-paste `db/sql/prod-paste-0006-analytics-app-role.sql`** if the migration created a **table,
+   a sequence or a routine**.
 
 > **Step 1 is manual too.** There is no deploy hook that runs `db:migrate` against the analytics
 > project — *every* migration in `db/migrations/` reaches prod because a human ran it (or pasted its
 > `.sql`). Step 2 exists only when a migration adds a table or changes a policy. A migration that
 > only adds **columns to an existing table** needs step 1 and **no paste**: a policy declared without
 > a column list already covers every column of the table, present and future.
+
+> **Step 3 is the one that is easy to forget, because 0006 is not "the paste for this migration".**
+> It is the only file in `db/sql/` that is not once-and-done: its grants and revokes are issued
+> `… ON ALL TABLES IN SCHEMA public` (and `ALL SEQUENCES`, `ALL ROUTINES`), which is a point-in-time
+> operation over the objects that exist at the moment it runs. An object created afterwards is
+> covered by **neither** half:
+>
+> - it does not get the app role's `SELECT`, so every panel reading it raises
+>   `permission denied for table …` — loud, an outage, the good direction; and
+> - it does not get the **sweep**, so Supabase's auto-grant of `ALL` (DELETE and TRUNCATE included)
+>   to `anon`/`authenticated`/`service_role` stands on it — silent, and the reason 0005's G5 check
+>   existed. 0006 §4c neutralises the DEFAULT PRIVILEGES that cause this, so on a project where §4c
+>   succeeded the second half is already closed; where §4c could only *advise* (a default privilege
+>   whose grantor is `supabase_admin`, which `postgres` cannot alter — see V5 and §6), it is not.
+>
+> Same carve-out as step 2: a migration that only adds **columns to an existing table** needs
+> neither step 2 nor step 3. 0006 is fully idempotent, so re-pasting it when you did not have to
+> costs nothing but the time to read the report.
+
+> **Read a paste's RESULT SET, not its NOTICEs.** The Supabase SQL editor renders result sets and
+> errors; it does **not** reliably render `RAISE NOTICE` / `RAISE WARNING`. So the last statement of
+> `prod-paste-0006` is a plain `SELECT` — its §6 *residual report* — and **that result set is the
+> authoritative output of the paste: zero rows means clean, and any row is a finding whose closing
+> statement is in the last column.** Every soft finding in that file is emitted twice: once as a
+> `RAISE` (which is what `psql` and the test harness see) and once as a §6 row (which is what the
+> person pasting sees). Follow the same convention in any new `prod-paste-XXXX`, and put the `SELECT`
+> last so nothing hides it — a control whose only output is an invisible `WARNING` is not a control.
 
 Each paste file is idempotent and **fails closed**: skipping it leaves the new table with RLS
 enabled and no policy, so the non-owner app role reads **zero rows** (an empty panel) — it never
@@ -224,9 +253,19 @@ Current files:
 > roles need nothing here.
 >
 > **Re-run it after any migration that adds a table, sequence or routine** — `… ON ALL TABLES IN
-> SCHEMA public` is point-in-time, so a new object is covered by neither the grant nor the sweep. It
-> is fully idempotent. It does **not** set a password: the `oversight_app` credential is set out of
-> band and never written into a file in this repository.
+> SCHEMA public` is point-in-time, so a new object is covered by neither the grant nor the sweep.
+> That is **step 3** of §2a above, and it is the step with no paste of its own to remind you of it.
+> It is fully idempotent. It does **not** set a password: the `oversight_app` credential is set out
+> of band and never written into a file in this repository.
+>
+> **Nothing in 0006 is meant to be edited before pasting** — unlike 0005, which has a marked role-name
+> block. The app role name is fixed at `oversight_app` throughout the file (thirteen occurrences, seven
+> of them SQL literals in §6 that no plpgsql variable can reach), and a partial rename makes §6's report
+> return zero rows — a *false* clean. If a site's analytics app role is called something else, rename
+> the role to `oversight_app` rather than editing the file.
+>
+> **Its last statement is a `SELECT`: read the result set.** Zero rows means clean; any row is a
+> finding with its remediation statement in the last column. See the note at the foot of §2a.
 >
 > **On a project where 0005 has not been applied yet, run 0006 FIRST** — the sweep is what makes
 > 0005's G5 pass, and 0006's checks for 0005's objects are deliberately `WARNING`s so that ordering

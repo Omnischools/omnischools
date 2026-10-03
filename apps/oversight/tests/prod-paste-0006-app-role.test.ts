@@ -52,7 +52,16 @@ const TABLE_PRIVILEGES = [
   "TRIGGER",
 ] as const;
 
-/** The tables whose grant posture IS the officer-auth security model. */
+/**
+ * The tables whose grant posture IS the officer-auth security model, checked by name so that a
+ * failure message names the table that matters most.
+ *
+ * ⚠ NOT the list the §3↔harness parity test uses. That one enumerates EVERY table in `public` from
+ * the catalogue, because a hardcoded list is a spot-check: `fact_anomaly` is absent from this array,
+ * and `fact_anomaly` is exactly the table §3 and PROVISIONING §1 tell increment J to add
+ * `grant update` to in BOTH 0006 and tests/setup/global-setup.ts. Adding it to one side only would
+ * have stayed green against a six-table loop that never looks at it.
+ */
 const POSTURE_TABLES = [
   "ref_oversight_officer",
   "audit_officer_provisioning",
@@ -163,6 +172,35 @@ async function privilegesOn(
     if (row.ok) held.push(priv);
   }
   return held;
+}
+
+/**
+ * The FULL per-table privilege posture of `role`: every table in `public` the catalogue knows
+ * about, mapped to every privilege the role holds on it.
+ *
+ * One round trip rather than `privilegesOn` in a loop, because the parity test calls this on two
+ * databases and the table count is ~27 × 7 privileges. Privileges come back sorted alphabetically
+ * (not in `TABLE_PRIVILEGES` order) — which is fine and is the point: both sides are sorted the same
+ * way, so the comparison is on the SET, and an empty set is `[]` rather than missing.
+ */
+async function privilegePostureByTable(
+  sql: postgres.Sql,
+  role: string,
+): Promise<Record<string, string[]>> {
+  const privs = TABLE_PRIVILEGES.map((p) => `'${p}'`).join(", ");
+  const rows = await sql.unsafe(
+    `select c.relname::text as relname,
+            coalesce((
+              select array_agg(g.priv order by g.priv)
+                from unnest(array[${privs}]) as g(priv)
+               where has_table_privilege('${role}', c.oid, g.priv)
+            ), array[]::text[]) as held
+       from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r','p')
+      order by c.relname`,
+  );
+  return Object.fromEntries(rows.map((r) => [r.relname as string, r.held as string[]]));
 }
 
 describe("prod-paste-0006 — replayed from empty", () => {
@@ -388,15 +426,43 @@ describe("prod-paste-0006 — replayed from empty", () => {
   });
 
   describe("§3 — the app-role posture matches tests/setup/global-setup.ts", () => {
-    it("holds exactly the same privileges as the harness role, table by table", async () => {
+    it("holds exactly the same privileges as the harness role, on EVERY table in public", async () => {
+      /**
+       * THE PIN IS ONLY AS WIDE AS THE LIST IT WALKS, so it walks the catalogue instead of a list.
+       * This used to compare the six POSTURE_TABLES, which made it a spot-check wearing the words
+       * "table by table": `fact_anomaly` was not among them, and `fact_anomaly` is the table §3's
+       * "NOT GRANTED, DELIBERATELY" note and PROVISIONING §1 both tell increment J to add
+       * `grant update` to in 0006 §3 AND tests/setup/global-setup.ts together. Adding it to
+       * global-setup alone — the easy half, because that is the file the suite runs against — would
+       * have left this green while prod ran a posture CI no longer proved. Which is the exact
+       * failure this test exists to prevent, surviving inside the test meant to prevent it.
+       *
+       * Enumerating `relkind in ('r','p')` on BOTH databases also pins the table SETS against each
+       * other, so a table that exists on one side only is a failure rather than a skipped key.
+       */
       const harness = connect(testDbConfig.superuserAnalyticsUrl);
       try {
-        for (const table of POSTURE_TABLES) {
-          expect(
-            await privilegesOn(ppAdmin, APP_ROLE, table),
-            `prod-paste-0006 §3 and tests/setup/global-setup.ts disagree about ${table}. One of them was changed without the other, which means either CI is proving a posture prod does not run, or prod runs a posture CI does not prove.`,
-          ).toEqual(await privilegesOn(harness, HARNESS_APP_ROLE, table));
-        }
+        const pasted = await privilegePostureByTable(ppAdmin, APP_ROLE);
+        const proven = await privilegePostureByTable(harness, HARNESS_APP_ROLE);
+
+        // Not a fixed count — a migration that adds a table should not have to edit this test. But
+        // it must not be EMPTY, or two identically-broken databases would compare equal.
+        expect(Object.keys(pasted).length).toBeGreaterThanOrEqual(25);
+        expect(
+          Object.keys(pasted),
+          "the 0006 replay database and the harness database do not contain the same tables in `public`, so a per-table privilege comparison would skip whatever is missing from one side. Both are built from db/migrations, so this means a probe table leaked out of a test's `finally`.",
+        ).toEqual(Object.keys(proven));
+
+        expect(
+          pasted,
+          "prod-paste-0006 §3 and tests/setup/global-setup.ts disagree about the app role's privileges on at least one table in `public`. One of them was changed without the other, which means either CI is proving a posture prod does not run, or prod runs a posture CI does not prove. Fix BOTH in the same change (this is what §3's `fact_anomaly` note means by \"add it to §3 AND to tests/setup/global-setup.ts together\").",
+        ).toEqual(proven);
+
+        // The pin is only meaningful if the two roles actually hold something, and if the table
+        // that motivated widening it is in the comparison at all.
+        expect(Object.keys(pasted)).toContain("fact_anomaly");
+        expect(pasted["audit_access_log"]).toEqual(["INSERT", "SELECT"]);
+        expect(pasted["audit_officer_provisioning"]).toEqual([]);
       } finally {
         await harness.end({ timeout: 5 });
       }
@@ -729,6 +795,172 @@ describe("prod-paste-0006 — replayed from empty", () => {
         }
       }
       expect(await ppAdmin.unsafe(RESIDUAL_REPORT)).toEqual([]);
+    });
+
+    it("covers V4's SEQUENCE and direct-EXECUTE residuals too, not only tables", async () => {
+      /**
+       * §6's banner claims the statement is a complete posture check on its own, "including the
+       * conditions V0 and V4 assert by raising". It was not. `builtin_residual` is TABLES only and
+       * `public_execute` matches `grantee = 0` — so two states V4 fails the whole paste for came
+       * back from §6 as ZERO ROWS, i.e. as CLEAN:
+       *
+       *   · a built-in holding USAGE on a SEQUENCE in `public` — which is `nextval()`, a WRITE,
+       *     reachable over PostgREST by a role that is supposed to hold nothing here, and granted
+       *     by Supabase's own `grant all on all sequences in schema public` just as much as the
+       *     table grants that started this file;
+       *   · a DIRECT `grant execute on function … to anon` (grantee ≠ 0) — on `ov_in_subtree`,
+       *     which is SECURITY DEFINER and is a jurisdiction-tree membership oracle over the GES
+       *     spine.
+       *
+       * Both row sources are asserted against V4 here rather than in isolation: V4 raising is the
+       * standard, and §6 returning the matching row is the claim.
+       */
+      const [seq] = await ppAdmin.unsafe(
+        `select c.relname::text as relname
+           from pg_class c join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public' and c.relkind = 'S'
+          order by c.relname limit 1`,
+      );
+      expect(
+        seq?.relname,
+        "there is no sequence in `public` on this schema, so §6's sequence row source cannot be exercised — grant one on a probe sequence instead of deleting this test",
+      ).toBeTruthy();
+      const seqName = seq.relname as string;
+
+      const [{ present }] = await ppAdmin.unsafe(
+        `select exists (select 1 from pg_roles where rolname = 'anon') as present`,
+      );
+      if (!present) await ppAdmin.unsafe(`create role anon nologin noinherit`);
+      try {
+        await ppAdmin.unsafe(
+          `grant usage on sequence public.${seqName} to anon;
+           grant execute on function public.ov_in_subtree(uuid) to anon;`,
+        );
+
+        // V4 fails the paste for both of these. That is what §6 has to match.
+        expect(await rejects(ppAdmin, BLOCK_V4)).toMatch(/V4 FAILED/);
+
+        const rows = await ppAdmin.unsafe(RESIDUAL_REPORT);
+
+        const seqRow = rows.find((r) => r.objtype === "SEQUENCE USAGE");
+        expect(
+          seqRow,
+          "§6 returned no row for a Supabase built-in holding USAGE on a sequence, which V4 raises on — the report is narrower than the assertions it claims to mirror",
+        ).toBeTruthy();
+        expect(seqRow!.severity).toBe("FINDING");
+        expect(seqRow!.grantee).toBe("anon");
+        expect(String(seqRow!.remediation_statement)).toContain(
+          `REVOKE ALL ON SEQUENCE public.${seqName} FROM anon;`,
+        );
+
+        const execRow = rows.find(
+          (r) => r.objtype === "ROUTINE EXECUTE" && r.grantee === "anon",
+        );
+        expect(
+          execRow,
+          "§6 returned no row for a DIRECT `grant execute … to anon`. `public_execute` only matches grantee = 0 (PUBLIC), so this is the case it structurally cannot see",
+        ).toBeTruthy();
+        expect(execRow!.severity).toBe("FINDING");
+        expect(String(execRow!.remediation_statement)).toMatch(
+          /REVOKE EXECUTE ON ROUTINE ov_in_subtree\(uuid\) FROM anon;/,
+        );
+
+        // The remediation column is load-bearing, not decorative: running exactly what §6 printed
+        // must close every finding it printed.
+        for (const row of rows) {
+          await ppAdmin.unsafe(String(row.remediation_statement));
+        }
+        expect(await ppAdmin.unsafe(RESIDUAL_REPORT)).toEqual([]);
+        await ppAdmin.unsafe(BLOCK_V4);
+      } finally {
+        await ppAdmin.unsafe(
+          `revoke all on sequence public.${seqName} from anon;
+           revoke execute on function public.ov_in_subtree(uuid) from anon;`,
+        );
+        if (!present) {
+          await ppAdmin.unsafe(`drop owned by anon`);
+          await ppAdmin.unsafe(`drop role if exists anon`);
+        }
+      }
+      expect(await ppAdmin.unsafe(RESIDUAL_REPORT)).toEqual([]);
+      await ppAdmin.unsafe(PROD_PASTE_0006);
+    });
+
+    it("the `TABLE NOT GRANTED` row source names the role 0006 actually grants to", async () => {
+      // THE FALSE-CLEAN MECHANISM, PINNED. §6 cannot parameterise its role name (a result-set column
+      // literal is not reachable from a plpgsql DECLARE), so `app_missing_select` carries
+      // `exists (select 1 from pg_roles where rolname = 'oversight_app')` as a literal. If that
+      // literal ever drifts from the role §3 grants to — which is what the deleted "edit the role
+      // name" affordance invited — the source yields zero rows and §6 reports CLEAN while the
+      // decay it exists to detect is in place. So: a table the app role cannot read MUST produce a
+      // row, with the live role in the `grantee` column.
+      await ppAdmin.unsafe(
+        `create table probe_not_granted (id uuid primary key);
+         alter table probe_not_granted enable row level security;
+         create policy probe_deny on probe_not_granted for select using (false);`,
+      );
+      try {
+        const rows = await ppAdmin.unsafe(RESIDUAL_REPORT);
+        const row = rows.find((r) => r.objtype === "TABLE NOT GRANTED");
+        expect(
+          row,
+          "§6 did not notice a table the app role holds no SELECT on — either the row source's hardcoded role name has drifted from §3's, or its EXISTS gate is matching nothing",
+        ).toBeTruthy();
+        expect(row!.severity).toBe("ADVISORY");
+        expect(row!.grantee).toBe(APP_ROLE);
+        expect(String(row!.remediation_statement)).toMatch(
+          new RegExp(`GRANT SELECT ON public\\.probe_not_granted TO ${APP_ROLE};`),
+        );
+      } finally {
+        await ppAdmin.unsafe(`drop table probe_not_granted`);
+      }
+      expect(await ppAdmin.unsafe(RESIDUAL_REPORT)).toEqual([]);
+    });
+  });
+
+  describe("the app role name is FIXED, not an edit point", () => {
+    /**
+     * The §3 banner used to read "⇩⇩ EDIT THE ROLE NAME BELOW IF YOURS DIFFERS ⇩⇩", advertising a
+     * single edit point that does not exist: the name is written twelve times in executable code —
+     * six plpgsql DECLAREs and six SQL literals in §6, which no DECLARE can reach. A partial rename
+     * is therefore the normal outcome, and it is not a loud one. §6's `app_missing_select` is gated
+     * on `rolname = 'oversight_app'`, so under a rename that source yields zero rows and §6 reports
+     * CLEAN — a false clean against the one contract the file asks the operator to read. Prod uses
+     * the default name, so the affordance bought nothing and cost that.
+     */
+    it("no longer advertises an edit point, and says so where the invitation used to be", () => {
+      expect(PROD_PASTE_0006).not.toMatch(/EDIT THE ROLE NAME/i);
+      expect(PROD_PASTE_0006).not.toMatch(/keep in sync with/i);
+      expect(PROD_PASTE_0006).not.toMatch(/edit it in all of them/i);
+      expect(PROD_PASTE_0006).not.toMatch(/carries its own copy of the (role )?name/i);
+      // The replacement claim sits in §3's banner, where the invitation was.
+      expect(section(ANCHOR_S3, ANCHOR_S4C)).toMatch(
+        /THE APP ROLE NAME IS \*\*FIXED\*\* AT `oversight_app`/,
+      );
+    });
+
+    it("uses one and the same name in every DECLARE and in §6's literals", () => {
+      const declared = [
+        ...PROD_PASTE_0006.matchAll(/app_role\s+text\s*:=\s*'([^']*)'/g),
+      ].map((m) => m[1]);
+      expect(
+        declared.length,
+        "the number of app-role DECLAREs changed; the §3 banner states the count, so update it in the same change",
+      ).toBe(6);
+      expect([...new Set(declared)]).toEqual([APP_ROLE]);
+
+      // The §6 copies, which are the ones that cannot be a variable.
+      expect(RESIDUAL_REPORT).toContain(
+        `AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${APP_ROLE}')`,
+      );
+      expect(RESIDUAL_REPORT).toContain(`NOT has_table_privilege('${APP_ROLE}'`);
+      // EXACT, not a floor: the §3 banner tells a would-be renamer how many occurrences there are
+      // and that the §6 ones are unreachable from a DECLARE. A new §6 row source naming the role
+      // should make that banner go RED here rather than quietly stale.
+      expect(
+        [...RESIDUAL_REPORT.matchAll(new RegExp(APP_ROLE, "g"))].length,
+        "the number of hardcoded `oversight_app` literals in §6 changed; the §3 banner and the header both state it (six DECLAREs + seven §6 literals = thirteen), so update them in the same change",
+      ).toBe(7);
     });
   });
 
