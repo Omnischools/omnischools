@@ -894,7 +894,7 @@ BEGIN
   -- PG 17 adds MAINTAIN (VACUUM/ANALYZE/REINDEX/CLUSTER/REFRESH). `revoke all` covers it; name it
   -- explicitly where the server knows it, so the assertion is as wide as the grant it undoes.
   IF current_setting('server_version_num')::int >= 170000 THEN
-    tabpriv := tabpriv || 'MAINTAIN';
+    tabpriv := tabpriv || 'MAINTAIN'::text;
   END IF;
 
   SELECT count(*) INTO checked
