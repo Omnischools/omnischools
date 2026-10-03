@@ -21,7 +21,7 @@
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:rls-test": "vitest run tests/rls-tier-matrix.test.ts tests/officer-resolver-rls.test.ts tests/officer-session-forgery.test.ts tests/audit-insert-rls.test.ts tests/readback-identity-rls.test.ts tests/no-individuals-in-analytics.test.ts tests/officer-directory-audit-coupling.test.ts"
+    "db:rls-test": "vitest run tests/rls-tier-matrix.test.ts tests/officer-resolver-rls.test.ts tests/officer-session-forgery.test.ts tests/audit-insert-rls.test.ts tests/readback-identity-rls.test.ts tests/no-individuals-in-analytics.test.ts tests/officer-directory-audit-coupling.test.ts tests/prod-paste-0006-app-role.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
