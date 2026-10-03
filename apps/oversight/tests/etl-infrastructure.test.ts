@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import postgres from "postgres";
-import { adminDemoAnalytics } from "./helpers";
+import { adminDemoAnalytics, testDbConfig } from "./helpers";
 import {
   DEMO_TERMS,
   emisExtractFor,
@@ -14,6 +16,8 @@ import { runInfrastructureEtl, type EtlRunReport } from "@/lib/etl/pipeline";
 import {
   InfrastructureTransformError,
   decomposeFacilitiesSnapshot,
+  writeInfrastructureFacts,
+  type FactInfrastructureRow,
 } from "@/lib/etl/infrastructure";
 import { computePerSchool, failureVerdict } from "@/lib/etl/run";
 import { parseEmisExtract } from "@/lib/etl/register";
@@ -147,6 +151,65 @@ function expectedSum(
       const census = censusBySchoolTerm.get(`${s.emisSchoolId}|${term}`);
       return census ? total + measure(census) : total;
     }, 0);
+}
+
+/**
+ * Round-trip a row already in `fact_infrastructure` back into the shape `writeInfrastructureFacts`
+ * takes. Used by the delete-scope and duplicate-assertion tests, which need a row the write path
+ * will accept while they probe the WRITE rather than the transform.
+ */
+function factRowFrom(
+  db: Record<string, unknown>,
+  periodId: string,
+): FactInfrastructureRow {
+  const num = (k: string): number => Number(db[k]);
+  const nullable = (k: string): number | null => (db[k] === null ? null : Number(db[k]));
+  return {
+    jurisdictionId: db.jurisdiction_id as string,
+    periodId,
+    schoolsReporting: num("schools_reporting"),
+    classroomsTotal: num("classrooms_total"),
+    classroomsGood: num("classrooms_good"),
+    classroomsRepair: num("classrooms_repair"),
+    latrinesBoys: num("latrines_boys"),
+    latrinesGirls: num("latrines_girls"),
+    latrinesStaff: num("latrines_staff"),
+    studentDesksUsable: nullable("student_desks_usable"),
+    studentDesksBroken: nullable("student_desks_broken"),
+    teacherDesks: nullable("teacher_desks"),
+    chalkboards: nullable("chalkboards"),
+    whiteboards: nullable("whiteboards"),
+    projectors: nullable("projectors"),
+    computersTotal: nullable("computers_total"),
+    computersWorking: nullable("computers_working"),
+    libraryBookCount: nullable("library_book_count"),
+    hasElectricityCount: num("has_electricity_count"),
+    hasWaterCount: num("has_water_count"),
+    hasHandwashingCount: num("has_handwashing_count"),
+    hasLibraryCount: num("has_library_count"),
+    hasIctLabCount: num("has_ict_lab_count"),
+    hasInternetCount: num("has_internet_count"),
+    gsfpParticipatingCount: num("gsfp_participating_count"),
+    hasKitchenCount: num("has_kitchen_count"),
+    waterBoreholeCount: num("water_borehole_count"),
+    waterPipeCount: num("water_pipe_count"),
+    waterWellCount: num("water_well_count"),
+    waterNoneCount: num("water_none_count"),
+    electricityGridCount: num("electricity_grid_count"),
+    electricitySolarCount: num("electricity_solar_count"),
+    electricityGeneratorCount: num("electricity_generator_count"),
+    electricityNoneCount: num("electricity_none_count"),
+    latrineWcCount: num("latrine_wc_count"),
+    latrineKvipCount: num("latrine_kvip_count"),
+    latrinePitCount: num("latrine_pit_count"),
+    latrineNoneCount: num("latrine_none_count"),
+    computersReportingCount: num("computers_reporting_count"),
+    libraryBooksReportingCount: num("library_books_reporting_count"),
+    furnitureReportingCount: num("furniture_reporting_count"),
+    source: "OPERATIONAL_AGG",
+    asOfDate: (db.as_of_date as Date).toISOString(),
+    etlRunId: db.etl_run_id as string,
+  };
 }
 
 // ── the run itself ──────────────────────────────────────────────────────────────────────────────
@@ -783,5 +846,439 @@ describe("the demo generator is reproducible", () => {
     expect(rate(true, (f) => f.hasIctLab)).toBeGreaterThan(
       rate(false, (f) => f.hasIctLab) + 0.15,
     );
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// QA GATE ADDITIONS (Quinn). Everything below is an INDEPENDENT restatement of a scope invariant —
+// re-derived from the SOURCE tables in SQL, or asserted against a MUTATED database — rather than a
+// re-reading of the transform's own output. They are LAST in the file on purpose: the three blocks
+// at the end mutate the demo database (an index is dropped and recreated, a census row is changed,
+// db/sql/policies.sql is applied), so nothing may be asserted after them.
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("the grain is SCHOOL-level only — there are NO stored roll-ups (scope §1)", () => {
+  it("every fact row's jurisdiction is a reporting SCHOOL node, and no row sits above it", async () => {
+    // The grain rule is "one row per SCHOOL-level jurisdiction_id per period". Summing is therefore
+    // the ONLY path to a district figure, and this is what makes that true: a single stored
+    // DISTRICT-level row would be added to the schools beneath it by the same recursive SUM the
+    // product uses, double-counting the whole district with no error anywhere.
+    const byLevel = await sql<{ level: string; n: number }[]>`
+      select d.level::text as level, count(*)::int as n
+        from fact_infrastructure f join dim_jurisdiction d using (jurisdiction_id)
+       group by d.level`;
+    expect(byLevel).toHaveLength(1);
+    expect(byLevel[0]!.level).toBe("SCHOOL");
+
+    const dangling = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_infrastructure f
+       where not exists (
+         select 1 from dim_jurisdiction d where d.jurisdiction_id = f.jurisdiction_id)`;
+    expect(dangling[0]!.n).toBe(0);
+  });
+});
+
+describe("every written row re-derives from its SOURCE census row (independent of the transform)", () => {
+  /**
+   * The join the ETL's per-school mapping produced, reconstructed from the other end: fact row →
+   * dim node → register → the per-school `academic_period` → the census row. Asserting against this
+   * is what makes the checks below independent — `decomposeFacilitiesSnapshot` is not consulted.
+   */
+  const sourceJoin = () => sql`
+      from fact_infrastructure f
+      join dim_jurisdiction d on d.jurisdiction_id = f.jurisdiction_id
+      join ref_emis_school_register r on r.emis_school_id = d.ges_code
+      join dim_period dp on dp.period_id = f.period_id
+      join demo_source.academic_period ap
+        on ap.school_id = r.operational_school_id
+       and ap.academic_year = dp.academic_year and ap.term = dp.term
+      join demo_source.facilities_snapshot s
+        on s.school_id = ap.school_id and s.period_id = ap.period_id`;
+
+  it("the per-school → global period mapping reaches EVERY fact row (no row is unexplained)", async () => {
+    const joined = await sql<{ n: number }[]>`select count(*)::int as n ${sourceJoin()}`;
+    const total = await sql<
+      { n: number }[]
+    >`select count(*)::int as n from fact_infrastructure`;
+    expect(joined[0]!.n).toBe(total[0]!.n);
+  });
+
+  it("every measure, count and one-hot equals the source column it was derived from", async () => {
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n ${sourceJoin()}
+       where f.classrooms_total is distinct from s.classrooms_total
+          or f.classrooms_good is distinct from s.classrooms_good
+          or f.classrooms_repair is distinct from s.classrooms_repair
+          or f.latrines_boys is distinct from s.latrines_boys
+          or f.latrines_girls is distinct from s.latrines_girls
+          or f.latrines_staff is distinct from s.latrines_staff
+          or f.student_desks_usable is distinct from s.student_desks_usable
+          or f.student_desks_broken is distinct from s.student_desks_broken
+          or f.teacher_desks is distinct from s.teacher_desks
+          or f.chalkboards is distinct from s.chalkboards
+          or f.whiteboards is distinct from s.whiteboards
+          or f.projectors is distinct from s.projectors
+          or f.computers_total is distinct from s.computers_total
+          or f.computers_working is distinct from s.computers_working
+          or f.library_book_count is distinct from s.library_book_count
+          or f.water_borehole_count <> (s.water_source = 'BOREHOLE')::int
+          or f.water_pipe_count <> (s.water_source = 'PIPE')::int
+          or f.water_well_count <> (s.water_source = 'WELL')::int
+          or f.water_none_count <> (s.water_source = 'NONE')::int
+          or f.electricity_grid_count <> (s.electricity_source = 'GRID')::int
+          or f.electricity_solar_count <> (s.electricity_source = 'SOLAR')::int
+          or f.electricity_generator_count <> (s.electricity_source = 'GENERATOR')::int
+          or f.electricity_none_count <> (s.electricity_source = 'NONE')::int
+          or f.latrine_wc_count <> (s.latrine_type = 'WC')::int
+          or f.latrine_kvip_count <> (s.latrine_type = 'KVIP')::int
+          or f.latrine_pit_count <> (s.latrine_type = 'PIT')::int
+          or f.latrine_none_count <> (s.latrine_type = 'NONE')::int
+          or f.has_handwashing_count <> s.handwashing::int
+          or f.has_library_count <> s.has_library::int
+          or f.has_ict_lab_count <> s.has_ict_lab::int
+          or f.has_internet_count <> s.internet::int
+          or f.has_kitchen_count <> s.has_kitchen::int
+          or f.gsfp_participating_count <> s.gsfp_participating::int`;
+    expect(bad[0]!.n).toBe(0);
+  });
+
+  it("as_of_date is the row's OWN census vintage, to the second — not the run clock", async () => {
+    // The existing vintage test compares a DATE for one term. This compares the full timestamp per
+    // row, which is what makes a `now()` regression impossible to hide behind a same-day run.
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n ${sourceJoin()}
+       where f.as_of_date <> s.captured_at`;
+    expect(bad[0]!.n).toBe(0);
+  });
+});
+
+describe("the physical and denominator invariants hold on EVERY written row (scope §1)", () => {
+  it("classrooms_good + classrooms_repair <= classrooms_total, and computers_working <= total", async () => {
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_infrastructure
+       where classrooms_good + classrooms_repair > classrooms_total
+          or (computers_total is not null and computers_working is not null
+              and computers_working > computers_total)`;
+    expect(bad[0]!.n).toBe(0);
+  });
+
+  it("the *_reporting_count denominators match the answered columns in BOTH directions", async () => {
+    // The existing test checks one direction (a value present with a 0 denominator). The other
+    // direction is the one that inflates a rate: a denominator of 1 where NOTHING was answered
+    // silently turns "8 of 12 reporting" into "8 of 12 schools", which reads as a real zero.
+    // `furniture_reporting_count` is ANY-of-six by design — restated here so the semantics cannot
+    // drift to ALL-of-six without a failing test.
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_infrastructure
+       where computers_reporting_count
+               <> (case when computers_total is null then 0 else 1 end)
+          or library_books_reporting_count
+               <> (case when library_book_count is null then 0 else 1 end)
+          or furniture_reporting_count
+               <> (case when student_desks_usable is null and student_desks_broken is null
+                         and teacher_desks is null and chalkboards is null
+                         and whiteboards is null and projectors is null then 0 else 1 end)`;
+    expect(bad[0]!.n).toBe(0);
+  });
+
+  it("no measure is negative on any row", async () => {
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_infrastructure
+       where least(classrooms_total, classrooms_good, classrooms_repair, latrines_boys,
+                   latrines_girls, latrines_staff, coalesce(student_desks_usable, 0),
+                   coalesce(student_desks_broken, 0), coalesce(teacher_desks, 0),
+                   coalesce(chalkboards, 0), coalesce(whiteboards, 0), coalesce(projectors, 0),
+                   coalesce(computers_total, 0), coalesce(computers_working, 0),
+                   coalesce(library_book_count, 0)) < 0`;
+    expect(bad[0]!.n).toBe(0);
+  });
+});
+
+describe("the etl_run lifecycle leaves nothing open", () => {
+  it("no RUNNING row survives a finished run, successful or failed", async () => {
+    // A RUNNING row that never closes is the one state the as-of banner cannot report on: it is
+    // neither the vintage on screen nor an error anybody sees.
+    const open = await sql<{ n: number }[]>`
+      select count(*)::int as n from etl_run where status = 'RUNNING'`;
+    expect(open[0]!.n).toBe(0);
+    const closed = await sql<{ n: number }[]>`
+      select count(*)::int as n from etl_run
+       where status <> 'RUNNING' and finished_at is null`;
+    expect(closed[0]!.n).toBe(0);
+  });
+});
+
+describe("the delete scope is bounded, not period-wide (scope §3's named trap)", () => {
+  it("writing one jurisdiction's row does not delete another's in the same period", async () => {
+    const t1 = await periodIdFor(1);
+    const two = await sql<{ jurisdiction_id: string; classrooms_total: number }[]>`
+      select jurisdiction_id::text as jurisdiction_id, classrooms_total
+        from fact_infrastructure where period_id = ${t1}::uuid
+       order by jurisdiction_id limit 2`;
+    const [bystander, rewritten] = two;
+
+    const existing = await sql<Record<string, unknown>[]>`
+      select * from fact_infrastructure
+       where period_id = ${t1}::uuid and jurisdiction_id = ${rewritten!.jurisdiction_id}::uuid`;
+    const row = factRowFrom(existing[0]!, t1);
+
+    const result = await writeInfrastructureFacts(sql, t1, [row]);
+    // Exactly ONE row deleted — the one being rewritten. A period-wide delete would report ~849.
+    expect(result).toEqual({ deleted: 1, inserted: 1 });
+
+    const survived = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_infrastructure
+       where period_id = ${t1}::uuid
+         and jurisdiction_id = ${bystander!.jurisdiction_id}::uuid
+         and classrooms_total = ${bystander!.classrooms_total}`;
+    expect(survived[0]!.n).toBe(1);
+  });
+
+  it("a school that DROPS OUT of the inclusion set keeps its last good figures", async () => {
+    // The failure mode scope §3 names: a period-wide delete removes the dropped-out school's row and
+    // never re-inserts it, so the district total SHRINKS with no error and no empty table to notice.
+    // Stale-but-honest is the stated rule, so the prior row must still be there afterwards.
+    const dropped = dataset.schools.find((s) => s.onSchoolup && s.operationalSchoolId)!;
+    const extract = emisExtractFor(dataset);
+    const withoutIt = JSON.stringify({
+      ...extract,
+      rows: extract.rows.map((r) =>
+        (r as { emis_school_id: string }).emis_school_id === dropped.emisSchoolId
+          ? { ...r, on_schoolup: false }
+          : r,
+      ),
+    });
+
+    const countRows = async () =>
+      (
+        await sql<{ n: number }[]>`
+          select count(*)::int as n from fact_infrastructure f
+            join dim_jurisdiction d using (jurisdiction_id)
+           where d.ges_code = ${dropped.emisSchoolId}`
+      )[0]!.n;
+
+    expect(await countRows()).toBe(DEMO_TERMS.length);
+
+    const report = await runInfrastructureEtl(sql, {
+      emisExtractText: withoutIt,
+      periods: periodsOption(),
+      sourceSchema: "demo_source",
+    });
+    expect(report.status).toBe("SUCCESS");
+    // It really did leave the inclusion set…
+    expect(report.coverage.onSchoolup).toBe(
+      dataset.schools.filter((s) => s.onSchoolup).length - 1,
+    );
+    // …and its rows are still there.
+    expect(await countRows()).toBe(DEMO_TERMS.length);
+
+    // Restore the register so the mutation does not leak into the blocks below.
+    await runEtl();
+  }, 180_000);
+});
+
+describe("the post-insert duplicate assertion really fires (scope §3, for the PK-only eight)", () => {
+  it("raises and rolls back when the grain UNIQUE is absent", async () => {
+    // On `fact_infrastructure` the UNIQUE raises first, so the assertion in
+    // `writeInfrastructureFacts` is never reached by the happy path — which means it has never been
+    // EXECUTED, and it is the code the eight PK-only fact tables (fact.ts:238–241) will reuse
+    // verbatim, where nothing else will catch a duplicate. Dropping the index for one statement is
+    // the only way to exercise it, and it is exactly the condition those eight tables are in.
+    const t1 = await periodIdFor(1);
+    const existing = await sql<Record<string, unknown>[]>`
+      select * from fact_infrastructure where period_id = ${t1}::uuid
+       order by jurisdiction_id limit 1`;
+    const row = factRowFrom(existing[0]!, t1);
+    const before = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+
+    await sql`drop index fact_infrastructure_jurisdiction_period_idx`;
+    try {
+      await expect(writeInfrastructureFacts(sql, t1, [row, { ...row }])).rejects.toThrow(
+        /duplicated grain key/,
+      );
+    } finally {
+      await sql`create unique index fact_infrastructure_jurisdiction_period_idx
+                  on fact_infrastructure (jurisdiction_id, period_id)`;
+    }
+    // The assertion is INSIDE the transaction, so the raise rolled the delete and both inserts back.
+    const after = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+    expect(after).toBe(before);
+  });
+});
+
+describe("idempotency is REPLACE, not append-and-ignore", () => {
+  it("a CHANGED source census is reflected in the fact row, with the row count unchanged", async () => {
+    // "A re-run is byte-identical" is necessary but not sufficient: a pipeline that inserted nothing
+    // at all on the second run would pass it. This is the complementary half — change one census
+    // value and the fact row must MOVE.
+    const t2 = await periodIdFor(TERM_2.term);
+    const pick = (
+      await sql<
+        { ges_code: string; school_id: string; snapshot_period: string; total: number }[]
+      >`
+        select d.ges_code, r.operational_school_id::text as school_id,
+               ap.period_id::text as snapshot_period, f.classrooms_total as total
+          from fact_infrastructure f
+          join dim_jurisdiction d on d.jurisdiction_id = f.jurisdiction_id
+          join ref_emis_school_register r on r.emis_school_id = d.ges_code
+          join dim_period dp on dp.period_id = f.period_id
+          join demo_source.academic_period ap
+            on ap.school_id = r.operational_school_id
+           and ap.academic_year = dp.academic_year and ap.term = dp.term
+         where f.period_id = ${t2}::uuid
+         order by d.ges_code limit 1`
+    )[0]!;
+    const bumped = Number(pick.total) + 7;
+
+    await sql`
+      update demo_source.facilities_snapshot
+         set classrooms_total = ${bumped}, captured_at = captured_at + interval '1 day'
+       where school_id = ${pick.school_id}::uuid
+         and period_id = ${pick.snapshot_period}::uuid`;
+
+    const countBefore = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+    const report = await runEtl();
+    expect(report.status).toBe("SUCCESS");
+    for (const p of report.periods) expect(p.deleted).toBe(p.inserted);
+
+    const after = await sql<{ total: number }[]>`
+      select f.classrooms_total as total from fact_infrastructure f
+        join dim_jurisdiction d on d.jurisdiction_id = f.jurisdiction_id
+       where d.ges_code = ${pick.ges_code} and f.period_id = ${t2}::uuid`;
+    expect(Number(after[0]!.total)).toBe(bumped);
+
+    const countAfter = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+    expect(countAfter).toBe(countBefore);
+  }, 180_000);
+});
+
+describe("the written facts are jurisdiction-isolated as the NON-OWNER app role", () => {
+  /**
+   * Every assertion above runs as the analytics OWNER, which is correct — the ETL's real credential
+   * is the privileged writer — but an owner is RLS-EXEMPT, so none of them says anything about what
+   * a district officer can read. `tests/rls-tier-matrix.test.ts` proves the predicate is attached to
+   * `fact_infrastructure`, but over a four-row hand-seeded fixture; this proves it over the spine
+   * and the ~1,700 rows THIS PIPELINE wrote, as `ov_app`.
+   *
+   * ⚠ LAST BLOCK IN THE FILE: it installs db/sql/policies.sql on the demo database, which the ETL
+   * tests above deliberately run without.
+   */
+  let app: postgres.Sql;
+  let districtA: string;
+  let districtB: string;
+
+  beforeAll(async () => {
+    await sql.unsafe(readFileSync(join(process.cwd(), "db/sql/policies.sql"), "utf8"));
+    await sql.unsafe(`
+      grant usage on schema public to ov_app;
+      grant select on all tables in schema public to ov_app;
+      grant execute on all functions in schema public to ov_app;
+    `);
+    const url = new URL(testDbConfig.demoAnalyticsUrl);
+    url.username = "ov_app";
+    url.password = "";
+    app = postgres(url.toString(), { max: 1, prepare: false, onnotice: () => {} });
+
+    const districts = await sql<{ jurisdiction_id: string }[]>`
+      select jurisdiction_id::text as jurisdiction_id from dim_jurisdiction
+       where level = 'DISTRICT' order by name limit 2`;
+    districtA = districts[0]!.jurisdiction_id;
+    districtB = districts[1]!.jurisdiction_id;
+  }, 120_000);
+
+  afterAll(async () => {
+    if (app) await app.end({ timeout: 5 });
+  });
+
+  /** One read with the GUCs `withJurisdiction()` would have set. Rolled back either way. */
+  async function asOfficer<T>(
+    jurisdictionId: string,
+    level: string,
+    fn: (tx: postgres.TransactionSql) => Promise<T>,
+  ): Promise<T> {
+    let captured: T;
+    try {
+      await app.begin(async (tx) => {
+        await tx`select set_config('app.current_jurisdiction', ${jurisdictionId}, true)`;
+        await tx`select set_config('app.current_level', ${level}, true)`;
+        await tx`select set_config('app.current_officer', ${"60000000-0000-4000-8000-000000000001"}, true)`;
+        captured = await fn(tx as unknown as postgres.TransactionSql);
+        throw new Error("__rollback__");
+      });
+    } catch (err) {
+      if ((err as Error).message !== "__rollback__") throw err;
+    }
+    return captured!;
+  }
+
+  async function schoolsUnder(districtId: string): Promise<string[]> {
+    return (
+      await sql<{ jurisdiction_id: string }[]>`
+        select jurisdiction_id::text as jurisdiction_id from dim_jurisdiction
+         where parent_id = ${districtId}::uuid`
+    ).map((r) => r.jurisdiction_id);
+  }
+
+  it("a district officer reads its own district's rows and ZERO of another district's", async () => {
+    const own = await schoolsUnder(districtA);
+    const other = await schoolsUnder(districtB);
+    expect(own.length).toBeGreaterThan(0);
+    expect(other.length).toBeGreaterThan(0);
+
+    const seen = await asOfficer(districtA, "DISTRICT", async (tx) => {
+      const mine = await tx<{ n: number }[]>`
+        select count(*)::int as n from fact_infrastructure
+         where jurisdiction_id = any(${own}::uuid[])`;
+      const theirs = await tx<{ n: number }[]>`
+        select count(*)::int as n from fact_infrastructure
+         where jurisdiction_id = any(${other}::uuid[])`;
+      const unfiltered = await tx<{ n: number }[]>`
+        select count(*)::int as n from fact_infrastructure`;
+      const theirRegister = await tx<{ n: number }[]>`
+        select count(*)::int as n from ref_emis_school_register
+         where district_id = ${districtB}::uuid`;
+      return {
+        mine: mine[0]!.n,
+        theirs: theirs[0]!.n,
+        unfiltered: unfiltered[0]!.n,
+        theirRegister: theirRegister[0]!.n,
+      };
+    });
+
+    expect(seen.mine).toBeGreaterThan(0);
+    expect(seen.theirs).toBe(0);
+    // The decisive one: an UNQUALIFIED `select count(*)` — the query a reporting bug would write —
+    // returns the officer's own district and nothing more.
+    expect(seen.unfiltered).toBe(seen.mine);
+    expect(seen.theirRegister).toBe(0);
+  });
+
+  it("a national officer reads every row, and the app role still cannot write one", async () => {
+    const total = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+    const national = await nodeId("NATIONAL", "Ghana");
+    const seen = await asOfficer(national, "NATIONAL", async (tx) => {
+      const r = await tx<{ n: number }[]>`
+        select count(*)::int as n from fact_infrastructure`;
+      return r[0]!.n;
+    });
+    expect(seen).toBe(total);
+
+    // The ETL's credential is the owner; the app role has no INSERT/DELETE on any fact table, and
+    // the absent GRANT — not a policy — is what makes that unforgeable.
+    await expect(
+      asOfficer(national, "NATIONAL", async (tx) => {
+        await tx`delete from fact_infrastructure`;
+      }),
+    ).rejects.toThrow(/permission denied/i);
   });
 });
