@@ -190,13 +190,15 @@ export interface DemoOperationalPeriod {
  * Basic schools run 3 TERMS, senior schools 2 SEMESTERS (apps/web
  * `ref_academic_period_config.period_count`), and that is why `period_number` cannot be read without
  * its line. SHS schools really do file facilities censuses, so the demo generates them on the SENIOR
- * line — which means the ETL reports them as an unmapped NAMED GAP rather than filing a semester as a
- * term. That gap is the point: it is the Q3 ruling made visible instead of guessed.
+ * line — and since `fact_infrastructure` was re-grained to ANNUAL (Kofi's Q3 ruling), those censuses
+ * are now CONSUMED: a SENIOR school's latest snapshot in the year becomes its one fact row, where the
+ * old TERM grain could only report the whole senior estate as an unmapped named gap.
  *
  * SIMPLIFICATION, stated: a COMBINED school in reality carries BOTH lines (a basic department and a
  * senior one, each with its own `academic_period` rows). Modelling two lines for one school is not
  * needed to exercise anything here, so COMBINED is generated on BASIC — its basic department's
- * calendar. The ETL's behaviour is identical either way: it maps BASIC rows and names the rest.
+ * calendar. The both-configurations case IS exercised, in `tests/etl-infrastructure.test.ts`, which
+ * adds a senior configuration to one combined school and asserts it still yields exactly ONE row.
  */
 export function productLineFor(schoolType: DemoSchoolType): "BASIC" | "SENIOR" {
   return schoolType === "SHS" ? "SENIOR" : "BASIC";

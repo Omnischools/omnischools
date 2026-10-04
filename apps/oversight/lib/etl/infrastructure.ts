@@ -14,6 +14,16 @@ import { stampProvenance, type Provenance } from "./run";
  * ambiguity. Every invariant is checkable on ONE row. The roll-up is a plain SUM, so
  * "district = Σ its schools" is provable without any weighted-rate reasoning.
  *
+ * ── THE GRAIN IS ANNUAL: ONE ROW PER SCHOOL PER ACADEMIC YEAR ──────────────────────────────────
+ * `period_id` always resolves to an ANNUAL `dim_period` row (`term IS NULL`), never a TERM one — Kofi's
+ * Q3 ruling; the selector and its reasoning are in `lib/etl/dimensions.ts` and `lib/etl/source.ts`.
+ * The school may have filed three term censuses and a semester one; exactly one of them reaches this
+ * module, the LATEST by `captured_at` (tie-break `period_number DESC, product_line DESC`), because
+ * infrastructure accrues and the newest return is the most complete statement of the stock. This
+ * module is unchanged by that ruling in one important respect: it still decomposes ONE census row into
+ * ONE fact row. The ruling changed WHICH row, not what happens to it — which is why the whole
+ * re-grain touches the selector and the period, and not a line of the arithmetic below.
+ *
  * ── THE DECOMPOSITION RULE ─────────────────────────────────────────────────────────────────────
  * EVERY attribute becomes a COUNT, never a boolean and never a raw category, because a boolean and
  * an enum DO NOT SUM. `has_electricity = true` cannot be added up into a district figure; stored as
@@ -47,9 +57,16 @@ import { stampProvenance, type Provenance } from "./run";
  * reporting schools" — never a silent zero.
  *
  * ── STOCK, NOT FLOW ────────────────────────────────────────────────────────────────────────────
- * Infrastructure is a STOCK. Sum it SPATIALLY (across schools), NEVER across periods: two terms of a
- * school's classroom count are THE SAME CLASSROOMS. There is no constraint that can stop a reader
- * summing two terms, so every read must filter to exactly one `period_id`. See
+ * Infrastructure is a STOCK. Sum it SPATIALLY (across schools), NEVER across periods: two censuses of
+ * a school's classroom count are THE SAME CLASSROOMS, and adding them invents buildings.
+ *
+ * THE ANNUAL GRAIN IS THE STRUCTURAL HALF OF THAT RULE. At the old TERM grain a BASIC school held
+ * three rows per year, so the single commonest reporting mistake — forgetting the period filter —
+ * TRIPLED the country's classrooms, while a 2-semester SHS doubled; the two estates were not even
+ * inflated by the same factor, so the wrong total was not even uniformly wrong. One row per school per
+ * year means an unfiltered sum over a single year is now the CORRECT answer, and the hazard only
+ * returns across years. The rule is unchanged and still not expressible as a constraint — every read
+ * must filter to exactly one `period_id` — but the blast radius is a year, not a term. See
  * `tests/etl-infrastructure.test.ts` for the executable statement of this rule.
  *
  * ── WHAT IS DELIBERATELY ABSENT ────────────────────────────────────────────────────────────────
@@ -353,7 +370,9 @@ export function assertRowInvariants(
 // ── the write ───────────────────────────────────────────────────────────────────────────────────
 
 /**
- * DELETE-THEN-INSERT, IN ONE TRANSACTION (scope §3 "idempotency", one reviewable path).
+ * DELETE-BY-PERIOD-THEN-INSERT, IN ONE TRANSACTION (scope §3 "idempotency", one reviewable path).
+ * The period is the academic year's ANNUAL `dim_period` row, so a re-run replaces exactly the
+ * school-years it recomputed.
  *
  * THREE PROPERTIES, all of them deliberate:
  *

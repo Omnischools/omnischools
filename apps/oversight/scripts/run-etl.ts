@@ -73,7 +73,7 @@ async function main(): Promise<void> {
     // pipeline breaks is the night nobody is paged — and the dashboard quietly serves yesterday under
     // today's heading. Three outcomes, three distinct signals:
     //   ✓ clean SUCCESS        exit 0
-    //   ⚠ SUCCESS WITH GAPS    exit 0, but visibly not clean (some schools / product lines unmapped)
+    //   ⚠ SUCCESS WITH GAPS    exit 0, but visibly not clean (some schools' censuses would not compute)
     //   ✗ FAILED               exit 1, nothing was written
     const gapped = report.status === "SUCCESS" && report.errorText !== null;
     if (report.status === "FAILED") {
@@ -107,18 +107,17 @@ async function main(): Promise<void> {
         `  ⚠ ${coverage.unresolved.length} on-Schoolup school(s) have no dim_jurisdiction node`,
       );
     for (const p of report.periods) {
-      const skipped = p.skippedProductLines.reduce(
-        (n, s) => n + s.operationalSchoolIds.length,
-        0,
-      );
+      // ONE LINE PER ACADEMIC YEAR, not per term: the grain is ANNUAL (Kofi's Q3 ruling), so
+      // `sourceRows` is the number of schools whose latest census in the year was selected.
       console.log(
-        `  ${p.academicYear} T${p.term} · source ${p.sourceRows} → fact_infrastructure ` +
+        `  ${p.academicYear} ANNUAL · source ${p.sourceRows} → fact_infrastructure ` +
           `${p.inserted} inserted (${p.deleted} replaced)` +
           (p.failures.length > 0
             ? ` · ${p.failures.length} school(s) failed compute`
             : "") +
-          (skipped > 0 ? ` · ${skipped} unmapped product-line school(s)` : "") +
-          (p.noSourceRow.length > 0 ? ` · ${p.noSourceRow.length} filed no census` : ""),
+          (p.noSourceRow.length > 0
+            ? ` · ${p.noSourceRow.length} filed no census all year`
+            : ""),
       );
     }
     if (report.errorText) {

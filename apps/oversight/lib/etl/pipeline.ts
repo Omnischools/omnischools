@@ -1,5 +1,6 @@
 import type postgres from "postgres";
 import {
+  annualPeriodSpecs,
   assertSpineIntact,
   periodKey,
   refreshJurisdictions,
@@ -14,11 +15,7 @@ import {
   type FactInfrastructureRow,
 } from "./infrastructure";
 import { loadEmisRegister, parseEmisExtract, type RegisterRow } from "./register";
-import {
-  MAPPED_PRODUCT_LINE,
-  readFacilitiesSnapshots,
-  type SkippedProductLine,
-} from "./source";
+import { readLatestFacilitiesSnapshots } from "./source";
 import {
   closeEtlRun,
   computePerSchool,
@@ -33,7 +30,8 @@ import {
  * THE RUN SEQUENCE (spec §7 / scope §3), end-to-end for the `fact_infrastructure` slice.
  *
  *   1  open the `etl_run` row (RUNNING)
- *   2  refresh dimensions — `dim_jurisdiction` spine + `dim_period`, then ASSERT the spine
+ *   2  refresh dimensions — `dim_jurisdiction` spine + `dim_period` (TERM rows AND the ANNUAL cut of
+ *      each academic year, which is the grain this fact is written at), then ASSERT the spine
  *   3  load the EMIS register (reference delta) — the coverage denominator
  *   4  build the inclusion set — registered ∧ live ∧ mapped
  *   5a COMPUTE every period's facts, per school, isolated — no writes at all
@@ -57,48 +55,70 @@ import {
  *
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
+ *
+ * ⚠ THE GRAIN IS ANNUAL (Kofi's Q3 ruling — the mapping rule and its reasoning are in
+ * `lib/etl/dimensions.ts`). `options.periods` still DECLARES the run in terms, because the terms are
+ * what the calendar is made of and the TERM rows of `dim_period` are still upserted for the other
+ * fact tables; but step 5 loops over the ANNUAL cut of those terms — one period per academic_year —
+ * and each school contributes ONE row, decomposed from its latest census in that year on any product
+ * line. A BASIC school that filed three term censuses therefore produces one row, not three.
  */
 
 export interface InfrastructureEtlOptions {
   /** The EMIS extract file's contents. Parsed, never trusted. */
   emisExtractText: string;
-  /** The terms to compute. `dim_period` rows are upserted for all of them. */
+  /**
+   * The terms in the run. `dim_period` TERM rows are upserted for all of them, AND one ANNUAL row per
+   * distinct `academicYear` — which is the period `fact_infrastructure` rows are actually written
+   * against. A spec with `term: null` is itself an ANNUAL declaration and collapses into that year's
+   * single ANNUAL row, so passing the terms or passing the year is the same run.
+   */
   periods: PeriodSpec[];
   /** `"demo_source"` for the demo; `"public"` on an `oversight_etl` operational connection. */
   sourceSchema: string;
-  /**
-   * The ONE operational `product_line` whose `period_number` this run maps onto `dim_period`. Defaults
-   * to BASIC; see the Q3 note in `lib/etl/dimensions.ts`. Overridable so that whoever lands the SENIOR
-   * ruling can run the other line without touching the pipeline.
-   */
-  productLine?: string;
   policy?: SchoolFailurePolicy;
   nationalName?: string;
 }
 
+/**
+ * RETIRED FOR THIS FACT, kept as a shape so the bucket can be SEEN to be empty.
+ *
+ * Before the re-grain, census rows on an unmappable product line (a SENIOR semester is not a term)
+ * were reported here as a named, counted gap. The ANNUAL grain consumes every line, so the bucket is
+ * `[]` by construction. It is reported as an empty list rather than deleted outright because an
+ * operator comparing last week's run report with tonight's needs to read "0 unmapped" — a field that
+ * simply vanished is indistinguishable from a field that stopped being computed.
+ */
+export interface SkippedProductLine {
+  productLine: string;
+  operationalSchoolIds: string[];
+}
+
 export interface PeriodOutcome {
   academicYear: string;
-  term: number;
+  /** ALWAYS null: the grain is the academic YEAR, and `term = null` is what makes a period ANNUAL. */
+  term: null;
+  /** ALWAYS "ANNUAL". Stated on the outcome so a reader never has to re-derive it from `term`. */
+  periodType: "ANNUAL";
   periodId: string;
-  /** Census rows read on the MAPPED product line (i.e. candidates for a fact row). */
+  /** Census rows selected as authoritative — at most one per school, so also the candidate count. */
   sourceRows: number;
   deleted: number;
   inserted: number;
   failures: SchoolFailure[];
-  /**
-   * Census rows present in the source but on a product line this run cannot map (a SENIOR semester is
-   * not a term). A NAMED, COUNTED gap — see the product_line note in `lib/etl/source.ts`.
-   */
+  /** Always `[]` — see `SkippedProductLine`. No product line is skipped at the ANNUAL grain. */
   skippedProductLines: SkippedProductLine[];
   /**
-   * Included schools that filed NO census row at all for this period — on any product line. They are
-   * not a failure (a school that has not filed yet is a normal state) but they ARE the difference
-   * between the inclusion set and `schools_reporting`, so they are listed rather than left to be
-   * inferred from a subtraction. Increment I's coverage card reads this.
+   * Included schools that filed NO census row ANYWHERE in the academic year — on any product line,
+   * for any period number. They are not a failure (a school that has not filed yet is a normal state)
+   * but they ARE the difference between the inclusion set and `schools_reporting`, so they are listed
+   * rather than left to be inferred from a subtraction. Increment I's coverage card reads this.
    *
-   * DISJOINT from `skippedProductLines` by construction, so that
-   *   inserted + skippedProductLines + noSourceRow + failures = coverage.included
-   * holds exactly. EMIS ids, not tenant uuids — this is reportable, and the tenant uuid is not.
+   * THE ACCOUNTING IDENTITY, revised by the re-grain (the `skippedProductLines` term is gone):
+   *   inserted + noSourceRow + failures = coverage.included
+   * which is the property `tests/etl-infrastructure.test.ts` asserts, and the only way to know no
+   * school vanished quietly between the inclusion set and the facts. EMIS ids, not tenant uuids —
+   * this is reportable, and the tenant uuid is not.
    */
   noSourceRow: string[];
 }
@@ -129,7 +149,11 @@ export async function runInfrastructureEtl(
       options.nationalName,
     );
     await assertSpineIntact(sql, index);
-    const periodIndex = await refreshPeriods(sql, options.periods);
+    // The TERM rows AND the ANNUAL cut, in ONE upsert call: the ANNUAL rows are DERIVED from the
+    // declared terms (`annualPeriodSpecs`), so "exactly one ANNUAL row per academic_year in the run"
+    // cannot be violated by a caller passing two.
+    const annualSpecs = annualPeriodSpecs(options.periods);
+    const periodIndex = await refreshPeriods(sql, [...options.periods, ...annualSpecs]);
 
     // ── step 3 · reference delta: the EMIS register ──────────────────────────────────────────────
     await loadEmisRegister(sql, registerRows, (row) => {
@@ -158,45 +182,37 @@ export async function runInfrastructureEtl(
       sourceRows: number;
       computed: FactInfrastructureRow[];
       failures: SchoolFailure[];
-      skippedProductLines: SkippedProductLine[];
       noSourceRow: string[];
     }
     const pending: PendingPeriod[] = [];
     const allFailures: SchoolFailure[] = [];
     let attempted = 0;
 
-    for (const spec of options.periods) {
-      const periodId = periodIndex.get(periodKey(spec.academicYear, spec.term));
+    // ONE ITERATION PER ACADEMIC YEAR, not per term — the ANNUAL grain.
+    for (const spec of annualSpecs) {
+      const periodId = periodIndex.get(periodKey(spec.academicYear, null));
       if (!periodId)
         throw new Error(
-          `dim_period has no TERM row for ${spec.academicYear} term ${spec.term} after the refresh.`,
+          `dim_period has no ANNUAL row for ${spec.academicYear} after the refresh.`,
         );
 
-      // `period_number` is the OPERATIONAL key; for the mapped BASIC line it equals the analytics
-      // term by the interim Q3 rule (see `lib/etl/dimensions.ts`). Rows on any other line come back
-      // as a named gap rather than being filtered away in SQL.
-      const { rows: sourceRows, skippedProductLines } = await readFacilitiesSnapshots(
-        sql,
-        {
-          schemaName: options.sourceSchema,
-          academicYear: spec.academicYear,
-          periodNumber: spec.term,
-          productLine: options.productLine ?? MAPPED_PRODUCT_LINE,
-          operationalSchoolIds: inclusion.schools.map((s) => s.operationalSchoolId),
-        },
-      );
+      // Each school's AUTHORITATIVE census for the year: the latest it filed, on ANY product line.
+      // At most one row per school comes back, so the ANNUAL grain is the query's property.
+      const { rows: sourceRows } = await readLatestFacilitiesSnapshots(sql, {
+        schemaName: options.sourceSchema,
+        academicYear: spec.academicYear,
+        operationalSchoolIds: inclusion.schools.map((s) => s.operationalSchoolId),
+      });
       attempted += sourceRows.length;
 
-      // "No census row AT ALL" — a school seen on a SKIPPED product line HAS filed a census, it is
-      // just on a line this run cannot map, and it is already counted in `skippedProductLines`. Keeping
-      // the two sets disjoint is what makes the accounting identity exact:
-      //   inserted + skipped + noSourceRow + failures = the inclusion set
+      // "No census row ANYWHERE IN THE YEAR" — the only remaining non-failure gap. There is no
+      // skipped-product-line bucket to be disjoint from any more: a school either filed something in
+      // the year (and its latest is above) or it filed nothing at all. That is what makes the revised
+      // accounting identity exact:
+      //   inserted + noSourceRow + failures = the inclusion set
       // which is the property `tests/etl-infrastructure.test.ts` asserts, and the only way to know no
       // school vanished quietly between the inclusion set and the facts.
-      const sawAnyCensus = new Set<string>([
-        ...sourceRows.map((r) => r.schoolId),
-        ...skippedProductLines.flatMap((s) => s.operationalSchoolIds),
-      ]);
+      const sawAnyCensus = new Set<string>(sourceRows.map((r) => r.schoolId));
       const noSourceRow = inclusion.schools
         .filter((s) => !sawAnyCensus.has(s.operationalSchoolId))
         .map((s) => s.emisSchoolId);
@@ -235,7 +251,6 @@ export async function runInfrastructureEtl(
         sourceRows: sourceRows.length,
         computed,
         failures,
-        skippedProductLines,
         noSourceRow,
       });
     }
@@ -260,13 +275,15 @@ export async function runInfrastructureEtl(
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
-      term: p.spec.term,
+      term: null,
+      periodType: "ANNUAL",
       periodId: p.periodId,
       sourceRows: p.sourceRows,
       deleted: writtenByPeriod.get(p.periodId)?.deleted ?? 0,
       inserted: writtenByPeriod.get(p.periodId)?.inserted ?? 0,
       failures: p.failures,
-      skippedProductLines: p.skippedProductLines,
+      // Empty BY CONSTRUCTION at this grain — see `SkippedProductLine`.
+      skippedProductLines: [],
       noSourceRow: p.noSourceRow,
     }));
 
@@ -274,13 +291,11 @@ export async function runInfrastructureEtl(
     await runAnomalyHook(sql, runId);
 
     // ── step 7 · close ──────────────────────────────────────────────────────────────────────────
-    // The unmapped product lines are appended to `error_text` even on a clean SUCCESS: a run that
-    // could not map the whole SHS estate is not a failure, but it is not a silent success either.
-    const skippedNote = summariseSkippedProductLines(outcomes);
-    const errorText =
-      verdict.errorText && skippedNote
-        ? `${verdict.errorText} · ${skippedNote}`
-        : (verdict.errorText ?? skippedNote);
+    // `error_text` is now the VERDICT's text and nothing else. The unmapped-product-line note that
+    // used to be appended here — "the SHS estate is absent and here is why" — has no referent at the
+    // ANNUAL grain: every product line is consumed, so a clean run has nothing to confess and
+    // `error_text` is null. A SENIOR estate going missing would now be a FAILURE, not a footnote.
+    const errorText = verdict.errorText;
     await closeEtlRun(sql, runId, verdict.status, errorText);
     return {
       runId,
@@ -298,24 +313,4 @@ export async function runInfrastructureEtl(
     await closeEtlRun(sql, runId, "FAILED", message);
     throw err;
   }
-}
-
-/** One line naming the product lines this run could not map, and how many schools that cost. */
-function summariseSkippedProductLines(outcomes: PeriodOutcome[]): string | null {
-  const byLine = new Map<string, Set<string>>();
-  for (const outcome of outcomes) {
-    for (const skipped of outcome.skippedProductLines) {
-      const bucket = byLine.get(skipped.productLine) ?? new Set<string>();
-      for (const id of skipped.operationalSchoolIds) bucket.add(id);
-      byLine.set(skipped.productLine, bucket);
-    }
-  }
-  if (byLine.size === 0) return null;
-  const parts = [...byLine.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([line, ids]) => `${line}=${ids.size} school(s)`);
-  return (
-    `UNMAPPED PRODUCT LINES (Q3 open — a SENIOR semester is not a TERM): ${parts.join(", ")}. ` +
-    "Their census rows were read and deliberately not mapped; they are absent from fact_infrastructure."
-  );
 }

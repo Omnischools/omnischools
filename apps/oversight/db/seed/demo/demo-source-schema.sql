@@ -62,8 +62,10 @@ create schema demo_source;
 --   `product_line`  NOT NULL, SENIOR | BASIC | SENIOR_F3. THIS IS THE ONE THAT MATTERS: period_number
 --                   means a TERM on a BASIC row and a SEMESTER on a SENIOR row, so `period_number = 1`
 --                   is not one thing. Mapping a SENIOR semester onto analytics `dim_period` term 1
---                   would file half a year under a third of one. `lib/etl/source.ts` therefore reads
---                   every line and reports the non-mapped ones as a NAMED GAP.
+--                   would file half a year under a third of one — which is why `fact_infrastructure`
+--                   is grained ANNUAL (Kofi's Q3 ruling) and files nothing under a term at all.
+--                   `lib/etl/source.ts` reads EVERY line and keeps each school's latest census in the
+--                   academic year; `product_line` survives only as that selector's final tie-break.
 create table demo_source.academic_period (
   period_id     uuid primary key default gen_random_uuid(),
   school_id     uuid not null,

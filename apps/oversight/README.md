@@ -151,18 +151,23 @@ The transform itself is real — nothing hand-seeds a fact row. Pointing the pip
 `public.facilities_snapshot` over an `oversight_etl` connection is `--source-schema public` plus that
 connection.
 
-Open rulings this slice states an interim answer to, rather than silently deciding: the per-school →
-global **period mapping** (Q3 — see `dimensions.ts`) and the **run-failure policy** (Q11 — see
+The **run-failure policy** is still an interim answer rather than a silent decision (Q11 — see
 `SchoolFailurePolicy` in `run.ts`, default: ≤1% of schools may fail and the run still closes
-SUCCESS-with-gaps).
+SUCCESS-with-gaps). The period mapping (Q3) is now **ruled**, below.
 
-**The `product_line` gap is deliberate and reported.** Operational `academic_period` has no `term`
-column — it has `period_number` plus `product_line` (SENIOR | BASIC | SENIOR_F3), and the line is what
-gives the number its meaning (Basic runs 3 terms, Senior 2 semesters). The slice maps **BASIC only**;
-SENIOR-line census rows are read and returned as `skippedProductLines`, which the run records in
-`etl_run.error_text` and the CLI prints. So an SHS school shows up as a counted, named gap rather than
-as a semester filed under a term, and the run exits `⚠ SUCCESS WITH GAPS`. Closing it needs the Q3
-ruling.
+**The grain is ANNUAL: one row per school per academic year** (`period_type = 'ANNUAL'`, `term IS
+NULL`). Operational `academic_period` has no `term` column — it has `period_number` plus
+`product_line` (SENIOR | BASIC | SENIOR_F3), and the line is what gives the number its meaning (Basic
+runs 3 terms, Senior 2 semesters), so there is no honest TERM row for a SENIOR semester. Kofi's Q3
+ruling removes the question instead of answering it: nothing is filed under a term at all. Each
+school's row is the decomposition of its **latest census in the year across every product line**
+(`captured_at DESC`, tie-break `period_number DESC, product_line DESC`), because infrastructure
+accrues and the newest return is the most complete statement of the stock; `as_of_date` is that
+census's `captured_at`. Consequences: `product_line` is no longer a grain key, the SHS estate is
+**consumed rather than reported as a named gap**, a combined (J-S) school with both configurations
+still yields exactly one row, and a clean run's `etl_run.error_text` is **null**. The accounting
+identity is `inserted + noSourceRow + failures = coverage.included`, where `noSourceRow` means a
+school that filed no census anywhere in the year.
 
 Three outcomes, three signals, because a scheduler reads the exit code and not the prose:
 `✓ SUCCESS` exit 0 · `⚠ SUCCESS WITH GAPS` exit 0 · `✗ FAILED` exit 1 and **nothing written** (the run

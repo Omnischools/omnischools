@@ -10,8 +10,8 @@ import type postgres from "postgres";
  * `term` column, because operational Postgres has no such column and a query naming one would fail on
  * prod with `column p.term does not exist`. The `(school_id, period_id)` grain, the per-school
  * `academic_period` join, the CHECK-constrained categorical values and the nullable optional-detail
- * columns are all as they really are. `period_number as term` in the SELECT below is an output ALIAS,
- * which is the one safe direction: it renames on the way out, never on the way in.
+ * columns are all as they really are. Nothing is renamed on the way IN; both columns are read under
+ * their operational names and used only in the ORDER BY that picks the year's latest census.
  *
  * The stand-in omits two `academic_period` columns the ETL does not read (`closed_at`,
  * `closed_by_user_id`); the subset rule and its reasoning are in
@@ -29,25 +29,32 @@ import type postgres from "postgres";
  * is called with `schemaName = "public"` on an `oversight_etl` connection, once per school inside
  * `withEtlSchool()`-style GUC scoping, and nothing else about the pipeline changes.
  *
- * ═══ `product_line` — THE NAMED GAP, NOT A SILENT MAPPING ════════════════════════════════════════
+ * ═══ `product_line` — NO LONGER A GRAIN KEY, ONLY A TIE-BREAK ════════════════════════════════════
  * `academic_period.product_line` is NOT NULL and one of SENIOR | BASIC | SENIOR_F3, and it changes what
  * `period_number` MEANS: a term on a BASIC row, a SEMESTER on a SENIOR row (Basic = 3 terms, Senior =
  * 2 semesters — apps/web `ref_academic_period_config.period_count`), and on SENIOR_F3 a Form-3 calendar
- * with an early post-WASSCE vacation.
+ * with an early post-WASSCE vacation. SHS schools FILE FACILITIES CENSUSES TOO, so their rows really
+ * are in the source.
  *
- * SHS schools FILE FACILITIES CENSUSES TOO, so their rows really are in the source — and
- * `period_number = 1` for a SENIOR school is Semester 1, which is not analytics `dim_period` term 1.
- * Mapping it there would file half an academic year under a third of one, and the error would be
- * invisible: the fact row would look perfectly well-formed.
+ * That incommensurability is why `fact_infrastructure` was re-grained to ANNUAL (Kofi's Q3 ruling —
+ * see `lib/etl/dimensions.ts`): there is no need to decide what a SENIOR semester is worth in terms if
+ * no fact row is filed under a term. The reader below therefore does NOT select a product line and
+ * does not partition by one. It asks a different question per school:
  *
- * So this function reads EVERY product line for the requested `(academic_year, period_number)` and
- * partitions them: rows on the mapped line are returned, and rows on any other line are reported in
- * `skippedProductLines` — a named, counted gap the pipeline carries into the run's `error_text` and the
- * period outcome. The alternative (filtering them away in SQL) would make the SHS estate silently
- * absent from every infrastructure figure, which is the same defect as mis-mapping it, only quieter.
+ *     WHICH SINGLE CENSUS IS THIS SCHOOL'S STATEMENT OF ITS STOCK FOR THE YEAR?
+ *     → the latest one it filed, across ALL product lines:
+ *       ORDER BY captured_at DESC, period_number DESC, product_line DESC LIMIT 1
  *
- * Closing the gap properly is the Q3 ruling (scope §7.3): it needs a decision on what a SENIOR
- * semester maps to in `dim_period`, which is Kofi's, not this slice's.
+ * `product_line` survives ONLY as the last tie-break, so a combined (J-S) school carrying both a
+ * Basic and a Senior configuration still yields exactly one row, and a SENIOR or SENIOR_F3 census is
+ * just another candidate. The previous version's `skippedProductLines` gap is therefore CLOSED rather
+ * than reported: every line is consumed, and the SHS estate is present in the facts instead of being
+ * counted as absent.
+ *
+ * The tie-break is fully ordered (`period_number`, then `product_line`) rather than stopping at
+ * `captured_at`, because two censuses CAN share a timestamp — a backfill, or two configurations keyed
+ * the same day — and a `LIMIT 1` over a non-deterministic order is how a nightly re-run starts
+ * producing a different, equally plausible number each time. Idempotency needs a total order.
  *
  * ⚠ `caterer_name` AND `captured_by` ARE NOT SELECTED. They exist in the source and must never cross
  * the boundary: `captured_by` names the staff member who keyed the census, `caterer_name` a third-party
@@ -61,9 +68,15 @@ export interface FacilitiesSnapshotSourceRow {
   schoolId: string;
   periodId: string;
   academicYear: string;
-  /** Operational `academic_period.period_number`. A term on BASIC, a semester on SENIOR. */
+  /**
+   * Operational `academic_period.period_number`. A term on BASIC, a semester on SENIOR. NOT a grain
+   * key for `fact_infrastructure` — it is a tie-break in the latest-census selector, nothing more.
+   */
   periodNumber: number;
-  /** Operational `academic_period.product_line` — SENIOR | BASIC | SENIOR_F3. Never ignored. */
+  /**
+   * Operational `academic_period.product_line` — SENIOR | BASIC | SENIOR_F3. Also NOT a grain key:
+   * every line is consumed, and the value survives only as the selector's final tie-break.
+   */
   productLine: string;
 
   classroomsTotal: number;
@@ -101,49 +114,44 @@ export interface FacilitiesSnapshotSourceRow {
 export interface FacilitiesSourceQuery {
   /** `"demo_source"` for the demo; `"public"` on an `oversight_etl` operational connection. */
   schemaName: string;
+  /** The whole academic year — the ANNUAL grain's key. No `period_number`, by ruling. */
   academicYear: string;
-  /** Operational `academic_period.period_number` — NOT a "term" column; there is no such column. */
-  periodNumber: number;
-  /**
-   * The ONE product line whose `period_number` this run is prepared to map onto `dim_period`. BASIC,
-   * until Q3 rules on what a SENIOR semester is. Rows on any other line come back in
-   * `skippedProductLines` rather than being filtered away in SQL — see the named-gap note above.
-   */
-  productLine: string;
   /** The inclusion set's operational tenant uuids. Never unbounded — one run, one known set. */
   operationalSchoolIds: string[];
 }
 
-/** Census rows this run will not map, grouped by the line that made them unmappable. */
-export interface SkippedProductLine {
-  productLine: string;
-  operationalSchoolIds: string[];
-}
-
 export interface FacilitiesSourceResult {
+  /** AT MOST ONE row per school: the school's latest census in the academic year. */
   rows: FacilitiesSnapshotSourceRow[];
-  skippedProductLines: SkippedProductLine[];
 }
 
-/** The product line the slice can map. Basic = 3 terms, which is what `dim_period` TERM models. */
-export const MAPPED_PRODUCT_LINE = "BASIC";
-
-export async function readFacilitiesSnapshots(
+/**
+ * Read each school's AUTHORITATIVE census for the academic year — the latest one it filed, on any
+ * product line. At most one row per school comes back, which is the ANNUAL grain, enforced by the
+ * query rather than by a post-hoc reduction in TypeScript.
+ */
+export async function readLatestFacilitiesSnapshots(
   sql: postgres.Sql,
   query: FacilitiesSourceQuery,
 ): Promise<FacilitiesSourceResult> {
-  if (query.operationalSchoolIds.length === 0)
-    return { rows: [], skippedProductLines: [] };
+  if (query.operationalSchoolIds.length === 0) return { rows: [] };
   // `schemaName` is interpolated as an IDENTIFIER (sql(...)), never as a string literal, and it comes
   // from the pipeline's own configuration rather than from any request.
   //
   // THE JOIN CANNOT FAN OUT, and that is a structural property rather than a hope: `academic_period`
   // has `period_id` as its PRIMARY KEY and `(school_id, period_id)` as `academic_period_tenant_uk`, so
   // joining on BOTH columns matches at most one row. `facilities_snapshot` is itself one row per
-  // `(school_id, period_id)` (`uniq_facilities_snapshot_term`). One census row in, at most one row out
-  // — which is what lets `schools_reporting = 1` be asserted rather than counted.
+  // `(school_id, period_id)` (`uniq_facilities_snapshot_term`). The school may still have SEVERAL
+  // census rows in one year — one per term, per semester, and on a combined school both at once — so
+  // `distinct on (f.school_id)` picks the single authoritative one.
+  //
+  // `DISTINCT ON` rather than a window function or a correlated subquery because the leading ORDER BY
+  // keys ARE the ruling, written once and visibly total: school, then newest capture, then the higher
+  // period number, then the product line. Postgres guarantees it returns the first row per
+  // `school_id` in that order, so the tie-break is the query's contract and not a convention.
   const rows = await sql<Record<string, unknown>[]>`
-    select f.school_id::text        as school_id,
+    select distinct on (f.school_id)
+           f.school_id::text        as school_id,
            f.period_id::text        as period_id,
            p.academic_year          as academic_year,
            p.period_number          as period_number,
@@ -161,36 +169,10 @@ export async function readFacilitiesSnapshots(
       join ${sql(query.schemaName)}.academic_period p
         on p.school_id = f.school_id and p.period_id = f.period_id
      where p.academic_year = ${query.academicYear}
-       and p.period_number = ${query.periodNumber}
        and f.school_id = any(${query.operationalSchoolIds}::uuid[])
-     order by f.school_id`;
+     order by f.school_id, f.captured_at desc, p.period_number desc, p.product_line desc`;
 
-  // DELIBERATELY NOT FILTERED IN SQL — see the product_line note in the header. Every line is read and
-  // then partitioned here, so the unmapped ones are a counted gap instead of an absence.
-  const mapped: FacilitiesSnapshotSourceRow[] = [];
-  const skipped = new Map<string, string[]>();
-
-  for (const r of rows) {
-    const productLine = r.product_line as string;
-    const schoolId = r.school_id as string;
-    if (productLine !== query.productLine) {
-      const bucket = skipped.get(productLine);
-      if (bucket) bucket.push(schoolId);
-      else skipped.set(productLine, [schoolId]);
-      continue;
-    }
-    mapped.push(toSourceRow(r));
-  }
-
-  return {
-    rows: mapped,
-    skippedProductLines: [...skipped.entries()]
-      .map(([productLine, operationalSchoolIds]) => ({
-        productLine,
-        operationalSchoolIds,
-      }))
-      .sort((a, b) => a.productLine.localeCompare(b.productLine)),
-  };
+  return { rows: rows.map(toSourceRow) };
 }
 
 function toSourceRow(r: Record<string, unknown>): FacilitiesSnapshotSourceRow {

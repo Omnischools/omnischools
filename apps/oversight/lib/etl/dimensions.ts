@@ -20,28 +20,39 @@ import type { RegisterRow } from "./register";
  * Two NATIONAL nodes would split the country in half with no error anywhere: each subtree sums
  * correctly, and "Ghana" reports whichever half its own node happens to parent.
  *
- * ═══ PERIOD MAPPING — THE Q3 GAP, AND THE INTERIM RULE THIS SLICE USES ═══════════════════════════
+ * ═══ PERIOD MAPPING — THE Q3 RULING, AS IMPLEMENTED ══════════════════════════════════════════════
  * Operational `academic_period` is PER SCHOOL (every school has its own uuid for "2025/26 Term 1");
- * analytics `dim_period` is GLOBAL. Scope §2 flags the mapping as missing and needing a Kofi ruling
- * (Q3: straddling terms, SENIOR_F3, which period is the ANNUAL cut).
+ * analytics `dim_period` is GLOBAL.
  *
  * THE OPERATIONAL SIDE HAS NO `term` COLUMN. It has `period_number` (smallint) and `product_line`
  * (SENIOR | BASIC | SENIOR_F3, NOT NULL), and the LINE is what gives the NUMBER its meaning: Basic
  * runs 3 terms, Senior 2 semesters. `period_number = 1` is therefore not one thing, and mapping a
  * SENIOR semester onto a `dim_period` TERM row would file half an academic year under a third of one.
  *
- * So the interim rule is narrow, and narrow on purpose:
- *     product_line = 'BASIC' AND (academic_year, period_number)
- *       → the dim_period row with (academic_year, term = period_number, period_type = 'TERM')
- * Nothing is inferred from dates. Rows on any OTHER product line are not mapped and not dropped
- * silently: `lib/etl/source.ts` returns them as `skippedProductLines`, which the pipeline carries into
- * the period outcome and the run's `error_text` — a counted gap, naming the schools. Likewise an
- * included school with NO census row for the period appears in the outcome's `noSourceRow` list rather
- * than just failing to show up.
+ * KOFI'S RULING FOR `fact_infrastructure`: do not map the operational period to a term AT ALL. The
+ * grain is ANNUAL — one row per school per academic_year —
+ *     (school, academic_year) → the dim_period row (academic_year, term = NULL, period_type = 'ANNUAL')
+ * and the census chosen for that row is the LATEST one the school filed in the year, across EVERY
+ * product line:
+ *     ORDER BY captured_at DESC, period_number DESC, product_line DESC LIMIT 1
+ * `product_line` therefore stops being a grain key: it survives only inside that selector's
+ * tie-break. That removes the SENIOR "named gap" entirely — a SENIOR semester census and a SENIOR_F3
+ * one are now just candidates for "latest in the year", so the SHS estate is CONSUMED rather than
+ * counted-and-skipped, and a combined (J-S) school with both a 3-term Basic and a 2-semester Senior
+ * configuration yields exactly ONE row from its single latest snapshot. Nothing is inferred from
+ * dates other than `captured_at` itself.
  *
- * What is NOT settled here, and is Kofi's: what a SENIOR semester maps to, SENIOR_F3's early
- * post-WASSCE calendar, straddling terms, and which period is the ANNUAL cut. None of them arise for
- * `fact_infrastructure` (TERM-only, no exam cohort) — they arise for H9/H12, on a proven harness.
+ * WHY THE LATEST SNAPSHOT IS THE AUTHORITATIVE ONE: infrastructure ACCRUES. A borehole sunk in term 1
+ * is still there in term 3, so the newest census in the year is the most complete statement of the
+ * school's stock — not an average of the year and not the first return. `as_of_date` is that
+ * snapshot's `captured_at`, so the row says which census it is.
+ *
+ * An included school with NO census row anywhere in the academic_year (on any product line) appears
+ * in the period outcome's `noSourceRow` list rather than just failing to show up.
+ *
+ * Still NOT settled here, and still Kofi's: the EXAM_COHORT cut and SENIOR_F3's early post-WASSCE
+ * calendar as they bear on H9/H12. Neither arises for `fact_infrastructure` — a borehole has no exam
+ * cohort — and both now meet a proven harness.
  */
 
 export interface JurisdictionIndex {
@@ -256,26 +267,77 @@ export async function assertSpineIntact(
 
 // ── dim_period ──────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * One `dim_period` row to exist after the refresh.
+ *
+ * `term` IS THE DISCRIMINATOR, and deliberately so rather than a separate `periodType` field that
+ * could disagree with it: a numbered term is a TERM row, and `term = null` is the year's ANNUAL cut
+ * (`dim.ts`: "1,2,3 — null for ANNUAL / EXAM_COHORT"). Two independent fields would make
+ * `{ term: 2, periodType: 'ANNUAL' }` expressible, and that row — a TERM-numbered ANNUAL — is exactly
+ * the thing `fact_infrastructure`'s re-grain exists to make impossible.
+ */
 export interface PeriodSpec {
   academicYear: string;
-  term: number;
+  /** 1,2,3 for a TERM row; `null` for the academic year's single ANNUAL row. */
+  term: number | null;
   startsOn?: string | null;
   endsOn?: string | null;
   isCurrent?: boolean;
 }
 
+/** TERM when the spec is numbered, ANNUAL when it is not. The only mapping, in one place. */
+export function periodTypeOf(spec: PeriodSpec): "TERM" | "ANNUAL" {
+  return spec.term === null ? "ANNUAL" : "TERM";
+}
+
 /** `${academicYear}|${term}` → period_id. The key the operational→global mapping resolves through. */
 export type PeriodIndex = Map<string, string>;
 
-export function periodKey(academicYear: string, term: number): string {
-  return `${academicYear}|${term}`;
+export function periodKey(academicYear: string, term: number | null): string {
+  return `${academicYear}|${term ?? "ANNUAL"}`;
 }
 
 /**
- * Upsert the TERM rows of `dim_period`. Select-then-insert (no UNIQUE on
+ * THE ANNUAL CUT OF A SET OF TERM SPECS — one spec per distinct academic_year, spanning the terms.
+ *
+ * `fact_infrastructure` is ANNUAL-grained (one row per school per academic_year, Kofi's ruling — see
+ * the header), but the run is still DECLARED in terms, because the terms are what the calendar and
+ * every other fact table are made of. So the annual rows are DERIVED here rather than hand-listed by
+ * each caller: `starts_on` is the earliest term's start, `ends_on` the latest term's end, and
+ * `is_current` is true if ANY term of the year is current — i.e. the year containing today.
+ *
+ * Deriving it is what makes "exactly one ANNUAL row per academic_year in the run" structural: a
+ * caller cannot pass two.
+ */
+export function annualPeriodSpecs(specs: PeriodSpec[]): PeriodSpec[] {
+  const byYear = new Map<string, PeriodSpec>();
+  for (const spec of specs) {
+    const min = (a: string | null | undefined, b: string | null | undefined) =>
+      a && b ? (a < b ? a : b) : (a ?? b ?? null);
+    const max = (a: string | null | undefined, b: string | null | undefined) =>
+      a && b ? (a > b ? a : b) : (a ?? b ?? null);
+    const soFar = byYear.get(spec.academicYear);
+    byYear.set(spec.academicYear, {
+      academicYear: spec.academicYear,
+      term: null,
+      startsOn: min(soFar?.startsOn, spec.startsOn),
+      endsOn: max(soFar?.endsOn, spec.endsOn),
+      isCurrent: (soFar?.isCurrent ?? false) || (spec.isCurrent ?? false),
+    });
+  }
+  return [...byYear.values()];
+}
+
+/**
+ * Upsert the `dim_period` rows — TERM and ANNUAL alike. Select-then-insert (no UNIQUE on
  * (academic_year, term, period_type) in the schema), and `is_current` is rewritten every run so
  * exactly the specs marked current are current — a stale `is_current` would point every "this term"
  * surface at last term.
+ *
+ * The ANNUAL lookup matches on `term IS NULL`, not `term = null` (which is never true): that one
+ * detail is the difference between upserting the year's ANNUAL row idempotently and inserting a
+ * second one on every single run, each with its own `period_id`, which would split
+ * `fact_infrastructure` across indistinguishable duplicate periods.
  */
 export async function refreshPeriods(
   sql: postgres.Sql,
@@ -283,17 +345,18 @@ export async function refreshPeriods(
 ): Promise<PeriodIndex> {
   const index: PeriodIndex = new Map();
   for (const spec of specs) {
+    const periodType = periodTypeOf(spec);
     const existing = await sql<{ period_id: string }[]>`
       select period_id::text as period_id from dim_period
        where academic_year = ${spec.academicYear}
-         and term = ${spec.term}
-         and period_type = 'TERM'
+         and term is not distinct from ${spec.term}
+         and period_type = ${periodType}::period_type
        limit 1`;
     let periodId = existing[0]?.period_id;
     if (!periodId) {
       const inserted = await sql<{ period_id: string }[]>`
         insert into dim_period (academic_year, term, period_type, starts_on, ends_on, is_current)
-        values (${spec.academicYear}, ${spec.term}, 'TERM',
+        values (${spec.academicYear}, ${spec.term}, ${periodType}::period_type,
                 ${spec.startsOn ?? null}, ${spec.endsOn ?? null}, ${spec.isCurrent ?? false})
         returning period_id::text as period_id`;
       periodId = inserted[0]!.period_id;
