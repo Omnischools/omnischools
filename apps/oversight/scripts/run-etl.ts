@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import { runOversightEtl } from "@/lib/etl/pipeline";
+import { attendanceRateOf } from "@/lib/etl/attendance";
 import {
   DEMO_EMIS_EXTRACT_PATH,
   DEMO_EXAM_COHORTS,
@@ -178,6 +179,9 @@ async function main(): Promise<void> {
       );
       for (const e of c.byExam) {
         if (e.candidates === 0) continue;
+        // KNOWINGLY left as a float print: the exam arm's stored qualification rate has its own helper
+        // (`qualificationRate`, which returns "0.00" on zero candidates rather than throwing), so it is NOT
+        // the attendance helper, and converting this print is a separate exam-arm tidy, out of H10's scope.
         const rate = ((e.qualified / e.candidates) * 100).toFixed(2);
         console.log(
           `    ${e.exam}: ${e.qualified}/${e.candidates} qualified (${rate}%, sex=ALL, one sitting) ` +
@@ -200,9 +204,12 @@ async function main(): Promise<void> {
     // are printed BESIDE it because this is the one fact table whose figures are additive across periods:
     // the ANNUAL rate is Σ of these terms' present over Σ of their enrolled, NOT the mean of these lines.
     for (const t of report.terms) {
+      // Re-derived through the SAME helper the fact rows store, so this printed national rate rounds
+      // IDENTICALLY to every stored rate it summarises (integer half-away-from-zero = Postgres round()).
+      // A float `(present / enrolled) * 100` here would read 0.01 off a stored rate on exact-half totals.
       const rate =
         t.enrolledDays > 0
-          ? `${((t.presentDays / t.enrolledDays) * 100).toFixed(2)}%`
+          ? `${attendanceRateOf(t.presentDays, t.enrolledDays)}%`
           : "n/a — no marked pupil-days";
       console.log(
         `  ${t.academicYear} TERM ${t.term} (${t.startsOn}…${t.endsOn}) · ${t.sourceGroups} mark groups → ` +

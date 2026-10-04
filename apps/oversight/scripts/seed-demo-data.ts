@@ -1522,34 +1522,41 @@ export async function loadDemoSource(
   // The ranking is materialised ONCE into a session-temporary table rather than recomputed per chunk: the
   // window function scans every pupil in the country, and doing that once per 5,000-run chunk made the
   // demo load several times slower than the whole rest of the fixture.
-  await sql`
-    create temporary table demo_ranked_pupil as
-      select school_id, class_id, id,
-             row_number() over (partition by school_id, class_id order by id) as rank
-        from demo_source.students
-       where class_id is not null`;
-  await sql`create index on demo_ranked_pupil (school_id, class_id, rank)`;
-  const MARK_CHUNK = 20_000;
-  for (let i = 0; i < dataset.attendanceMarks.length; i += MARK_CHUNK) {
-    const chunk = dataset.attendanceMarks.slice(i, i + MARK_CHUNK).map((m) => ({
-      school_id: m.schoolId,
-      class_id: m.classId,
-      date: m.date,
-      status: m.status,
-      from_rank: m.fromRank,
-      to_rank: m.toRank,
-    }));
-    await sql`
-      insert into demo_source.attendance_record (school_id, student_id, class_id, date, status)
-      select g.school_id, p.id, g.class_id, g.date, g.status::demo_source.attendance_status
-        from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
-          as g(school_id uuid, class_id uuid, date date, status text,
-               from_rank int, to_rank int)
-        join demo_ranked_pupil p
-          on p.school_id = g.school_id and p.class_id = g.class_id
-         and p.rank between g.from_rank and g.to_rank`;
-  }
-  await sql`drop table demo_ranked_pupil`;
+  // A session-temporary table is CONNECTION-scoped, so the create, the chunked inserts that join it and
+  // its disposal must all run on ONE physical connection. Doing this on a pooled `sql` was only correct
+  // because every current caller happens to open with `max: 1`; that coupling lived nowhere in the
+  // signature. `sql.begin` pins a single connection for the block regardless of pool size, and
+  // `on commit drop` disposes of the table when the transaction ends — on success OR rollback — so a
+  // failed load can never leave a stale `demo_ranked_pupil` on a connection the pool later hands out.
+  await sql.begin(async (tx) => {
+    await tx`
+      create temporary table demo_ranked_pupil on commit drop as
+        select school_id, class_id, id,
+               row_number() over (partition by school_id, class_id order by id) as rank
+          from demo_source.students
+         where class_id is not null`;
+    await tx`create index on demo_ranked_pupil (school_id, class_id, rank)`;
+    const MARK_CHUNK = 20_000;
+    for (let i = 0; i < dataset.attendanceMarks.length; i += MARK_CHUNK) {
+      const chunk = dataset.attendanceMarks.slice(i, i + MARK_CHUNK).map((m) => ({
+        school_id: m.schoolId,
+        class_id: m.classId,
+        date: m.date,
+        status: m.status,
+        from_rank: m.fromRank,
+        to_rank: m.toRank,
+      }));
+      await tx`
+        insert into demo_source.attendance_record (school_id, student_id, class_id, date, status)
+        select g.school_id, p.id, g.class_id, g.date, g.status::demo_source.attendance_status
+          from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
+            as g(school_id uuid, class_id uuid, date date, status text,
+                 from_rank int, to_rank int)
+          join demo_ranked_pupil p
+            on p.school_id = g.school_id and p.class_id = g.class_id
+           and p.rank between g.from_rank and g.to_rank`;
+    }
+  });
 
   return {
     periods: dataset.periods.length,
