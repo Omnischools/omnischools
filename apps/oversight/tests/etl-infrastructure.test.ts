@@ -1567,6 +1567,106 @@ const negativeDetailTarget = {
   etlRunId: "30000000-0000-4000-8000-0000000000aa",
 };
 
+describe("ONE transaction spans EVERY period, not one per period (Dex blocking 2, third door)", () => {
+  it("a throw while writing period 2 rolls period 1's write back too", async () => {
+    // The pipeline-level test above exercises a breached VERDICT, which never enters the writer at all,
+    // and the duplicate-assertion test exercises ONE period. This is the remaining door: the writer IS
+    // entered, period 1's batch is perfectly valid and already inserted, and then period 2 raises. With
+    // a transaction per period, period 1 would stay committed — a half-published night under a FAILED
+    // banner, which is precisely the defect blocking 2 was about.
+    const p1 = await periodIdFor(1);
+    const p2 = await periodIdFor(2);
+
+    const r1 = (
+      await sql<Record<string, unknown>[]>`
+        select * from fact_infrastructure where period_id = ${p1}::uuid
+         order by jurisdiction_id limit 1`
+    )[0]!;
+    const r2 = (
+      await sql<Record<string, unknown>[]>`
+        select * from fact_infrastructure where period_id = ${p2}::uuid
+         order by jurisdiction_id limit 1`
+    )[0]!;
+    const row1 = factRowFrom(r1, p1);
+    const row2 = factRowFrom(r2, p2);
+    // Period 1's write is made OBSERVABLY different, so "it did not survive" is a measurement of a
+    // value rather than of a row count that would have matched either way.
+    const mutated1 = { ...row1, classroomsTotal: row1.classroomsTotal + 999 };
+
+    const countBefore = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+
+    // The grain UNIQUE is dropped so the post-insert ASSERTION raises rather than the index — that is
+    // the code path the eight PK-only fact tables will rely on, and it has to raise mid-run.
+    await sql`drop index fact_infrastructure_jurisdiction_period_idx`;
+    try {
+      await expect(
+        writeInfrastructureFacts(sql, [
+          { periodId: p1, rows: [mutated1] },
+          { periodId: p2, rows: [row2, { ...row2 }] },
+        ]),
+      ).rejects.toThrow(/duplicated grain key/);
+    } finally {
+      await sql`create unique index fact_infrastructure_jurisdiction_period_idx
+                  on fact_infrastructure (jurisdiction_id, period_id)`;
+    }
+
+    const p1Now = await sql<{ classrooms_total: number }[]>`
+      select classrooms_total from fact_infrastructure
+       where period_id = ${p1}::uuid and jurisdiction_id = ${row1.jurisdictionId}::uuid`;
+    expect(Number(p1Now[0]!.classrooms_total)).toBe(row1.classroomsTotal); // NOT +999
+    const countAfter = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+    expect(countAfter).toBe(countBefore);
+  }, 180_000);
+});
+
+describe("noSourceRow is a NAMED list, not just a zero (Dex A4)", () => {
+  it("an included school that filed NO census is named, disjoint, and closes the identity", async () => {
+    // Every assertion of the accounting identity above runs on a dataset where every included school
+    // files a census, so `noSourceRow` is [] throughout and the list itself is never exercised. A school
+    // that has not filed yet is a NORMAL state, not a failure — and it is the one bucket that could
+    // silently absorb a school and still make the identity add up if it were computed by subtraction.
+    const victim = (
+      await sql<{ emis: string; op: string }[]>`
+        select e.emis_school_id as emis, e.operational_school_id::text as op
+          from ref_emis_school_register e
+          join demo_source.academic_period p on p.school_id = e.operational_school_id
+         where e.on_schoolup and p.product_line = 'BASIC'
+         order by e.emis_school_id limit 1`
+    )[0]!;
+
+    await sql`delete from demo_source.facilities_snapshot where school_id = ${victim.op}::uuid`;
+    await sql`delete from demo_source.academic_period where school_id = ${victim.op}::uuid`;
+    try {
+      const gapped = await runEtl();
+      expect(gapped.status).toBe("SUCCESS");
+      for (const p of gapped.periods) {
+        expect(p.noSourceRow).toContain(victim.emis);
+        // DISJOINT from the other two buckets — that is what makes the identity exact rather than
+        // merely balanced.
+        expect(p.failures.some((f) => f.emisSchoolId === victim.emis)).toBe(false);
+        expect(
+          p.skippedProductLines.some((s) => s.operationalSchoolIds.includes(victim.op)),
+        ).toBe(false);
+        const skipped = p.skippedProductLines.reduce(
+          (n, s) => n + s.operationalSchoolIds.length,
+          0,
+        );
+        expect(p.inserted + skipped + p.noSourceRow.length + p.failures.length).toBe(
+          gapped.coverage.included,
+        );
+      }
+    } finally {
+      // The stand-in source is DROP-and-CREATE, so reloading it is the restore.
+      await loadDemoSource(sql, dataset);
+      await runEtl();
+    }
+  }, 180_000);
+});
+
 describe("the nullable optional-detail guard (Dex A3)", () => {
   it("refuses a negative desk / computer / book count instead of subtracting it from a district", () => {
     // A hand-assembled extract is exactly where "-1 means not answered" gets invented, and a negative
