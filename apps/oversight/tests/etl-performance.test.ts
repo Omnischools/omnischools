@@ -357,10 +357,11 @@ describe("the run writes a THIRD fact table under one verdict (criteria 1, 6, 7)
     expect(examsOnOnePeriod.map((r) => r.exam)).toEqual(["BECE", "WASSCE"]);
   });
 
-  it("CRITERION 6 · an UNSEEDED sitting year fails the run UP FRONT with the naming rule, not a late FK error", async () => {
-    // A sitting present in the SOURCE that no EXAM_COHORT period was declared for. The honest failure is
-    // loud and up front: never a raw FK violation deep inside the write, and never a silent drop that
-    // leaves the sitting missing from the dashboard with nothing to point at.
+  it("CRITERION 6 · an UNDECLARED/UNSEEDED sitting year fails the run UP FRONT with the naming rule, not a late FK error", async () => {
+    // A sitting present in the SOURCE that this run neither declared nor has a seeded EXAM_COHORT period
+    // for. The honest failure is loud and up front: never a raw FK violation deep inside the write, and —
+    // the case Dex M2 caught — never a SILENT SKIP, which would leave the sitting absent from the
+    // dashboard (or stale in place from an earlier run) under a SUCCESS banner.
     const victim = (
       await sql<{ op: string }[]>`
         select r.operational_school_id::text as op from ref_emis_school_register r
@@ -374,9 +375,14 @@ describe("the run writes a THIRD fact table under one verdict (criteria 1, 6, 7)
           (school_id, exam_type, year, female_candidates, male_candidates, female_passed, male_passed)
         values (${victim.op}::uuid, 'BECE', 2027, 20, 22, 15, 14)`;
       await expect(runEtl()).rejects.toThrow(
-        /no EXAM_COHORT row for sitting year\(s\) 2027 \(academic_year "2026\/27"\)/,
+        /sitting year\(s\) 2027 \(academic_year "2026\/27"\) that this run did NOT declare/,
       );
-      // The message carries the FIX, and nothing was written.
+      // The message names what WAS declared, carries the FIX and the naming rule, and says why a skip is
+      // not an option — and nothing was written.
+      await expect(runEtl()).rejects.toThrow(
+        new RegExp(`declared: ${DEMO_EXAM_COHORTS.map((c) => c.sittingYear).join(", ")}`),
+      );
+      await expect(runEtl()).rejects.toThrow(/silently NOT REFRESHED/);
       await expect(runEtl()).rejects.toThrow(/period_type = 'EXAM_COHORT'/);
       expect(await fingerprint()).toBe(before);
       const failed = await sql<{ status: string; error_text: string | null }[]>`
@@ -1160,6 +1166,42 @@ describe("WAEC_EXTRACT > SCHOOL_ENTERED, resolved at WRITE time (criterion 12)",
     expect(await rowCount()).toBe(countBefore);
   }, 300_000);
 
+  it("a DUPLICATE of the WINNING source at one grain key THROWS — it is never silently dropped", () => {
+    // ⚠ Dex M1. Dropping the second row would be the one defect NOTHING downstream could surface: the
+    // post-insert duplicate assertion cannot see it (the drop is exactly what keeps the duplicate out of
+    // the table), so what would ship is a cohort quietly missing a figure — an UNDERCOUNT that stays
+    // internally consistent (ALL = surviving MALE+FEMALE, and the stored rate still reads correctly).
+    const base = aggregateSchoolSitting([sourceRow({})], unitTarget).rows;
+    const male = base.find((r) => r.sex === "MALE")!;
+    expect(() => collapseBySourcePrecedence([...base, { ...male }])).toThrow(
+      PerformanceTransformError,
+    );
+    // The message names the grain key and the source, so the gap report says WHICH cohort.
+    expect(() =>
+      collapseBySourcePrecedence([...base, { ...male, candidates: 1 }]),
+    ).toThrow(
+      new RegExp(
+        `duplicate SCHOOL_ENTERED row for \\(jurisdiction ${unitTarget.jurisdictionId}, ` +
+          `period ${unitTarget.periodId}, exam BECE, sex MALE\\)`,
+      ),
+    );
+    // It throws for the WINNING source only: a duplicate among SUPERSEDED rows is irrelevant, because
+    // none of them is written at all.
+    const waec: FactPerformanceExamRow = {
+      ...base.find((r) => r.sex === "ALL")!,
+      candidates: 300,
+      qualified: 200,
+      qualificationRate: qualificationRate(200, 300),
+      source: "WAEC_EXTRACT",
+    };
+    const survivors = collapseBySourcePrecedence([...base, { ...male }, waec]);
+    expect(survivors).toEqual([waec]);
+    // …and a WAEC duplicate of its own ALL row throws just the same.
+    expect(() => collapseBySourcePrecedence([...base, waec, { ...waec }])).toThrow(
+      /duplicate WAEC_EXTRACT row for[\s\S]*sex ALL/,
+    );
+  });
+
   it("`source` is NOT part of any uniqueness key — the table has no grain UNIQUE at all", async () => {
     // The structural statement: if `source` were part of a unique key, both sources could insert the same
     // cohort and every roll-up would double, internally consistently. There is no such index — the guard
@@ -1833,17 +1875,50 @@ describe("the pure aggregation refuses what it cannot honestly aggregate", () =>
 
   it("the seeded-period assertion names the fix, and passes once the period exists", async () => {
     await expect(
-      assertExamCohortPeriodsSeeded(sql, [2026, 2025], examCohortAcademicYear),
+      assertExamCohortPeriodsSeeded(
+        sql,
+        [2026, 2025],
+        examCohortAcademicYear,
+        [2025, 2026],
+      ),
+    ).resolves.toBeUndefined();
+
+    // CHECK 1 · ⊆ DECLARED. A source year the run did not declare fails even when a dim_period row for
+    // it EXISTS — which is the Dex M2 case: seeded by an earlier run, undeclared tonight, and therefore
+    // never iterated and never refreshed. The pre-check-2 ordering is what makes the message actionable.
+    await expect(
+      assertExamCohortPeriodsSeeded(sql, [2025, 2026], examCohortAcademicYear, [2026]),
+    ).rejects.toThrow(
+      /sitting year\(s\) 2025 \(academic_year "2024\/25"\) that this run did NOT declare/,
+    );
+    await expect(
+      assertExamCohortPeriodsSeeded(sql, [2025, 2026], examCohortAcademicYear, [2026]),
+    ).rejects.toThrow(/declared: 2026/);
+    // …and with NOTHING declared the message says so rather than printing an empty list.
+    await expect(
+      assertExamCohortPeriodsSeeded(sql, [2026], examCohortAcademicYear, []),
+    ).rejects.toThrow(/declared: none/);
+
+    // CHECK 2 · SEEDED. Declared but with no dim_period row — the FK's own precondition, which in a normal
+    // run cannot fail (refreshPeriods upserts the declarations) but must still not be discovered inside
+    // the write.
+    await expect(
+      assertExamCohortPeriodsSeeded(sql, [2031], examCohortAcademicYear, [2031]),
+    ).rejects.toThrow(
+      /no EXAM_COHORT row for sitting year\(s\) 2031 \(academic_year "2030\/31"\)/,
+    );
+    await expect(
+      assertExamCohortPeriodsSeeded(sql, [2031], examCohortAcademicYear, [2031]),
+    ).rejects.toThrow(/examCohorts/);
+
+    // An empty SOURCE year list is a clean no-op — there is nothing to resolve. Note it short-circuits
+    // BEFORE the declared check too: a run may legitimately declare cohorts the source has nothing for
+    // (a sitting nobody has keyed yet), which is a `noResults` cohort, not a failure.
+    await expect(
+      assertExamCohortPeriodsSeeded(sql, [], examCohortAcademicYear, []),
     ).resolves.toBeUndefined();
     await expect(
-      assertExamCohortPeriodsSeeded(sql, [2031], examCohortAcademicYear),
-    ).rejects.toThrow(/sitting year\(s\) 2031 \(academic_year "2030\/31"\)/);
-    await expect(
-      assertExamCohortPeriodsSeeded(sql, [2031], examCohortAcademicYear),
-    ).rejects.toThrow(/examCohorts/);
-    // An empty list is a clean no-op — there is nothing to resolve.
-    await expect(
-      assertExamCohortPeriodsSeeded(sql, [], examCohortAcademicYear),
+      assertExamCohortPeriodsSeeded(sql, [], examCohortAcademicYear, [2026]),
     ).resolves.toBeUndefined();
   });
 

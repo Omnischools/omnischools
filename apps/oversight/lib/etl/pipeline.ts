@@ -636,15 +636,22 @@ export async function runOversightEtl(
     const pendingCohorts: PendingCohort[] = [];
     if (cohortDeclarations.length > 0) {
       const operationalIds = inclusion.schools.map((s) => s.operationalSchoolId);
-      // THE SEEDED-PERIOD ASSERTION, BEFORE ANY COMPUTE AND LONG BEFORE ANY WRITE. Every sitting year
-      // the SOURCE carries must resolve to a declared/seeded EXAM_COHORT period; an undeclared sitting
-      // fails the run here, naming the naming rule, rather than hundreds of rows into step 5c as a raw
-      // FK violation — or, worse, vanishing from the dashboard with nothing to point at.
+      // THE DECLARED-AND-SEEDED COHORT ASSERTION, BEFORE ANY COMPUTE AND LONG BEFORE ANY WRITE. Every
+      // sitting year the SOURCE carries must be (1) one this run DECLARED and (2) resolvable to a seeded
+      // EXAM_COHORT period. The loop below iterates the DECLARATIONS, so an undeclared source sitting
+      // would otherwise be silently not refreshed — absent from the dashboard, or stale in place from an
+      // earlier run, under a SUCCESS banner. It fails here, naming the naming rule, rather than hundreds
+      // of rows into step 5c as a raw FK violation or not at all.
       const sourceYears = await readTerminalExamSittingYears(sql, {
         schemaName: options.sourceSchema,
         operationalSchoolIds: operationalIds,
       });
-      await assertExamCohortPeriodsSeeded(sql, sourceYears, examCohortAcademicYear);
+      await assertExamCohortPeriodsSeeded(
+        sql,
+        sourceYears,
+        examCohortAcademicYear,
+        cohortDeclarations.map((c) => c.sittingYear),
+      );
 
       for (const cohort of cohortDeclarations) {
         const academicYear = examCohortAcademicYear(cohort.sittingYear);

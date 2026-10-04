@@ -447,6 +447,10 @@ export function waecExtractFactRows(
  *
  * Order is preserved (first-seen cohort order, and the surviving source's own row order within it), so
  * the write stays deterministic.
+ *
+ * IT DROPS ONLY SUPERSEDED ROWS — a LOSING source's. A duplicate of the WINNING source at one grain key
+ * THROWS (`PerformanceTransformError`): see the in-body note for why dropping it was the one failure mode
+ * neither this function nor the post-insert assertion could surface.
  */
 export function collapseBySourcePrecedence(
   rows: FactPerformanceExamRow[],
@@ -472,11 +476,25 @@ export function collapseBySourcePrecedence(
     const cohort = cohortOf(row);
     if (rank(row) < winningRank.get(cohort)!) continue; // superseded: a losing source's row
     const held = kept.get(cohort);
-    // A second row of the SAME source at the SAME sex is a defect, not a precedence question — it is
-    // dropped here rather than left for the post-insert duplicate assertion to discover, and the
-    // per-school invariants above are what stop one being produced in the first place.
+    // ⚠ A SECOND ROW OF THE WINNING SOURCE AT THE SAME SEX IS A DEFECT, NOT A PRECEDENCE QUESTION — AND
+    // IT THROWS RATHER THAN BEING DROPPED (Dex M1). Dropping it was worse than it looks: the
+    // post-insert duplicate assertion CANNOT catch this case, because the drop is precisely what stops
+    // the duplicate from reaching the table. What would reach the table is a cohort quietly missing one
+    // of its figures — an UNDERCOUNT that stays internally consistent (ALL would still equal the
+    // surviving MALE+FEMALE, and the stored rate would still read correctly), and is therefore invisible
+    // to every reader and every reviewer. That is the exact error class this module is built against, so
+    // the honest response is to fail the batch and let the caller's per-school isolation absorb it.
     if (held) {
-      if (!held.some((r) => r.sex === row.sex)) held.push(row);
+      if (held.some((r) => r.sex === row.sex))
+        throw new PerformanceTransformError(
+          `duplicate ${row.source} row for (jurisdiction ${row.jurisdictionId}, period ${row.periodId}, ` +
+            `exam ${row.exam}, sex ${row.sex}) reached the precedence collapse. Two rows of the WINNING ` +
+            "source at one grain key are not a precedence question: dropping one would leave a cohort " +
+            "silently undercounted (ALL would still equal the surviving MALE+FEMALE and the rate would " +
+            "still read correctly), and the post-insert duplicate assertion cannot see it because the " +
+            "drop is what keeps the duplicate out of the table.",
+        );
+      held.push(row);
     } else kept.set(cohort, [row]);
   }
   return order.flatMap((cohort) => kept.get(cohort) ?? []);
@@ -625,24 +643,51 @@ export async function writePerformanceExamFacts(
 }
 
 /**
- * THE SEEDED-PERIOD ASSERTION (the `assertStagesSeeded` discipline, applied to the sitting calendar).
+ * THE DECLARED-AND-SEEDED COHORT ASSERTION (the `assertStagesSeeded` discipline, applied to the sitting
+ * calendar). TWO CHECKS, in this order, over the sitting years PRESENT IN THE SOURCE:
  *
- * `fact_performance_exam.period_id` is a FK to `dim_period`, so a sitting year the run cannot resolve to
- * an EXAM_COHORT period fails LATE — hundreds of rows into the write, as a raw foreign-key violation
- * naming a constraint — or, worse, is quietly skipped and the sitting is simply missing from the
- * dashboard with nothing to point at.
+ *   1. ⊆ DECLARED. Every source sitting year must be one the RUN DECLARED (`examCohorts`). The run only
+ *      ever ITERATES its declared cohorts, so a sitting the source carries and the run did not declare is
+ *      NEVER COMPUTED, NEVER WRITTEN and — this is the part that makes it a defect rather than a choice —
+ *      never mentioned: the sitting is simply absent from the dashboard with nothing to point at, and
+ *      (worse) a sitting published by an EARLIER run goes stale in place while the night reports SUCCESS.
+ *      That is exactly the failure this assertion exists to prevent, and checking only check 2 did not
+ *      catch it: a year seeded by an earlier run passes "is it seeded?" while being undeclared tonight
+ *      (Dex M2). A PARTIAL BACKFILL is therefore EXPLICIT — declare the cohorts you mean to file — rather
+ *      than an accident of which years happen to be in the source.
+ *   2. SEEDED. Every such year must also resolve to an EXAM_COHORT `dim_period` row. Declared cohorts are
+ *      upserted by step 2's `refreshPeriods`, so in the normal run check 2 cannot fail once check 1
+ *      passes; it still runs because `fact_performance_exam.period_id` is a FK to `dim_period`, and
+ *      failing here beats failing hundreds of rows into the write as a raw constraint violation.
  *
- * So the run asserts UP FRONT that every sitting year PRESENT IN THE SOURCE resolves to a declared,
- * seeded EXAM_COHORT period, and the message carries the FIX AND THE NAMING RULE: calendar year N maps
- * to academic_year "(N-1)/N", `term IS NULL`, `period_type = 'EXAM_COHORT'`. Never a late FK error,
- * never a silent drop.
+ * Both messages carry the FIX AND THE NAMING RULE: calendar year N maps to academic_year "(N-1)/N",
+ * `term IS NULL`, `period_type = 'EXAM_COHORT'`. Never a late FK error, never a silent skip.
  */
 export async function assertExamCohortPeriodsSeeded(
   sql: postgres.Sql,
   sittingYears: number[],
   academicYearOf: (sittingYear: number) => string,
+  /** The sitting years the RUN DECLARED. Source years must be a SUBSET of these — see check 1. */
+  declaredSittingYears: number[],
 ): Promise<void> {
   if (sittingYears.length === 0) return;
+
+  // ── check 1 · ⊆ DECLARED ──────────────────────────────────────────────────────────────────────
+  const declared = new Set(declaredSittingYears);
+  const undeclared = sittingYears.filter((y) => !declared.has(y));
+  if (undeclared.length > 0)
+    throw new Error(
+      `terminal_exam_result carries sitting year(s) ` +
+        `${undeclared.map((y) => `${y} (academic_year "${academicYearOf(y)}")`).join(", ")} that this ` +
+        `run did NOT declare (declared: ${[...declared].sort().join(", ") || "none"}). The run only ` +
+        "iterates its declared cohorts, so those sittings would be silently NOT REFRESHED — absent from " +
+        "the dashboard, or stale in place from an earlier run, under a SUCCESS banner. Declare them in " +
+        "the run's `examCohorts` option (the demo declares `DEMO_EXAM_COHORTS` in " +
+        "scripts/seed-demo-data.ts), where calendar year N becomes an EXAM_COHORT period with " +
+        "academic_year \"(N-1)/N\", term IS NULL, period_type = 'EXAM_COHORT'.",
+    );
+
+  // ── check 2 · SEEDED (the FK's own precondition) ───────────────────────────────────────────────
   const wanted = new Map(sittingYears.map((y) => [academicYearOf(y), y]));
   const rows = await sql<{ academic_year: string }[]>`
     select academic_year from dim_period
