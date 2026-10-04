@@ -409,9 +409,13 @@ export async function runOversightEtl(
 
       // ── the ENROLMENT arm, same period, same isolation — CURRENT YEAR ONLY ────────────────────
       // The roster was read ONCE, above the loop, and belongs to exactly one year: tonight's. On any
-      // other year this arm contributes nothing at all — no rows, no delete scope, and nothing added
-      // to `attempted` (pooling roster schools into the denominator of a year the arm never ran would
-      // inflate the tolerated absolute failure count for free).
+      // other year this arm WRITES nothing — no rows, no delete scope, and nothing added to
+      // `attempted` (pooling roster schools into the denominator of a year the arm never ran would
+      // inflate the tolerated absolute failure count for free). One thing it does still touch, by
+      // design, is the duplicate assertion in `writeEnrolmentFactsTx`: that check is deliberately
+      // period-wide, so it re-scans even a non-current year's rows and, if some earlier buggy run
+      // left a duplicated grain key there, rolls back THIS whole dual-arm run. That is the intended
+      // (loud, run-wide-fatal) failure direction for a table with no grain UNIQUE, not a leak.
       // Match by academic_year, not object identity: `annualPeriodSpecs` dedups by year so the
       // reference happens to be the same today, but comparing the year is the contract that matters.
       if (!enrolmentArm || enrolmentArm.spec.academicYear !== spec.academicYear) {
