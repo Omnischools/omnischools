@@ -1205,6 +1205,24 @@ describe("a multi-year run writes enrolment for the CURRENT year only", () => {
       await restore();
     }
   }, 300_000);
+
+  it("the current year with no dates and no rosterAsOf throws a NAMED error, not a cast error", async () => {
+    // A current-year spec that declares neither starts_on nor ends_on leaves fact_enrolment.as_of_date
+    // (timestamptz) with no vintage to freeze. The run must fail with an actionable, rosterAsOf-named
+    // error rather than dying on a bare-year string cast deep in the write. (The dates-less upsert
+    // nulls the current year's ANNUAL starts_on/ends_on, so restore() rebuilds the dated baseline.)
+    try {
+      await expect(
+        runOversightEtl(sql, {
+          emisExtractText: extractText(dataset),
+          periods: [{ academicYear: ACADEMIC_YEAR, term: null, isCurrent: true }],
+          sourceSchema: "demo_source",
+        }),
+      ).rejects.toThrow(/rosterAsOf/);
+    } finally {
+      await restore();
+    }
+  }, 300_000);
 });
 
 describe("the NULL-safe duplicate assertion (criterion 17)", () => {

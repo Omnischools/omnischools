@@ -412,7 +412,9 @@ export async function runOversightEtl(
       // other year this arm contributes nothing at all — no rows, no delete scope, and nothing added
       // to `attempted` (pooling roster schools into the denominator of a year the arm never ran would
       // inflate the tolerated absolute failure count for free).
-      if (!enrolmentArm || enrolmentArm.spec !== spec) {
+      // Match by academic_year, not object identity: `annualPeriodSpecs` dedups by year so the
+      // reference happens to be the same today, but comparing the year is the contract that matters.
+      if (!enrolmentArm || enrolmentArm.spec.academicYear !== spec.academicYear) {
         pending.push({
           spec,
           periodId,
