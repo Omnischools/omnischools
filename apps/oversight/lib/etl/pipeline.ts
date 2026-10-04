@@ -39,6 +39,16 @@ import {
   readWaecExtractCohort,
   type TerminalExamSourceRow,
 } from "./performance-source";
+import {
+  aggregateSchoolAttendance,
+  writeAttendanceFactsTx,
+  type FactAttendanceRow,
+} from "./attendance";
+import {
+  countMarksOutsideDeclaredTerms,
+  readAttendanceMarkGroups,
+  type AttendanceMarkGroupRow,
+} from "./attendance-source";
 import { loadEmisRegister, parseEmisExtract, type RegisterRow } from "./register";
 import { readLatestFacilitiesSnapshots } from "./source";
 import type { AnalyticsStage } from "./stage";
@@ -54,12 +64,14 @@ import {
 
 /**
  * THE RUN SEQUENCE (spec §7 / scope §3), end-to-end for the increment-H fact slices — ONE run that
- * computes and writes BOTH arms, `fact_infrastructure` AND `fact_enrolment`, under one verdict and in
- * one transaction (see the TWO FACTS, ONE RUN note below).
+ * computes and writes ALL FOUR arms — `fact_infrastructure`, `fact_enrolment`, `fact_performance_exam`
+ * AND `fact_attendance` — under ONE verdict and in ONE transaction (see the FOUR FACTS, ONE RUN note
+ * below).
  *
  *   1  open the `etl_run` row (RUNNING)
- *   2  refresh dimensions — `dim_jurisdiction` spine + `dim_period` (TERM rows AND the ANNUAL cut of
- *      each academic year, which is the grain this fact is written at), then ASSERT the spine
+ *   2  refresh dimensions — `dim_jurisdiction` spine + `dim_period` (the TERM rows, which `fact_attendance`
+ *      is written at; the ANNUAL cut of each academic year, which the first two arms are written at; and
+ *      one EXAM_COHORT row per declared sitting), then ASSERT the spine
  *   3  load the EMIS register (reference delta) — the coverage denominator
  *   4  build the inclusion set — registered ∧ live ∧ mapped
  *   5a COMPUTE every period's facts, per school, isolated — no writes at all
@@ -83,6 +95,29 @@ import {
  *
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
+ *
+ * ⚠ FOUR FACTS, ONE RUN (increment H fourth slice, task H10). `fact_attendance` is the FOURTH ARM,
+ * threaded exactly as the second and third were: computed in 5a under `computePerSchool`, its failures
+ * tallied into the SAME run-wide verdict, its rows written in the SAME `sql.begin` in 5c, with its own
+ * explicit per-term delete scope. What is NOT like any earlier arm is its TIME SHAPE, and every structural
+ * difference follows from it:
+ *   · IT IS THE FIRST GENUINE **FLOW**, AND IT IS **TERM**-GRAINED. `present_days` / `enrolled_days` are
+ *     pupil-days accumulated over a window, so they are additive across TIME as well as across schools.
+ *     The arm therefore runs ONCE PER DECLARED TERM — not current-year-only (the enrolment rule, which
+ *     exists because a roster has no period) and not per-cohort (the performance rule) — and files against
+ *     `period_type = 'TERM'`, the rows `refreshPeriods` has always upserted and no fact table used until
+ *     now. There is deliberately NO ANNUAL attendance row: the year's figure is Σ term present ÷ Σ term
+ *     enrolled, a reader-side sum, because a materialised annual row would be a second copy of a figure
+ *     the term rows already determine (see `lib/etl/attendance.ts`).
+ *   · ITS WINDOW IS THE TERM'S OWN DATES. Each mark is assigned to the declared TERM whose
+ *     [starts_on, ends_on] contains its civil date, so a TERM spec with no dates CANNOT be aggregated and
+ *     the run refuses it by name rather than filing a term from an empty window.
+ *   · MARKS NO DECLARED TERM CLAIMS ARE TALLIED, NOT DROPPED — `attendanceOutOfWindowMarks` on the report.
+ *   · A SCHOOL WITH NO MARKS IN A TERM IS NOT COMPUTED for that term, so it is not in that term's delete
+ *     scope and keeps its prior rows. That is NOT the same as a school whose marks are ALL ABSENT, which is
+ *     computed and produces real rows with a 0.00 rate.
+ * Because it runs per TERM rather than per academic year, it is reported under `EtlRunReport.terms` rather
+ * than squeezed into `PeriodOutcome` (which is ANNUAL by construction).
  *
  * ⚠ THREE FACTS, ONE RUN (increment H third slice, task H14). `fact_performance_exam` is the THIRD ARM,
  * threaded exactly as the enrolment arm was: computed in 5a under `computePerSchool`, its failures
@@ -292,6 +327,48 @@ export interface PeriodOutcome {
   enrolment: EnrolmentOutcome;
 }
 
+/**
+ * What the attendance arm produced for ONE DECLARED TERM. One of these per TERM spec in the run.
+ *
+ * ⚠ `presentDays` / `enrolledDays` ARE REPORTED PER TERM AND NEVER POOLED INTO ONE PAIR HERE, even though
+ * (unlike every earlier arm) pooling them across terms would be ARITHMETICALLY VALID — attendance is a
+ * FLOW. They are kept apart because the reader has to see WHICH window each figure belongs to: a term with
+ * one week of marking and a term with thirteen produce wildly different pupil-day counts, and a single
+ * pooled pair invites a pooled rate presented as "the year" when a term is missing from it.
+ */
+export interface TermAttendanceOutcome {
+  academicYear: string;
+  /** 1 | 2 | 3 — a TERM outcome is always numbered. Never null (that would be the ANNUAL cut). */
+  term: number;
+  /** ALWAYS "TERM". Stated so a reader never re-derives it from `term`. */
+  periodType: "TERM";
+  periodId: string;
+  /** The term's civil-date window — the window every mark was assigned by. */
+  startsOn: string;
+  endsOn: string;
+  /** Grouped mark slices read from the source — counts of pupil-days, never pupils. */
+  sourceGroups: number;
+  /** Schools whose marks were aggregated (including to ZERO rows) — the DELETE scope for this term. */
+  schoolsComputed: number;
+  deleted: number;
+  inserted: number;
+  /** Σ `present_days` over the class_form IS NULL stage totals, nationally, for this term. */
+  presentDays: number;
+  /** Σ `enrolled_days` over the same rows. The rate is Σpresent ÷ Σenrolled — NEVER an average of rates. */
+  enrolledDays: number;
+  /** Marks in a below-KG class. In NO stage row, and never silently dropped. */
+  outOfScopeMarks: number;
+  /** Marks whose class label resolved to no stage. In NO stage row, never dropped. */
+  unmappedMarks: number;
+  /**
+   * Included schools that marked NO register at all inside this term's window. NOT a failure, NOT computed
+   * and NOT in the delete scope: they keep whatever they had (stale-but-honest). DISTINCT from a school
+   * whose marks were all ABSENT, which is computed and gets real rows with a 0.00 rate.
+   */
+  noMarks: string[];
+  failures: SchoolFailure[];
+}
+
 export interface EtlRunReport {
   runId: string;
   status: "SUCCESS" | "FAILED";
@@ -301,6 +378,14 @@ export interface EtlRunReport {
   periods: PeriodOutcome[];
   /** The THIRD arm, at its OWN EXAM_COHORT periods — one entry per declared sitting. */
   examCohorts: ExamCohortOutcome[];
+  /** The FOURTH arm, at its OWN TERM periods — one entry per declared term. */
+  terms: TermAttendanceOutcome[];
+  /**
+   * Marks whose civil date falls inside NO declared term window — holiday marking, a mis-keyed date, or a
+   * term the run forgot to declare. They reach no fact row, and they are COUNTED rather than dropped: the
+   * third case is a real gap in the published figures and is otherwise completely invisible.
+   */
+  attendanceOutOfWindowMarks: number;
 }
 
 export async function runOversightEtl(
@@ -790,6 +875,156 @@ export async function runOversightEtl(
       }
     }
 
+    // ── step 5a (continued) · THE FOURTH ARM: fact_attendance, at its OWN TERM periods ─────────────
+    //
+    // SEPARATE FROM BOTH LOOPS ABOVE, because the grain is: a TERM is neither an academic year nor a
+    // sitting cohort, and attendance is the first FLOW in this database — a window of pupil-days, which is
+    // exactly what a term is. It runs for EVERY DECLARED TERM (not current-year-only: last term's marks are
+    // a closed, immutable fact about days that happened, so refreshing or backfilling them is honest in a
+    // way that backfilling a ROSTER is not).
+    //
+    // NOTHING IS WRITTEN HERE either: each term's rows and its own delete scope are held until the verdict.
+    interface PendingTermAttendance {
+      outcome: TermAttendanceOutcome;
+      rows: FactAttendanceRow[];
+      scope: string[];
+    }
+    const pendingTerms: PendingTermAttendance[] = [];
+    let outOfWindowMarks = 0;
+    // EXAM_COHORT specs are excluded explicitly: they carry `term: null` today, so `term !== null` already
+    // excludes them, but naming the exclusion is what stops a future numbered sitting from being read as a
+    // term of attendance.
+    const termSpecs = options.periods.filter(
+      (spec) => spec.term !== null && spec.periodType !== "EXAM_COHORT",
+    );
+    if (termSpecs.length > 0) {
+      const operationalIds = inclusion.schools.map((s) => s.operationalSchoolId);
+      for (const spec of termSpecs) {
+        const periodId = periodIndex.get(periodKey(spec.academicYear, spec.term));
+        if (!periodId)
+          throw new Error(
+            `dim_period has no TERM row for ${spec.academicYear} term ${String(spec.term)} after the ` +
+              "refresh.",
+          );
+        // THE WINDOW IS NOT OPTIONAL. A term with no dates cannot claim a single mark — every mark is
+        // assigned by its civil date — so a dates-less TERM spec would silently produce an EMPTY term and
+        // an empty delete scope, i.e. a published term left stale under a SUCCESS banner. Refuse it here,
+        // naming the fix, exactly as the enrolment arm refuses a vintage-less current year.
+        if (!spec.startsOn || !spec.endsOn)
+          throw new Error(
+            `the ${spec.academicYear} term ${String(spec.term)} declares ` +
+              `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
+              ", so fact_attendance has no window to aggregate over. Attendance is a FLOW measured over a " +
+              "term's civil dates (a mark belongs to the term containing its `date`), so declare the " +
+              "term's dates in `options.periods` — an undated term would publish nothing and look fine.",
+          );
+
+        // Bound into locals so the narrowing above survives into the per-school closure below.
+        const startsOn: string = spec.startsOn;
+        const endsOn: string = spec.endsOn;
+        // `termSpecs` already filtered `term !== null`; an array filter does not narrow the element type.
+        const term: number = spec.term!;
+
+        const { groups } = await readAttendanceMarkGroups(sql, {
+          schemaName: options.sourceSchema,
+          operationalSchoolIds: operationalIds,
+          startsOn,
+          endsOn,
+        });
+        const bySchool = new Map<string, AttendanceMarkGroupRow[]>();
+        for (const group of groups) {
+          const held = bySchool.get(group.schoolId);
+          if (held) held.push(group);
+          else bySchool.set(group.schoolId, [group]);
+        }
+        // A school that marked NO register inside this window is not a failure and NOT computed: it keeps
+        // its prior rows for this term. A school that DID mark registers but whose every class is
+        // out-of-scope/unmapped IS computed — to zero rows — and is therefore in the delete scope, so a
+        // stage that stopped existing really empties.
+        const noMarks = inclusion.schools
+          .filter((s) => !bySchool.has(s.operationalSchoolId))
+          .map((s) => s.emisSchoolId);
+
+        const items = [...bySchool.entries()].map(([schoolId, rows]) => ({
+          schoolId,
+          rows,
+        }));
+        attempted += items.length;
+
+        const compute = computePerSchool<
+          (typeof items)[number],
+          { jurisdictionId: string; emisSchoolId: string } & ReturnType<
+            typeof aggregateSchoolAttendance
+          >
+        >(
+          items,
+          (item) => ({
+            emisSchoolId:
+              jurisdictionOf.get(item.schoolId)?.emisSchoolId ?? item.schoolId,
+            jurisdictionId: jurisdictionOf.get(item.schoolId)?.jurisdictionId ?? null,
+          }),
+          (item) => {
+            const school = jurisdictionOf.get(item.schoolId);
+            if (!school)
+              throw new Error(
+                `operational school ${item.schoolId} is not in the inclusion set — the attendance ` +
+                  "read is not bounded by the inclusion set.",
+              );
+            return {
+              jurisdictionId: school.jurisdictionId,
+              emisSchoolId: school.emisSchoolId,
+              ...aggregateSchoolAttendance(item.rows, {
+                jurisdictionId: school.jurisdictionId,
+                periodId,
+                emisSchoolId: school.emisSchoolId,
+                etlRunId: runId,
+                // The FALLBACK vintage only. The real `as_of_date` is the max INCLUDED MARK DATE, derived
+                // inside the transform — never `now()`, so a closed term is immutable and a re-run of an
+                // unchanged term is byte-identical.
+                termEndsOn: endsOn,
+              }),
+            };
+          },
+        );
+        allFailures.push(...compute.failures);
+
+        pendingTerms.push({
+          rows: compute.computed.flatMap((c) => c.rows),
+          scope: compute.computed.map((c) => c.jurisdictionId),
+          outcome: {
+            academicYear: spec.academicYear,
+            term,
+            periodType: "TERM",
+            periodId,
+            startsOn,
+            endsOn,
+            sourceGroups: groups.length,
+            schoolsComputed: compute.computed.length,
+            deleted: 0,
+            inserted: 0,
+            presentDays: compute.computed.reduce((t, c) => t + c.presentDays, 0),
+            enrolledDays: compute.computed.reduce((t, c) => t + c.enrolledDays, 0),
+            outOfScopeMarks: compute.computed.reduce((t, c) => t + c.outOfScopeMarks, 0),
+            unmappedMarks: compute.computed.reduce((t, c) => t + c.unmappedMarks, 0),
+            noMarks,
+            failures: compute.failures,
+          },
+        });
+      }
+
+      // ONE counting query for the WHOLE declared calendar — a mark in NO window is not derivable from the
+      // per-term reads above (the windows may be adjacent, and there is no lower bound on how old a
+      // mis-keyed date can be). See `countMarksOutsideDeclaredTerms`.
+      outOfWindowMarks = await countMarksOutsideDeclaredTerms(sql, {
+        schemaName: options.sourceSchema,
+        operationalSchoolIds: operationalIds,
+        windows: termSpecs.map((spec) => ({
+          startsOn: spec.startsOn!,
+          endsOn: spec.endsOn!,
+        })),
+      });
+    }
+
     // ── step 5b · THE VERDICT, over the WHOLE run ───────────────────────────────────────────────
     // Before any write, and over every period's failures together, because the policy is a RATE over
     // the run's attempted schools.
@@ -809,16 +1044,24 @@ export async function runOversightEtl(
     // per-arm budgets is a Kofi decision with its own acceptance criteria, not something this slice may
     // decide on its own initiative. What is new is only the size of the dilution: a cohort arm that
     // fails wholesale while the other two are clean can now sit inside the same 1%.
+    //
+    // ⚠ AND NOW A FOURTH ARM SHARES IT (task H10) — consistent with the two notes above, and worth one more
+    // line because attendance adds schools to `attempted` ONCE PER DECLARED TERM, not once per run. A
+    // three-term run therefore contributes roughly three times the inclusion set to the denominator on this
+    // arm alone, which dilutes the same 1% further than any earlier arm did. The behaviour is again kept
+    // deliberately unchanged — one run, one verdict is the shipped contract, and per-arm (or per-term)
+    // budgets are a Kofi decision with their own acceptance criteria, not something this slice may take on
+    // its own initiative.
     const verdict = failureVerdict(attempted, allFailures, options.policy);
 
     // ── step 5c · WRITE — once, one transaction, every period; only on SUCCESS ───────────────────
     // A FAILED verdict writes NOTHING. The prior night's data stays exactly as it was: stale, labelled
     // with its own older as-of, and honest. That is what makes the banner's "latest SUCCESS" read
     // correct rather than merely plausible.
-    // ALL THREE fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
-    // performance arm's duplicate assertion — rolls the other two back with it. Two transactions would
-    // reintroduce the half-published night between the arms that each writer's own transaction rules out
-    // within one arm.
+    // ALL FOUR fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
+    // performance arm's precedence collapse and either table's post-insert duplicate assertion — rolls the
+    // other three back with it. Two transactions would reintroduce the half-published night between the
+    // arms that each writer's own transaction rules out within one arm.
     const written =
       verdict.status === "SUCCESS"
         ? ((await sql.begin(async (tx) => {
@@ -842,7 +1085,17 @@ export async function runOversightEtl(
                 rows: c.rows,
               })),
             );
-            return { infra, enrol, exams };
+            // PER TERM: one batch per declared term, each with its OWN delete scope, so a school that
+            // marked registers in term 1 and not in term 2 has term 1 refreshed and term 2 left alone.
+            const attendance = await writeAttendanceFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pendingTerms.map((t) => ({
+                periodId: t.outcome.periodId,
+                jurisdictionIds: t.scope,
+                rows: t.rows,
+              })),
+            );
+            return { infra, enrol, exams, attendance };
           })) as unknown as {
             infra: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
@@ -858,15 +1111,22 @@ export async function runOversightEtl(
                 superseded: number;
               }[];
             };
+            attendance: {
+              perPeriod: { periodId: string; deleted: number; inserted: number }[];
+            };
           })
         : {
             infra: { perPeriod: [] },
             enrol: { perPeriod: [] },
             exams: { perPeriod: [] },
+            attendance: { perPeriod: [] },
           };
     const writtenByPeriod = new Map(written.infra.perPeriod.map((p) => [p.periodId, p]));
     const enrolledByPeriod = new Map(written.enrol.perPeriod.map((p) => [p.periodId, p]));
     const examsByPeriod = new Map(written.exams.perPeriod.map((p) => [p.periodId, p]));
+    const attendanceByPeriod = new Map(
+      written.attendance.perPeriod.map((p) => [p.periodId, p]),
+    );
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
@@ -892,6 +1152,12 @@ export async function runOversightEtl(
       superseded: examsByPeriod.get(c.outcome.periodId)?.superseded ?? 0,
     }));
 
+    const termOutcomes: TermAttendanceOutcome[] = pendingTerms.map((t) => ({
+      ...t.outcome,
+      deleted: attendanceByPeriod.get(t.outcome.periodId)?.deleted ?? 0,
+      inserted: attendanceByPeriod.get(t.outcome.periodId)?.inserted ?? 0,
+    }));
+
     // ── step 6 · anomaly hook (increment J — a no-op, by name) ──────────────────────────────────
     await runAnomalyHook(sql, runId);
 
@@ -910,6 +1176,8 @@ export async function runOversightEtl(
       coverage: inclusion.coverage,
       periods: outcomes,
       examCohorts: cohortOutcomes,
+      terms: termOutcomes,
+      attendanceOutOfWindowMarks: outOfWindowMarks,
     };
   } catch (err) {
     // A FAILED run leaves the prior night's data in place. Two mechanisms, both needed: the whole

@@ -1,9 +1,9 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- `demo_source` — THE OPERATIONAL STAND-IN FOR THE INCREMENT-H DEMO.
 --
--- WHAT THIS IS. Five tables standing in for the real operational schema in apps/web
--- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts`, `db/schema/students.ts` and
--- `db/schema/terminal-results.ts`). The demo generator writes
+-- WHAT THIS IS. Six tables standing in for the real operational schema in apps/web
+-- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts`, `db/schema/students.ts`,
+-- `db/schema/terminal-results.ts` and `db/schema/attendance.ts`). The demo generator writes
 -- OPERATIONAL-SHAPED rows here, and the ETL transform reads them and performs the real
 -- decomposition — booleans → has_*_count, the three CHECK families → one 0/1 count per allowed
 -- value, nullable detail → *_reporting_count denominators. Nothing in the demo hand-seeds a fact
@@ -42,6 +42,14 @@
 --                           The omission is also the one thing that CANNOT hide a prod defect: the
 --                           reader names its six columns explicitly, so columns absent here are
 --                           columns it never mentions.
+--     attendance_record   — ⚠ THE TIGHTEST OMISSION IN THIS FILE: `reason_code`, `note`,
+--                           `marked_by_user_id` and `marked_at`. The first three are the
+--                           clinical/pastoral surface of the register (a structured health reason, the
+--                           free text explaining it, and the named teacher who typed both); the fourth
+--                           is simply unread. `student_id` IS kept, because the table's GRAIN is one row
+--                           per pupil per day and `uniq_attendance_student_day` is load-bearing — the
+--                           reader still never selects it. See the table's own header at the foot of
+--                           this file.
 --     terminal_exam_result — `note` (free text) and `captured_by` (a user id) — the SAME posture as
 --                           `students`, for the same reason, plus `captured_at` which the ETL does not
 --                           read (the cohort's vintage is the sitting's `ends_on`). See the table's own
@@ -316,3 +324,65 @@ create table demo_source.terminal_exam_result (
 
 create index demo_source_terminal_exam_result_school_idx
   on demo_source.terminal_exam_result (school_id);
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- PUPIL ATTENDANCE (increment H fourth slice, task H10) — `attendance_record`, the source of
+-- `fact_attendance`.
+--
+-- ⚠ THE OMISSIONS HERE ARE THE TIGHTEST IN THIS FILE, AND THE REASON IS CLINICAL. The real table
+-- (apps/web/db/schema/attendance.ts:38) carries FOUR columns this stand-in deliberately does not:
+--   `reason_code`        SICK / MEDICAL / FAMILY / TRAVEL / OTHER — a structured HEALTH FACT about a
+--                        named child. Together with a MEDICAL mark it is sickbay/pastoral data, not an
+--                        education statistic, and nothing in oversight has any business reading it.
+--   `note`               the free-detail field beside it ("mother in hospital"). Free text written
+--                        specifically to explain a child's absence is the worst possible column to let
+--                        cross an aggregation boundary, because nothing bounds what is in it.
+--   `marked_by_user_id`  the NAMED TEACHER who took the register. Carrying it would make "who marked
+--                        this class" queryable outside the gated §6 named-record path.
+--   `marked_at`          omitted for the duller reason `terminal_exam_result.captured_at` is: the ETL
+--                        never reads it (the vintage is the max MARK DATE in the term window), so it is
+--                        not part of the contract this stand-in exists to pin.
+-- Omitting all four makes `lib/etl/attendance-source.ts`'s allow-list STRUCTURAL in the demo: a reader
+-- that reached for any of them would FAIL here rather than quietly succeed. This is the `students`
+-- posture, taken further, and `tests/etl-attendance.test.ts` asserts both halves (absent here, and
+-- genuinely present in the real table — so the omission is a choice, not an accident).
+--
+-- ⚠ `student_id` IS PRESENT, AND THE ETL STILL MUST NOT SELECT IT. The grain of this table IS one row
+-- per pupil per civil day, so a stand-in without `student_id` could not carry
+-- `uniq_attendance_student_day` and would be a different table with a different meaning. It is here for
+-- that reason ONLY: the reader GROUPS and counts, never enumerates, and the test asserts the column name
+-- appears nowhere in the reader. The UNIQUE is what makes `count(*)` a count of PUPIL-DAYS rather than of
+-- register edits — the whole rate rests on it, so it is kept verbatim.
+--
+-- EVERY OTHER NAME AND TYPE IS THE OPERATIONAL ONE, including the five-member status enum in the
+-- operational member ORDER (PRESENT, ABSENT, LATE, EXCUSED, MEDICAL — apps/web/db/schema/_enums.ts).
+-- `class_id` is NOT NULL here exactly as upstream, which is why the ETL has no class_id-NULL fallback.
+create type demo_source.attendance_status as enum
+  ('PRESENT', 'ABSENT', 'LATE', 'EXCUSED', 'MEDICAL');
+
+create table demo_source.attendance_record (
+  id         uuid primary key default gen_random_uuid(),
+  school_id  uuid not null,
+  student_id uuid not null,
+  class_id   uuid not null,
+  -- The CIVIL date of the register. There is no period_id: a mark belongs to a DAY, and the ETL assigns
+  -- it to the declared TERM whose [starts_on, ends_on] contains that day — it does NOT join
+  -- `academic_period` (which is per-school and whose period_number means different things per product
+  -- line; see the Q3 note in lib/etl/dimensions.ts).
+  date       date not null,
+  status     demo_source.attendance_status not null,
+  -- The real `uniq_attendance_student_day`. LOAD-BEARING: it is what guarantees one mark per pupil per
+  -- day, and therefore that the ETL's count(*) is a count of pupil-days.
+  constraint uniq_attendance_student_day unique (school_id, student_id, date),
+  -- The real composite school-scoped FKs — the pupil and the class must be in the same tenant.
+  constraint attendance_record_student_fk
+    foreign key (school_id, student_id)
+    references demo_source.students (school_id, id) on delete cascade,
+  constraint attendance_record_class_fk
+    foreign key (school_id, class_id)
+    references demo_source.class (school_id, id) on delete cascade
+);
+
+-- The ETL's attendance read is per school and date-windowed on the term, which is exactly this index.
+create index demo_source_attendance_record_school_date_idx
+  on demo_source.attendance_record (school_id, date);

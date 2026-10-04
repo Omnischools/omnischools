@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import { runOversightEtl } from "@/lib/etl/pipeline";
+import { attendanceRateOf } from "@/lib/etl/attendance";
 import {
   DEMO_EMIS_EXTRACT_PATH,
   DEMO_EXAM_COHORTS,
@@ -9,9 +10,11 @@ import {
 } from "@/scripts/seed-demo-data";
 
 /**
- * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure`, `fact_enrolment` AND
- * `fact_performance_exam`, which are ONE run, one verdict and one transaction (see
- * `lib/etl/pipeline.ts`). The third arm files at its own EXAM_COHORT periods, one per sitting year.
+ * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure`, `fact_enrolment`,
+ * `fact_performance_exam` AND `fact_attendance`, which are ONE run, one verdict and one transaction (see
+ * `lib/etl/pipeline.ts`). The third arm files at its own EXAM_COHORT periods, one per sitting year; the
+ * fourth at the TERM periods, one per declared term (it is the first FLOW — pupil-days over a window — so
+ * it is the only arm whose figures may be summed across periods).
  *
  * ── PRIVILEGE ───────────────────────────────────────────────────────────────────────────────────
  * `ANALYTICS_DATABASE_URL` must point at the PRIVILEGED owner/writer (the Direct connection, the same
@@ -176,6 +179,9 @@ async function main(): Promise<void> {
       );
       for (const e of c.byExam) {
         if (e.candidates === 0) continue;
+        // KNOWINGLY left as a float print: the exam arm's stored qualification rate has its own helper
+        // (`qualificationRate`, which returns "0.00" on zero candidates rather than throwing), so it is NOT
+        // the attendance helper, and converting this print is a separate exam-arm tidy, out of H10's scope.
         const rate = ((e.qualified / e.candidates) * 100).toFixed(2);
         console.log(
           `    ${e.exam}: ${e.qualified}/${e.candidates} qualified (${rate}%, sex=ALL, one sitting) ` +
@@ -192,6 +198,40 @@ async function main(): Promise<void> {
             `cohort loses its whole school-entered row-set and is sex='ALL' ONLY`,
         );
     }
+    // ── THE FOURTH ARM, at the TERM periods (one line per DECLARED TERM) ───────────────────────────
+    // The rate printed per term is re-derived HERE from that term's own summed counts — Σpresent ÷
+    // Σenrolled over the roll-up-safe rows — and never averaged from the stored school rates. The counts
+    // are printed BESIDE it because this is the one fact table whose figures are additive across periods:
+    // the ANNUAL rate is Σ of these terms' present over Σ of their enrolled, NOT the mean of these lines.
+    for (const t of report.terms) {
+      // Re-derived through the SAME helper the fact rows store, so this printed national rate rounds
+      // IDENTICALLY to every stored rate it summarises (integer half-away-from-zero = Postgres round()).
+      // A float `(present / enrolled) * 100` here would read 0.01 off a stored rate on exact-half totals.
+      const rate =
+        t.enrolledDays > 0
+          ? `${attendanceRateOf(t.presentDays, t.enrolledDays)}%`
+          : "n/a — no marked pupil-days";
+      console.log(
+        `  ${t.academicYear} TERM ${t.term} (${t.startsOn}…${t.endsOn}) · ${t.sourceGroups} mark groups → ` +
+          `fact_attendance ${t.inserted} inserted (${t.deleted} replaced) across ${t.schoolsComputed} ` +
+          `school(s) · ${t.presentDays}/${t.enrolledDays} pupil-days present (${rate}, class_form IS NULL)` +
+          (t.failures.length > 0
+            ? ` · ${t.failures.length} school(s) failed compute`
+            : "") +
+          (t.noMarks.length > 0 ? ` · ${t.noMarks.length} marked no register` : ""),
+      );
+      if (t.outOfScopeMarks > 0 || t.unmappedMarks > 0)
+        console.log(
+          `    ⓘ ${t.outOfScopeMarks} mark(s) below KG (out of scope) and ${t.unmappedMarks} in an ` +
+            `unmapped class — counted here, in NO stage row`,
+        );
+    }
+    if (report.attendanceOutOfWindowMarks > 0)
+      console.log(
+        `  ⚠ ${report.attendanceOutOfWindowMarks} attendance mark(s) fall in NO declared term window ` +
+          `(holiday marking, a mis-keyed date — or a term this run failed to declare, which would leave ` +
+          `that term stale under a SUCCESS banner)`,
+      );
     if (report.errorText) {
       const line = `  note: ${report.errorText}`;
       if (report.status === "FAILED") console.error(line);
