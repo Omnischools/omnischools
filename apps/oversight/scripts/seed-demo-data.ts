@@ -260,6 +260,40 @@ export interface DemoTerminalExamRow {
   malePassed: number;
 }
 
+/**
+ * ── THE REGISTER (fourth slice, task H10) ───────────────────────────────────────────────────────
+ * A RUN of pupils in one class on one day sharing one mark state — NOT a mark.
+ *
+ * The generator holds RUNS rather than ~680,000 individual marks for the same reason it holds student
+ * GROUPS rather than students, and with one extra property that matters: `fact_attendance` depends on
+ * nothing about a mark except its (class, date, status) COUNT, so a run FULLY DETERMINES every published
+ * figure while leaving WHICH pupil got which state to the loader. `loadDemoSource` expands each run into
+ * real per-pupil rows by rank (`row_number() over (partition by class order by id)`), so the source table
+ * really is one row per pupil per day — `uniq_attendance_student_day` and all — and the ETL really does
+ * aggregate.
+ *
+ * ⚠ THE RANGES WITHIN ONE (class, date) ARE DISJOINT AND THAT IS LOAD-BEARING: two runs covering the same
+ * pupil on the same day would violate `uniq_attendance_student_day`, which is the constraint the whole
+ * rate rests on. The partition is built once, in `statusRunsFor`.
+ */
+export interface DemoAttendanceMarkGroup {
+  schoolId: string;
+  classId: string;
+  /** The CIVIL date of the register. Fixed dates, never derived from the clock. */
+  date: string;
+  status: DemoAttendanceStatus;
+  /** 1-based INCLUSIVE rank range within the class's pupils, ordered by id. */
+  fromRank: number;
+  toRank: number;
+}
+
+export type DemoAttendanceStatus =
+  | "PRESENT"
+  | "ABSENT"
+  | "LATE"
+  | "EXCUSED"
+  | "MEDICAL";
+
 export interface DemoDataset {
   seed: number;
   terms: DemoTerm[];
@@ -271,6 +305,8 @@ export interface DemoDataset {
   classes: DemoClassRow[];
   studentGroups: DemoStudentGroup[];
   terminalExamResults: DemoTerminalExamRow[];
+  /** The register runs — see `DemoAttendanceMarkGroup`. Expanded to one row per pupil-day on load. */
+  attendanceMarks: DemoAttendanceMarkGroup[];
 }
 
 /** The EMIS extract file format — the same `{ as_of_date, rows }` shape as the establishment file. */
@@ -1016,6 +1052,158 @@ function sittingsFor(
   return rows;
 }
 
+// ── the register: attendance marks (fourth slice, task H10) ─────────────────────────────────────
+
+/**
+ * HOW MANY REGISTER DAYS PER TERM THE DEMO MARKS, and the one simplification in this slice's data.
+ *
+ * A real term has 55–65 marked days; the demo marks TWO per term, as fixed day-offsets into the term
+ * window. The reason is volume and nothing else: one day of national marking is ~168,000 pupil-day rows,
+ * so a realistic term would put ~10 million rows in a fixture that is rebuilt several times per test run.
+ *
+ * ⚠ WHAT THE SIMPLIFICATION DOES AND DOES NOT COST. Every RULE the slice encodes is still exercised, and
+ * exercised the same way it will be on prod: the rate's five-state denominator, the LATE-is-present
+ * decision, the class→stage mapping, the stage totals, the term windowing, the FLOW roll-up across terms
+ * and the deterministic `as_of_date` are all independent of HOW MANY days were marked. What it does cost is
+ * MAGNITUDE: demo `enrolled_days` figures are ~2× a class's headcount rather than ~60×, so a reader should
+ * not read the demo's absolute pupil-day counts as plausible national figures. Two days rather than one is
+ * deliberate: with a single day `enrolled_days` would be numerically identical to the class roll, and the
+ * most important thing to understand about this table — that its denominator is MARKED PUPIL-DAYS and not a
+ * headcount — would be invisible in the data.
+ */
+const DEMO_MARK_DAY_OFFSETS = [8, 36] as const;
+
+/**
+ * A register taken on a day NO DECLARED TERM CLAIMS — fixed, in the Christmas break between the two demo
+ * terms (term 1 ends 2025-12-19, term 2 opens 2026-01-12).
+ *
+ * It exists so the "excluded AND TALLIED" half of the term-window ruling is exercised by real demo data
+ * rather than only by a unit test: holiday marking and mis-keyed dates both happen, and a pipeline whose
+ * only treatment of them is a `where` clause reports nothing at all.
+ */
+export const DEMO_OUT_OF_WINDOW_MARK_DATE = "2025-12-29";
+
+/** `+n` civil days on an ISO date, in UTC. No clock, no locale — the artefact must be byte-stable. */
+export function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * ONE CLASS ON ONE DAY, partitioned into DISJOINT status runs — mostly PRESENT, with a realistic tail.
+ *
+ * The mix is grounded rather than uniform (absence is higher in rural schools, which is the direction
+ * Ghana's own reporting shows and the gradient every other generator here uses), and EXCUSED / MEDICAL are
+ * deliberately present in small numbers on most days: they are the two states whose treatment is the whole
+ * Q5 ruling (they stay in the denominator), so a dataset without them could not demonstrate it.
+ *
+ * `allAbsent` is the planted all-ABSENT school: every pupil ABSENT, which is a REAL row with
+ * `enrolled_days > 0`, `present_days = 0` and a rate of 0.00 — and must stay distinguishable from a school
+ * that marked no register at all (which produces NO row).
+ */
+function statusRunsFor(
+  rng: Rng,
+  pupils: number,
+  urban: boolean,
+  allAbsent: boolean,
+): { status: DemoAttendanceStatus; count: number }[] {
+  if (pupils <= 0) return [];
+  if (allAbsent) return [{ status: "ABSENT", count: pupils }];
+  const absent = rng.int(0, Math.max(1, Math.round(pupils * (urban ? 0.1 : 0.16))));
+  const late = rng.int(0, Math.max(1, Math.round(pupils * (urban ? 0.08 : 0.05))));
+  const excused = rng.bool(0.45) ? rng.int(1, 2) : 0;
+  const medical = rng.bool(0.35) ? rng.int(1, 2) : 0;
+  const present = pupils - absent - late - excused - medical;
+  // A tiny class can be fully consumed by the tail; PRESENT is the remainder, never negative, and the
+  // runs always sum to exactly `pupils` so the partition stays a partition.
+  const runs: { status: DemoAttendanceStatus; count: number }[] = [
+    { status: "PRESENT", count: Math.max(0, present) },
+    { status: "LATE", count: late },
+    { status: "EXCUSED", count: excused },
+    { status: "MEDICAL", count: medical },
+    { status: "ABSENT", count: absent },
+  ];
+  let over = runs.reduce((t, r) => t + r.count, 0) - pupils;
+  // Trim from the tail (ABSENT first) rather than from PRESENT, so a clamped tiny class does not become
+  // an implausible all-absent one.
+  for (let i = runs.length - 1; i >= 0 && over > 0; i--) {
+    const take = Math.min(over, runs[i]!.count);
+    runs[i]!.count -= take;
+    over -= take;
+  }
+  return runs.filter((r) => r.count > 0);
+}
+
+/**
+ * ONE SCHOOL'S REGISTERS across the declared terms.
+ *
+ * ⚠ THE PLANTED EDGE CASES, keyed off the school INDEX so they are stable across runs and a reviewer can
+ * find them. Each one is a landmine in Kofi's H10 ruling that would otherwise be exercised only by a
+ * hand-built fixture:
+ *   · index % 109 === 0 → NO MARKS AT ALL IN THE FIRST TERM (and normal marks in the others). The school is
+ *     therefore NOT COMPUTED for that term, is NOT in its delete scope, and KEEPS its prior rows —
+ *     stale-but-honest. It must stay DISTINGUISHABLE from:
+ *   · index % 113 === 0 → ALL MARKS ABSENT IN THE LAST TERM. A REAL row set: enrolled_days > 0,
+ *     present_days = 0, rate 0.00. The most important rows in the table, and the ones a "treat zero as no
+ *     data" reader would hide.
+ *   · index % 127 === 0 → ONE REGISTER DAY OUTSIDE EVERY DECLARED WINDOW (the Christmas break). Excluded
+ *     from every row and TALLIED on the run outcome, never silently dropped.
+ * The OUT_OF_SCOPE (Nursery, index % 97) and UNMAPPED ("Transition Stream", index % 101) classes need no
+ * special handling here: the roster already plants them, registers are marked for every class a school has,
+ * and the ETL tallies their marks without bucketing them.
+ */
+function attendanceFor(
+  rng: Rng,
+  school: DemoSchool,
+  index: number,
+  classes: DemoClassRow[],
+  pupilsByClass: Map<string, number>,
+  terms: readonly DemoTerm[],
+): DemoAttendanceMarkGroup[] {
+  const schoolId = school.operationalSchoolId!;
+  const marks: DemoAttendanceMarkGroup[] = [];
+  const markedClasses = classes.filter((c) => (pupilsByClass.get(c.classId) ?? 0) > 0);
+  if (markedClasses.length === 0) return marks;
+
+  const skipFirstTerm = index % 109 === 0;
+  const allAbsentLastTerm = index % 113 === 0;
+
+  const push = (classId: string, date: string, allAbsent: boolean) => {
+    const pupils = pupilsByClass.get(classId) ?? 0;
+    let rank = 1;
+    for (const run of statusRunsFor(rng, pupils, school.urban, allAbsent)) {
+      marks.push({
+        schoolId,
+        classId,
+        date,
+        status: run.status,
+        fromRank: rank,
+        toRank: rank + run.count - 1,
+      });
+      rank += run.count;
+    }
+  };
+
+  terms.forEach((term, termIndex) => {
+    if (skipFirstTerm && termIndex === 0) return;
+    const allAbsent = allAbsentLastTerm && termIndex === terms.length - 1;
+    for (const offset of DEMO_MARK_DAY_OFFSETS) {
+      const date = addDays(term.startsOn, offset);
+      // Defensive: a term shorter than the offsets would otherwise generate a mark outside its own
+      // window, which would silently become an out-of-window tally instead of a term figure.
+      if (date > term.endsOn) continue;
+      for (const klass of markedClasses) push(klass.classId, date, allAbsent);
+    }
+  });
+
+  // The holiday register — one class, one day, nobody's term.
+  if (index % 127 === 0)
+    push(markedClasses[0]!.classId, DEMO_OUT_OF_WINDOW_MARK_DATE, false);
+
+  return marks;
+}
+
 /**
  * Build the whole dataset in memory. PURE (given a seed) — no DB, no filesystem — so a test can
  * assert hand-computed sums against exactly the rows the loader is about to write.
@@ -1058,6 +1246,7 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
   const classes: DemoClassRow[] = [];
   const studentGroups: DemoStudentGroup[] = [];
   const terminalExamResults: DemoTerminalExamRow[] = [];
+  const attendanceMarks: DemoAttendanceMarkGroup[] = [];
   for (const school of schools) {
     if (!school.onSchoolup) continue; // no tenant → no operational census → no fact row
     const schoolIndex = Number(school.operationalSchoolId!.slice(-12));
@@ -1102,6 +1291,47 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     terminalExamResults.push(...sittingsFor(rng, school, schoolIndex, DEMO_EXAM_COHORTS));
   }
 
+  // ── the REGISTERS: a SEPARATE PASS, WITH ITS OWN RNG ──────────────────────────────────────────
+  //
+  // ⚠ WHY THIS IS NOT IN THE LOOP ABOVE, where it would read more naturally. Every draw from `rng`
+  // shifts the stream for everything after it, so generating marks inside that loop would change EVERY
+  // facilities census, EVERY roster and EVERY sitting of EVERY subsequent school — i.e. adding the fourth
+  // arm would silently move all three ALREADY-SHIPPED arms' demo figures, and a reviewer comparing
+  // branches would have hundreds of unexplained differences to read past. A second, independently seeded
+  // generator keeps this slice's blast radius to this slice's own data.
+  //
+  // The pupil count per class comes from the roster just generated and INCLUDES NON-ACTIVE pupils:
+  // attendance does NOT filter by pupil status (a withdrawn child's marks from the weeks she WAS in school
+  // are real pupil-days), which is exactly the ruling the ETL implements.
+  const attendanceRng = rngOf(seed ^ 0x4154_5445); // "ATTE"
+  const classesBySchool = new Map<string, DemoClassRow[]>();
+  for (const klass of classes) {
+    const held = classesBySchool.get(klass.schoolId);
+    if (held) held.push(klass);
+    else classesBySchool.set(klass.schoolId, [klass]);
+  }
+  const pupilsByClass = new Map<string, number>();
+  for (const group of studentGroups) {
+    if (!group.classId) continue; // a class-less child is on nobody's register
+    pupilsByClass.set(
+      group.classId,
+      (pupilsByClass.get(group.classId) ?? 0) + group.headcount,
+    );
+  }
+  for (const school of schools) {
+    if (!school.onSchoolup) continue; // no tenant → no operational register → no fact row
+    attendanceMarks.push(
+      ...attendanceFor(
+        attendanceRng,
+        school,
+        Number(school.operationalSchoolId!.slice(-12)),
+        classesBySchool.get(school.operationalSchoolId!) ?? [],
+        pupilsByClass,
+        DEMO_TERMS,
+      ),
+    );
+  }
+
   return {
     seed,
     terms: [...DEMO_TERMS],
@@ -1112,6 +1342,7 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     classes,
     studentGroups,
     terminalExamResults,
+    attendanceMarks,
   };
 }
 
@@ -1162,6 +1393,7 @@ export async function loadDemoSource(
   classes: number;
   students: number;
   terminalExamResults: number;
+  attendanceMarks: number;
 }> {
   await sql.unsafe(readFileSync(schemaSqlPath, "utf8"));
 
@@ -1280,12 +1512,55 @@ export async function loadDemoSource(
     )}`;
   }
 
+  // ---- the registers: ONE ROW PER PUPIL PER DAY, expanded from the runs by RANK ----
+  // The run says "pupils 1–31 of this class were PRESENT on this date"; the rank comes from
+  // `row_number() over (partition by (school, class) order by id)`, so each run lands on a DISJOINT set of
+  // real pupils and `uniq_attendance_student_day` holds. The COUNTS — the only thing the ETL reads — are
+  // fully determined by the generated dataset, so every expected figure in the test suite is hand-computable
+  // in TypeScript even though WHICH pupil got which state is not.
+  //
+  // The ranking is materialised ONCE into a session-temporary table rather than recomputed per chunk: the
+  // window function scans every pupil in the country, and doing that once per 5,000-run chunk made the
+  // demo load several times slower than the whole rest of the fixture.
+  await sql`
+    create temporary table demo_ranked_pupil as
+      select school_id, class_id, id,
+             row_number() over (partition by school_id, class_id order by id) as rank
+        from demo_source.students
+       where class_id is not null`;
+  await sql`create index on demo_ranked_pupil (school_id, class_id, rank)`;
+  const MARK_CHUNK = 20_000;
+  for (let i = 0; i < dataset.attendanceMarks.length; i += MARK_CHUNK) {
+    const chunk = dataset.attendanceMarks.slice(i, i + MARK_CHUNK).map((m) => ({
+      school_id: m.schoolId,
+      class_id: m.classId,
+      date: m.date,
+      status: m.status,
+      from_rank: m.fromRank,
+      to_rank: m.toRank,
+    }));
+    await sql`
+      insert into demo_source.attendance_record (school_id, student_id, class_id, date, status)
+      select g.school_id, p.id, g.class_id, g.date, g.status::demo_source.attendance_status
+        from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
+          as g(school_id uuid, class_id uuid, date date, status text,
+               from_rank int, to_rank int)
+        join demo_ranked_pupil p
+          on p.school_id = g.school_id and p.class_id = g.class_id
+         and p.rank between g.from_rank and g.to_rank`;
+  }
+  await sql`drop table demo_ranked_pupil`;
+
   return {
     periods: dataset.periods.length,
     facilities: dataset.facilities.length,
     classes: dataset.classes.length,
     students: dataset.studentGroups.reduce((t, g) => t + g.headcount, 0),
     terminalExamResults: dataset.terminalExamResults.length,
+    attendanceMarks: dataset.attendanceMarks.reduce(
+      (t, m) => t + (m.toRank - m.fromRank + 1),
+      0,
+    ),
   };
 }
 
@@ -1326,6 +1601,11 @@ async function main(): Promise<void> {
       `✓ demo_source → ${loaded.terminalExamResults} terminal_exam_result rows across ` +
         `${dataset.examCohorts.length} sitting year(s) ` +
         `(${dataset.examCohorts.map((c) => c.sittingYear).join(", ")}) — BECE and WASSCE`,
+    );
+    console.log(
+      `✓ demo_source → ${loaded.attendanceMarks} attendance_record rows ` +
+        `(one per pupil per marked day, ${DEMO_MARK_DAY_OFFSETS.length} register days per term ` +
+        `across ${dataset.terms.length} terms, plus a holiday register nobody's term claims)`,
     );
   } finally {
     await sql.end({ timeout: 5 });
