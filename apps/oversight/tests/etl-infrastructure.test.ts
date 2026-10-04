@@ -13,7 +13,7 @@ import {
   type DemoSchool,
   productLineFor,
 } from "@/scripts/seed-demo-data";
-import { runInfrastructureEtl, type EtlRunReport } from "@/lib/etl/pipeline";
+import { runOversightEtl, type EtlRunReport } from "@/lib/etl/pipeline";
 import {
   InfrastructureTransformError,
   decomposeFacilitiesSnapshot,
@@ -77,7 +77,7 @@ function periodsOption() {
 }
 
 async function runEtl(d: DemoDataset = dataset): Promise<EtlRunReport> {
-  return runInfrastructureEtl(sql, {
+  return runOversightEtl(sql, {
     emisExtractText: extractText(d),
     periods: periodsOption(),
     sourceSchema: "demo_source",
@@ -890,7 +890,7 @@ describe("per-school isolation and the failure policy (scope §3, Q11 interim ru
     expect(before).toBeGreaterThan(0);
 
     await expect(
-      runInfrastructureEtl(sql, {
+      runOversightEtl(sql, {
         emisExtractText: extractText(dataset),
         periods: periodsOption(),
         sourceSchema: "no_such_source_schema",
@@ -1258,7 +1258,7 @@ describe("the delete scope is bounded, not period-wide (scope §3's named trap)"
     // ONE row, not one per term — the ANNUAL grain.
     expect(await countRows()).toBe(1);
 
-    const report = await runInfrastructureEtl(sql, {
+    const report = await runOversightEtl(sql, {
       emisExtractText: withoutIt,
       periods: periodsOption(),
       sourceSchema: "demo_source",
@@ -1749,7 +1749,7 @@ describe("a FAILED run writes NOTHING — the banner's whole justification (Dex 
       await sql`update demo_source.facilities_snapshot set water_source = 'RIVER'
                  where id = ${victim[0]!.id}::uuid`;
 
-      const failed = await runInfrastructureEtl(sql, {
+      const failed = await runOversightEtl(sql, {
         emisExtractText: extractText(dataset),
         periods: periodsOption(),
         sourceSchema: "demo_source",
@@ -1799,7 +1799,7 @@ describe("a FAILED run writes NOTHING — the banner's whole justification (Dex 
       await sql`update demo_source.facilities_snapshot set water_source = 'RIVER'
                  where id = ${victim[0]!.id}::uuid`;
 
-      const gapped = await runInfrastructureEtl(sql, {
+      const gapped = await runOversightEtl(sql, {
         emisExtractText: extractText(dataset),
         periods: periodsOption(),
         sourceSchema: "demo_source",

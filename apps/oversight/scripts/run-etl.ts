@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
-import { runInfrastructureEtl } from "@/lib/etl/pipeline";
+import { runOversightEtl } from "@/lib/etl/pipeline";
 import { DEMO_EMIS_EXTRACT_PATH, DEMO_TERMS } from "@/scripts/seed-demo-data";
 
 /**
- * THE ETL ENTRY POINT for the `fact_infrastructure` slice.
+ * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure` AND `fact_enrolment`,
+ * which are ONE run, one verdict and one transaction (see `lib/etl/pipeline.ts`).
  *
  * ── PRIVILEGE ───────────────────────────────────────────────────────────────────────────────────
  * `ANALYTICS_DATABASE_URL` must point at the PRIVILEGED owner/writer (the Direct connection, the same
@@ -17,7 +18,7 @@ import { DEMO_EMIS_EXTRACT_PATH, DEMO_TERMS } from "@/scripts/seed-demo-data";
  * Here, in `apps/oversight/scripts/`, alongside every other loader. Spec §7 suggests a cron in
  * `apps/web`; this slice does not settle that, and nothing about the decision is baked in: the
  * pipeline is a plain function over a `postgres.Sql`, so a cron in either app, or a generic HTTP
- * POST + shared-secret job runner, calls the same `runInfrastructureEtl()`. Scheduling is task H21.
+ * POST + shared-secret job runner, calls the same `runOversightEtl()`. Scheduling is task H21.
  *
  * ── THE SOURCE SCHEMA ARGUMENT ──────────────────────────────────────────────────────────────────
  * `--source-schema` defaults to `demo_source`, the operational stand-in the demo generator writes
@@ -53,7 +54,7 @@ async function main(): Promise<void> {
     "postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev";
   const sql = postgres(url, { max: 1, prepare: false });
   try {
-    const report = await runInfrastructureEtl(sql, {
+    const report = await runOversightEtl(sql, {
       emisExtractText: readFileSync(args.extract, "utf8"),
       periods: DEMO_TERMS.map((t) => ({
         academicYear: t.academicYear,
@@ -119,6 +120,30 @@ async function main(): Promise<void> {
             ? ` · ${p.noSourceRow.length} filed no census all year`
             : ""),
       );
+      // THE SECOND FACT TABLE, at the SAME ANNUAL period. `headcount` is the roll-up-safe figure —
+      // `sex = 'ALL' AND class_form IS NULL` — printed with that filter stated, because the number a
+      // reader gets without it is ~6× too big and still internally consistent.
+      const e = p.enrolment;
+      console.log(
+        `  ${p.academicYear} ANNUAL · roster ${e.sourceGroups} groups → fact_enrolment ` +
+          `${e.inserted} inserted (${e.deleted} replaced) · ${e.headcount} on roll ` +
+          `(sex=ALL, class_form IS NULL) across ${e.schoolsComputed} school(s)` +
+          (e.failures.length > 0
+            ? ` · ${e.failures.length} school(s) failed compute`
+            : "") +
+          (e.noRoster.length > 0 ? ` · ${e.noRoster.length} returned no roster` : ""),
+      );
+      if (e.outOfScopeHeadcount > 0 || e.unmappedHeadcount > 0)
+        console.log(
+          `    ⓘ ${e.outOfScopeHeadcount} child(ren) below KG (out of scope) and ` +
+            `${e.unmappedHeadcount} in an unmapped class — counted here, in NO stage row`,
+        );
+      if (e.stageDrift.length > 0)
+        console.log(
+          `    ⚠ ${e.stageDrift.length} school(s) teach a stage their register school_type does not ` +
+            `account for (e.g. ${e.stageDrift[0]!.emisSchoolId} is ${String(e.stageDrift[0]!.schoolType)} ` +
+            `and teaches ${e.stageDrift[0]!.stages.join("/")})`,
+        );
     }
     if (report.errorText) {
       const line = `  note: ${report.errorText}`;

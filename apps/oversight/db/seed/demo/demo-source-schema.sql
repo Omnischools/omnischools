@@ -1,8 +1,8 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- `demo_source` — THE OPERATIONAL STAND-IN FOR THE INCREMENT-H DEMO.
 --
--- WHAT THIS IS. Two tables standing in for the real operational schema in apps/web
--- (`db/schema/facilities-snapshot.ts` and `db/schema/periods.ts`). The demo generator writes
+-- WHAT THIS IS. Four tables standing in for the real operational schema in apps/web
+-- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts` and `db/schema/students.ts`). The demo generator writes
 -- OPERATIONAL-SHAPED rows here, and the ETL transform reads them and performs the real
 -- decomposition — booleans → has_*_count, the three CHECK families → one 0/1 count per allowed
 -- value, nullable detail → *_reporting_count denominators. Nothing in the demo hand-seeds a fact
@@ -22,6 +22,25 @@
 --     facilities_snapshot — none; all columns are present, including the two person-identifying ones
 --                           (`captured_by`, `caterer_name`) which exist here precisely so the
 --                           transform can be SEEN not to carry them across.
+--     class               — everything except the per-school configuration the enrolment ETL has no
+--                           use for (`programme`, `class_teacher_user_id`, `target_capacity`,
+--                           `created_at`). `level` and `name` ARE the stage mapping's only inputs.
+--     students            — ⚠ A DELIBERATELY RADICAL SUBSET, AND THE OPPOSITE POSTURE TO
+--                           facilities_snapshot's. The real table carries `first_name`, `last_name`,
+--                           `other_names`, `student_code`, `date_of_birth`, `household_id`,
+--                           `stpshs_ref`, `house_id`, `current_bunk_id`, `programme`, `residency`,
+--                           `enrolled_on`, `admission_application_id`. NONE of them is here.
+--                           For the census that was the right call — the person-identifying columns
+--                           were INCLUDED so the transform could be seen not to carry them. A ROSTER
+--                           is different in kind: `students` is the most person-identifying table in
+--                           the estate, every one of those columns names a CHILD, and the enrolment
+--                           ETL's allow-list (`lib/etl/enrolment-source.ts`) reads exactly six
+--                           columns. Omitting the rest makes the allow-list STRUCTURAL in the demo —
+--                           a reader that reached for `date_of_birth` would fail here rather than
+--                           quietly succeed — which is a stronger statement than a passing test.
+--                           The omission is also the one thing that CANNOT hide a prod defect: the
+--                           reader names its six columns explicitly, so columns absent here are
+--                           columns it never mentions.
 --   FKs that reach tables this stand-in does not carry (ref_school, ref_user,
 --   ref_academic_period_config) are dropped; the intra-tenant composite FK between the two tables
 --   below is kept, because that one is load-bearing for the grain.
@@ -166,3 +185,65 @@ create table demo_source.facilities_snapshot (
     foreign key (school_id, period_id)
     references demo_source.academic_period (school_id, period_id) on delete cascade
 );
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- THE ROSTER (increment H second slice, task H9) — `class` + `students`, the source of
+-- `fact_enrolment`.
+--
+-- ⚠ THE ROSTER HAS NO PERIOD, and the absence of any `period_id` below is that ruling made physical.
+-- `students` is the CURRENT state of the school — there is no per-term roster filing operationally —
+-- so the ETL counts who is on roll now and files the answer at ANNUAL grain under the run's academic
+-- year. A `period_id` here would be an invented key, and joining it would multiply every child by the
+-- number of periods the school has configured.
+--
+-- The two ENUM TYPES are created in this schema rather than reusing the analytics `ov_sex`: the
+-- operational columns really are enums (apps/web `sex`, `student_status`) with DIFFERENT members —
+-- operational sex has NO 'ALL' member, because 'ALL' is SYNTHESISED by the ETL (MALE + FEMALE) and
+-- must never be readable from the source. Modelling them as text would hide exactly that distinction,
+-- and `lib/etl/enrolment-source.ts` casts `::text` at the boundary the way it would have to on prod.
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+
+create type demo_source.sex as enum ('MALE', 'FEMALE');
+create type demo_source.student_status as enum
+  ('ACTIVE', 'INACTIVE', 'GRADUATED', 'WITHDRAWN', 'TRANSFERRED');
+
+-- Operational `class` (apps/web/db/schema/students.ts:30), minus the per-school configuration the
+-- enrolment ETL does not read. `level` is NULLABLE upstream and nullable here, because that nullability
+-- IS the reason the stage mapping is "level first, then name" (lib/etl/stage.ts).
+create table demo_source.class (
+  id        uuid primary key default gen_random_uuid(),
+  school_id uuid not null,
+  name      text not null,
+  level     text,
+  active    boolean not null default true,
+  constraint uniq_class_per_school unique (school_id, name),
+  -- The real `class_tenant_uk` — the composite-FK target that makes a cross-tenant class reference
+  -- structurally impossible. Load-bearing: the ETL's LEFT JOIN is on (school_id, class_id).
+  constraint class_tenant_uk unique (school_id, id)
+);
+
+-- Operational `students` (apps/web/db/schema/students.ts:127) reduced to the SIX allow-listed columns
+-- plus the tenant key — see the header for why this stand-in omits rather than includes. Every column
+-- here is one `lib/etl/enrolment-source.ts` actually selects.
+create table demo_source.students (
+  id                  uuid primary key default gen_random_uuid(),
+  school_id           uuid not null,
+  sex                 demo_source.sex not null,
+  status              demo_source.student_status not null default 'ACTIVE',
+  -- The display fallback the school typed. It is the ONLY statement of a year group that exists for a
+  -- child with no class, which is why the ETL reads it rather than dropping that child.
+  current_class_label text,
+  class_id            uuid,
+  constraint students_tenant_uk unique (school_id, id),
+  -- The real composite school-scoped FK — the class must belong to the same tenant. NO `on delete`
+  -- clause, matching the real constraint in apps/web/db/schema/students.ts (NO ACTION): deleting a
+  -- class a child still points at is REFUSED, not allowed to delete the child with it.
+  constraint students_class_fk
+    foreign key (school_id, class_id)
+    references demo_source.class (school_id, id)
+);
+
+-- The ETL's roster read is per school and groups by class label; both of these mirror what the real
+-- `students_school_idx` / class lookup give it operationally.
+create index demo_source_students_school_idx on demo_source.students (school_id);
+create index demo_source_class_school_idx on demo_source.class (school_id);

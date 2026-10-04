@@ -377,7 +377,13 @@ export function assertRowInvariants(
  * THREE PROPERTIES, all of them deliberate:
  *
  *  1. THE DELETE IS BOUNDED BY `(period_id, jurisdiction_id ∈ rowsToWrite)` — never period-wide. A
- *     period-wide delete would remove the rows of schools that have since dropped out of the inclusion
+ *     scope DERIVED FROM THE ROWS, which is equivalent to `fact_enrolment`'s separately-passed
+ *     "schools this run computed" scope ONLY because this module emits EXACTLY ONE ROW PER COMPUTED
+ *     SCHOOL: a computed school is always present in `rows`, so the two scopes cannot differ. A future
+ *     WIDER-GRAIN fact (one whose school can legitimately compute to zero rows, as enrolment's can)
+ *     MUST NOT copy this rows-derived form — that school would fall out of the scope and keep last
+ *     night's figures for ever. Pass the computed-school list explicitly, as `writeEnrolmentFactsTx`
+ *     does. A period-wide delete would remove the rows of schools that have since dropped out of the inclusion
  *     set, or whose compute failed this run, and never re-insert them: the district total would simply
  *     SHRINK, with no error and no empty table to notice. A school that failed compute therefore KEEPS
  *     ITS PRIOR ROW — stale-but-honest, the same rule a FAILED run follows.
@@ -409,86 +415,95 @@ export interface InfrastructureWriteResult {
   perPeriod: { periodId: string; deleted: number; inserted: number }[];
 }
 
-export async function writeInfrastructureFacts(
-  sql: postgres.Sql,
+/**
+ * The write, INSIDE A CALLER-SUPPLIED TRANSACTION.
+ *
+ * Extracted so that one run's `fact_infrastructure` AND `fact_enrolment` writes are ONE transaction
+ * (`lib/etl/pipeline.ts` step 5c). With a transaction per fact table, a throw while writing enrolment
+ * would leave infrastructure committed under a FAILED banner — the same half-published night property
+ * 3 above rules out within one fact table, reappearing between two of them. The standalone
+ * `writeInfrastructureFacts` below keeps its own transaction for direct callers (the tests, and any
+ * future single-fact path).
+ */
+export async function writeInfrastructureFactsTx(
+  tx: postgres.TransactionSql,
   batches: InfrastructureWriteBatch[],
 ): Promise<InfrastructureWriteResult> {
-  return (await sql.begin(async (tx) => {
-    const perPeriod: InfrastructureWriteResult["perPeriod"] = [];
-    let totalDeleted = 0;
-    let totalInserted = 0;
+  const perPeriod: InfrastructureWriteResult["perPeriod"] = [];
+  let totalDeleted = 0;
+  let totalInserted = 0;
 
-    for (const batch of batches) {
-      const { periodId, rows: rowsToWrite } = batch;
-      const jurisdictionIds = rowsToWrite.map((r) => r.jurisdictionId);
+  for (const batch of batches) {
+    const { periodId, rows: rowsToWrite } = batch;
+    const jurisdictionIds = rowsToWrite.map((r) => r.jurisdictionId);
 
-      let deleted = 0;
-      if (jurisdictionIds.length > 0) {
-        const removed = await tx`
+    let deleted = 0;
+    if (jurisdictionIds.length > 0) {
+      const removed = await tx`
           delete from fact_infrastructure
            where period_id = ${periodId}::uuid
              and jurisdiction_id = any(${jurisdictionIds}::uuid[])`;
-        deleted = removed.count;
-      }
+      deleted = removed.count;
+    }
 
-      let inserted = 0;
-      const CHUNK = 500;
-      for (let i = 0; i < rowsToWrite.length; i += CHUNK) {
-        const chunk = rowsToWrite.slice(i, i + CHUNK).map((r) => ({
-          jurisdiction_id: r.jurisdictionId,
-          period_id: r.periodId,
-          schools_reporting: r.schoolsReporting,
-          classrooms_total: r.classroomsTotal,
-          classrooms_good: r.classroomsGood,
-          classrooms_repair: r.classroomsRepair,
-          latrines_boys: r.latrinesBoys,
-          latrines_girls: r.latrinesGirls,
-          latrines_staff: r.latrinesStaff,
-          student_desks_usable: r.studentDesksUsable,
-          student_desks_broken: r.studentDesksBroken,
-          teacher_desks: r.teacherDesks,
-          chalkboards: r.chalkboards,
-          whiteboards: r.whiteboards,
-          projectors: r.projectors,
-          computers_total: r.computersTotal,
-          computers_working: r.computersWorking,
-          library_book_count: r.libraryBookCount,
-          has_electricity_count: r.hasElectricityCount,
-          has_water_count: r.hasWaterCount,
-          has_handwashing_count: r.hasHandwashingCount,
-          has_library_count: r.hasLibraryCount,
-          has_ict_lab_count: r.hasIctLabCount,
-          has_internet_count: r.hasInternetCount,
-          gsfp_participating_count: r.gsfpParticipatingCount,
-          has_kitchen_count: r.hasKitchenCount,
-          water_borehole_count: r.waterBoreholeCount,
-          water_pipe_count: r.waterPipeCount,
-          water_well_count: r.waterWellCount,
-          water_none_count: r.waterNoneCount,
-          electricity_grid_count: r.electricityGridCount,
-          electricity_solar_count: r.electricitySolarCount,
-          electricity_generator_count: r.electricityGeneratorCount,
-          electricity_none_count: r.electricityNoneCount,
-          latrine_wc_count: r.latrineWcCount,
-          latrine_kvip_count: r.latrineKvipCount,
-          latrine_pit_count: r.latrinePitCount,
-          latrine_none_count: r.latrineNoneCount,
-          computers_reporting_count: r.computersReportingCount,
-          library_books_reporting_count: r.libraryBooksReportingCount,
-          furniture_reporting_count: r.furnitureReportingCount,
-          source: r.source,
-          as_of_date: r.asOfDate,
-          etl_run_id: r.etlRunId,
-        }));
-        const result = await tx`insert into fact_infrastructure ${tx(chunk)}`;
-        inserted += result.count;
-      }
+    let inserted = 0;
+    const CHUNK = 500;
+    for (let i = 0; i < rowsToWrite.length; i += CHUNK) {
+      const chunk = rowsToWrite.slice(i, i + CHUNK).map((r) => ({
+        jurisdiction_id: r.jurisdictionId,
+        period_id: r.periodId,
+        schools_reporting: r.schoolsReporting,
+        classrooms_total: r.classroomsTotal,
+        classrooms_good: r.classroomsGood,
+        classrooms_repair: r.classroomsRepair,
+        latrines_boys: r.latrinesBoys,
+        latrines_girls: r.latrinesGirls,
+        latrines_staff: r.latrinesStaff,
+        student_desks_usable: r.studentDesksUsable,
+        student_desks_broken: r.studentDesksBroken,
+        teacher_desks: r.teacherDesks,
+        chalkboards: r.chalkboards,
+        whiteboards: r.whiteboards,
+        projectors: r.projectors,
+        computers_total: r.computersTotal,
+        computers_working: r.computersWorking,
+        library_book_count: r.libraryBookCount,
+        has_electricity_count: r.hasElectricityCount,
+        has_water_count: r.hasWaterCount,
+        has_handwashing_count: r.hasHandwashingCount,
+        has_library_count: r.hasLibraryCount,
+        has_ict_lab_count: r.hasIctLabCount,
+        has_internet_count: r.hasInternetCount,
+        gsfp_participating_count: r.gsfpParticipatingCount,
+        has_kitchen_count: r.hasKitchenCount,
+        water_borehole_count: r.waterBoreholeCount,
+        water_pipe_count: r.waterPipeCount,
+        water_well_count: r.waterWellCount,
+        water_none_count: r.waterNoneCount,
+        electricity_grid_count: r.electricityGridCount,
+        electricity_solar_count: r.electricitySolarCount,
+        electricity_generator_count: r.electricityGeneratorCount,
+        electricity_none_count: r.electricityNoneCount,
+        latrine_wc_count: r.latrineWcCount,
+        latrine_kvip_count: r.latrineKvipCount,
+        latrine_pit_count: r.latrinePitCount,
+        latrine_none_count: r.latrineNoneCount,
+        computers_reporting_count: r.computersReportingCount,
+        library_books_reporting_count: r.libraryBooksReportingCount,
+        furniture_reporting_count: r.furnitureReportingCount,
+        source: r.source,
+        as_of_date: r.asOfDate,
+        etl_run_id: r.etlRunId,
+      }));
+      const result = await tx`insert into fact_infrastructure ${tx(chunk)}`;
+      inserted += result.count;
+    }
 
-      // THE POST-INSERT DUPLICATE ASSERTION (scope §3). `fact_infrastructure` has a grain UNIQUE so a
-      // duplicate would already have raised — this runs anyway, because it is the assertion the eight
-      // PK-only fact tables will need verbatim and the pattern is being set here, in the slice whose
-      // job is to set it. Inside the transaction, so tripping it rolls the whole run back.
-      const dupes = await tx<{ n: number }[]>`
+    // THE POST-INSERT DUPLICATE ASSERTION (scope §3). `fact_infrastructure` has a grain UNIQUE so a
+    // duplicate would already have raised — this runs anyway, because it is the assertion the eight
+    // PK-only fact tables will need verbatim and the pattern is being set here, in the slice whose
+    // job is to set it. Inside the transaction, so tripping it rolls the whole run back.
+    const dupes = await tx<{ n: number }[]>`
         select count(*)::int as n from (
           select jurisdiction_id, period_id
             from fact_infrastructure
@@ -496,18 +511,27 @@ export async function writeInfrastructureFacts(
            group by jurisdiction_id, period_id
           having count(*) > 1
         ) d`;
-      if ((dupes[0]?.n ?? 0) > 0)
-        throw new Error(
-          `fact_infrastructure has ${dupes[0]!.n} duplicated grain key(s) for period ${periodId}. ` +
-            "A duplicate silently DOUBLES every roll-up above it, and the result is internally " +
-            "consistent, so it is invisible at every tier.",
-        );
+    if ((dupes[0]?.n ?? 0) > 0)
+      throw new Error(
+        `fact_infrastructure has ${dupes[0]!.n} duplicated grain key(s) for period ${periodId}. ` +
+          "A duplicate silently DOUBLES every roll-up above it, and the result is internally " +
+          "consistent, so it is invisible at every tier.",
+      );
 
-      perPeriod.push({ periodId, deleted, inserted });
-      totalDeleted += deleted;
-      totalInserted += inserted;
-    }
+    perPeriod.push({ periodId, deleted, inserted });
+    totalDeleted += deleted;
+    totalInserted += inserted;
+  }
 
-    return { deleted: totalDeleted, inserted: totalInserted, perPeriod };
-  })) as unknown as InfrastructureWriteResult;
+  return { deleted: totalDeleted, inserted: totalInserted, perPeriod };
+}
+
+/** The standalone form — its OWN transaction, for direct callers. The pipeline uses the `…Tx` form. */
+export async function writeInfrastructureFacts(
+  sql: postgres.Sql,
+  batches: InfrastructureWriteBatch[],
+): Promise<InfrastructureWriteResult> {
+  return (await sql.begin(async (tx) =>
+    writeInfrastructureFactsTx(tx as unknown as postgres.TransactionSql, batches),
+  )) as unknown as InfrastructureWriteResult;
 }

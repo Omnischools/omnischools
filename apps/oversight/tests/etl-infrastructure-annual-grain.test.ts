@@ -8,7 +8,7 @@ import {
   loadDemoSource,
   type DemoDataset,
 } from "@/scripts/seed-demo-data";
-import { runInfrastructureEtl } from "@/lib/etl/pipeline";
+import { runOversightEtl } from "@/lib/etl/pipeline";
 import { annualPeriodSpecs, refreshPeriods } from "@/lib/etl/dimensions";
 
 /**
@@ -62,7 +62,7 @@ const TIED = [
 ];
 
 async function runEtl() {
-  return runInfrastructureEtl(sql, {
+  return runOversightEtl(sql, {
     emisExtractText: JSON.stringify(emisExtractFor(dataset)),
     periods: DEMO_TERMS.map((t) => ({
       academicYear: t.academicYear,

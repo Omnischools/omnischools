@@ -208,12 +208,49 @@ function periodLabelFor(productLine: "BASIC" | "SENIOR", periodNumber: number): 
   return productLine === "SENIOR" ? `Semester ${periodNumber}` : `Term ${periodNumber}`;
 }
 
+/**
+ * ── THE ROSTER (second slice, task H9) ──────────────────────────────────────────────────────────
+ * Operational-shaped `class` rows. ONLY the columns the stand-in carries (see
+ * db/seed/demo/demo-source-schema.sql): the enrolment ETL reads `level` and `name` and nothing else.
+ */
+export interface DemoClassRow {
+  schoolId: string;
+  classId: string;
+  /** `class.name` — "JHS 1 A". The fallback the stage mapping uses when `level` is null. */
+  name: string;
+  /** `class.level` — "JHS 1". NULLABLE, exactly as upstream, and null on the unparseable edge class. */
+  level: string | null;
+  active: boolean;
+}
+
+/**
+ * A COUNT of students sharing a (class, label, sex, status) key — not a student.
+ *
+ * The generator holds GROUPS rather than ~170,000 individual rows for two reasons, and the second is
+ * the important one: a group is all the demo needs (the stand-in carries no name, no DOB, no student
+ * code — see the schema header), and keeping the dataset a few thousand objects keeps
+ * `generateDemoDataset()` cheap enough to call repeatedly in tests. `loadDemoSource` expands each
+ * group into real individual rows with `generate_series`, so the SOURCE TABLE really is one row per
+ * child and the ETL really does aggregate.
+ */
+export interface DemoStudentGroup {
+  schoolId: string;
+  /** NULL for the deliberate "admitted but not placed" case — the stage comes from the label then. */
+  classId: string | null;
+  currentClassLabel: string | null;
+  sex: "MALE" | "FEMALE";
+  status: "ACTIVE" | "INACTIVE" | "GRADUATED" | "WITHDRAWN" | "TRANSFERRED";
+  headcount: number;
+}
+
 export interface DemoDataset {
   seed: number;
   terms: DemoTerm[];
   schools: DemoSchool[];
   periods: DemoOperationalPeriod[];
   facilities: DemoFacilitiesRow[];
+  classes: DemoClassRow[];
+  studentGroups: DemoStudentGroup[];
 }
 
 /** The EMIS extract file format — the same `{ as_of_date, rows }` shape as the establishment file. */
@@ -274,6 +311,11 @@ export function demoOperationalSchoolId(index: number): string {
 /** The school's OWN period uuid for a term — per-school, as operational periods really are. */
 export function demoOperationalPeriodId(index: number, term: number): string {
   return `b100000${term}-0000-4000-8000-${pad12(index)}`;
+}
+
+/** The operational class uuid for class #n of school #index. Index-derived, so it is run-stable. */
+export function demoOperationalClassId(index: number, classIndex: number): string {
+  return `c1000000-0000-4000-8000-${pad12(index * 100 + classIndex)}`;
 }
 
 // ── generation ──────────────────────────────────────────────────────────────────────────────────
@@ -611,6 +653,230 @@ function nextTermCensus(
   };
 }
 
+// ── the roster: classes and students (second slice, task H9) ────────────────────────────────────
+
+/**
+ * THE LABELLING STYLES A SCHOOL MIGHT USE, and the reason the roster generator exists in this shape.
+ *
+ * `class.level` is PER-SCHOOL FREE TEXT. Ghana's schools really do write the same year group three
+ * different ways — "Primary 4", "Class 4" and "Basic 4" are one cohort — and GES designates JHS 1–3 as
+ * "Basic 7–9", which is the single most dangerous label in the set: read naively it files a 13-year-old
+ * under PRIMARY, whose GSS population band is 6–11 (see `lib/etl/stage.ts`). A generator that emitted
+ * only the canonical "Primary N" / "JHS N" labels would leave every one of those rules unexercised by
+ * demo data and tested only by a unit test — so each school picks a style and keeps it.
+ */
+const PRIMARY_STYLES = ["Primary", "Class", "Basic"] as const;
+const JHS_STYLES = ["JHS", "JSS", "Basic"] as const;
+const SHS_STYLES = ["Form", "SHS"] as const;
+
+function primaryLevel(style: (typeof PRIMARY_STYLES)[number], n: number): string {
+  return `${style} ${n}`;
+}
+
+/** JHS 1–3 under the school's style — including the "Basic 7–9" voice (JHS n → Basic n+6). */
+function jhsLevel(style: (typeof JHS_STYLES)[number], n: number): string {
+  return style === "Basic" ? `Basic ${n + 6}` : `${style} ${n}`;
+}
+
+function shsLevel(style: (typeof SHS_STYLES)[number], n: number): string {
+  return `${style} ${n}`;
+}
+
+/** Realistic Ghanaian class sizes, urban-skewed and bigger up the ladder. */
+function classSize(
+  rng: Rng,
+  urban: boolean,
+  tier: "KG" | "PRIMARY" | "JHS" | "SHS",
+): number {
+  if (tier === "KG") return urban ? rng.int(22, 44) : rng.int(14, 32);
+  if (tier === "PRIMARY") return urban ? rng.int(26, 48) : rng.int(16, 38);
+  if (tier === "JHS") return urban ? rng.int(30, 52) : rng.int(18, 42);
+  return urban ? rng.int(34, 58) : rng.int(24, 46);
+}
+
+/**
+ * ONE SCHOOL'S ROSTER: its classes, and an ACTIVE student group per class per sex.
+ *
+ * WHAT IS DELIBERATELY IMPERFECT HERE, because each imperfection is a pipeline rule that would
+ * otherwise be exercised only by a hand-built fixture (they are keyed off the school INDEX, so they are
+ * stable across runs and a reviewer can find them):
+ *   · a NURSERY class (index % 97)        → the OUT_OF_SCOPE tally: real children, below KG, in no stage
+ *   · an UNPARSEABLE class (index % 101)  → the UNMAPPED tally: level NULL, name "Transition Stream"
+ *   · class_id-NULL students (index % 89) → counted from `current_class_label` ("JHS 2"), never dropped
+ *   · label-less, class-less students (index % 173) → UNMAPPED: nothing to read, and still counted
+ *   · a FORM 1 class in a JHS/PRIMARY school (index % 151) → the school_type DRIFT flag, from real data
+ *   · NON-ACTIVE students in most classes → they must contribute to NO row (status = 'ACTIVE' only)
+ *
+ * The sex split is ~49% female with per-class variation, so `ALL = MALE + FEMALE` is a real equality
+ * over uneven numbers rather than over a clean half.
+ */
+function rosterFor(
+  rng: Rng,
+  school: DemoSchool,
+  index: number,
+): { classes: DemoClassRow[]; groups: DemoStudentGroup[] } {
+  const schoolId = school.operationalSchoolId!;
+  const classes: DemoClassRow[] = [];
+  const groups: DemoStudentGroup[] = [];
+  let classIndex = 0;
+
+  const primaryStyle = rng.pick(PRIMARY_STYLES);
+  const jhsStyle = rng.pick(JHS_STYLES);
+  const shsStyle = rng.pick(SHS_STYLES);
+
+  /** The levels this school teaches, from its school_type — the LABELS, not the stage. */
+  const levels: {
+    level: string | null;
+    name: string;
+    tier: "KG" | "PRIMARY" | "JHS" | "SHS";
+  }[] = [];
+  const addKg = () => {
+    for (const n of [1, 2])
+      levels.push({ level: `KG ${n}`, name: `KG ${n}`, tier: "KG" });
+  };
+  const addPrimary = () => {
+    for (const n of [1, 2, 3, 4, 5, 6]) {
+      const level = primaryLevel(primaryStyle, n);
+      levels.push({ level, name: level, tier: "PRIMARY" });
+    }
+  };
+  const addJhs = () => {
+    for (const n of [1, 2, 3]) {
+      const level = jhsLevel(jhsStyle, n);
+      levels.push({ level, name: level, tier: "JHS" });
+    }
+  };
+  const addShs = () => {
+    for (const n of [1, 2, 3]) {
+      const level = shsLevel(shsStyle, n);
+      levels.push({ level, name: level, tier: "SHS" });
+    }
+  };
+
+  switch (school.schoolType) {
+    case "KG":
+      addKg();
+      break;
+    case "PRIMARY":
+      // A primary school routinely runs an attached KG — which is why the drift flag's expected set
+      // for PRIMARY is {KG, PRIMARY} and this case does NOT read as drift.
+      if (rng.bool(0.45)) addKg();
+      addPrimary();
+      break;
+    case "JHS":
+      addJhs();
+      break;
+    case "SHS":
+      addShs();
+      break;
+    case "COMBINED":
+      addKg();
+      addPrimary();
+      addJhs();
+      break;
+  }
+
+  // ---- the deliberate edge classes ----
+  if (index % 97 === 0)
+    levels.push({ level: "Nursery 1", name: "Nursery 1", tier: "KG" }); // OUT_OF_SCOPE
+  if (index % 101 === 0)
+    levels.push({ level: null, name: "Transition Stream", tier: "PRIMARY" }); // UNMAPPED
+  if (
+    index % 151 === 0 &&
+    (school.schoolType === "JHS" || school.schoolType === "PRIMARY")
+  )
+    levels.push({ level: "Form 1", name: "Form 1 Science", tier: "SHS" }); // school_type DRIFT
+
+  for (const spec of levels) {
+    // A second stream is an urban-school phenomenon, and it is what makes one `class_form` the sum of
+    // two class rows — so the stage total is not trivially the breakdown.
+    const streams = school.urban && rng.bool(0.35) ? ["A", "B"] : [""];
+    for (const stream of streams) {
+      classIndex += 1;
+      const classId = demoOperationalClassId(index, classIndex);
+      const name = stream ? `${spec.name} ${stream}` : spec.name;
+      classes.push({
+        schoolId,
+        classId,
+        name,
+        level: spec.level,
+        // A deactivated class with children still on roll is a real state; the ETL reads the label and
+        // counts them anyway, because a child on roll is a child on roll.
+        active: !rng.bool(0.03),
+      });
+
+      const size = classSize(rng, school.urban, spec.tier);
+      const femaleShare = 0.43 + rng.next() * 0.12;
+      const female = Math.round(size * femaleShare);
+      const male = size - female;
+      for (const [sex, headcount] of [
+        ["MALE", male],
+        ["FEMALE", female],
+      ] as const) {
+        if (headcount > 0)
+          groups.push({
+            schoolId,
+            classId,
+            currentClassLabel: name,
+            sex,
+            status: "ACTIVE",
+            headcount,
+          });
+      }
+      // Children who have left. They are in the table, they are not on roll, and they must reach NO
+      // fact row — a roll that counted its graduates would grow for ever.
+      if (rng.bool(0.5))
+        groups.push({
+          schoolId,
+          classId,
+          currentClassLabel: name,
+          sex: rng.bool(0.5) ? "MALE" : "FEMALE",
+          status: rng.pick([
+            "GRADUATED",
+            "WITHDRAWN",
+            "TRANSFERRED",
+            "INACTIVE",
+          ] as const),
+          headcount: rng.int(1, 6),
+        });
+    }
+  }
+
+  // ---- the deliberate class-less students ----
+  if (index % 89 === 0) {
+    // Admitted, not yet placed in a class. The ONLY statement of their year group is the label — and it
+    // says JHS 2 whatever this school's `school_type` says.
+    groups.push({
+      schoolId,
+      classId: null,
+      currentClassLabel: "JHS 2",
+      sex: "MALE",
+      status: "ACTIVE",
+      headcount: 3,
+    });
+    groups.push({
+      schoolId,
+      classId: null,
+      currentClassLabel: "JHS 2",
+      sex: "FEMALE",
+      status: "ACTIVE",
+      headcount: 2,
+    });
+  }
+  if (index % 173 === 0)
+    // No class and no label: nothing to read. UNMAPPED — tallied, never coerced into a stage.
+    groups.push({
+      schoolId,
+      classId: null,
+      currentClassLabel: null,
+      sex: "FEMALE",
+      status: "ACTIVE",
+      headcount: 2,
+    });
+
+  return { classes, groups };
+}
+
 /**
  * Build the whole dataset in memory. PURE (given a seed) — no DB, no filesystem — so a test can
  * assert hand-computed sums against exactly the rows the loader is about to write.
@@ -650,6 +916,8 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
 
   const periods: DemoOperationalPeriod[] = [];
   const facilities: DemoFacilitiesRow[] = [];
+  const classes: DemoClassRow[] = [];
+  const studentGroups: DemoStudentGroup[] = [];
   for (const school of schools) {
     if (!school.onSchoolup) continue; // no tenant → no operational census → no fact row
     const schoolIndex = Number(school.operationalSchoolId!.slice(-12));
@@ -681,9 +949,23 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
       );
       facilities.push(previous);
     }
+
+    // The ROSTER is per school and carries NO period (see db/seed/demo/demo-source-schema.sql): it is
+    // generated once, outside the term loop, which is the generator's statement of that ruling.
+    const roster = rosterFor(rng, school, schoolIndex);
+    classes.push(...roster.classes);
+    studentGroups.push(...roster.groups);
   }
 
-  return { seed, terms: [...DEMO_TERMS], schools, periods, facilities };
+  return {
+    seed,
+    terms: [...DEMO_TERMS],
+    schools,
+    periods,
+    facilities,
+    classes,
+    studentGroups,
+  };
 }
 
 /** The EMIS extract artefact, exactly as the register loader will read it back off disk. */
@@ -727,7 +1009,7 @@ export async function loadDemoSource(
   sql: postgres.Sql,
   dataset: DemoDataset,
   schemaSqlPath: string = DEMO_SOURCE_SCHEMA_SQL,
-): Promise<{ periods: number; facilities: number }> {
+): Promise<{ periods: number; facilities: number; classes: number; students: number }> {
   await sql.unsafe(readFileSync(schemaSqlPath, "utf8"));
 
   const CHUNK = 500;
@@ -789,7 +1071,52 @@ export async function loadDemoSource(
     )}`;
   }
 
-  return { periods: dataset.periods.length, facilities: dataset.facilities.length };
+  // ---- the roster: classes first (the students' composite FK target), then the students ----
+  for (let i = 0; i < dataset.classes.length; i += CHUNK) {
+    const chunk = dataset.classes.slice(i, i + CHUNK);
+    await sql`insert into demo_source.class ${sql(
+      chunk.map((c) => ({
+        id: c.classId,
+        school_id: c.schoolId,
+        name: c.name,
+        level: c.level,
+        active: c.active,
+      })),
+    )}`;
+  }
+
+  // ONE ROW PER CHILD, expanded from the groups by `generate_series` rather than materialised in JS.
+  // The source table really is one row per student — so the ETL really does aggregate, and the PII
+  // allow-list is being exercised against a table with ~170,000 rows in it — while the generated
+  // dataset stays a few thousand objects (see `DemoStudentGroup`). `jsonb_to_recordset` keeps the
+  // parameter count at 1 per chunk and declares the column types once, here.
+  const GROUP_CHUNK = 2_000;
+  for (let i = 0; i < dataset.studentGroups.length; i += GROUP_CHUNK) {
+    const chunk = dataset.studentGroups.slice(i, i + GROUP_CHUNK).map((g) => ({
+      school_id: g.schoolId,
+      class_id: g.classId,
+      current_class_label: g.currentClassLabel,
+      sex: g.sex,
+      status: g.status,
+      headcount: g.headcount,
+    }));
+    await sql`
+      insert into demo_source.students
+        (school_id, class_id, current_class_label, sex, status)
+      select g.school_id, g.class_id, g.current_class_label,
+             g.sex::demo_source.sex, g.status::demo_source.student_status
+        from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
+          as g(school_id uuid, class_id uuid, current_class_label text, sex text,
+               status text, headcount int),
+          generate_series(1, g.headcount)`;
+  }
+
+  return {
+    periods: dataset.periods.length,
+    facilities: dataset.facilities.length,
+    classes: dataset.classes.length,
+    students: dataset.studentGroups.reduce((t, g) => t + g.headcount, 0),
+  };
 }
 
 /** Write the EMIS extract artefact to disk. Stable bytes for a given seed. */
@@ -820,6 +1147,10 @@ async function main(): Promise<void> {
     console.log(
       `✓ demo_source → ${loaded.facilities} facilities_snapshot rows across ` +
         `${loaded.periods} school-periods (${dataset.terms.length} terms)`,
+    );
+    console.log(
+      `✓ demo_source → ${loaded.classes} class rows and ${loaded.students} students ` +
+        `(ACTIVE and not — the roster, which carries no period)`,
     );
   } finally {
     await sql.end({ timeout: 5 });
