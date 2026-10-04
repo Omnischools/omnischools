@@ -901,6 +901,78 @@ describe("idempotency and the bounded delete (criterion 16)", () => {
     expect(bystanderAfter[0]).toEqual(bystanderBefore[0]);
   });
 
+  it("a school whose classes ALL become out-of-scope is COMPUTED TO ZERO — its prior rows are DELETED", async () => {
+    // ⚠ THE DECISIVE TEST FOR THE DELETE SCOPE, and the one claim in criterion 16 that the unit test
+    // ("computes to ZERO rows") can only state and not prove. `EnrolmentWriteBatch.jurisdictionIds` is
+    // "every school this run SUCCESSFULLY COMPUTED" — NOT "the schools that produced rows", which is how
+    // `writeInfrastructureFacts` derives it. The difference is invisible until a school's whole roster
+    // stops mapping: if the scope came from `rows`, this school would keep LAST night's roll FOR EVER
+    // and the ETL would be structurally unable to report that a stage emptied out.
+    //
+    // So: take a live school, turn EVERY class it has into a Nursery (below KG, out of scope) and point
+    // its class-less children at a Nursery label too. It still HAS a roster — so it is computed, not
+    // `noRoster` — and that roster now maps to nothing at all.
+    const victim = (
+      await sql<{ emis: string; op: string }[]>`
+        select distinct d.ges_code as emis, r.operational_school_id::text as op
+          from fact_enrolment f
+          join dim_jurisdiction d on d.jurisdiction_id = f.jurisdiction_id
+          join ref_emis_school_register r on r.emis_school_id = d.ges_code
+         order by d.ges_code limit 1`
+    )[0]!;
+    const rowsFor = async (emis: string) =>
+      (
+        await sql<{ n: number }[]>`
+          select count(*)::int as n from fact_enrolment f
+            join dim_jurisdiction d using (jurisdiction_id) where d.ges_code = ${emis}`
+      )[0]!.n;
+    const annual = await annualPeriodId();
+    const national = await nodeId("NATIONAL", "Ghana");
+    const before = await rowsFor(victim.emis);
+    const nationalBefore = await rollUp(national, annual);
+    const victimRollBefore = expectedHeadcount((s) => s.emisSchoolId === victim.emis);
+    expect(before).toBeGreaterThan(0);
+    expect(victimRollBefore).toBeGreaterThan(0);
+
+    try {
+      await sql`
+        update demo_source.class
+           set level = 'Nursery 1', name = 'Nursery 1 ' || id::text
+         where school_id = ${victim.op}::uuid`;
+      await sql`
+        update demo_source.students set current_class_label = 'Nursery 1'
+         where school_id = ${victim.op}::uuid and class_id is null`;
+      const run = await runEtl();
+      expect(run.status).toBe("SUCCESS");
+      const e = run.periods[0]!.enrolment;
+
+      // It is COMPUTED (so in the delete scope), not failed and not `noRoster`.
+      expect(e.failures.some((f) => f.emisSchoolId === victim.emis)).toBe(false);
+      expect(e.noRoster).not.toContain(victim.emis);
+
+      // THE POINT: not one stale row survives.
+      expect(await rowsFor(victim.emis)).toBe(0);
+      // …and the national figure really fell by exactly that school's former roll — i.e. the rows were
+      // DELETED, not merely hidden behind a filter.
+      expect(await rollUp(national, annual)).toBe(nationalBefore - victimRollBefore);
+      // The children are not lost: they moved into the out-of-scope tally, which is the visible place
+      // the ruling puts them.
+      expect(e.outOfScopeHeadcount).toBeGreaterThanOrEqual(victimRollBefore);
+      // And the school is STILL a school — the register row and the dim node are untouched. "Zero
+      // enrolment" is a measurement, not a deletion from the register.
+      const stillThere = await sql<{ n: number }[]>`
+        select count(*)::int as n from dim_jurisdiction
+         where ges_code = ${victim.emis} and level = 'SCHOOL' and is_reporting`;
+      expect(stillThere[0]!.n).toBe(1);
+    } finally {
+      await loadDemoSource(sql, dataset);
+      await runEtl();
+    }
+    // Fully restored for everything after this test.
+    expect(await rowsFor(victim.emis)).toBe(before);
+    expect(await rollUp(national, annual)).toBe(nationalBefore);
+  }, 300_000);
+
   it("a school that DROPS OUT of the inclusion set keeps its last good figures", async () => {
     const dropped = dataset.schools.find((s) => s.onSchoolup && s.operationalSchoolId)!;
     const extract = emisExtractFor(dataset);

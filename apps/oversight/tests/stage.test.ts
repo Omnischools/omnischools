@@ -66,6 +66,25 @@ describe("stageOf / classFormOf — the mapping table (criteria 1–2)", () => {
     ["SSS 3", "SSS 3", "SHS", "Form 3"],
     ["S.H.S 2", "S.H.S 2", "SHS", "Form 2"],
     ["Form 4", "Form 4", "UNMAPPED", null],
+    // NO SPACE, on the SENIOR tier too. The `(?![A-Z])` lookahead is what admits these; a regression
+    // to `\b` would read every one of them UNMAPPED and silently empty the SHS stage.
+    ["SHS2", "SHS2", "SHS", "Form 2"],
+    ["SSS3", "SSS3", "SHS", "Form 3"],
+    ["Form2", "Form2 Science", "SHS", "Form 2"],
+    ["S.H.S2", "S.H.S2", "SHS", "Form 2"],
+    // …and on BASIC and the "Class N" style, so the lookahead is pinned on EVERY tier regex rather
+    // than on the two that happen to have a no-space case above.
+    ["Basic8", "Basic8", "JHS", "JHS2"],
+    ["Basic3", "Basic3", "PRIMARY", "P3"],
+    ["Class4B", "Class4B", "PRIMARY", "P4"],
+    ["JHS1A", "JHS1A", "JHS", "JHS1"],
+    ["Primary4", "Primary4", "PRIMARY", "P4"],
+    ["Pri5", "Pri5", "PRIMARY", "P5"],
+    // The OTHER half of the lookahead's job: it must still refuse a LONGER WORD, or "FORMER 1" would
+    // become a Form 1 class and "CLASSICAL 3" a Primary 3 one.
+    ["FORMER 1", "FORMER 1", "UNMAPPED", null],
+    ["Classical 3", "Classical 3", "UNMAPPED", null],
+    ["KGB 1", "KGB 1", "UNMAPPED", null],
 
     // ── OUT_OF_SCOPE — below KG. Real children, no stage, no population band. ──────────────────
     ["Nursery 1", "Nursery 1", "OUT_OF_SCOPE", null],
