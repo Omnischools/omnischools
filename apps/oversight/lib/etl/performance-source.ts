@@ -193,7 +193,7 @@ export async function readWaecExtractCohort(
            sum(w.candidates)::int        as candidates,
            sum(w.qualified)::int         as qualified,
            max(w.as_of_date)::text       as as_of_date
-      from ref_waec_results_extract w
+      from public.ref_waec_results_extract w
      where w.academic_year = ${query.academicYear}
        and w.subject is null
        and w.emis_school_id = any(${query.emisSchoolIds})
