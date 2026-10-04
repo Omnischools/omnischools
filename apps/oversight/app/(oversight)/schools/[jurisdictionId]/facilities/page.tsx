@@ -41,7 +41,7 @@ export default async function SchoolFacilitiesPage({
             {census.schoolName} <em className="accent-italic">· facilities census</em>
           </>
         }
-        lede={`Annual Census ${census.academicYear}${census.term ? ` · Term ${census.term}` : ""} — aggregate school data, not a named record. No access is logged for this view.`}
+        lede={`Annual Census ${census.academicYear} — aggregate school data, not a named record. No access is logged for this view.`}
       />
       <PageBody>
         <Panel
@@ -86,7 +86,7 @@ export default async function SchoolFacilitiesPage({
               ["Source", "annual census · read-only via the analytics boundary"],
               [
                 "Grain",
-                "one census row per school × term · summed spatially, never across terms",
+                "one census row per school × academic year · summed spatially, never across years",
               ],
               [
                 "Not gated",

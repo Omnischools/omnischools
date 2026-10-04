@@ -121,6 +121,58 @@ which also checks transitive reachability from every App-Router entry point.
 (`fact_teacher_attendance` + `fact_plc_participation`, treated as ONE disclosure surface). **No
 sexed-staff-fact aggregate surface is built yet — the first one must route its rows through it.**
 
+## The ETL (increment H, first slice: `fact_infrastructure`)
+
+`lib/etl/` is the nightly operational→analytics aggregation. The slice built so far is
+`facilities_snapshot → fact_infrastructure`, end-to-end: `etl_run` lifecycle + provenance stamper
+(`run.ts`), the `dim_jurisdiction` / `dim_period` refresh with its unbroken-chain-to-NATIONAL assertion
+(`dimensions.ts`), the EMIS register file loader (`register.ts`), the inclusion set and coverage
+(`inclusion.ts`), the source reader (`source.ts`), the decomposition and its delete-then-insert write
+(`infrastructure.ts`), and the run sequence (`pipeline.ts`).
+
+```bash
+# 1 · generate the grounded DEMO dataset (deterministic; 16 real regions, real MMDAs, ~970 schools)
+#     → writes db/seed/demo/emis-register-extract.json and the demo_source stand-in tables
+ANALYTICS_DATABASE_URL=<owner/writer> pnpm db:seed-demo
+
+# 2 · run the pipeline
+ANALYTICS_DATABASE_URL=<owner/writer> pnpm etl:run
+#   flags: --extract <file.json>  --source-schema <name>   (default: the demo extract + demo_source)
+```
+
+`ANALYTICS_DATABASE_URL` must be the **privileged owner/writer** (the Direct connection, as for
+`db:migrate`): the app runtime's role has no INSERT on any fact table.
+
+**Two things are deliberately stood in, and only two.** There is no EMIS extract yet, so the demo
+generates one in the real file format. There is no cross-tenant operational read role yet (scope task
+H1 — `oversight_readback` is structurally incapable), so the demo reads an operational-SHAPED stand-in
+in the `demo_source` schema; `db/seed/demo/demo-source-schema.sql` explains exactly what is stood in.
+The transform itself is real — nothing hand-seeds a fact row. Pointing the pipeline at operational
+`public.facilities_snapshot` over an `oversight_etl` connection is `--source-schema public` plus that
+connection.
+
+The **run-failure policy** is still an interim answer rather than a silent decision (Q11 — see
+`SchoolFailurePolicy` in `run.ts`, default: ≤1% of schools may fail and the run still closes
+SUCCESS-with-gaps). The period mapping (Q3) is now **ruled**, below.
+
+**The grain is ANNUAL: one row per school per academic year** (`period_type = 'ANNUAL'`, `term IS
+NULL`). Operational `academic_period` has no `term` column — it has `period_number` plus
+`product_line` (SENIOR | BASIC | SENIOR_F3), and the line is what gives the number its meaning (Basic
+runs 3 terms, Senior 2 semesters), so there is no honest TERM row for a SENIOR semester. Kofi's Q3
+ruling removes the question instead of answering it: nothing is filed under a term at all. Each
+school's row is the decomposition of its **latest census in the year across every product line**
+(`captured_at DESC`, tie-break `period_number DESC, product_line DESC`), because infrastructure
+accrues and the newest return is the most complete statement of the stock; `as_of_date` is that
+census's `captured_at`. Consequences: `product_line` is no longer a grain key, the SHS estate is
+**consumed rather than reported as a named gap**, a combined (J-S) school with both configurations
+still yields exactly one row, and a clean run's `etl_run.error_text` is **null**. The accounting
+identity is `inserted + noSourceRow + failures = coverage.included`, where `noSourceRow` means a
+school that filed no census anywhere in the year.
+
+Three outcomes, three signals, because a scheduler reads the exit code and not the prose:
+`✓ SUCCESS` exit 0 · `⚠ SUCCESS WITH GAPS` exit 0 · `✗ FAILED` exit 1 and **nothing written** (the run
+computes every period, takes the verdict, then writes once in one transaction).
+
 ## Tests
 
 ```bash
@@ -133,7 +185,9 @@ this app's own migrations + `db/sql/policies.sql`, connected as a non-owner role
 **operational** from `tests/fixtures/operational-schema.sql`, connected as a narrow read-back role
 with the `docs/PROVISIONING.md` §4a grant list — notably no SELECT on `staff_compensation`. The
 consent table does not exist in this repo (it is being built in `apps/web`), so the fixture
-implements the contract in `apps/web/Todo.md`.
+implements the contract in `apps/web/Todo.md`. A **third** analytics database (`demoAnalyticsUrl`,
+migrations only) carries the increment-H ETL tests: the demo seed is a whole country, and
+`tests/rls-tier-matrix.test.ts` measures global row counts in the shared fixture DB.
 
 ## Status
 

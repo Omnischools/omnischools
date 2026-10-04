@@ -65,7 +65,6 @@ export function assertNoForbiddenCensusFields(row: Record<string, unknown>): voi
 export interface SchoolFacilitiesCensus {
   schoolName: string;
   academicYear: string;
-  term: number | null;
   classroomsTotal: number;
   classroomsGood: number;
   classroomsRepair: number;
@@ -109,7 +108,6 @@ export async function getSchoolFacilitiesCensus(
       select
         dj.name                                as school_name,
         dp.academic_year                       as academic_year,
-        dp.term                                as term,
         fi.classrooms_total                    as classrooms_total,
         fi.classrooms_good                     as classrooms_good,
         fi.classrooms_repair                   as classrooms_repair,
@@ -139,8 +137,16 @@ export async function getSchoolFacilitiesCensus(
       join dim_jurisdiction dj on dj.jurisdiction_id = fi.jurisdiction_id
       join dim_period dp       on dp.period_id = fi.period_id
       where fi.jurisdiction_id = ${schoolJurisdictionId}::uuid
+        -- fact_infrastructure is ANNUAL grain. The read NAMES the grain it assumes, for the same
+        -- reason the SELECT above is an explicit allow-list: a TERM row left behind by the old
+        -- term-grain pipeline would otherwise be a live candidate here, and -- being a different
+        -- academic shape of the same year -- could out-rank the derived ANNUAL row and serve an
+        -- officer stale stock. Migration 0005 deletes those orphans; this pin is the other half.
+        and dp.period_type = 'ANNUAL'
         ${periodId ? sql`and fi.period_id = ${periodId}::uuid` : sql``}
-      order by dp.academic_year desc, dp.term desc nulls last
+      -- One row per year at this grain, so academic_year alone is a total order. There is no term to
+      -- tie-break on (it is null on every ANNUAL row by definition).
+      order by dp.academic_year desc
       limit 1
     `);
 
@@ -155,7 +161,6 @@ export async function getSchoolFacilitiesCensus(
     return {
       schoolName: row.school_name as string,
       academicYear: row.academic_year as string,
-      term: (row.term as number | null) ?? null,
       classroomsTotal: Number(row.classrooms_total),
       classroomsGood: Number(row.classrooms_good),
       classroomsRepair: Number(row.classrooms_repair),

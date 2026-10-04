@@ -339,9 +339,24 @@ export const factTeacherAttendance = pgTable(
 );
 
 /**
- * fact_infrastructure — ONE WIDE row per school × period (TERM), aggregated by the ETL from the
- * operational `facilities_snapshot` census (apps/web/db/schema/facilities-snapshot.ts, ONE row per
- * school × academic term). source = OPERATIONAL_AGG.
+ * fact_infrastructure — ONE WIDE row per school × ACADEMIC YEAR (period_type = ANNUAL, term IS NULL),
+ * aggregated by the ETL from the operational `facilities_snapshot` census
+ * (apps/web/db/schema/facilities-snapshot.ts, ONE row per school × academic term).
+ * source = OPERATIONAL_AGG.
+ *
+ * THE SOURCE IS PER TERM AND THIS TABLE IS PER YEAR — that reduction is the ETL's, and it is a
+ * SELECTION, not an aggregation: the row is the decomposition of the school's LATEST census in the
+ * year (`captured_at DESC`, tie-break `period_number DESC, product_line DESC`), because
+ * infrastructure accrues and the newest return is the most complete statement of the stock.
+ * `as_of_date` is that census's `captured_at`, so every row names its own vintage.
+ *
+ * WHY ANNUAL AND NOT TERM (the Q3 ruling): operational `academic_period` has no `term`, only
+ * `period_number` + `product_line`, and the LINE is what gives the NUMBER its meaning — Basic runs 3
+ * terms, Senior 2 semesters, SENIOR_F3 a Form-3 calendar. There is no honest TERM row for a SENIOR
+ * semester, so filing infrastructure under a term forced a choice between mis-mapping the SHS estate
+ * and omitting it. At the ANNUAL grain the question does not arise: BASIC, SENIOR and SENIOR_F3 land
+ * on ONE grain, a combined (J-S) school with both configurations still yields exactly ONE row, and
+ * `product_line` is no longer a grain key at all. See lib/etl/dimensions.ts and lib/etl/source.ts.
  *
  * EVERY attribute is a COUNT, never a boolean and never a raw category. A school-level boolean
  * ("has electricity") or enum ("water_source = BOREHOLE") does not roll up: you cannot SUM it into a
@@ -372,7 +387,7 @@ export const factTeacherAttendance = pgTable(
  * duplicate a slowly-changing dimension attribute onto a fact.
  *
  * ⚠ NO sex AND NO stage BREAKDOWN — the deliberate exception among the three new tables (owner
- * answer E4). The grain stays (jurisdiction_id, period_id), one census row per school × period.
+ * answer E4). The grain stays (jurisdiction_id, period_id), i.e. one row per school × academic year.
  * A classroom, a borehole or a generator has no sex and belongs to no stage: adding a sex column
  * would force the ETL to either duplicate the whole wide row three times (MALE/FEMALE/ALL rows all
  * carrying the same classroom count — which then sums to 3× the real estate if a reader forgets the
@@ -383,7 +398,13 @@ export const factTeacherAttendance = pgTable(
  * school's latrine stock on ONE row, with no ALL-row double-count hazard at all.
  *
  * TIME SEMANTICS: infrastructure is a STOCK, not a flow — sum it SPATIALLY (across schools) only,
- * NEVER across periods. Two terms of a school's classroom count are the same classrooms.
+ * NEVER across periods. Two censuses of a school's classroom count are the same classrooms, and
+ * adding them invents buildings. The ANNUAL grain is the structural half of that rule: at the former
+ * TERM grain a BASIC school held three rows a year and an SHS two, so the commonest reporting mistake
+ * — forgetting the period filter — inflated the two estates by DIFFERENT factors and produced a total
+ * that was not even uniformly wrong. One row per school-year means an unfiltered sum within one year
+ * is now the right answer; across years it is still wrong, and no constraint can prevent it, so every
+ * read still filters to exactly one period_id.
  */
 export const factInfrastructure = pgTable(
   "fact_infrastructure",
@@ -394,7 +415,7 @@ export const factInfrastructure = pgTable(
       .references(() => dimJurisdiction.jurisdictionId),
     periodId: uuid("period_id")
       .notNull()
-      .references(() => dimPeriod.periodId), // period_type = TERM
+      .references(() => dimPeriod.periodId), // period_type = ANNUAL (term IS NULL)
     // The "Y schools" roll-up denominator — always 1 on a school row.
     schoolsReporting: integer("schools_reporting").notNull().default(1),
 
@@ -451,7 +472,10 @@ export const factInfrastructure = pgTable(
     ...provenance, // source = OPERATIONAL_AGG
   },
   (t) => ({
-    // Grain constraint AND the RLS-filtered read path — one census row per school × period.
+    // Grain constraint AND the RLS-filtered read path. UNCHANGED BY THE RE-GRAIN and still exact: the
+    // period is now the year's ANNUAL row, so (jurisdiction_id, period_id) UNIQUE *is* "one row per
+    // school per academic year". It needs no new DDL — it got STRICTER, because the three term rows a
+    // BASIC school used to be allowed are now three attempts at one key, and the second one raises.
     uniqJurisdictionPeriod: uniqueIndex("fact_infrastructure_jurisdiction_period_idx").on(
       t.jurisdictionId,
       t.periodId,

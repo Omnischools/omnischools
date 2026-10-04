@@ -24,6 +24,11 @@ import { TEST_DB_CONFIG_PATH, type TestDbConfig } from "./paths";
 
 const ANALYTICS_DB = "oversight_test_analytics";
 const OPERATIONAL_DB = "oversight_test_operational";
+/**
+ * The increment-H ETL database — same migrations, no policies, no §6 seed. See the `demoAnalyticsUrl`
+ * note in tests/setup/paths.ts for why the ETL tests cannot share ANALYTICS_DB.
+ */
+const DEMO_ANALYTICS_DB = "oversight_test_demo";
 const APP_ROLE = "ov_app";
 const READBACK_ROLE = "ov_readback";
 /**
@@ -70,7 +75,7 @@ export default async function globalSetup() {
   const admin = postgres(base, { max: 1, prepare: false, onnotice: () => {} });
 
   try {
-    for (const db of [ANALYTICS_DB, OPERATIONAL_DB]) {
+    for (const db of [ANALYTICS_DB, OPERATIONAL_DB, DEMO_ANALYTICS_DB]) {
       await admin.unsafe(
         `select pg_terminate_backend(pid) from pg_stat_activity where datname = '${db}' and pid <> pg_backend_pid()`,
       );
@@ -193,12 +198,29 @@ export default async function globalSetup() {
     await operationalAdmin.end({ timeout: 5 });
   }
 
+  // ── demo analytics (increment H): the app's migrations ONLY ────────────────────────────────────
+  const demoAnalyticsUrl = withDb(base, DEMO_ANALYTICS_DB);
+  const demoAdmin = postgres(demoAnalyticsUrl, { max: 1, prepare: false, onnotice: () => {} });
+  try {
+    const migrationsDir = join(repoAppRoot(), "db/migrations");
+    for (const file of readdirSync(migrationsDir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()) {
+      for (const statement of splitMigration(readFileSync(join(migrationsDir, file), "utf8"))) {
+        await demoAdmin.unsafe(statement);
+      }
+    }
+  } finally {
+    await demoAdmin.end({ timeout: 5 });
+  }
+
   const config: TestDbConfig = {
     analyticsUrl: withDb(base, ANALYTICS_DB, APP_ROLE),
     operationalUrl: withDb(base, OPERATIONAL_DB, READBACK_ROLE),
     provisionerAnalyticsUrl: withDb(base, ANALYTICS_DB, PROVISIONER_ROLE),
     superuserAnalyticsUrl: analyticsAdminUrl,
     superuserOperationalUrl: operationalAdminUrl,
+    demoAnalyticsUrl,
   };
   mkdirSync(dirname(TEST_DB_CONFIG_PATH), { recursive: true });
   writeFileSync(TEST_DB_CONFIG_PATH, JSON.stringify(config, null, 2));
