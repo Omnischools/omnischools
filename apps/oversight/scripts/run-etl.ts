@@ -11,10 +11,12 @@ import {
 
 /**
  * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure`, `fact_enrolment`,
- * `fact_performance_exam` AND `fact_attendance`, which are ONE run, one verdict and one transaction (see
- * `lib/etl/pipeline.ts`). The third arm files at its own EXAM_COHORT periods, one per sitting year; the
- * fourth at the TERM periods, one per declared term (it is the first FLOW — pupil-days over a window — so
- * it is the only arm whose figures may be summed across periods).
+ * `fact_performance_exam`, `fact_attendance` AND `fact_fees`, which are ONE run, one verdict and one
+ * transaction (see `lib/etl/pipeline.ts`). The third arm files at its own EXAM_COHORT periods, one per
+ * sitting year; the fourth at the TERM periods, one per declared term (it is the first FLOW — pupil-days
+ * over a window — so it is the only arm whose figures may be summed across periods); the fifth files at
+ * the SAME TERM periods and is the first NON-ADDITIVE table — distributional mean/median figures that may
+ * be summed in NO direction, which is why its operator line prints counts and tallies and no national mean.
  *
  * ── PRIVILEGE ───────────────────────────────────────────────────────────────────────────────────
  * `ANALYTICS_DATABASE_URL` must point at the PRIVILEGED owner/writer (the Direct connection, the same
@@ -226,6 +228,54 @@ async function main(): Promise<void> {
             `unmapped class — counted here, in NO stage row`,
         );
     }
+    // ── THE FIFTH ARM, at the SAME TERM periods (one line per DECLARED TERM) ───────────────────────
+    // ⚠ NO NATIONAL MEAN IS PRINTED, AND THAT IS THE RULING RATHER THAN AN OMISSION. `fact_fees` is
+    // NON-ADDITIVE in both time and space: a national mean fee cannot be computed from school means
+    // (they weight a 40-pupil school equally with a 900-pupil one), and a national MEDIAN cannot be
+    // computed from school medians at any weighting at all. The only honest national figure would come
+    // from re-reading the source as one pooled distribution, which is a different slice. So this line
+    // prints COUNTS and the degradation TALLIES, and the money figures a reader may act on are the ones
+    // IN the rows — per school, with `stage IS NULL` for the whole-school cut.
+    for (const f of report.feeTerms) {
+      console.log(
+        `  ${f.academicYear} TERM ${f.term} (${f.startsOn}…${f.endsOn}) · ${f.sourceGroups} billed-line ` +
+          `groups → fact_fees ${f.inserted} inserted (${f.deleted} replaced) across ` +
+          `${f.schoolsComputed} school(s) · ${f.billedStudents} billed pupil(s) in ` +
+          `${f.categories.length} categor(ies) — NON-ADDITIVE: never sum or average these rows` +
+          (f.failures.length > 0
+            ? ` · ${f.failures.length} school(s) failed compute`
+            : "") +
+          (f.noInvoices.length > 0 ? ` · ${f.noInvoices.length} issued no bill` : ""),
+      );
+      if (Number(f.otherBilled) > 0)
+        console.log(
+          `    ⓘ GHS ${f.otherBilled} published under OTHER across ${f.otherCategoryNames} distinct ` +
+            `unmapped category name(s) — the pure resolver's coverage signal, read it before adding a keyword`,
+        );
+      if (Number(f.outOfScopeBilled) > 0 || Number(f.unmappedStageBilled) > 0)
+        console.log(
+          `    ⓘ GHS ${f.outOfScopeBilled} billed to pupils below KG (out of scope) and GHS ` +
+            `${f.unmappedStageBilled} to pupils in an unmapped class — counted here, in NO row`,
+        );
+      // The per-school tallies exist so a degradation is attributable; printing the worst one keeps the
+      // operator line readable while naming a school to go and look at.
+      const worst = [...f.perSchool].sort(
+        (a, b) => Number(b.otherBilled) - Number(a.otherBilled),
+      )[0];
+      if (worst && Number(worst.otherBilled) > 0)
+        console.log(
+          `    ⓘ most OTHER-bucketed: ${worst.emisSchoolId} (GHS ${worst.otherBilled}, ` +
+            `${worst.otherCategoryNames} unmapped name(s)) — ${f.perSchool.length} school(s) have tallies`,
+        );
+    }
+    if (report.feesNullPeriodInvoices.total > 0)
+      console.log(
+        `  ⚠ ${report.feesNullPeriodInvoices.total} billed invoice(s) across ` +
+          `${report.feesNullPeriodInvoices.bySchool.length} school(s) carry NO period_id, so no TERM can ` +
+          `claim them and they reach no fact row (e.g. ` +
+          `${report.feesNullPeriodInvoices.bySchool[0]!.emisSchoolId}) — a school that stops filling in ` +
+          `the term would otherwise look like a school that stopped charging`,
+      );
     if (report.attendanceOutOfWindowMarks > 0)
       console.log(
         `  ⚠ ${report.attendanceOutOfWindowMarks} attendance mark(s) fall in NO declared term window ` +

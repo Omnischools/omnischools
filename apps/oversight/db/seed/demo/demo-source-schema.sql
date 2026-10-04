@@ -1,9 +1,10 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- `demo_source` — THE OPERATIONAL STAND-IN FOR THE INCREMENT-H DEMO.
 --
--- WHAT THIS IS. Six tables standing in for the real operational schema in apps/web
+-- WHAT THIS IS. Ten tables standing in for the real operational schema in apps/web
 -- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts`, `db/schema/students.ts`,
--- `db/schema/terminal-results.ts` and `db/schema/attendance.ts`). The demo generator writes
+-- `db/schema/terminal-results.ts`, `db/schema/attendance.ts`, `db/schema/fees.ts` and the
+-- `pta_dues_charge` bridge of `db/schema/pta.ts`). The demo generator writes
 -- OPERATIONAL-SHAPED rows here, and the ETL transform reads them and performs the real
 -- decomposition — booleans → has_*_count, the three CHECK families → one 0/1 count per allowed
 -- value, nullable detail → *_reporting_count denominators. Nothing in the demo hand-seeds a fact
@@ -50,6 +51,14 @@
 --                           per pupil per day and `uniq_attendance_student_day` is load-bearing — the
 --                           reader still never selects it. See the table's own header at the foot of
 --                           this file.
+--     invoice / invoice_line_item / fee_category / pta_dues_charge
+--                         — ⚠ THE WIDEST OMISSIONS IN THIS FILE: `invoice_line_item.description` (free
+--                           text on one child's bill), `invoice.invoice_number`, the WHOLE collection
+--                           estate (`paid_amount` / `balance_amount` / `paid_at`, and the payment /
+--                           receipt / allocation tables, which have no stand-in at all), the invoice-level
+--                           money denormalisations, and all of `pta_dues_charge` except the line-item
+--                           bridge — `rate_snapshot` included, so the double-count is unwritable. Each is
+--                           argued at the tables' own header at the foot of this file.
 --     terminal_exam_result — `note` (free text) and `captured_by` (a user id) — the SAME posture as
 --                           `students`, for the same reason, plus `captured_at` which the ETL does not
 --                           read (the cohort's vintage is the sitting's `ends_on`). See the table's own
@@ -386,3 +395,153 @@ create table demo_source.attendance_record (
 -- The ETL's attendance read is per school and date-windowed on the term, which is exactly this index.
 create index demo_source_attendance_record_school_date_idx
   on demo_source.attendance_record (school_id, date);
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- BILLED FEES (increment H fifth slice, task H11) — `fee_category` + `invoice` + `invoice_line_item`
+-- + `pta_dues_charge`, the source of `fact_fees`.
+--
+-- ⚠ THE OMISSIONS HERE ARE THE WIDEST IN THIS FILE, AND THE REASON IS THAT THIS IS THE ONE DOMAIN
+-- WHERE A ROW IS SIMULTANEOUSLY A CHILD, A HOUSEHOLD'S MEANS AND A CASH LEDGER. The posture is
+-- `students`' taken as far as it goes: the stand-in carries ONLY the columns
+-- `lib/etl/fees-source.ts` actually selects, so its allow-list is STRUCTURAL — a reader that reached
+-- for a denied column would FAIL here rather than quietly succeed.
+--
+--   invoice            REAL columns (apps/web/db/schema/fees.ts:49): id, school_id, student_id,
+--                      invoice_number, academic_year, period_id, subtotal_amount, discount_amount,
+--                      billed_amount, paid_amount, balance_amount, status, issued_at, due_at,
+--                      paid_at, voided_at.
+--                      HERE: id, school_id, student_id, period_id, status, issued_at. AND NOTHING ELSE.
+--                        · `invoice_number` is a per-child document reference — a direct handle on one
+--                          family's bill.
+--                        · `paid_amount` / `balance_amount` / `paid_at` are THE COLLECTION ESTATE. This
+--                          slice publishes BILLED figures only (Kofi's ruling): what a school CHARGES is
+--                          its published fee policy, while what a family HAS PAID is that family's
+--                          financial distress, and a "mean arrears" figure for a two-school village is a
+--                          sentence about identifiable households. Omitting the columns is what stops
+--                          arrears analytics from happening BY ACCIDENT.
+--                        · `billed_amount` / `subtotal_amount` / `discount_amount` are omitted for a
+--                          different reason: they are INVOICE-level denormalisations, and the measures
+--                          are built from the LINE items so that the category split is real. Carrying an
+--                          invoice total would invite exactly the upstream-figure shortcut Kofi's ruling
+--                          forbids ("re-derived from the group's own distribution, never from an
+--                          upstream figure").
+--   invoice_line_item  REAL columns: id, school_id, invoice_id, fee_category_id, description, amount,
+--                      is_optional.
+--                      HERE: everything EXCEPT `description` and `is_optional`.
+--                        · ⚠ `description` IS THE SINGLE MOST IMPORTANT OMISSION IN THIS FILE. It is
+--                          NOT NULL free text a bursar typed onto ONE CHILD'S bill ("Ama's arrears, see
+--                          her mother"), and the category is available STRUCTURALLY (fee_category_id, or
+--                          the dues bridge), so the only plausible excuse for reading it does not exist.
+--                          Its absence here is what makes "the category NEVER comes from the
+--                          description" a structural fact rather than a promise.
+--                        · `is_optional` is simply unread: an optional line that was BILLED is billed.
+--   fee_category       REAL columns: id, school_id, name, active, created_at. HERE: id, school_id, name.
+--                      `active` is NOT read and NOT carried — a category somebody deactivated after
+--                      issuing the bills is still the category those bills were issued under.
+--   pta_dues_charge    REAL columns (migration 0078): id, school_id, line_item_id, pta_id, tier_type,
+--                      academic_year, academic_period_id, basis, cadence, subject_student_id,
+--                      household_id, rate_snapshot, created_at, updated_at.
+--                      HERE: id, school_id, line_item_id. THREE COLUMNS, and the omissions are the
+--                      ruling:
+--                        · `rate_snapshot` is DENIED. The billed figure is the LINE's `amount`; summing
+--                          the snapshot beside it would DOUBLE-COUNT the same money, and reading it
+--                          instead would disagree with the invoice the parent was handed whenever the
+--                          rate moved after issuance (the dues history is forward-only and the invoicer
+--                          never re-rates an issued invoice). Omitting the column makes the double-count
+--                          impossible to write.
+--                        · `subject_student_id` / `household_id` are IDENTITY — the billed child and her
+--                          family. The ETL already has the invoice's own pupil as a group key and needs
+--                          no second one.
+--                        · `pta_id` / `tier_type` / `basis` / `cadence` are PTA structure. `fact_fees`
+--                          has one PTA_DUES bucket and no tier dimension, so a per-tier national figure
+--                          is not representable — and inventing one here would be a grain this slice was
+--                          not asked for.
+--                      What IS kept is EXISTENCE: the bridge answers exactly one question — "is this
+--                      line item PTA dues?" — which outranks the category name (a school may file dues
+--                      under a category called "General Levy").
+--
+-- EVERY NAME AND TYPE IS THE OPERATIONAL ONE, including the seven-member `invoice_status` enum in the
+-- operational member ORDER (apps/web/db/schema/_enums.ts:65). `amount` is numeric(12,2) exactly as
+-- upstream — the ETL converts to exact integer pesewas at the boundary so that no published fee is
+-- decided by float arithmetic.
+--
+-- ⚠ `uniq_pta_dues_charge_line_item` IS KEPT VERBATIM AND IS LOAD-BEARING: it is what makes the ETL's
+-- LEFT JOIN to the bridge incapable of fanning out a line item (and therefore of doubling a fee). The
+-- ETL RELIES on it rather than defending against it with a DISTINCT, so the stand-in must carry it or
+-- the demo would not be testing the same query.
+create type demo_source.invoice_status as enum
+  ('DRAFT', 'ISSUED', 'PARTIAL', 'PAID', 'OVERDUE', 'EXEMPT', 'VOIDED');
+
+create table demo_source.fee_category (
+  id        uuid primary key default gen_random_uuid(),
+  school_id uuid not null,
+  -- The per-school label the PURE resolver (lib/etl/fee-category.ts) reads — "Tuition", "Boarding
+  -- Fees", "Printing Levy". NOT a mapping-table key: there is no mapping table, by Kofi's ruling.
+  name      text not null,
+  constraint uniq_fee_category_per_school unique (school_id, name),
+  -- The real `fee_category_tenant_uk` — the composite-FK target for invoice_line_item.
+  constraint fee_category_tenant_uk unique (school_id, id)
+);
+
+create table demo_source.invoice (
+  id         uuid primary key default gen_random_uuid(),
+  school_id  uuid not null,
+  -- The billed CHILD. Present because the measures are a per-STUDENT distribution and a distribution
+  -- cannot be rebuilt from a total — it is the ETL's GROUP KEY and reaches no fact row. This is the
+  -- `attendance_record.student_id` posture, for the same structural reason.
+  student_id uuid not null,
+  -- NULLABLE exactly as upstream: a real bill can carry no term. Those invoices reach no fact row and
+  -- are TALLIED (`countInvoicesWithoutPeriod`), never silently dropped.
+  period_id  uuid,
+  status     demo_source.invoice_status not null default 'ISSUED',
+  issued_at  timestamptz not null default now(),
+  constraint invoice_tenant_uk unique (school_id, id),
+  constraint invoice_student_fk
+    foreign key (school_id, student_id)
+    references demo_source.students (school_id, id) on delete cascade,
+  -- ⚠ DELIBERATE DEVIATION FROM UPSTREAM, AND THE ONLY ONE. `apps/web`'s `invoice.periodFk` has NO
+  -- `on delete` action, because in production a term that has been invoiced against must not be
+  -- deletable. This stand-in cascades for the same reason every other FK in this file does: the demo
+  -- seam is fixture scaffolding, and tests tear a single school's `academic_period` rows down to
+  -- synthesise "this school filed nothing" (see `tests/etl-infrastructure.test.ts`). A RESTRICT here
+  -- would make the fifth arm's stand-in silently break the fourth arm's fixtures. Nothing in the ETL
+  -- reads or depends on the delete action, so the deviation is invisible to the transform.
+  constraint invoice_period_fk
+    foreign key (school_id, period_id)
+    references demo_source.academic_period (school_id, period_id) on delete cascade
+);
+
+create table demo_source.invoice_line_item (
+  id              uuid primary key default gen_random_uuid(),
+  school_id       uuid not null,
+  invoice_id      uuid not null,
+  -- NULLABLE exactly as upstream. A line with no category resolves from NOTHING — and because
+  -- `description` is not even a column here, the honest answer is OTHER rather than a guess.
+  fee_category_id uuid,
+  -- THE BILLED FIGURE, and the only money column in this slice. numeric(12,2) as upstream.
+  amount          numeric(12,2) not null,
+  constraint invoice_line_item_tenant_uk unique (school_id, id),
+  constraint invoice_line_item_invoice_fk
+    foreign key (school_id, invoice_id)
+    references demo_source.invoice (school_id, id) on delete cascade,
+  constraint invoice_line_item_category_fk
+    foreign key (school_id, fee_category_id)
+    references demo_source.fee_category (school_id, id)
+);
+
+create table demo_source.pta_dues_charge (
+  id           uuid primary key default gen_random_uuid(),
+  school_id    uuid not null,
+  line_item_id uuid not null,
+  -- The 1:1 bridge (migration 0078). LOAD-BEARING: it is what makes the ETL's LEFT JOIN unable to fan
+  -- out a line item, and therefore unable to double a fee.
+  constraint uniq_pta_dues_charge_line_item unique (school_id, line_item_id),
+  constraint pta_dues_charge_line_item_fk
+    foreign key (school_id, line_item_id)
+    references demo_source.invoice_line_item (school_id, id) on delete cascade
+);
+
+-- The ETL's fees read is per school and joins line items to invoices, which is exactly these.
+create index demo_source_invoice_school_idx on demo_source.invoice (school_id, period_id);
+create index demo_source_invoice_line_item_invoice_idx
+  on demo_source.invoice_line_item (school_id, invoice_id);

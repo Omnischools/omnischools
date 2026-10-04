@@ -294,6 +294,73 @@ export type DemoAttendanceStatus =
   | "EXCUSED"
   | "MEDICAL";
 
+/**
+ * ── THE FEE BOOK (fifth slice, task H11) ────────────────────────────────────────────────────────
+ * One operational-shaped `fee_category` row: the per-school LABEL the pure resolver
+ * (`lib/etl/fee-category.ts`) reads. There is no mapping table to seed — by Kofi's ruling the mapping
+ * is a function — so these names are the ONLY input to the category split, and the demo emits a
+ * deliberate spread of them (see `DEMO_FEE_CATEGORY_NAMES`).
+ */
+export interface DemoFeeCategoryRow {
+  schoolId: string;
+  feeCategoryId: string;
+  /** `fee_category.name`. Resolves to TUITION/BOARDING/FEEDING/EXAM — or deliberately to OTHER. */
+  name: string;
+}
+
+export type DemoInvoiceStatus =
+  | "DRAFT"
+  | "ISSUED"
+  | "PARTIAL"
+  | "PAID"
+  | "OVERDUE"
+  | "EXEMPT"
+  | "VOIDED";
+
+/** One billed line on every invoice of a run. Amount in EXACT PESEWAS — never a float GHS figure. */
+export interface DemoInvoiceLine {
+  /** `fee_category.name`, or NULL for the deliberate no-`fee_category_id` line (→ OTHER). */
+  categoryName: string | null;
+  /** The line's `amount`, in pesewas (GHS × 100). Integer, so the expectation is exact. */
+  amountPesewas: number;
+  /** TRUE when the loader bridges this line into `pta_dues_charge` → PTA_DUES by precedence. */
+  dues: boolean;
+}
+
+/**
+ * A BAND of pupils in one class who share one invoice shape — NOT an invoice.
+ *
+ * The generator holds BANDS for the same reason it holds attendance RUNS and student GROUPS: the
+ * dataset stays a few thousand objects while `loadDemoSource` expands it into ~200,000 real invoices
+ * and ~400,000 real line items, so the ETL genuinely aggregates. And, as with the register, a band
+ * FULLY DETERMINES every published figure — `fact_fees` depends on nothing about an invoice except the
+ * per-pupil amount per category — while leaving WHICH pupil gets which bill to the loader.
+ *
+ * ⚠ THE BANDS WITHIN ONE (class, period) ARE DISJOINT AND THAT IS LOAD-BEARING: the loader keys a line
+ * item to its invoice by (school, pupil, period), so two bands covering the same pupil in the same
+ * period would make that join ambiguous — and would also mean one pupil held two bills for one term,
+ * which is not the shape this demo is asserting against.
+ *
+ * ⚠ BANDS DO NOT COVER THE WHOLE CLASS, deliberately. Roughly 40–80% of each class is billed, because
+ * `fact_fees`'s denominator is BILLED students rather than enrolled ones (see `lib/etl/fees.ts`) and a
+ * demo in which every pupil was billed everything would leave that distinction untested.
+ */
+export interface DemoInvoiceRun {
+  schoolId: string;
+  classId: string;
+  /** 1-based INCLUSIVE rank range within the class's pupils, ordered by id. */
+  fromRank: number;
+  toRank: number;
+  /** The operational `academic_period.period_id` — or NULL for the planted no-term invoice. */
+  periodId: string | null;
+  /** The analytics TERM this bill belongs to, or NULL alongside `periodId`. Dataset bookkeeping only. */
+  term: number | null;
+  status: DemoInvoiceStatus;
+  /** `invoice.issued_at` — a fixed instant inside the term, never the clock. */
+  issuedAt: string;
+  lines: DemoInvoiceLine[];
+}
+
 export interface DemoDataset {
   seed: number;
   terms: DemoTerm[];
@@ -307,6 +374,10 @@ export interface DemoDataset {
   terminalExamResults: DemoTerminalExamRow[];
   /** The register runs — see `DemoAttendanceMarkGroup`. Expanded to one row per pupil-day on load. */
   attendanceMarks: DemoAttendanceMarkGroup[];
+  /** The per-school fee book — `fee_category` rows. The resolver's only input. */
+  feeCategories: DemoFeeCategoryRow[];
+  /** The invoice bands — see `DemoInvoiceRun`. Expanded to real invoices + line items on load. */
+  invoiceRuns: DemoInvoiceRun[];
 }
 
 /** The EMIS extract file format — the same `{ as_of_date, rows }` shape as the establishment file. */
@@ -1204,6 +1275,240 @@ function attendanceFor(
   return marks;
 }
 
+// ── the fee book: categories and invoice bands (fifth slice, task H11) ──────────────────────────
+
+/**
+ * THE CATEGORY NAMES THE DEMO EMITS, and why each one is in the list.
+ *
+ * `fact_fees`'s category split comes from a PURE RESOLVER over `fee_category.name` (Kofi Q9 — there is
+ * no mapping table), so these strings ARE the test of that resolver against data rather than against a
+ * unit fixture. Each entry is here for a reason:
+ *   TUITION     three spellings, one per school style — "Tuition" / "School Fees" / "Tuition Fees".
+ *               A school picks one and keeps it, exactly as it picks a class-label style.
+ *   BOARDING    "Boarding Fees" — only at schools that board (SHS / COMBINED).
+ *   FEEDING     "Feeding" — the GSFP/canteen family.
+ *   EXAM        "Examination Fees" — note it also contains the word FEES, which is precisely the
+ *               collision the resolver's specific-before-generic check order exists to get right.
+ *   OTHER       "Printing Levy" — THE DELIBERATE OTHER CASE. It matches no family, so it must land in
+ *               OTHER and must appear in the run's `otherCategoryNames` tally.
+ *   PTA_DUES    "General Levy" — ⚠ A PLANTED TRAP. By NAME it resolves to OTHER; every line carrying it
+ *               is bridged into `pta_dues_charge` by the loader, so it must be published as PTA_DUES by
+ *               PRECEDENCE. That makes PTA_DUES in this demo reachable ONLY through the bridge: a
+ *               resolver that tried to guess dues from a name would produce zero PTA_DUES rows and a
+ *               doubled OTHER, and the test would see both.
+ */
+const TUITION_NAME_STYLES = ["Tuition", "School Fees", "Tuition Fees"] as const;
+export const DEMO_BOARDING_CATEGORY = "Boarding Fees";
+export const DEMO_FEEDING_CATEGORY = "Feeding";
+export const DEMO_EXAM_CATEGORY = "Examination Fees";
+/** The deliberate OTHER case — matches no keyword family, by design. */
+export const DEMO_OTHER_CATEGORY = "Printing Levy";
+/**
+ * The dues category. ⚠ EVERY line item carrying this category is bridged into `pta_dues_charge`, and
+ * the loader's bridge insert is keyed on exactly this name — which is what makes "PTA_DUES comes from
+ * the bridge, never from the name" assertable end-to-end.
+ */
+export const DEMO_DUES_CATEGORY = "General Levy";
+
+/**
+ * The invoice-status mix. ⚠ FOUR STATUSES ARE PLANTED RATHER THAN SAMPLED (the first four bands of a
+ * class, when it has that many), because each is a rule and a probability would occasionally leave a
+ * term with none of them:
+ *   band 0 → ISSUED   the ordinary billed state.
+ *   band 1 → EXEMPT   INCLUDED, billed-as-charged — the flagged default of Kofi's status ruling.
+ *   band 2 → DRAFT    EXCLUDED: a bill nobody issued.
+ *   band 3 → VOIDED   EXCLUDED: a bill the school withdrew.
+ * Every later band is sampled across the four INCLUDED states, so PARTIAL/PAID/OVERDUE are well
+ * represented and the excluded pair stays a small, locatable minority.
+ */
+const PLANTED_STATUSES: readonly DemoInvoiceStatus[] = Object.freeze([
+  "ISSUED",
+  "EXEMPT",
+  "DRAFT",
+  "VOIDED",
+]);
+const SAMPLED_STATUSES: readonly (readonly [DemoInvoiceStatus, number])[] = Object.freeze([
+  ["ISSUED", 0.4],
+  ["PAID", 0.25],
+  ["PARTIAL", 0.2],
+  ["OVERDUE", 0.15],
+]);
+
+/** GHS × 100, rounded to the nearest 50 pesewas — real fee books are priced in half-cedis. */
+function pesewasBetween(rng: Rng, loGhs: number, hiGhs: number): number {
+  return rng.int(loGhs * 2, hiGhs * 2) * 50;
+}
+
+/** The fee-category uuid for category #n of school #index. Index-derived, so it is run-stable. */
+export function demoOperationalFeeCategoryId(index: number, catIndex: number): string {
+  return `d1000000-0000-4000-8000-${pad12(index * 100 + catIndex)}`;
+}
+
+/**
+ * ONE SCHOOL'S FEE BOOK plus its invoice bands across the declared terms.
+ *
+ * ⚠ THE PLANTED EDGE CASES, keyed off the school INDEX so they are stable across runs and a reviewer can
+ * find them. Each is a landmine in Kofi's H11 ruling that would otherwise be exercised only by a
+ * hand-built fixture:
+ *   · index % 131 === 0 → A FREE-SHS SCHOOL: every tuition line is billed 0.00. Its TUITION rows are
+ *     REAL rows with mean 0.00 and median 0.00 — the single most consequential fee fact in Ghana — and a
+ *     "treat zero as no data" reader would erase them. It must stay DISTINGUISHABLE from a school that
+ *     bills no tuition at all, which gets NO tuition row.
+ *   · index % 139 === 0 → A LINE WITH NO `fee_category_id` AND NO DUES BRIDGE. Nothing to resolve from
+ *     (the description is not even a column), so it must land in OTHER rather than be dropped.
+ *   · index % 149 === 0 → AN INVOICE WITH `period_id IS NULL`. It belongs to no term, reaches no fact
+ *     row, and is TALLIED (`EtlRunReport.feesNullPeriodInvoices`) rather than vanishing.
+ * The OUT_OF_SCOPE (Nursery, index % 97) and UNMAPPED ("Transition Stream", index % 101) classes need no
+ * special handling: bills are issued for every class a school has, and the ETL tallies their GHS without
+ * bucketing it.
+ */
+function feeBookFor(
+  rng: Rng,
+  school: DemoSchool,
+  index: number,
+  classes: DemoClassRow[],
+  pupilsByClass: Map<string, number>,
+  terms: readonly DemoTerm[],
+): { categories: DemoFeeCategoryRow[]; runs: DemoInvoiceRun[] } {
+  const schoolId = school.operationalSchoolId!;
+  const boards = school.schoolType === "SHS" || school.schoolType === "COMBINED";
+  const names = [
+    rng.pick(TUITION_NAME_STYLES) as string,
+    ...(boards ? [DEMO_BOARDING_CATEGORY] : []),
+    DEMO_FEEDING_CATEGORY,
+    DEMO_EXAM_CATEGORY,
+    DEMO_OTHER_CATEGORY,
+    DEMO_DUES_CATEGORY,
+  ];
+  const tuitionName = names[0]!;
+  const categories: DemoFeeCategoryRow[] = names.map((name, i) => ({
+    schoolId,
+    feeCategoryId: demoOperationalFeeCategoryId(index, i + 1),
+    name,
+  }));
+
+  const billedClasses = classes.filter((c) => (pupilsByClass.get(c.classId) ?? 0) > 0);
+  const runs: DemoInvoiceRun[] = [];
+  if (billedClasses.length === 0) return { categories, runs };
+
+  const freeShs = index % 131 === 0;
+  const uncategorisedLine = index % 139 === 0;
+  const noPeriodInvoice = index % 149 === 0;
+
+  // The school's own tariff level, drawn ONCE: fees are a school-level policy, so two pupils in the same
+  // band pay the same and two bands differ by a discount/stream rather than at random. Drawing per line
+  // would make every school's distribution the same wide uniform spread and the mean/median
+  // indistinguishable, which is the one shape `fact_fees` exists to show.
+  const tuitionFloor = school.urban ? 180 : 60;
+  const tuitionCeiling = school.urban ? 900 : 320;
+
+  for (const term of terms) {
+    const periodId = demoOperationalPeriodId(Number(schoolId.slice(-12)), term.term);
+    // A fixed instant inside the term — the input to the deterministic `as_of_date`. NEVER the clock:
+    // `max(issued_at)` is the vintage, so a wall-clock value here would make every re-run differ.
+    const issuedAt = `${addDays(term.startsOn, 5)}T09:00:00+00:00`;
+    for (const klass of billedClasses) {
+      const pupils = pupilsByClass.get(klass.classId) ?? 0;
+      // 40–80% of the class is billed — the denominator is BILLED pupils, not enrolled ones.
+      const covered = Math.max(1, Math.round(pupils * (0.4 + rng.next() * 0.4)));
+      let rank = 1;
+      let band = 0;
+      while (rank <= covered) {
+        const size = Math.min(rng.int(4, 14), covered - rank + 1);
+        const status =
+          band < PLANTED_STATUSES.length
+            ? PLANTED_STATUSES[band]!
+            : rng.weighted(SAMPLED_STATUSES);
+        const lines: DemoInvoiceLine[] = [
+          {
+            categoryName: tuitionName,
+            // THE FREE-SHS ZERO: a real billed line, amount 0. Not an absence.
+            amountPesewas: freeShs
+              ? 0
+              : pesewasBetween(rng, tuitionFloor, tuitionCeiling),
+            dues: false,
+          },
+        ];
+        if (boards && rng.bool(0.4))
+          lines.push({
+            categoryName: DEMO_BOARDING_CATEGORY,
+            amountPesewas: pesewasBetween(rng, 400, 1_800),
+            dues: false,
+          });
+        if (rng.bool(0.4))
+          lines.push({
+            categoryName: DEMO_FEEDING_CATEGORY,
+            amountPesewas: pesewasBetween(rng, 60, 350),
+            dues: false,
+          });
+        if (rng.bool(0.25))
+          lines.push({
+            categoryName: DEMO_EXAM_CATEGORY,
+            amountPesewas: pesewasBetween(rng, 30, 180),
+            dues: false,
+          });
+        if (rng.bool(0.15))
+          lines.push({
+            categoryName: DEMO_OTHER_CATEGORY,
+            amountPesewas: pesewasBetween(rng, 10, 60),
+            dues: false,
+          });
+        // THE DUES LINE: its category NAME resolves to OTHER, and the bridge overrides that to PTA_DUES.
+        if (rng.bool(0.3))
+          lines.push({
+            categoryName: DEMO_DUES_CATEGORY,
+            amountPesewas: pesewasBetween(rng, 5, 40),
+            dues: true,
+          });
+        // The planted no-category line — on the first band of the first class only, so it is findable.
+        if (uncategorisedLine && band === 0 && klass.classId === billedClasses[0]!.classId)
+          lines.push({
+            categoryName: null,
+            amountPesewas: pesewasBetween(rng, 20, 90),
+            dues: false,
+          });
+        runs.push({
+          schoolId,
+          classId: klass.classId,
+          fromRank: rank,
+          toRank: rank + size - 1,
+          periodId,
+          term: term.term,
+          status,
+          issuedAt,
+          lines,
+        });
+        rank += size;
+        band += 1;
+      }
+    }
+  }
+
+  // THE INVOICE NO TERM CLAIMS — one pupil, one bill, `period_id IS NULL`. It must be TALLIED and must
+  // reach no fact row. Kept to a single pupil so the expected tally is exactly one invoice per planted
+  // school.
+  if (noPeriodInvoice)
+    runs.push({
+      schoolId,
+      classId: billedClasses[0]!.classId,
+      fromRank: 1,
+      toRank: 1,
+      periodId: null,
+      term: null,
+      status: "ISSUED",
+      issuedAt: `${terms[0]!.startsOn}T09:00:00+00:00`,
+      lines: [
+        {
+          categoryName: tuitionName,
+          amountPesewas: pesewasBetween(rng, tuitionFloor, tuitionCeiling),
+          dues: false,
+        },
+      ],
+    });
+
+  return { categories, runs };
+}
+
 /**
  * Build the whole dataset in memory. PURE (given a seed) — no DB, no filesystem — so a test can
  * assert hand-computed sums against exactly the rows the loader is about to write.
@@ -1332,6 +1637,35 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     );
   }
 
+  // ── the FEE BOOK: A THIRD PASS, WITH ITS OWN RNG ──────────────────────────────────────────────
+  //
+  // ⚠ A NEW, DISTINCT SALT, for exactly the reason the attendance pass documents above: every draw from a
+  // stream shifts everything after it, so generating invoices from `rng` (or from `attendanceRng`) would
+  // silently move EVERY already-shipped arm's demo figures — censuses, rosters, sittings AND registers —
+  // and a reviewer comparing branches would have thousands of unexplained differences to read past. A
+  // third, independently seeded generator keeps this slice's blast radius to this slice's own data, and
+  // `tests/etl-fees.test.ts` asserts the byte-identity of the four prior arms' datasets across it.
+  //
+  // It reuses `classesBySchool` / `pupilsByClass` built above (pure reads, no draws) because a bill is
+  // issued to a pupil in a class — and it includes NON-ACTIVE pupils for the same reason attendance does:
+  // a withdrawn child's term bill is a bill that was really issued.
+  const feesRng = rngOf(seed ^ 0x4645_4553); // "FEES"
+  const feeCategories: DemoFeeCategoryRow[] = [];
+  const invoiceRuns: DemoInvoiceRun[] = [];
+  for (const school of schools) {
+    if (!school.onSchoolup) continue; // no tenant → no operational fee book → no fact row
+    const book = feeBookFor(
+      feesRng,
+      school,
+      Number(school.operationalSchoolId!.slice(-12)),
+      classesBySchool.get(school.operationalSchoolId!) ?? [],
+      pupilsByClass,
+      DEMO_TERMS,
+    );
+    feeCategories.push(...book.categories);
+    invoiceRuns.push(...book.runs);
+  }
+
   return {
     seed,
     terms: [...DEMO_TERMS],
@@ -1343,6 +1677,8 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     studentGroups,
     terminalExamResults,
     attendanceMarks,
+    feeCategories,
+    invoiceRuns,
   };
 }
 
@@ -1394,6 +1730,9 @@ export async function loadDemoSource(
   students: number;
   terminalExamResults: number;
   attendanceMarks: number;
+  feeCategories: number;
+  invoices: number;
+  invoiceLineItems: number;
 }> {
   await sql.unsafe(readFileSync(schemaSqlPath, "utf8"));
 
@@ -1556,6 +1895,99 @@ export async function loadDemoSource(
             on p.school_id = g.school_id and p.class_id = g.class_id
            and p.rank between g.from_rank and g.to_rank`;
     }
+
+    // ---- the FEE BOOK: categories, then ONE INVOICE PER BILLED PUPIL, then its line items ----
+    // Inside the SAME transaction as the register load because it reuses `demo_ranked_pupil`: the ranking
+    // window scans every pupil in the country, and the temp table is `on commit drop` and
+    // CONNECTION-scoped, so re-creating it for this pass would both cost a second full scan and reopen
+    // the pooled-connection hazard the attendance load was fixed for.
+    for (let i = 0; i < dataset.feeCategories.length; i += CHUNK) {
+      const chunk = dataset.feeCategories.slice(i, i + CHUNK);
+      await tx`insert into demo_source.fee_category ${tx(
+        chunk.map((c) => ({
+          id: c.feeCategoryId,
+          school_id: c.schoolId,
+          name: c.name,
+        })),
+      )}`;
+    }
+
+    // ONE INVOICE PER (pupil × period) — the bands within a (class, period) are DISJOINT, which is what
+    // makes that true and what makes the line-item join below unambiguous.
+    const RUN_CHUNK = 5_000;
+    for (let i = 0; i < dataset.invoiceRuns.length; i += RUN_CHUNK) {
+      const chunk = dataset.invoiceRuns.slice(i, i + RUN_CHUNK).map((r) => ({
+        school_id: r.schoolId,
+        class_id: r.classId,
+        period_id: r.periodId,
+        status: r.status,
+        issued_at: r.issuedAt,
+        from_rank: r.fromRank,
+        to_rank: r.toRank,
+      }));
+      await tx`
+        insert into demo_source.invoice (school_id, student_id, period_id, status, issued_at)
+        select g.school_id, p.id, g.period_id,
+               g.status::demo_source.invoice_status, g.issued_at
+          from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
+            as g(school_id uuid, class_id uuid, period_id uuid, status text,
+                 issued_at timestamptz, from_rank int, to_rank int)
+          join demo_ranked_pupil p
+            on p.school_id = g.school_id and p.class_id = g.class_id
+           and p.rank between g.from_rank and g.to_rank`;
+    }
+
+    // THE LINE ITEMS, keyed back to their invoice by (school, pupil, period). `is not distinct from` is
+    // mandatory rather than stylistic: the planted no-term invoice carries `period_id IS NULL`, and a
+    // plain `=` would match nothing and silently drop its lines — turning the invoice this demo plants to
+    // be TALLIED into an invoice with no lines at all, which tallies the same and proves less.
+    const lineRows = dataset.invoiceRuns.flatMap((r) =>
+      r.lines.map((line) => ({
+        school_id: r.schoolId,
+        class_id: r.classId,
+        period_id: r.periodId,
+        from_rank: r.fromRank,
+        to_rank: r.toRank,
+        // NULL for the planted no-category line. The category id is looked up by NAME inside the insert,
+        // so the dataset never has to carry the per-school uuid twice.
+        category_name: line.categoryName,
+        // Pesewas → the numeric(12,2) literal, built from integer arithmetic so the fixture's own
+        // expectation and the stored value cannot drift by a float rounding.
+        amount: `${Math.floor(line.amountPesewas / 100)}.${String(line.amountPesewas % 100).padStart(2, "0")}`,
+      })),
+    );
+    const LINE_CHUNK = 20_000;
+    for (let i = 0; i < lineRows.length; i += LINE_CHUNK) {
+      const chunk = lineRows.slice(i, i + LINE_CHUNK);
+      await tx`
+        insert into demo_source.invoice_line_item
+          (school_id, invoice_id, fee_category_id, amount)
+        select g.school_id, i.id, fc.id, g.amount
+          from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
+            as g(school_id uuid, class_id uuid, period_id uuid, from_rank int, to_rank int,
+                 category_name text, amount numeric)
+          join demo_ranked_pupil p
+            on p.school_id = g.school_id and p.class_id = g.class_id
+           and p.rank between g.from_rank and g.to_rank
+          join demo_source.invoice i
+            on i.school_id = g.school_id and i.student_id = p.id
+           and i.period_id is not distinct from g.period_id
+          left join demo_source.fee_category fc
+            on fc.school_id = g.school_id and fc.name = g.category_name`;
+    }
+
+    // THE DUES BRIDGE — one row per line item carrying the dues category, and NOTHING ELSE. The demo's
+    // dues lines are exactly the `General Levy` ones (see `DEMO_DUES_CATEGORY`), whose NAME resolves to
+    // OTHER: so every PTA_DUES row the ETL writes can ONLY have come from this bridge, which is the
+    // precedence ruling made testable end-to-end. The bridge carries THREE columns — the stand-in has no
+    // `rate_snapshot` to sum beside the line amount, by design.
+    await tx`
+      insert into demo_source.pta_dues_charge (school_id, line_item_id)
+      select li.school_id, li.id
+        from demo_source.invoice_line_item li
+        join demo_source.fee_category fc
+          on fc.school_id = li.school_id and fc.id = li.fee_category_id
+       where fc.name = ${DEMO_DUES_CATEGORY}`;
   });
 
   return {
@@ -1566,6 +1998,12 @@ export async function loadDemoSource(
     terminalExamResults: dataset.terminalExamResults.length,
     attendanceMarks: dataset.attendanceMarks.reduce(
       (t, m) => t + (m.toRank - m.fromRank + 1),
+      0,
+    ),
+    feeCategories: dataset.feeCategories.length,
+    invoices: dataset.invoiceRuns.reduce((t, r) => t + (r.toRank - r.fromRank + 1), 0),
+    invoiceLineItems: dataset.invoiceRuns.reduce(
+      (t, r) => t + (r.toRank - r.fromRank + 1) * r.lines.length,
       0,
     ),
   };
@@ -1613,6 +2051,12 @@ async function main(): Promise<void> {
       `✓ demo_source → ${loaded.attendanceMarks} attendance_record rows ` +
         `(one per pupil per marked day, ${DEMO_MARK_DAY_OFFSETS.length} register days per term ` +
         `across ${dataset.terms.length} terms, plus a holiday register nobody's term claims)`,
+    );
+    console.log(
+      `✓ demo_source → ${loaded.invoices} invoice rows and ${loaded.invoiceLineItems} line items ` +
+        `across ${loaded.feeCategories} fee categories (BILLED only — the payment estate has no ` +
+        `stand-in at all), incl. Free-SHS billed-0 tuition, EXEMPT/DRAFT/VOIDED bills, a no-category ` +
+        `line, a no-term invoice, and PTA dues reachable ONLY through the bridge`,
     );
   } finally {
     await sql.end({ timeout: 5 });
