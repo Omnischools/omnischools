@@ -200,16 +200,32 @@ export default async function globalSetup() {
 
   // ── demo analytics (increment H): the app's migrations ONLY ────────────────────────────────────
   const demoAnalyticsUrl = withDb(base, DEMO_ANALYTICS_DB);
-  const demoAdmin = postgres(demoAnalyticsUrl, { max: 1, prepare: false, onnotice: () => {} });
+  const demoAdmin = postgres(demoAnalyticsUrl, {
+    max: 1,
+    prepare: false,
+    onnotice: () => {},
+  });
   try {
     const migrationsDir = join(repoAppRoot(), "db/migrations");
     for (const file of readdirSync(migrationsDir)
       .filter((f) => f.endsWith(".sql"))
       .sort()) {
-      for (const statement of splitMigration(readFileSync(join(migrationsDir, file), "utf8"))) {
+      for (const statement of splitMigration(
+        readFileSync(join(migrationsDir, file), "utf8"),
+      )) {
         await demoAdmin.unsafe(statement);
       }
     }
+    // dim_stage — CONFIG, not a migration and not something the ETL may write (§10: seeded at
+    // provision time by db/seed/config.ts, changed only by a deliberate config edit). `fact_enrolment.
+    // stage` is a FK to it, so the increment-H enrolment arm cannot write a single row against a
+    // database that was migrated but never seeded — on prod `pnpm db:setup` runs the seed, and this is
+    // that one step, kept to the four rows the ETL's FK needs and byte-identical to the seed's values.
+    await demoAdmin.unsafe(`
+      insert into dim_stage (stage, official_age_low, official_age_high, display_order) values
+        ('KG', 4, 5, 1), ('PRIMARY', 6, 11, 2), ('JHS', 12, 14, 3), ('SHS', 15, 17, 4)
+      on conflict (stage) do nothing;
+    `);
   } finally {
     await demoAdmin.end({ timeout: 5 });
   }

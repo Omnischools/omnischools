@@ -11,11 +11,19 @@ import {
 import { buildInclusionSet, type CoverageFigures } from "./inclusion";
 import {
   decomposeFacilitiesSnapshot,
-  writeInfrastructureFacts,
+  writeInfrastructureFactsTx,
   type FactInfrastructureRow,
 } from "./infrastructure";
+import {
+  aggregateSchoolRoster,
+  assertStagesSeeded,
+  writeEnrolmentFactsTx,
+  type FactEnrolmentRow,
+} from "./enrolment";
+import { readActiveRosterGroups, type RosterGroupSourceRow } from "./enrolment-source";
 import { loadEmisRegister, parseEmisExtract, type RegisterRow } from "./register";
 import { readLatestFacilitiesSnapshots } from "./source";
+import type { AnalyticsStage } from "./stage";
 import {
   closeEtlRun,
   computePerSchool,
@@ -56,6 +64,15 @@ import {
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
  *
+ * ⚠ TWO FACTS, ONE RUN, ONE VERDICT, ONE TRANSACTION (increment H second slice, task H9).
+ * `fact_enrolment` is computed as a PARALLEL ARM inside exactly the same 5a/5b/5c phasing, not as a
+ * second pipeline: one `etl_run` row, one failure verdict over BOTH arms' per-school failures, and ONE
+ * transaction that writes both fact tables (step 5c calls the `…Tx` writers inside a single
+ * `sql.begin`). A second pipeline would mean two runs per night, two as-of banners and — the real
+ * defect — a night in which infrastructure published and enrolment did not, with nothing on screen
+ * saying so. Both arms file at the SAME ANNUAL period, so a dashboard that joins them is joining one
+ * vintage.
+ *
  * ⚠ THE GRAIN IS ANNUAL (Kofi's Q3 ruling — the mapping rule and its reasoning are in
  * `lib/etl/dimensions.ts`). `options.periods` still DECLARES the run in terms, because the terms are
  * what the calendar is made of and the TERM rows of `dim_period` are still upserted for the other
@@ -78,6 +95,51 @@ export interface InfrastructureEtlOptions {
   sourceSchema: string;
   policy?: SchoolFailurePolicy;
   nationalName?: string;
+  /**
+   * THE ROSTER'S FROZEN VINTAGE — `fact_enrolment.as_of_date`, as an ISO date/timestamp.
+   *
+   * `fact_infrastructure` gets its vintage for free: a census row carries `captured_at`, the moment a
+   * school answered. A ROSTER CARRIES NO SUCH COLUMN — `students` is the live state of the school, so
+   * "when was this true?" is a question only the RUN can answer, and the two obvious answers are both
+   * wrong:
+   *   `now()`        would make every nightly re-run of an unchanged roll produce a different row, so
+   *                  "a re-run is byte-identical" would be untestable and provenance would say the
+   *                  figure was freshly measured when nothing had changed.
+   *   the roll date  does not exist. There is nothing to read.
+   * So the run DECLARES a frozen census date, exactly as `apps/web/lib/reports/census-enrolment-data.ts`
+   * freezes its `censusDate` at generation (GOV8-02) rather than ageing children against the clock.
+   *
+   * Default: the academic year's ANNUAL `ends_on` (i.e. the last declared term's end), which reads as
+   * "the roll as filed for this academic year". Pass this option to pin a real census date — a backfill
+   * of an earlier year MUST pass it, or every year's roll would claim its own year-end vintage from
+   * one night's data.
+   */
+  rosterAsOf?: string;
+}
+
+/** What one school's enrolment arm produced, as the run reports it. See `PeriodOutcome.enrolment`. */
+export interface EnrolmentOutcome {
+  /** Grouped roster slices read from the source — counts of children, never children. */
+  sourceGroups: number;
+  /** Schools whose roster was aggregated (including to ZERO rows) — the DELETE scope. */
+  schoolsComputed: number;
+  deleted: number;
+  inserted: number;
+  /** ACTIVE children counted into a stage row, nationally — the `sex=ALL, class_form IS NULL` sum. */
+  headcount: number;
+  /** ACTIVE children in a below-KG class. In NO stage row, and never silently dropped. */
+  outOfScopeHeadcount: number;
+  /** ACTIVE children whose class label resolved to no stage. In NO stage row, never dropped. */
+  unmappedHeadcount: number;
+  /** Included schools whose roster read returned NOTHING AT ALL. Not a failure; keeps prior rows. */
+  noRoster: string[];
+  /** Schools teaching a stage their register `school_type` does not account for. A hint, not a fault. */
+  stageDrift: {
+    emisSchoolId: string;
+    schoolType: string | null;
+    stages: AnalyticsStage[];
+  }[];
+  failures: SchoolFailure[];
 }
 
 export interface PeriodOutcome {
@@ -105,6 +167,8 @@ export interface PeriodOutcome {
    * this is reportable, and the tenant uuid is not.
    */
   noSourceRow: string[];
+  /** The second fact table's arm, at the SAME ANNUAL period. See `EnrolmentOutcome`. */
+  enrolment: EnrolmentOutcome;
 }
 
 export interface EtlRunReport {
@@ -138,6 +202,10 @@ export async function runInfrastructureEtl(
     // cannot be violated by a caller passing two.
     const annualSpecs = annualPeriodSpecs(options.periods);
     const periodIndex = await refreshPeriods(sql, [...options.periods, ...annualSpecs]);
+    // `dim_stage` is CONFIG (seeded by `pnpm db:seed`), not a dimension this ETL refreshes, and
+    // `fact_enrolment.stage` is a FK to it. Asserted HERE so an unseeded database fails in step 2 with
+    // the fix in the message, rather than hundreds of rows into step 5c with a constraint name.
+    await assertStagesSeeded(sql);
 
     // ── step 3 · reference delta: the EMIS register ──────────────────────────────────────────────
     await loadEmisRegister(sql, registerRows, (row) => {
@@ -167,7 +235,12 @@ export async function runInfrastructureEtl(
       computed: FactInfrastructureRow[];
       failures: SchoolFailure[];
       noSourceRow: string[];
+      /** The enrolment arm's rows and its delete scope, held unwritten until the verdict. */
+      enrolmentRows: FactEnrolmentRow[];
+      enrolmentScope: string[];
+      enrolment: EnrolmentOutcome;
     }
+    const schoolTypeOf = new Map(registerRows.map((r) => [r.emisSchoolId, r.schoolType]));
     const pending: PendingPeriod[] = [];
     const allFailures: SchoolFailure[] = [];
     let attempted = 0;
@@ -229,6 +302,99 @@ export async function runInfrastructureEtl(
         },
       );
       allFailures.push(...failures);
+
+      // ── the ENROLMENT arm, same period, same isolation ────────────────────────────────────────
+      // The roster read takes NO academic year: `students` carries no period (see
+      // `lib/etl/enrolment-source.ts`), so the run files the CURRENT roll under this ANNUAL period and
+      // stamps it with the declared, frozen vintage.
+      const rosterAsOf =
+        options.rosterAsOf ?? spec.endsOn ?? spec.startsOn ?? `${spec.academicYear}`;
+      const { groups } = await readActiveRosterGroups(sql, {
+        schemaName: options.sourceSchema,
+        operationalSchoolIds: inclusion.schools.map((s) => s.operationalSchoolId),
+      });
+      const groupsBySchool = new Map<string, RosterGroupSourceRow[]>();
+      for (const group of groups) {
+        const held = groupsBySchool.get(group.schoolId);
+        if (held) held.push(group);
+        else groupsBySchool.set(group.schoolId, [group]);
+      }
+      // A school whose roster read returned NOTHING AT ALL is not a failure and not computed: it keeps
+      // its prior rows (stale-but-honest), exactly as a census-less school does on the other arm. A
+      // school that DID return groups but whose every class is out-of-scope/unmapped IS computed — to
+      // zero rows — and is therefore in the delete scope, so an emptied stage really empties.
+      const noRoster = inclusion.schools
+        .filter((s) => !groupsBySchool.has(s.operationalSchoolId))
+        .map((s) => s.emisSchoolId);
+      const rosterItems = [...groupsBySchool.entries()].map(([schoolId, rows]) => ({
+        schoolId,
+        rows,
+      }));
+      attempted += rosterItems.length;
+
+      const enrolmentCompute = computePerSchool<
+        (typeof rosterItems)[number],
+        { jurisdictionId: string; emisSchoolId: string } & ReturnType<
+          typeof aggregateSchoolRoster
+        >
+      >(
+        rosterItems,
+        (item) => ({
+          emisSchoolId: jurisdictionOf.get(item.schoolId)?.emisSchoolId ?? item.schoolId,
+          jurisdictionId: jurisdictionOf.get(item.schoolId)?.jurisdictionId ?? null,
+        }),
+        (item) => {
+          const school = jurisdictionOf.get(item.schoolId);
+          if (!school)
+            throw new Error(
+              `operational school ${item.schoolId} is not in the inclusion set — the roster read is ` +
+                "not bounded by the inclusion set.",
+            );
+          return {
+            jurisdictionId: school.jurisdictionId,
+            emisSchoolId: school.emisSchoolId,
+            ...aggregateSchoolRoster(item.rows, {
+              jurisdictionId: school.jurisdictionId,
+              periodId,
+              emisSchoolId: school.emisSchoolId,
+              etlRunId: runId,
+              asOfDate: rosterAsOf,
+              schoolType: schoolTypeOf.get(school.emisSchoolId) ?? null,
+            }),
+          };
+        },
+      );
+      allFailures.push(...enrolmentCompute.failures);
+
+      const enrolmentRows = enrolmentCompute.computed.flatMap((c) => c.rows);
+      const enrolmentScope = enrolmentCompute.computed.map((c) => c.jurisdictionId);
+      const enrolment: EnrolmentOutcome = {
+        sourceGroups: groups.length,
+        schoolsComputed: enrolmentCompute.computed.length,
+        deleted: 0,
+        inserted: 0,
+        headcount: enrolmentRows
+          .filter((r) => r.sex === "ALL" && r.classForm === null)
+          .reduce((t, r) => t + r.headcount, 0),
+        outOfScopeHeadcount: enrolmentCompute.computed.reduce(
+          (t, c) => t + c.outOfScopeHeadcount,
+          0,
+        ),
+        unmappedHeadcount: enrolmentCompute.computed.reduce(
+          (t, c) => t + c.unmappedHeadcount,
+          0,
+        ),
+        noRoster,
+        stageDrift: enrolmentCompute.computed
+          .filter((c) => c.stageDrift.length > 0)
+          .map((c) => ({
+            emisSchoolId: c.emisSchoolId,
+            schoolType: schoolTypeOf.get(c.emisSchoolId) ?? null,
+            stages: c.stageDrift,
+          })),
+        failures: enrolmentCompute.failures,
+      };
+
       pending.push({
         spec,
         periodId,
@@ -236,6 +402,9 @@ export async function runInfrastructureEtl(
         computed,
         failures,
         noSourceRow,
+        enrolmentRows,
+        enrolmentScope,
+        enrolment,
       });
     }
 
@@ -248,14 +417,36 @@ export async function runInfrastructureEtl(
     // A FAILED verdict writes NOTHING. The prior night's data stays exactly as it was: stale, labelled
     // with its own older as-of, and honest. That is what makes the banner's "latest SUCCESS" read
     // correct rather than merely plausible.
+    // BOTH fact tables in ONE `sql.begin`, so a throw while writing enrolment rolls the
+    // infrastructure write back with it. Two transactions would reintroduce the half-published night
+    // between the arms that each writer's own transaction rules out within one arm.
     const written =
       verdict.status === "SUCCESS"
-        ? await writeInfrastructureFacts(
-            sql,
-            pending.map((p) => ({ periodId: p.periodId, rows: p.computed })),
-          )
-        : { deleted: 0, inserted: 0, perPeriod: [] };
-    const writtenByPeriod = new Map(written.perPeriod.map((p) => [p.periodId, p]));
+        ? ((await sql.begin(async (tx) => {
+            const infra = await writeInfrastructureFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pending.map((p) => ({ periodId: p.periodId, rows: p.computed })),
+            );
+            const enrol = await writeEnrolmentFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pending.map((p) => ({
+                periodId: p.periodId,
+                jurisdictionIds: p.enrolmentScope,
+                rows: p.enrolmentRows,
+              })),
+            );
+            return { infra, enrol };
+          })) as unknown as {
+            infra: {
+              perPeriod: { periodId: string; deleted: number; inserted: number }[];
+            };
+            enrol: {
+              perPeriod: { periodId: string; deleted: number; inserted: number }[];
+            };
+          })
+        : { infra: { perPeriod: [] }, enrol: { perPeriod: [] } };
+    const writtenByPeriod = new Map(written.infra.perPeriod.map((p) => [p.periodId, p]));
+    const enrolledByPeriod = new Map(written.enrol.perPeriod.map((p) => [p.periodId, p]));
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
@@ -267,6 +458,11 @@ export async function runInfrastructureEtl(
       inserted: writtenByPeriod.get(p.periodId)?.inserted ?? 0,
       failures: p.failures,
       noSourceRow: p.noSourceRow,
+      enrolment: {
+        ...p.enrolment,
+        deleted: enrolledByPeriod.get(p.periodId)?.deleted ?? 0,
+        inserted: enrolledByPeriod.get(p.periodId)?.inserted ?? 0,
+      },
     }));
 
     // ── step 6 · anomaly hook (increment J — a no-op, by name) ──────────────────────────────────
