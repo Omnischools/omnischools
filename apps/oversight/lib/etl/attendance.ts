@@ -199,7 +199,24 @@ export function attendanceRateOf(presentDays: number, enrolledDays: number): str
         "pupil-days produces NO ROW, because 0.00 would read as 'nobody attended' rather than 'nobody " +
         "marked the register'.",
     );
-  return (Math.round((presentDays / enrolledDays) * 10_000) / 100).toFixed(2);
+  // Integer arithmetic, half away from zero, so this equals Postgres `round(100.0 * present / enrolled, 2)`
+  // on EVERY input — including the exact-half cases a float `Math.round((present / enrolled) * 10_000)`
+  // rounds the other way (p=57, e=800 → 7.12 by float, 7.13 by Postgres). CRITERION 3 re-asserts the
+  // STORED value against that very Postgres expression, so a float helper is a latent flake real data trips.
+  // basis points = round(10_000 * present / enrolled), formatted straight from the integer — never back
+  // through a float. The floor/rem normalisation corrects any drift in the float division of two integers.
+  const scaled = presentDays * 10_000;
+  let whole = Math.floor(scaled / enrolledDays);
+  let rem = scaled - whole * enrolledDays;
+  if (rem < 0) {
+    whole -= 1;
+    rem += enrolledDays;
+  } else if (rem >= enrolledDays) {
+    whole += 1;
+    rem -= enrolledDays;
+  }
+  const basisPoints = rem * 2 >= enrolledDays ? whole + 1 : whole;
+  return `${Math.floor(basisPoints / 100)}.${String(basisPoints % 100).padStart(2, "0")}`;
 }
 
 interface Bucket {

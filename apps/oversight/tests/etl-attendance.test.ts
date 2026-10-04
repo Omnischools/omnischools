@@ -271,9 +271,24 @@ function expectedFigure(
   return { present, enrolled };
 }
 
-/** `round(100*p/e, 2)` as the suite's own independent restatement of the rate. */
+/**
+ * `round(100*p/e, 2)` as the suite's own independent restatement of the rate — integer half-away-from-zero,
+ * so it matches Postgres `round()` on exact-half inputs exactly the way the production helper now does. A
+ * float `Math.round((p/e) * 10_000)` would disagree on those cases and quietly diverge from the stored value.
+ */
 function rateOf(present: number, enrolled: number): string {
-  return (Math.round((present / enrolled) * 10_000) / 100).toFixed(2);
+  const scaled = present * 10_000;
+  let whole = Math.floor(scaled / enrolled);
+  let rem = scaled - whole * enrolled;
+  if (rem < 0) {
+    whole -= 1;
+    rem += enrolled;
+  } else if (rem >= enrolled) {
+    whole += 1;
+    rem -= enrolled;
+  }
+  const basisPoints = rem * 2 >= enrolled ? whole + 1 : whole;
+  return `${Math.floor(basisPoints / 100)}.${String(basisPoints % 100).padStart(2, "0")}`;
 }
 
 /** Round-trip a written row back into the shape the writer takes. Used by the write-path tests. */
