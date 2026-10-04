@@ -99,7 +99,11 @@ import { stampProvenance, type EtlSource } from "./run";
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  */
 
-/** Raised for a sitting this ETL refuses to aggregate. Per-school isolated by `computePerSchool`. */
+/**
+ * Raised for a sitting this ETL refuses to aggregate. Thrown from two places with DIFFERENT blast
+ * radii: the per-school compute (isolated by `computePerSchool` — costs one school) and the write-time
+ * precedence collapse (inside the run transaction — rolls all three arms back, closes the run FAILED).
+ */
 export class PerformanceTransformError extends Error {
   constructor(message: string) {
     super(message);
@@ -483,7 +487,10 @@ export function collapseBySourcePrecedence(
     // of its figures — an UNDERCOUNT that stays internally consistent (ALL would still equal the
     // surviving MALE+FEMALE, and the stored rate would still read correctly), and is therefore invisible
     // to every reader and every reviewer. That is the exact error class this module is built against, so
-    // the honest response is to fail the batch and let the caller's per-school isolation absorb it.
+    // the honest response is to throw. This collapse runs at write time, inside the step-5c `sql.begin`,
+    // so the throw rolls ALL THREE arms back and closes the run FAILED with nothing published — the same
+    // run-wide-fatal blast radius as the post-insert duplicate assertion, and the right direction for a
+    // PK-only table where a silent undercount is the worse outcome.
     if (held) {
       if (held.some((r) => r.sex === row.sex))
         throw new PerformanceTransformError(
