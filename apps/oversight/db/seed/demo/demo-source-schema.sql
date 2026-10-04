@@ -1,8 +1,9 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- `demo_source` — THE OPERATIONAL STAND-IN FOR THE INCREMENT-H DEMO.
 --
--- WHAT THIS IS. Four tables standing in for the real operational schema in apps/web
--- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts` and `db/schema/students.ts`). The demo generator writes
+-- WHAT THIS IS. Five tables standing in for the real operational schema in apps/web
+-- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts`, `db/schema/students.ts` and
+-- `db/schema/terminal-results.ts`). The demo generator writes
 -- OPERATIONAL-SHAPED rows here, and the ETL transform reads them and performs the real
 -- decomposition — booleans → has_*_count, the three CHECK families → one 0/1 count per allowed
 -- value, nullable detail → *_reporting_count denominators. Nothing in the demo hand-seeds a fact
@@ -41,6 +42,10 @@
 --                           The omission is also the one thing that CANNOT hide a prod defect: the
 --                           reader names its six columns explicitly, so columns absent here are
 --                           columns it never mentions.
+--     terminal_exam_result — `note` (free text) and `captured_by` (a user id) — the SAME posture as
+--                           `students`, for the same reason, plus `captured_at` which the ETL does not
+--                           read (the cohort's vintage is the sitting's `ends_on`). See the table's own
+--                           header at the foot of this file.
 --   FKs that reach tables this stand-in does not carry (ref_school, ref_user,
 --   ref_academic_period_config) are dropped; the intra-tenant composite FK between the two tables
 --   below is kept, because that one is load-bearing for the grain.
@@ -247,3 +252,67 @@ create table demo_source.students (
 -- `students_school_idx` / class lookup give it operationally.
 create index demo_source_students_school_idx on demo_source.students (school_id);
 create index demo_source_class_school_idx on demo_source.class (school_id);
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- TERMINAL EXAM RESULTS (increment H third slice, task H14) — `terminal_exam_result`, the source of
+-- `fact_performance_exam`'s SCHOOL_ENTERED arm.
+--
+-- Operational apps/web/db/schema/terminal-results.ts (GOV-6, migration 0079) is ALREADY a SCHOOL-LEVEL
+-- AGGREGATE: one row per (school × exam_type × year), four sex-split leaf counts, and NO per-candidate
+-- rows, names or scores anywhere (Kofi R363/R372). So this stand-in is not a reduction of a per-person
+-- table the way `students` is — it is the same aggregate, minus two columns.
+--
+-- ⚠ THE TWO OMITTED COLUMNS ARE THE POINT, and this is the `students` posture rather than the
+-- `facilities_snapshot` one:
+--   `note`        free text a head teacher typed. Nothing bounds what free text contains — a name, a
+--                 phone number, a safeguarding remark — so the ETL's allow-list never mentions it.
+--   `captured_by` a `ref_user` id: the NAMED STAFF MEMBER who keyed the figures. Carrying it into
+--                 analytics would make "who filed this" queryable outside the gated §6 named-record
+--                 path, which is the only route to an individual this product allows.
+-- Omitting both makes `lib/etl/performance-source.ts`'s seven-column allow-list STRUCTURAL in the demo:
+-- a reader that reached for either would FAIL here rather than quietly succeed. (`captured_at` is
+-- omitted for a different and duller reason: the cohort's vintage is the SITTING's `ends_on`, so the ETL
+-- never reads it — see lib/etl/performance.ts.)
+--
+-- EVERY OTHER NAME AND TYPE IS THE OPERATIONAL ONE, and all five operational CHECKs are kept, because
+-- the transform restates them: if the operational constraint and the ETL's own validation ever drift,
+-- the transform must fail loudly on the school rather than publish a pass rate above 100%.
+--
+-- `exam_type` is TEXT + CHECK, not an enum — exactly as upstream (the ref_role / plc.type fixed-domain
+-- idiom). The analytics side has its own `exam` enum, and the 1:1 mapping across that boundary is
+-- validated in `lib/etl/performance.ts` rather than assumed.
+--
+-- ⚠ ONE ROW PER EXAM PER YEAR IS THE REGULAR MAY/JUNE SITTING. There is no sitting-window column to
+-- model, so NovDec and private-candidate figures are simply not representable here — which is the honest
+-- shape, since Omnischools does not capture them.
+create table demo_source.terminal_exam_result (
+  id                uuid primary key default gen_random_uuid(),
+  school_id         uuid not null,
+  exam_type         text not null,
+  -- The exam-sitting CALENDAR year (e.g. 2026) — NOT an academic year. The ETL maps N → "(N-1)/N".
+  year              integer not null,
+  female_candidates integer not null,
+  male_candidates   integer not null,
+  female_passed     integer not null,
+  male_passed       integer not null,
+  -- The real `uniq_terminal_exam_result_sitting`: one aggregate per (school × exam × year). Load-bearing
+  -- for the grain — it is what makes the ETL's grouped read an identity rather than a de-duplication.
+  constraint uniq_terminal_exam_result_sitting unique (school_id, exam_type, year),
+  constraint terminal_exam_result_exam_type_valid
+    check (exam_type in ('BECE', 'WASSCE')),
+  constraint terminal_exam_result_female_candidates_nonneg check (female_candidates >= 0),
+  constraint terminal_exam_result_male_candidates_nonneg check (male_candidates >= 0),
+  -- Passed is bounded 0 ≤ passed ≤ candidates, PER SEX (a pass count can never exceed its sitters).
+  constraint terminal_exam_result_female_passed_bounds
+    check (female_passed >= 0 and female_passed <= female_candidates),
+  constraint terminal_exam_result_male_passed_bounds
+    check (male_passed >= 0 and male_passed <= male_candidates),
+  -- A captured sitting has ≥1 candidate overall → sex='ALL' never divides by zero. Note it is the SUM
+  -- that is bounded, not each sex: a single-sex school legitimately files female_candidates = 0, which
+  -- is exactly why the per-sex rate needs its own zero guard.
+  constraint terminal_exam_result_min_one_candidate
+    check (female_candidates + male_candidates >= 1)
+);
+
+create index demo_source_terminal_exam_result_school_idx
+  on demo_source.terminal_exam_result (school_id);
