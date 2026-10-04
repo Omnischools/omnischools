@@ -1569,15 +1569,8 @@ describe("product_line is no longer a grain key — the SHS estate is CONSUMED, 
     expect(report.errorText).toBeNull();
   });
 
-  it("`skippedProductLines` is [] by construction, for every period of the run", async () => {
-    // The bucket is reported as an empty list rather than deleted, so an operator comparing two runs
-    // reads "0 unmapped" instead of finding the field gone. It can never be non-empty again: nothing
-    // partitions by product line any more.
-    for (const p of report.periods) expect(p.skippedProductLines).toEqual([]);
-  });
-
   it("every school in the inclusion set is accounted for: written, or census-less, or failed", async () => {
-    // THE REVISED ACCOUNTING IDENTITY. The `skippedProductLines` term is GONE — not zeroed, gone — so
+    // THE REVISED ACCOUNTING IDENTITY. The skipped-product-line term is GONE — not zeroed, gone — so
     // the identity is now three buckets, and `noSourceRow` means "filed no census ANYWHERE in the year".
     // No school may vanish quietly between the inclusion set and the facts.
     for (const p of report.periods) {
@@ -1642,7 +1635,6 @@ describe("product_line is no longer a grain key — the SHS estate is CONSUMED, 
       expect(Number(rows[0]!.total)).toBe(41);
       expect(Date.parse(rows[0]!.as_of)).toBe(Date.parse(f3CapturedAt));
       // Not counted as a gap, either.
-      expect(run.periods.every((p) => p.skippedProductLines.length === 0)).toBe(true);
       expect(run.periods.every((p) => !p.noSourceRow.includes(victim.emis))).toBe(true);
     } finally {
       await sql`delete from demo_source.facilities_snapshot where period_id = ${f3Period}::uuid`;
@@ -1977,9 +1969,8 @@ describe("noSourceRow is a NAMED list, not just a zero (Dex A4)", () => {
       for (const p of gapped.periods) {
         expect(p.noSourceRow).toContain(victim.emis);
         // DISJOINT from the only other bucket — that is what makes the identity exact rather than
-        // merely balanced. (`skippedProductLines` is gone from the identity, and stays empty.)
+        // merely balanced. (The skipped-product-line term is gone from the identity entirely.)
         expect(p.failures.some((f) => f.emisSchoolId === victim.emis)).toBe(false);
-        expect(p.skippedProductLines).toEqual([]);
         expect(p.inserted + p.noSourceRow.length + p.failures.length).toBe(
           gapped.coverage.included,
         );

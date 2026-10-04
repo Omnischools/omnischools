@@ -47,7 +47,7 @@ import type postgres from "postgres";
  *
  * `product_line` survives ONLY as the last tie-break, so a combined (J-S) school carrying both a
  * Basic and a Senior configuration still yields exactly one row, and a SENIOR or SENIOR_F3 census is
- * just another candidate. The previous version's `skippedProductLines` gap is therefore CLOSED rather
+ * just another candidate. The previous version's skipped-product-line gap is therefore CLOSED rather
  * than reported: every line is consumed, and the SHS estate is present in the facts instead of being
  * counted as absent.
  *

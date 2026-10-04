@@ -48,6 +48,9 @@ export const dimPeriod = pgTable("dim_period", {
   periodType: periodTypeEnum("period_type").notNull(),
   startsOn: date("starts_on"),
   endsOn: date("ends_on"),
+  // WARNING: not unique per year. Since the fact_infrastructure ANNUAL re-grain, `is_current` can be
+  // true on BOTH the TERM row and the derived ANNUAL row of the same academic_year — so any
+  // `is_current` lookup MUST also pin `period_type`, or it will match more than one period.
   isCurrent: boolean("is_current").notNull().default(false),
 });
 

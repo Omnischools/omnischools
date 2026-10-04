@@ -80,20 +80,6 @@ export interface InfrastructureEtlOptions {
   nationalName?: string;
 }
 
-/**
- * RETIRED FOR THIS FACT, kept as a shape so the bucket can be SEEN to be empty.
- *
- * Before the re-grain, census rows on an unmappable product line (a SENIOR semester is not a term)
- * were reported here as a named, counted gap. The ANNUAL grain consumes every line, so the bucket is
- * `[]` by construction. It is reported as an empty list rather than deleted outright because an
- * operator comparing last week's run report with tonight's needs to read "0 unmapped" — a field that
- * simply vanished is indistinguishable from a field that stopped being computed.
- */
-export interface SkippedProductLine {
-  productLine: string;
-  operationalSchoolIds: string[];
-}
-
 export interface PeriodOutcome {
   academicYear: string;
   /** ALWAYS null: the grain is the academic YEAR, and `term = null` is what makes a period ANNUAL. */
@@ -106,15 +92,13 @@ export interface PeriodOutcome {
   deleted: number;
   inserted: number;
   failures: SchoolFailure[];
-  /** Always `[]` — see `SkippedProductLine`. No product line is skipped at the ANNUAL grain. */
-  skippedProductLines: SkippedProductLine[];
   /**
    * Included schools that filed NO census row ANYWHERE in the academic year — on any product line,
    * for any period number. They are not a failure (a school that has not filed yet is a normal state)
    * but they ARE the difference between the inclusion set and `schools_reporting`, so they are listed
    * rather than left to be inferred from a subtraction. Increment I's coverage card reads this.
    *
-   * THE ACCOUNTING IDENTITY, revised by the re-grain (the `skippedProductLines` term is gone):
+   * THE ACCOUNTING IDENTITY, revised by the re-grain (the skipped-product-line term is gone):
    *   inserted + noSourceRow + failures = coverage.included
    * which is the property `tests/etl-infrastructure.test.ts` asserts, and the only way to know no
    * school vanished quietly between the inclusion set and the facts. EMIS ids, not tenant uuids —
@@ -282,8 +266,6 @@ export async function runInfrastructureEtl(
       deleted: writtenByPeriod.get(p.periodId)?.deleted ?? 0,
       inserted: writtenByPeriod.get(p.periodId)?.inserted ?? 0,
       failures: p.failures,
-      // Empty BY CONSTRUCTION at this grain — see `SkippedProductLine`.
-      skippedProductLines: [],
       noSourceRow: p.noSourceRow,
     }));
 

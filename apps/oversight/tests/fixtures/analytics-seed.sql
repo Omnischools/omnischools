@@ -44,8 +44,13 @@ insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, ges_code,
   -- individual drill-down must be REFUSED (AC-1.6), never resolved against a guessed tenant.
   ('10000000-0000-4000-8000-000000000019', 'SCHOOL',   '10000000-0000-4000-8000-000000000003', 'Diaso Community JHS',  'EMIS-UNM-009', 'JHS', 'PUBLIC',  true);
 
+-- Two CURRENT rows for the same academic year, deliberately: the TERM row the term-grain facts hang
+-- off, and the derived ANNUAL cut that fact_infrastructure is grained to since the re-grain. This is
+-- the shape the ETL actually produces (see the `is_current` warning in db/schema/dim.ts), so the
+-- fixture carries it rather than a tidier one-period world the app will never see.
 insert into dim_period (period_id, academic_year, term, period_type, is_current) values
-  ('20000000-0000-4000-8000-000000000001', '2025/26', 2, 'TERM', true);
+  ('20000000-0000-4000-8000-000000000001', '2025/26', 2,    'TERM',   true),
+  ('20000000-0000-4000-8000-000000000002', '2025/26', null, 'ANNUAL', true);
 
 -- operational_school_id maps each EMIS school to its operational tenant uuid (apps/web ref_school.id
 -- = the OPS_SCHOOL.* constants). EMIS-UNM-009 is deliberately UNMAPPED (NULL) — the drill-down gate
@@ -214,6 +219,9 @@ end $$;
 -- Facilities census for the NON-GATED C5 drill. The analytics fact carries no `captured_by` and no
 -- `caterer_name` at all — the ETL never brings them across — which is the structural floor under
 -- the query-boundary exclusion in lib/oversight/infrastructure.ts.
+--
+-- On the ANNUAL period (…0002), not the TERM one: this fact is ANNUAL grain, and the read path pins
+-- `dp.period_type = 'ANNUAL'`.
 insert into fact_infrastructure (
   jurisdiction_id, period_id, schools_reporting,
   classrooms_total, classrooms_good, classrooms_repair,
@@ -228,7 +236,7 @@ insert into fact_infrastructure (
   computers_reporting_count, library_books_reporting_count, furniture_reporting_count,
   source, as_of_date
 ) values (
-  '10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000001', 1,
+  '10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000002', 1,
   24, 18, 6,
   6, 8, 2,
   480, 35, 24, 24, 2, 1,

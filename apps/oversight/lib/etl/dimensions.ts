@@ -310,12 +310,13 @@ export function periodKey(academicYear: string, term: number | null): string {
  * caller cannot pass two.
  */
 export function annualPeriodSpecs(specs: PeriodSpec[]): PeriodSpec[] {
+  // Hoisted: these close over nothing in the loop, so re-creating them per spec bought nothing.
+  const min = (a: string | null | undefined, b: string | null | undefined) =>
+    a && b ? (a < b ? a : b) : (a ?? b ?? null);
+  const max = (a: string | null | undefined, b: string | null | undefined) =>
+    a && b ? (a > b ? a : b) : (a ?? b ?? null);
   const byYear = new Map<string, PeriodSpec>();
   for (const spec of specs) {
-    const min = (a: string | null | undefined, b: string | null | undefined) =>
-      a && b ? (a < b ? a : b) : (a ?? b ?? null);
-    const max = (a: string | null | undefined, b: string | null | undefined) =>
-      a && b ? (a > b ? a : b) : (a ?? b ?? null);
     const soFar = byYear.get(spec.academicYear);
     byYear.set(spec.academicYear, {
       academicYear: spec.academicYear,
