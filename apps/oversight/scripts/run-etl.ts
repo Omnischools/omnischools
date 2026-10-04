@@ -2,11 +2,16 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import { runOversightEtl } from "@/lib/etl/pipeline";
-import { DEMO_EMIS_EXTRACT_PATH, DEMO_TERMS } from "@/scripts/seed-demo-data";
+import {
+  DEMO_EMIS_EXTRACT_PATH,
+  DEMO_EXAM_COHORTS,
+  DEMO_TERMS,
+} from "@/scripts/seed-demo-data";
 
 /**
- * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure` AND `fact_enrolment`,
- * which are ONE run, one verdict and one transaction (see `lib/etl/pipeline.ts`).
+ * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure`, `fact_enrolment` AND
+ * `fact_performance_exam`, which are ONE run, one verdict and one transaction (see
+ * `lib/etl/pipeline.ts`). The third arm files at its own EXAM_COHORT periods, one per sitting year.
  *
  * ── PRIVILEGE ───────────────────────────────────────────────────────────────────────────────────
  * `ANALYTICS_DATABASE_URL` must point at the PRIVILEGED owner/writer (the Direct connection, the same
@@ -62,6 +67,15 @@ async function main(): Promise<void> {
         startsOn: t.startsOn,
         endsOn: t.endsOn,
         isCurrent: t.isCurrent,
+      })),
+      // THE SITTING COHORTS (task H14). DECLARED, exactly as the academic years are: the run states
+      // which sittings it files, `dim_period`'s EXAM_COHORT rows are upserted from that declaration, and
+      // each cohort's `endsOn` becomes its rows' frozen `as_of_date`. A source sitting year that is NOT
+      // declared FAILS the run with the naming rule in the message — it is never silently skipped.
+      examCohorts: DEMO_EXAM_COHORTS.map((c) => ({
+        sittingYear: c.sittingYear,
+        startsOn: c.startsOn,
+        endsOn: c.endsOn,
       })),
       sourceSchema: args.sourceSchema,
     });
@@ -143,6 +157,39 @@ async function main(): Promise<void> {
           `    ⚠ ${e.stageDrift.length} school(s) teach a stage their register school_type does not ` +
             `account for (e.g. ${e.stageDrift[0]!.emisSchoolId} is ${String(e.stageDrift[0]!.schoolType)} ` +
             `and teaches ${e.stageDrift[0]!.stages.join("/")})`,
+        );
+    }
+    // ── THE THIRD ARM, at its OWN EXAM_COHORT periods (one line per SITTING, never per year) ───────
+    // The counts are printed PER EXAM on purpose: a BECE candidate and a WASSCE candidate are different
+    // children, so a pooled pair would invite a pooled rate for a cohort that does not exist. And the
+    // rate printed per exam is re-derived here from that exam's own summed counts — never averaged from
+    // the stored school rates, which is the one arithmetic mistake this table punishes silently.
+    for (const c of report.examCohorts) {
+      console.log(
+        `  ${c.sittingYear} sitting (EXAM_COHORT ${c.academicYear}) · source ${c.sourceRows} filings → ` +
+          `fact_performance_exam ${c.inserted} inserted (${c.deleted} replaced) across ` +
+          `${c.schoolsComputed} school(s), as of ${c.asOfDate}` +
+          (c.failures.length > 0
+            ? ` · ${c.failures.length} school(s) failed compute`
+            : "") +
+          (c.noResults.length > 0 ? ` · ${c.noResults.length} filed no sitting` : ""),
+      );
+      for (const e of c.byExam) {
+        if (e.candidates === 0) continue;
+        const rate = ((e.qualified / e.candidates) * 100).toFixed(2);
+        console.log(
+          `    ${e.exam}: ${e.qualified}/${e.candidates} qualified (${rate}%, sex=ALL, one sitting) ` +
+            `— “candidates − qualified” is NOT “failed” (absent/withheld are in it too)`,
+        );
+      }
+      if (c.waecRows > 0)
+        console.log(
+          `    ⓘ ${c.waecRows} row(s) from the WAEC extract supersede school-entered figures`,
+        );
+      if (c.superseded > 0)
+        console.log(
+          `    ⓘ ${c.superseded} school-entered row(s) superseded by WAEC_EXTRACT — a WAEC-covered ` +
+            `cohort loses its whole school-entered row-set and is sex='ALL' ONLY`,
         );
     }
     if (report.errorText) {

@@ -2,6 +2,9 @@ import type postgres from "postgres";
 import {
   annualPeriodSpecs,
   assertSpineIntact,
+  examCohortAcademicYear,
+  examCohortPeriodKey,
+  examCohortPeriodSpec,
   periodKey,
   refreshJurisdictions,
   refreshPeriods,
@@ -21,6 +24,21 @@ import {
   type FactEnrolmentRow,
 } from "./enrolment";
 import { readActiveRosterGroups, type RosterGroupSourceRow } from "./enrolment-source";
+import {
+  EXAMS,
+  aggregateSchoolSitting,
+  assertExamCohortPeriodsSeeded,
+  waecExtractFactRows,
+  writePerformanceExamFactsTx,
+  type Exam,
+  type FactPerformanceExamRow,
+} from "./performance";
+import {
+  readTerminalExamResults,
+  readTerminalExamSittingYears,
+  readWaecExtractCohort,
+  type TerminalExamSourceRow,
+} from "./performance-source";
 import { loadEmisRegister, parseEmisExtract, type RegisterRow } from "./register";
 import { readLatestFacilitiesSnapshots } from "./source";
 import type { AnalyticsStage } from "./stage";
@@ -65,6 +83,18 @@ import {
  *
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
+ *
+ * ⚠ THREE FACTS, ONE RUN (increment H third slice, task H14). `fact_performance_exam` is the THIRD ARM,
+ * threaded exactly as the enrolment arm was: computed in 5a under `computePerSchool`, its failures
+ * tallied into the SAME run-wide verdict, its rows written in the SAME `sql.begin` in 5c, with its own
+ * explicit delete scope. Two things about it are NOT the enrolment arm's shape, and both follow from the
+ * grain:
+ *   · IT RUNS FOR EVERY DECLARED SITTING COHORT, not just the current year. A sitting is a CLOSED,
+ *     IMMUTABLE cohort of candidates, so backfilling 2025's BECE is legitimate in a way that
+ *     backfilling a past year's ROSTER is not (there is only ever one roster, and it is tonight's).
+ *   · ITS PERIOD IS NOT THE ANNUAL ONE. It files against `period_type = 'EXAM_COHORT'` (one period per
+ *     sitting year, both exams on it), so it does not belong inside the ANNUAL period loop and the run
+ *     reports it under `EtlRunReport.examCohorts` rather than squeezing it into `PeriodOutcome`.
  *
  * ⚠ TWO FACTS, ONE RUN, ONE VERDICT, ONE TRANSACTION (increment H second slice, task H9).
  * `fact_enrolment` is computed as a PARALLEL ARM inside exactly the same 5a/5b/5c phasing, not as a
@@ -133,6 +163,73 @@ export interface EtlRunOptions {
    * Postgres cast error with no indication of which option to set.
    */
   rosterAsOf?: string;
+  /**
+   * THE SITTING COHORTS THIS RUN FILES — `fact_performance_exam`'s third arm (task H14).
+   *
+   * DECLARED, exactly as `periods` declares the academic years, and for the same reason: the run states
+   * which cohorts it is responsible for, and `dim_period`'s EXAM_COHORT rows are upserted from that
+   * declaration in step 2 (so no analytics object is invented — see `lib/etl/dimensions.ts`).
+   *
+   * OMITTED OR EMPTY ⇒ THE ARM DOES NOT RUN. Zero rows, an EMPTY delete scope (so any previously
+   * published sitting keeps its figures) and nothing added to `attempted` — the same clean no-op shape
+   * the enrolment arm takes when no academic year is current. It is NOT a silent swallow of a real
+   * sitting: a run that DOES declare cohorts and whose source carries a sitting year it did NOT declare
+   * FAILS, up front, naming the naming rule (`assertExamCohortPeriodsSeeded`).
+   *
+   * `endsOn` is the cohort's FROZEN VINTAGE: `fact_performance_exam.as_of_date` is the sitting's own
+   * `ends_on`, never `now()`, so a re-run of a closed sitting is byte-identical and provenance says
+   * "this is the June 2026 sitting" rather than "we recomputed it last night".
+   */
+  examCohorts?: ExamCohortDeclaration[];
+}
+
+/** One sitting the run files. `sittingYear` is `terminal_exam_result.year` — a bare calendar year. */
+export interface ExamCohortDeclaration {
+  sittingYear: number;
+  /** The sitting window. `endsOn` becomes every row's `as_of_date`; `startsOn` is the fallback. */
+  startsOn?: string | null;
+  endsOn?: string | null;
+}
+
+/**
+ * What the performance arm produced for ONE sitting cohort. One of these per declared cohort.
+ *
+ * ⚠ `candidates` / `qualified` are reported PER EXAM (`byExam`), never pooled into one pair, because a
+ * pooled pair invites a pooled RATE — and a BECE candidate and a WASSCE candidate are different children
+ * (JHS 3 leavers vs SHS 3 leavers), so one rate over both describes a cohort that does not exist.
+ */
+export interface ExamCohortOutcome {
+  /** The sitting CALENDAR year (2026). */
+  sittingYear: number;
+  /** The EXAM_COHORT period's `academic_year` — "(N-1)/N". */
+  academicYear: string;
+  /** ALWAYS "EXAM_COHORT". Stated so a reader never re-derives it from `term`. */
+  periodType: "EXAM_COHORT";
+  periodId: string;
+  /** The cohort's frozen vintage — the sitting's `ends_on`. Never `now()`. */
+  asOfDate: string;
+  /** Filed sittings read from the source (one per school × exam). */
+  sourceRows: number;
+  /** Schools whose sittings were aggregated (including to ZERO rows) — the DELETE scope. */
+  schoolsComputed: number;
+  deleted: number;
+  inserted: number;
+  /**
+   * Rows dropped by the PER-COHORT WAEC>SCHOOL precedence collapse at write time: a cohort WAEC covers
+   * loses ALL its school-entered rows (MALE, FEMALE and ALL), so a WAEC-covered cohort is ALL-only.
+   */
+  superseded: number;
+  /** Per exam, the `sex='ALL'` totals. Counts only — the rate is re-derived per row, never from these. */
+  byExam: { exam: Exam; candidates: number; qualified: number }[];
+  /**
+   * Included schools that filed NO sitting for this cohort — a KG/PRIMARY school (which never presents
+   * candidates) or a JHS/SHS that has not keyed its results yet. NOT a failure, and NOT in the delete
+   * scope: they keep whatever they had.
+   */
+  noResults: string[];
+  /** Rows the WAEC_EXTRACT arm produced. ZERO today — the feed is empty/absent, by design. */
+  waecRows: number;
+  failures: SchoolFailure[];
 }
 
 /**
@@ -202,6 +299,8 @@ export interface EtlRunReport {
   registerRows: number;
   coverage: CoverageFigures;
   periods: PeriodOutcome[];
+  /** The THIRD arm, at its OWN EXAM_COHORT periods — one entry per declared sitting. */
+  examCohorts: ExamCohortOutcome[];
 }
 
 export async function runOversightEtl(
@@ -225,7 +324,17 @@ export async function runOversightEtl(
     // declared terms (`annualPeriodSpecs`), so "exactly one ANNUAL row per academic_year in the run"
     // cannot be violated by a caller passing two.
     const annualSpecs = annualPeriodSpecs(options.periods);
-    const periodIndex = await refreshPeriods(sql, [...options.periods, ...annualSpecs]);
+    // The EXAM_COHORT rows are upserted in the SAME call as the TERM and ANNUAL ones — one sitting
+    // period per declared cohort, `term IS NULL`, academic_year derived from the sitting year. No new
+    // analytics OBJECT is created by any of this (`period_type` already carries EXAM_COHORT), which is
+    // what keeps this slice clear of the §6 prod-paste-0006 re-run rule.
+    const cohortDeclarations = options.examCohorts ?? [];
+    const cohortSpecs = cohortDeclarations.map((c) => examCohortPeriodSpec(c));
+    const periodIndex = await refreshPeriods(sql, [
+      ...options.periods,
+      ...annualSpecs,
+      ...cohortSpecs,
+    ]);
     // `dim_stage` is CONFIG (seeded by `pnpm db:seed`), not a dimension this ETL refreshes, and
     // `fact_enrolment.stage` is a FK to it. Asserted HERE so an unseeded database fails in step 2 with
     // the fix in the message, rather than hundreds of rows into step 5c with a constraint name.
@@ -511,6 +620,176 @@ export async function runOversightEtl(
       });
     }
 
+    // ── step 5a (continued) · THE THIRD ARM: fact_performance_exam, at its OWN EXAM_COHORT periods ──
+    //
+    // SEPARATE FROM THE ANNUAL LOOP ABOVE, because the grain is: a sitting cohort is not an academic
+    // year, and one EXAM_COHORT period carries both exams of one sitting. It runs for EVERY declared
+    // cohort — a sitting is CLOSED and IMMUTABLE, so backfilling 2025's BECE is honest in a way that
+    // backfilling a past year's roster is not.
+    //
+    // NOTHING IS WRITTEN HERE either: the rows and each cohort's delete scope are held until the verdict.
+    interface PendingCohort {
+      outcome: ExamCohortOutcome;
+      rows: FactPerformanceExamRow[];
+      scope: string[];
+    }
+    const pendingCohorts: PendingCohort[] = [];
+    if (cohortDeclarations.length > 0) {
+      const operationalIds = inclusion.schools.map((s) => s.operationalSchoolId);
+      // THE DECLARED-AND-SEEDED COHORT ASSERTION, BEFORE ANY COMPUTE AND LONG BEFORE ANY WRITE. Every
+      // sitting year the SOURCE carries must be (1) one this run DECLARED and (2) resolvable to a seeded
+      // EXAM_COHORT period. The loop below iterates the DECLARATIONS, so an undeclared source sitting
+      // would otherwise be silently not refreshed — absent from the dashboard, or stale in place from an
+      // earlier run, under a SUCCESS banner. It fails here, naming the naming rule, rather than hundreds
+      // of rows into step 5c as a raw FK violation or not at all.
+      const sourceYears = await readTerminalExamSittingYears(sql, {
+        schemaName: options.sourceSchema,
+        operationalSchoolIds: operationalIds,
+      });
+      await assertExamCohortPeriodsSeeded(
+        sql,
+        sourceYears,
+        examCohortAcademicYear,
+        cohortDeclarations.map((c) => c.sittingYear),
+      );
+
+      for (const cohort of cohortDeclarations) {
+        const academicYear = examCohortAcademicYear(cohort.sittingYear);
+        const periodId = periodIndex.get(examCohortPeriodKey(academicYear));
+        if (!periodId)
+          throw new Error(
+            `dim_period has no EXAM_COHORT row for ${academicYear} after the refresh.`,
+          );
+        // THE COHORT'S FROZEN VINTAGE — the sitting's `ends_on`, falling back to `starts_on`. NEVER
+        // `now()`: a sitting is a closed cohort, so a re-run must be byte-identical and provenance must
+        // say WHICH sitting rather than when it was last recomputed.
+        const asOfDate = cohort.endsOn ?? cohort.startsOn ?? null;
+        if (!asOfDate)
+          throw new Error(
+            `the ${cohort.sittingYear} exam cohort declares neither startsOn nor endsOn, so ` +
+              "fact_performance_exam.as_of_date has no vintage to freeze. Declare the sitting window " +
+              "in `options.examCohorts` — as_of_date is a timestamptz and must not be now().",
+          );
+
+        const { rows: sittings } = await readTerminalExamResults(sql, {
+          schemaName: options.sourceSchema,
+          sittingYear: cohort.sittingYear,
+          operationalSchoolIds: operationalIds,
+        });
+        const bySchool = new Map<string, TerminalExamSourceRow[]>();
+        for (const row of sittings) {
+          const held = bySchool.get(row.schoolId);
+          if (held) held.push(row);
+          else bySchool.set(row.schoolId, [row]);
+        }
+        // A school that filed NOTHING for this sitting is not a failure and NOT computed, so it is not
+        // in the delete scope and keeps its prior rows. A KG or PRIMARY school never presents candidates
+        // at all; a JHS that has not keyed its results yet is in a normal, temporary state.
+        const noResults = inclusion.schools
+          .filter((s) => !bySchool.has(s.operationalSchoolId))
+          .map((s) => s.emisSchoolId);
+
+        const items = [...bySchool.entries()].map(([schoolId, rows]) => ({
+          schoolId,
+          rows,
+        }));
+        attempted += items.length;
+
+        const compute = computePerSchool<
+          (typeof items)[number],
+          { jurisdictionId: string; emisSchoolId: string } & ReturnType<
+            typeof aggregateSchoolSitting
+          >
+        >(
+          items,
+          (item) => ({
+            emisSchoolId:
+              jurisdictionOf.get(item.schoolId)?.emisSchoolId ?? item.schoolId,
+            jurisdictionId: jurisdictionOf.get(item.schoolId)?.jurisdictionId ?? null,
+          }),
+          (item) => {
+            const school = jurisdictionOf.get(item.schoolId);
+            if (!school)
+              throw new Error(
+                `operational school ${item.schoolId} is not in the inclusion set — the exam-results ` +
+                  "read is not bounded by the inclusion set.",
+              );
+            return {
+              jurisdictionId: school.jurisdictionId,
+              emisSchoolId: school.emisSchoolId,
+              ...aggregateSchoolSitting(item.rows, {
+                jurisdictionId: school.jurisdictionId,
+                periodId,
+                emisSchoolId: school.emisSchoolId,
+                etlRunId: runId,
+                asOfDate,
+              }),
+            };
+          },
+        );
+        allFailures.push(...compute.failures);
+
+        // ── THE WAEC_EXTRACT ARM — reachable, tested, and EMPTY today (by design) ────────────────
+        // `ref_waec_results_extract` has no loader and no feed yet, so this yields zero rows; the path
+        // exists so the precedence collapse in the writer is exercised by real code rather than only by
+        // a unit test. It writes sex='ALL' ONLY: the extract carries no sex column, and synthesising a
+        // split from a total is the one thing it must never do.
+        const waec = await readWaecExtractCohort(sql, {
+          academicYear,
+          emisSchoolIds: inclusion.schools.map((s) => s.emisSchoolId),
+        });
+        const jurisdictionByEmis = new Map(
+          inclusion.schools.map((s) => [s.emisSchoolId, s.jurisdictionId]),
+        );
+        const waecRows = waecExtractFactRows(waec.rows, {
+          periodId,
+          etlRunId: runId,
+          asOfDate,
+          jurisdictionOf: (emis) => jurisdictionByEmis.get(emis),
+        });
+
+        const schoolRows = compute.computed.flatMap((c) => c.rows);
+        const byExam = EXAMS.map((exam) => ({
+          exam,
+          candidates: schoolRows
+            .filter((r) => r.exam === exam && r.sex === "ALL")
+            .reduce((t, r) => t + r.candidates, 0),
+          qualified: schoolRows
+            .filter((r) => r.exam === exam && r.sex === "ALL")
+            .reduce((t, r) => t + r.qualified, 0),
+        }));
+
+        pendingCohorts.push({
+          // The WAEC rows are appended AFTER the school-entered ones; the collapse in the writer is what
+          // resolves the precedence, so the order here is not the authority — but it is deterministic.
+          rows: [...schoolRows, ...waecRows],
+          // A school the WAEC arm covers is in the delete scope too: its old SCHOOL_ENTERED row must go.
+          scope: [
+            ...new Set([
+              ...compute.computed.map((c) => c.jurisdictionId),
+              ...waecRows.map((r) => r.jurisdictionId),
+            ]),
+          ],
+          outcome: {
+            sittingYear: cohort.sittingYear,
+            academicYear,
+            periodType: "EXAM_COHORT",
+            periodId,
+            asOfDate,
+            sourceRows: sittings.length,
+            schoolsComputed: compute.computed.length,
+            deleted: 0,
+            inserted: 0,
+            superseded: 0,
+            byExam,
+            noResults,
+            waecRows: waecRows.length,
+            failures: compute.failures,
+          },
+        });
+      }
+    }
+
     // ── step 5b · THE VERDICT, over the WHOLE run ───────────────────────────────────────────────
     // Before any write, and over every period's failures together, because the policy is a RATE over
     // the run's attempted schools.
@@ -522,15 +801,24 @@ export async function runOversightEtl(
     // combined rate while every infrastructure school computes fine. PER-ARM BUDGETS are the right
     // shape once a third arm lands — by then the pooled rate will be tolerating three arms' worth of
     // absolute failures and the signal will be too diluted to act on.
+    //
+    // ⚠ THE THIRD ARM NOW SHARES THAT POOLED DENOMINATOR (task H14), exactly as the note above
+    // anticipated: every exam-filing school of every declared cohort is added to `attempted`, so the
+    // dilution it warns about is now REAL rather than prospective. The behaviour is kept deliberately
+    // unchanged here — one run, one verdict is the shipped contract, and re-cutting the policy into
+    // per-arm budgets is a Kofi decision with its own acceptance criteria, not something this slice may
+    // decide on its own initiative. What is new is only the size of the dilution: a cohort arm that
+    // fails wholesale while the other two are clean can now sit inside the same 1%.
     const verdict = failureVerdict(attempted, allFailures, options.policy);
 
     // ── step 5c · WRITE — once, one transaction, every period; only on SUCCESS ───────────────────
     // A FAILED verdict writes NOTHING. The prior night's data stays exactly as it was: stale, labelled
     // with its own older as-of, and honest. That is what makes the banner's "latest SUCCESS" read
     // correct rather than merely plausible.
-    // BOTH fact tables in ONE `sql.begin`, so a throw while writing enrolment rolls the
-    // infrastructure write back with it. Two transactions would reintroduce the half-published night
-    // between the arms that each writer's own transaction rules out within one arm.
+    // ALL THREE fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
+    // performance arm's duplicate assertion — rolls the other two back with it. Two transactions would
+    // reintroduce the half-published night between the arms that each writer's own transaction rules out
+    // within one arm.
     const written =
       verdict.status === "SUCCESS"
         ? ((await sql.begin(async (tx) => {
@@ -546,7 +834,15 @@ export async function runOversightEtl(
                 rows: p.enrolmentRows,
               })),
             );
-            return { infra, enrol };
+            const exams = await writePerformanceExamFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pendingCohorts.map((c) => ({
+                periodId: c.outcome.periodId,
+                jurisdictionIds: c.scope,
+                rows: c.rows,
+              })),
+            );
+            return { infra, enrol, exams };
           })) as unknown as {
             infra: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
@@ -554,10 +850,23 @@ export async function runOversightEtl(
             enrol: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
             };
+            exams: {
+              perPeriod: {
+                periodId: string;
+                deleted: number;
+                inserted: number;
+                superseded: number;
+              }[];
+            };
           })
-        : { infra: { perPeriod: [] }, enrol: { perPeriod: [] } };
+        : {
+            infra: { perPeriod: [] },
+            enrol: { perPeriod: [] },
+            exams: { perPeriod: [] },
+          };
     const writtenByPeriod = new Map(written.infra.perPeriod.map((p) => [p.periodId, p]));
     const enrolledByPeriod = new Map(written.enrol.perPeriod.map((p) => [p.periodId, p]));
+    const examsByPeriod = new Map(written.exams.perPeriod.map((p) => [p.periodId, p]));
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
@@ -574,6 +883,13 @@ export async function runOversightEtl(
         deleted: enrolledByPeriod.get(p.periodId)?.deleted ?? 0,
         inserted: enrolledByPeriod.get(p.periodId)?.inserted ?? 0,
       },
+    }));
+
+    const cohortOutcomes: ExamCohortOutcome[] = pendingCohorts.map((c) => ({
+      ...c.outcome,
+      deleted: examsByPeriod.get(c.outcome.periodId)?.deleted ?? 0,
+      inserted: examsByPeriod.get(c.outcome.periodId)?.inserted ?? 0,
+      superseded: examsByPeriod.get(c.outcome.periodId)?.superseded ?? 0,
     }));
 
     // ── step 6 · anomaly hook (increment J — a no-op, by name) ──────────────────────────────────
@@ -593,6 +909,7 @@ export async function runOversightEtl(
       registerRows: registerRows.length,
       coverage: inclusion.coverage,
       periods: outcomes,
+      examCohorts: cohortOutcomes,
     };
   } catch (err) {
     // A FAILED run leaves the prior night's data in place. Two mechanisms, both needed: the whole

@@ -50,9 +50,25 @@ import type { RegisterRow } from "./register";
  * An included school with NO census row anywhere in the academic_year (on any product line) appears
  * in the period outcome's `noSourceRow` list rather than just failing to show up.
  *
- * Still NOT settled here, and still Kofi's: the EXAM_COHORT cut and SENIOR_F3's early post-WASSCE
- * calendar as they bear on H9/H12. Neither arises for `fact_infrastructure` — a borehole has no exam
- * cohort — and both now meet a proven harness.
+ * ═══ THE EXAM_COHORT CUT — SETTLED FOR `fact_performance_exam` (task H14) ════════════════════════
+ * A SITTING is not a school year and not a term: it is one cohort of candidates who sat one exam once.
+ * So the third fact slice files against `period_type = 'EXAM_COHORT'`, `term IS NULL` (dim.ts: "1,2,3 —
+ * null for ANNUAL / EXAM_COHORT"), ONE such period per SITTING CALENDAR YEAR, carrying BOTH the BECE
+ * and the WASSCE rows of that year (they are separated by the fact's own `exam` grain column, never by
+ * the period).
+ *
+ * THE MAPPING, from operational `terminal_exam_result.year` (a bare calendar year, e.g. 2026):
+ *       calendar year N  →  EXAM_COHORT period with academic_year "(N-1)/N", term NULL
+ * i.e. the academic year the sitting CONCLUDES, which is the voice every other `academic_year` in this
+ * database already speaks ("2025/26"). The year is NOT re-derived from a date and NOT guessed from the
+ * run's calendar: it is the figure the school itself filed against its own sitting.
+ *
+ * ⚠ NO NEW ANALYTICS OBJECT IS ADDED FOR ANY OF THIS. `period_type` already carries EXAM_COHORT
+ * (db/schema/_enums.ts) and `dim_period` already allows `term IS NULL`, so the slice adds no migration,
+ * no enum value and no table — which is what keeps it clear of the §6 prod-paste-0006 re-run rule.
+ *
+ * SENIOR_F3's early post-WASSCE calendar remains a Kofi question, and is deliberately not touched here:
+ * the sitting year comes from the exam filing, so the Form-3 calendar never enters the mapping.
  */
 
 export interface JurisdictionIndex {
@@ -278,16 +294,80 @@ export async function assertSpineIntact(
  */
 export interface PeriodSpec {
   academicYear: string;
-  /** 1,2,3 for a TERM row; `null` for the academic year's single ANNUAL row. */
+  /** 1,2,3 for a TERM row; `null` for the academic year's single ANNUAL (or EXAM_COHORT) row. */
   term: number | null;
   startsOn?: string | null;
   endsOn?: string | null;
   isCurrent?: boolean;
+  /**
+   * THE ONE DECLARATION `term` CANNOT MAKE (task H14). `term` discriminates TERM from ANNUAL, and that
+   * is still the rule; but an EXAM_COHORT row ALSO has `term IS NULL`, so the two un-numbered period
+   * types are indistinguishable by `term` alone. Set this — and ONLY to "EXAM_COHORT" — to declare a
+   * sitting cohort; anything else stays term-discriminated exactly as before.
+   *
+   * Build it with `examCohortPeriodSpec()` rather than by hand: that helper derives the academic_year
+   * from the SITTING CALENDAR YEAR (the one mapping, in one place) and pins `term: null`, so a
+   * `{ term: 2, periodType: 'EXAM_COHORT' }` row — a term-numbered sitting — cannot be constructed.
+   */
+  periodType?: "EXAM_COHORT";
 }
 
-/** TERM when the spec is numbered, ANNUAL when it is not. The only mapping, in one place. */
-export function periodTypeOf(spec: PeriodSpec): "TERM" | "ANNUAL" {
+/**
+ * TERM when the spec is numbered, ANNUAL when it is not — and EXAM_COHORT only when the spec says so
+ * in as many words. The only mapping, in one place.
+ */
+export function periodTypeOf(spec: PeriodSpec): "TERM" | "ANNUAL" | "EXAM_COHORT" {
+  if (spec.periodType === "EXAM_COHORT") {
+    if (spec.term !== null)
+      throw new Error(
+        `EXAM_COHORT period ${spec.academicYear} declares term ${spec.term}; a sitting cohort is ` +
+          "not a term and dim_period.term is documented NULL for it (db/schema/dim.ts).",
+      );
+    return "EXAM_COHORT";
+  }
   return spec.term === null ? "ANNUAL" : "TERM";
+}
+
+/**
+ * THE SITTING-YEAR → academic_year MAPPING (Kofi's H14 ruling): calendar year N → "(N-1)/N".
+ *
+ * `terminal_exam_result.year` is a BARE CALENDAR YEAR (apps/web/db/schema/terminal-results.ts) — 2026
+ * means "the 2026 sitting" — while every `academic_year` in this database is "2025/26". The conversion
+ * lives here, once, because doing it at each call site is how one of them ends up filing the 2026 BECE
+ * under 2026/27.
+ */
+export function examCohortAcademicYear(sittingYear: number): string {
+  if (!Number.isInteger(sittingYear) || sittingYear < 1900 || sittingYear > 2999)
+    throw new Error(
+      `sitting year ${String(sittingYear)} is not a plausible calendar year — ` +
+        "terminal_exam_result.year is a bare calendar year (e.g. 2026).",
+    );
+  return `${sittingYear - 1}/${String(sittingYear).slice(-2)}`;
+}
+
+/** `${academicYear}|EXAM_COHORT` → period_id. Distinct from the ANNUAL key of the SAME year. */
+export function examCohortPeriodKey(academicYear: string): string {
+  return `${academicYear}|EXAM_COHORT`;
+}
+
+/** One sitting's `dim_period` spec. `term` is pinned NULL and the academic_year is DERIVED. */
+export function examCohortPeriodSpec(cohort: {
+  /** The sitting CALENDAR year — `terminal_exam_result.year`. */
+  sittingYear: number;
+  /** The sitting window. `endsOn` becomes the cohort's frozen `as_of_date` vintage. */
+  startsOn?: string | null;
+  endsOn?: string | null;
+}): PeriodSpec {
+  return {
+    academicYear: examCohortAcademicYear(cohort.sittingYear),
+    term: null,
+    periodType: "EXAM_COHORT",
+    startsOn: cohort.startsOn ?? null,
+    endsOn: cohort.endsOn ?? null,
+    // A sitting is never "the current period": it is a closed, immutable cohort. Marking one current
+    // would make an `is_current` lookup that forgot to pin `period_type` match it (see dim.ts's note).
+    isCurrent: false,
+  };
 }
 
 /** `${academicYear}|${term}` → period_id. The key the operational→global mapping resolves through. */
@@ -308,6 +388,11 @@ export function periodKey(academicYear: string, term: number | null): string {
  *
  * Deriving it is what makes "exactly one ANNUAL row per academic_year in the run" structural: a
  * caller cannot pass two.
+ *
+ * ⚠ EXAM_COHORT SPECS ARE IGNORED HERE, and that exclusion is load-bearing. A sitting cohort carries an
+ * academic_year too ("2024/25" for the 2025 sitting), so folding it into the annual cut would invent an
+ * ANNUAL period for a year the run never declared — and the infrastructure arm loops over exactly these
+ * specs, so it would then go looking for that year's censuses and report a year nobody asked for.
  */
 export function annualPeriodSpecs(specs: PeriodSpec[]): PeriodSpec[] {
   // Hoisted: these close over nothing in the loop, so re-creating them per spec bought nothing.
@@ -317,6 +402,7 @@ export function annualPeriodSpecs(specs: PeriodSpec[]): PeriodSpec[] {
     a && b ? (a > b ? a : b) : (a ?? b ?? null);
   const byYear = new Map<string, PeriodSpec>();
   for (const spec of specs) {
+    if (spec.periodType === "EXAM_COHORT") continue; // see the header
     const soFar = byYear.get(spec.academicYear);
     byYear.set(spec.academicYear, {
       academicYear: spec.academicYear,
@@ -369,7 +455,14 @@ export async function refreshPeriods(
                is_current = ${spec.isCurrent ?? false}
          where period_id = ${periodId}::uuid`;
     }
-    index.set(periodKey(spec.academicYear, spec.term), periodId);
+    // An EXAM_COHORT row is keyed APART from the ANNUAL row of the same academic_year: both carry
+    // `term IS NULL`, so `periodKey()` alone would have the sitting overwrite the year.
+    index.set(
+      periodType === "EXAM_COHORT"
+        ? examCohortPeriodKey(spec.academicYear)
+        : periodKey(spec.academicYear, spec.term),
+      periodId,
+    );
   }
   return index;
 }

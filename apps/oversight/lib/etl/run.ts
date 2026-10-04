@@ -61,15 +61,29 @@ export async function closeEtlRun(
  * makes a re-run of an unchanged period byte-identical except for `etl_run_id`, which is what the
  * idempotency test asserts.
  */
+/**
+ * `ov_source` values the ETL may stamp. OPERATIONAL_AGG is the default — the nightly aggregate of
+ * operational Postgres — and the two exam-results values are the `fact_performance_exam` pair, which
+ * are PROVENANCE AND NOTHING ELSE: `source` discriminates WHO SAID SO (the school's own keyed figures
+ * vs the official WAEC extract) and is deliberately NOT part of that table's grain, because making it
+ * one would let both sources insert the same cohort and double every roll-up (see
+ * `lib/etl/performance.ts`).
+ */
+export type EtlSource = "OPERATIONAL_AGG" | "SCHOOL_ENTERED" | "WAEC_EXTRACT";
+
 export interface Provenance {
-  source: "OPERATIONAL_AGG";
+  source: EtlSource;
   asOfDate: string;
   etlRunId: string;
 }
 
-export function stampProvenance(runId: string, asOfDate: string | Date): Provenance {
+export function stampProvenance(
+  runId: string,
+  asOfDate: string | Date,
+  source: EtlSource = "OPERATIONAL_AGG",
+): Provenance {
   return {
-    source: "OPERATIONAL_AGG",
+    source,
     asOfDate: asOfDate instanceof Date ? asOfDate.toISOString() : asOfDate,
     etlRunId: runId,
   };

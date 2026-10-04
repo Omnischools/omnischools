@@ -243,14 +243,34 @@ export interface DemoStudentGroup {
   headcount: number;
 }
 
+/**
+ * ── THE SITTINGS (third slice, task H14) ────────────────────────────────────────────────────────
+ * One operational-shaped `terminal_exam_result` row: a SCHOOL-LEVEL AGGREGATE for one (school, exam,
+ * sitting year), carrying only the four sex-split leaf counts. No candidate rows, no names, no scores —
+ * and no `note` / `captured_by`, which the stand-in does not even have columns for.
+ */
+export interface DemoTerminalExamRow {
+  schoolId: string;
+  examType: "BECE" | "WASSCE";
+  /** The SITTING CALENDAR year (2025, 2026) — not an academic year. */
+  year: number;
+  femaleCandidates: number;
+  maleCandidates: number;
+  femalePassed: number;
+  malePassed: number;
+}
+
 export interface DemoDataset {
   seed: number;
   terms: DemoTerm[];
+  /** The sitting cohorts present in the data — the EXAM_COHORT periods the run must declare. */
+  examCohorts: DemoExamCohort[];
   schools: DemoSchool[];
   periods: DemoOperationalPeriod[];
   facilities: DemoFacilitiesRow[];
   classes: DemoClassRow[];
   studentGroups: DemoStudentGroup[];
+  terminalExamResults: DemoTerminalExamRow[];
 }
 
 /** The EMIS extract file format — the same `{ as_of_date, rows }` shape as the establishment file. */
@@ -296,6 +316,35 @@ export const DEMO_TERMS: readonly DemoTerm[] = Object.freeze([
 
 /** The register's vintage. Fixed, not `today`, so the artefact is byte-stable across days. */
 export const DEMO_REGISTER_AS_OF = "2026-09-01";
+
+/** One declared sitting cohort — the shape `EtlRunOptions.examCohorts` takes. */
+export interface DemoExamCohort {
+  /** The sitting CALENDAR year. Maps to the EXAM_COHORT academic_year "(N-1)/N". */
+  sittingYear: number;
+  startsOn: string;
+  /** The sitting's close — and therefore every fact row's frozen `as_of_date`. Never `now()`. */
+  endsOn: string;
+}
+
+/**
+ * TWO SITTING YEARS, not one, and this is the third slice's equivalent of `DEMO_TERMS` having two terms.
+ *
+ * A single sitting cannot demonstrate either of the two rules that make `fact_performance_exam`
+ * dangerous to read:
+ *   · BACKFILL IS LEGITIMATE HERE. A sitting is a CLOSED, IMMUTABLE cohort, so the arm runs for every
+ *     declared cohort rather than the current year only (which is the enrolment arm's rule, and the
+ *     opposite one). Two years is what makes that testable rather than asserted.
+ *   · ROLL-UPS SUM SPATIALLY, NEVER ACROSS SITTINGS. The 2025 and 2026 BECE candidates are DIFFERENT
+ *     CHILDREN; adding the two sittings produces a number with no referent. With one year in the data
+ *     that mistake is unmakeable and therefore untested.
+ *
+ * The windows are the REGULAR MAY/JUNE sitting (BECE and WASSCE both sit in that window in Ghana). They
+ * are fixed dates, not derived from the clock, so the artefact and every `as_of_date` are byte-stable.
+ */
+export const DEMO_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+  { sittingYear: 2025, startsOn: "2025-05-05", endsOn: "2025-06-27" },
+  { sittingYear: 2026, startsOn: "2026-05-04", endsOn: "2026-06-26" },
+]);
 
 // ── deterministic ids ───────────────────────────────────────────────────────────────────────────
 
@@ -877,6 +926,96 @@ function rosterFor(
   return { classes, groups };
 }
 
+// ── the sittings: terminal exam results (third slice, task H14) ─────────────────────────────────
+
+/**
+ * WHICH EXAMS A SCHOOL PRESENTS CANDIDATES FOR, from its register `school_type`.
+ *
+ * BECE is the end of JUNIOR HIGH, WASSCE the end of SENIOR HIGH, so only a school that teaches the
+ * terminal year presents candidates at all:
+ *     JHS → BECE · SHS → WASSCE · COMBINED → BOTH · KG / PRIMARY → NEITHER
+ * The KG/PRIMARY case is not a gap to be filled: those schools legitimately appear in the inclusion set
+ * with NO sitting, which is what exercises the "a school that filed nothing keeps its prior rows and is
+ * NOT in the delete scope" half of the write ruling.
+ *
+ * ⚠ THE COMBINED CASE IS A PLANTED LANDMINE, NOT A CONVENIENCE. A COMBINED school files a BECE row AND
+ * a WASSCE row for the SAME sitting year, and they are DIFFERENT PUPILS — JHS 3 leavers and SHS 3
+ * leavers. Summing the two into one pass rate describes a cohort that does not exist, and the figure
+ * looks entirely plausible; the `exam` grain column is what makes the mistake avoidable, and the demo
+ * data is what makes it testable.
+ */
+export function examsPresentedBy(schoolType: DemoSchoolType): ("BECE" | "WASSCE")[] {
+  if (schoolType === "JHS") return ["BECE"];
+  if (schoolType === "SHS") return ["WASSCE"];
+  if (schoolType === "COMBINED") return ["BECE", "WASSCE"];
+  return [];
+}
+
+/**
+ * ONE SCHOOL'S SITTINGS across the declared cohorts.
+ *
+ * Grounded, not uniform: candidate numbers scale with the school's size and urbanisation, and the pass
+ * rate is urban-skewed (the same gradient the facilities generator uses, for the same reason — a dataset
+ * in which every district performs identically proves nothing a regional dashboard is for). The female
+ * share varies per sitting, so `ALL = MALE + FEMALE` is a real equality over uneven numbers rather than
+ * over a clean half, and the per-sex rates genuinely differ from the ALL rate (which is why ALL's rate
+ * must be re-derived and never averaged).
+ *
+ * ⚠ TWO PLANTED EDGE ROWS, keyed off the school INDEX so they are stable across runs and a reviewer can
+ * find them:
+ *   · index % 103 === 0 → a SINGLE-SEX school: `female_candidates = 0` (and therefore `female_passed =
+ *     0`). Legal operationally — only the SUM of the two is CHECKed ≥ 1 — and it is the row that makes
+ *     the per-sex zero-denominator guard real: its FEMALE `qualification_rate` must be 0.00, never NaN
+ *     and never a division error.
+ *   · a COMBINED school → BOTH exams in the same year (see `examsPresentedBy`).
+ */
+function sittingsFor(
+  rng: Rng,
+  school: DemoSchool,
+  index: number,
+  cohorts: readonly DemoExamCohort[],
+): DemoTerminalExamRow[] {
+  const exams = examsPresentedBy(school.schoolType);
+  if (exams.length === 0) return [];
+  const rows: DemoTerminalExamRow[] = [];
+  const singleSex = index % 103 === 0;
+
+  for (const cohort of cohorts) {
+    for (const examType of exams) {
+      // A WASSCE cohort is one SHS year group; a BECE cohort one JHS 3 year group. Both are bigger in
+      // urban schools, and SHS cohorts are bigger than JHS ones.
+      const size =
+        examType === "WASSCE"
+          ? school.urban
+            ? rng.int(90, 320)
+            : rng.int(40, 160)
+          : school.urban
+            ? rng.int(40, 140)
+            : rng.int(18, 80);
+      const femaleShare = singleSex ? 0 : 0.4 + rng.next() * 0.18;
+      const femaleCandidates = Math.round(size * femaleShare);
+      const maleCandidates = Math.max(1, size - femaleCandidates);
+      // Pass rates: urban-skewed, and girls a shade ahead of boys at BECE — the direction Ghana's own
+      // BECE reporting shows. Each sex's rate is drawn SEPARATELY, so the ALL rate is genuinely neither
+      // of them and cannot be reproduced by averaging the two.
+      const basePass = school.urban ? 0.62 + rng.next() * 0.3 : 0.38 + rng.next() * 0.34;
+      const femaleRate = Math.min(1, basePass + (examType === "BECE" ? 0.03 : -0.01));
+      const femalePassed = Math.round(femaleCandidates * femaleRate);
+      const malePassed = Math.round(maleCandidates * Math.min(1, basePass));
+      rows.push({
+        schoolId: school.operationalSchoolId!,
+        examType,
+        year: cohort.sittingYear,
+        femaleCandidates,
+        maleCandidates,
+        femalePassed: Math.min(femalePassed, femaleCandidates),
+        malePassed: Math.min(malePassed, maleCandidates),
+      });
+    }
+  }
+  return rows;
+}
+
 /**
  * Build the whole dataset in memory. PURE (given a seed) — no DB, no filesystem — so a test can
  * assert hand-computed sums against exactly the rows the loader is about to write.
@@ -918,6 +1057,7 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
   const facilities: DemoFacilitiesRow[] = [];
   const classes: DemoClassRow[] = [];
   const studentGroups: DemoStudentGroup[] = [];
+  const terminalExamResults: DemoTerminalExamRow[] = [];
   for (const school of schools) {
     if (!school.onSchoolup) continue; // no tenant → no operational census → no fact row
     const schoolIndex = Number(school.operationalSchoolId!.slice(-12));
@@ -955,16 +1095,23 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     const roster = rosterFor(rng, school, schoolIndex);
     classes.push(...roster.classes);
     studentGroups.push(...roster.groups);
+
+    // The SITTINGS are per school and per sitting YEAR, and they carry NO operational period either: a
+    // sitting is identified by its calendar year (`terminal_exam_result.year`), which the ETL maps to an
+    // EXAM_COHORT `dim_period`. Generated outside the term loop, for that reason.
+    terminalExamResults.push(...sittingsFor(rng, school, schoolIndex, DEMO_EXAM_COHORTS));
   }
 
   return {
     seed,
     terms: [...DEMO_TERMS],
+    examCohorts: [...DEMO_EXAM_COHORTS],
     schools,
     periods,
     facilities,
     classes,
     studentGroups,
+    terminalExamResults,
   };
 }
 
@@ -1009,7 +1156,13 @@ export async function loadDemoSource(
   sql: postgres.Sql,
   dataset: DemoDataset,
   schemaSqlPath: string = DEMO_SOURCE_SCHEMA_SQL,
-): Promise<{ periods: number; facilities: number; classes: number; students: number }> {
+): Promise<{
+  periods: number;
+  facilities: number;
+  classes: number;
+  students: number;
+  terminalExamResults: number;
+}> {
   await sql.unsafe(readFileSync(schemaSqlPath, "utf8"));
 
   const CHUNK = 500;
@@ -1111,11 +1264,28 @@ export async function loadDemoSource(
           generate_series(1, g.headcount)`;
   }
 
+  // ---- the sittings: already aggregates, so one row in the dataset is one row in the table ----
+  for (let i = 0; i < dataset.terminalExamResults.length; i += CHUNK) {
+    const chunk = dataset.terminalExamResults.slice(i, i + CHUNK);
+    await sql`insert into demo_source.terminal_exam_result ${sql(
+      chunk.map((t) => ({
+        school_id: t.schoolId,
+        exam_type: t.examType,
+        year: t.year,
+        female_candidates: t.femaleCandidates,
+        male_candidates: t.maleCandidates,
+        female_passed: t.femalePassed,
+        male_passed: t.malePassed,
+      })),
+    )}`;
+  }
+
   return {
     periods: dataset.periods.length,
     facilities: dataset.facilities.length,
     classes: dataset.classes.length,
     students: dataset.studentGroups.reduce((t, g) => t + g.headcount, 0),
+    terminalExamResults: dataset.terminalExamResults.length,
   };
 }
 
@@ -1151,6 +1321,11 @@ async function main(): Promise<void> {
     console.log(
       `✓ demo_source → ${loaded.classes} class rows and ${loaded.students} students ` +
         `(ACTIVE and not — the roster, which carries no period)`,
+    );
+    console.log(
+      `✓ demo_source → ${loaded.terminalExamResults} terminal_exam_result rows across ` +
+        `${dataset.examCohorts.length} sitting year(s) ` +
+        `(${dataset.examCohorts.map((c) => c.sittingYear).join(", ")}) — BECE and WASSCE`,
     );
   } finally {
     await sql.end({ timeout: 5 });

@@ -30,6 +30,10 @@ export const JUR = {
 export const PERIOD_ID_TERM = "20000000-0000-4000-8000-000000000001";
 // The ANNUAL period is the grain every fact_infrastructure row now hangs off.
 export const PERIOD_ID_ANNUAL = "20000000-0000-4000-8000-000000000002";
+// The EXAM_COHORT period is the SITTING grain fact_performance_exam hangs off (task H14): `term IS
+// NULL`, academic_year "(N-1)/N" for sitting year N, and the SAME academic_year as the ANNUAL row above
+// — `period_type` is the only thing that separates the two, which is why every period lookup pins it.
+export const PERIOD_ID_EXAM_COHORT = "20000000-0000-4000-8000-000000000003";
 
 /**
  * EMIS ids. Each register row now carries `operational_school_id` mapping the EMIS school to its
