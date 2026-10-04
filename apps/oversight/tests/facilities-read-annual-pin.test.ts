@@ -18,13 +18,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
 import { getSchoolFacilitiesCensus } from "@/lib/oversight/infrastructure";
-import { JUR } from "./fixtures/ids";
+import { JUR, PERIOD_ID_ANNUAL, PERIOD_ID_TERM } from "./fixtures/ids";
 import { adminAnalytics, districtOfficer } from "./helpers";
 import { scopeFor } from "@/lib/db/rls";
 
 const scope = scopeFor(districtOfficer);
-const ANNUAL_PERIOD = "20000000-0000-4000-8000-000000000002";
-const TERM_PERIOD = "20000000-0000-4000-8000-000000000001";
+const ANNUAL_PERIOD = PERIOD_ID_ANNUAL;
+const TERM_PERIOD = PERIOD_ID_TERM;
 const MIGRATION = join(process.cwd(), "db/migrations/0005_lucky_sentinel.sql");
 
 /** Clone the seeded ANNUAL census row onto the TERM period, with unmistakable values. */

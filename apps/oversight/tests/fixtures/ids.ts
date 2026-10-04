@@ -25,7 +25,11 @@ export const JUR = {
   schoolUnmappedOperational: "10000000-0000-4000-8000-000000000019",
 } as const;
 
-export const PERIOD_ID = "20000000-0000-4000-8000-000000000001";
+// The TERM period is the legacy grain fact_infrastructure NO LONGER uses (see migration 0005); it
+// survives in the seed so the regression guard can plant a stale orphan beside the ANNUAL row.
+export const PERIOD_ID_TERM = "20000000-0000-4000-8000-000000000001";
+// The ANNUAL period is the grain every fact_infrastructure row now hangs off.
+export const PERIOD_ID_ANNUAL = "20000000-0000-4000-8000-000000000002";
 
 /**
  * EMIS ids. Each register row now carries `operational_school_id` mapping the EMIS school to its
