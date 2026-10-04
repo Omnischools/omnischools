@@ -48,9 +48,16 @@ insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, ges_code,
 -- off, and the derived ANNUAL cut that fact_infrastructure is grained to since the re-grain. This is
 -- the shape the ETL actually produces (see the `is_current` warning in db/schema/dim.ts), so the
 -- fixture carries it rather than a tidier one-period world the app will never see.
-insert into dim_period (period_id, academic_year, term, period_type, is_current) values
-  ('20000000-0000-4000-8000-000000000001', '2025/26', 2,    'TERM',   true),
-  ('20000000-0000-4000-8000-000000000002', '2025/26', null, 'ANNUAL', true);
+-- …and the SITTING COHORT of the 2026 BECE/WASSCE (task H14): `period_type = 'EXAM_COHORT'`, `term IS
+-- NULL`, academic_year "(N-1)/N" for sitting year N, and `is_current = false` — a sitting is a CLOSED,
+-- immutable cohort, and marking one current would make an `is_current` lookup that forgot to pin
+-- `period_type` match three rows for one year (see the warning in db/schema/dim.ts). It shares the
+-- academic_year of the ANNUAL row above on purpose: that is exactly the collision a period lookup has to
+-- survive, and `period_type` is the only thing that separates them.
+insert into dim_period (period_id, academic_year, term, period_type, starts_on, ends_on, is_current) values
+  ('20000000-0000-4000-8000-000000000001', '2025/26', 2,    'TERM',        null, null, true),
+  ('20000000-0000-4000-8000-000000000002', '2025/26', null, 'ANNUAL',      null, null, true),
+  ('20000000-0000-4000-8000-000000000003', '2025/26', null, 'EXAM_COHORT', '2026-05-04', '2026-06-26', false);
 
 -- operational_school_id maps each EMIS school to its operational tenant uuid (apps/web ref_school.id
 -- = the OPS_SCHOOL.* constants). EMIS-UNM-009 is deliberately UNMAPPED (NULL) — the drill-down gate
