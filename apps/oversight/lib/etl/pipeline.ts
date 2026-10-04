@@ -214,7 +214,10 @@ export interface ExamCohortOutcome {
   schoolsComputed: number;
   deleted: number;
   inserted: number;
-  /** Rows dropped by the WAEC>SCHOOL precedence collapse at write time. */
+  /**
+   * Rows dropped by the PER-COHORT WAEC>SCHOOL precedence collapse at write time: a cohort WAEC covers
+   * loses ALL its school-entered rows (MALE, FEMALE and ALL), so a WAEC-covered cohort is ALL-only.
+   */
   superseded: number;
   /** Per exam, the `sex='ALL'` totals. Counts only — the rate is re-derived per row, never from these. */
   byExam: { exam: Exam; candidates: number; qualified: number }[];

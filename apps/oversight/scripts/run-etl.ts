@@ -188,7 +188,8 @@ async function main(): Promise<void> {
         );
       if (c.superseded > 0)
         console.log(
-          `    ⓘ ${c.superseded} school-entered row(s) superseded by WAEC_EXTRACT (precedence)`,
+          `    ⓘ ${c.superseded} school-entered row(s) superseded by WAEC_EXTRACT — a WAEC-covered ` +
+            `cohort loses its whole school-entered row-set and is sex='ALL' ONLY`,
         );
     }
     if (report.errorText) {

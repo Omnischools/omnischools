@@ -126,6 +126,14 @@ beforeAll(async () => {
 }, 300_000);
 
 afterAll(async () => {
+  // ⚠ LEAVE THE SHARED DEMO DATABASE AS FOUND. This file is the only one that declares exam cohorts, so
+  // it is the only one that writes `fact_performance_exam` — and the 2025 sitting's EXAM_COHORT
+  // `academic_year` is "2024/25", which `tests/etl-enrolment.test.ts` deletes outright as its past-year
+  // fixture (`delete from dim_period where academic_year = '2024/25'`). A fact row still hanging off that
+  // period turns that cleanup into a foreign-key error — and vitest does not guarantee alphabetical file
+  // order, so "this file runs last" is not something to rely on. Both are removed here instead.
+  await sql`delete from fact_performance_exam`;
+  await sql`delete from dim_period where period_type = 'EXAM_COHORT'`;
   await sql.end({ timeout: 5 });
 });
 
@@ -1055,16 +1063,30 @@ describe("roll-ups sum SPATIALLY under the mandatory filters (criterion 11)", ()
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 
 describe("WAEC_EXTRACT > SCHOOL_ENTERED, resolved at WRITE time (criterion 12)", () => {
-  it("CRITERION 12 · both sources for ONE key collapse to ONE row: WAEC wins, with WAEC's counts", async () => {
+  it("CRITERION 12 · both sources for ONE COHORT collapse to ONE row: WAEC wins the WHOLE cohort", async () => {
+    // THE COLLAPSE UNIT IS THE COHORT `(jurisdiction, period, exam)` — sex is NOT part of the precedence
+    // decision (Kofi's follow-up ruling). So feeding both sources for one cohort leaves exactly ONE row:
+    // WAEC's sex='ALL'. The school-entered MALE, FEMALE *and* ALL rows are all dropped, because keeping
+    // the split beside an authoritative total would attribute that total to a split WAEC never published
+    // AND break `ALL = MALE + FEMALE` by construction.
     const periodId = await cohortPeriodId(COHORT.sittingYear);
-    const existing = (
+    // A school that actually HAS a BECE cohort: the first jurisdiction in the table may be an SHS one
+    // (WASSCE only), and which school that is depends on run order.
+    const jurisdictionId = (
+      await sql<{ jurisdiction_id: string }[]>`
+        select jurisdiction_id::text as jurisdiction_id from fact_performance_exam
+         where period_id = ${periodId}::uuid and exam = 'BECE'
+         order by jurisdiction_id limit 1`
+    )[0]!.jurisdiction_id;
+    const cohortRows = (
       await sql<Record<string, unknown>[]>`
         select * from fact_performance_exam
-         where period_id = ${periodId}::uuid and sex = 'ALL' order by jurisdiction_id limit 1`
-    )[0]!;
-    const schoolEntered = factRowFrom(existing, periodId);
+         where period_id = ${periodId}::uuid and jurisdiction_id = ${jurisdictionId}::uuid
+           and exam = 'BECE' order by sex`
+    ).map((r) => factRowFrom(r, periodId));
+    expect(cohortRows).toHaveLength(3); // MALE, FEMALE, ALL — the school-entered shape
     const waec: FactPerformanceExamRow = {
-      ...schoolEntered,
+      ...cohortRows.find((r) => r.sex === "ALL")!,
       candidates: 777,
       qualified: 555,
       qualificationRate: qualificationRate(555, 777),
@@ -1072,51 +1094,70 @@ describe("WAEC_EXTRACT > SCHOOL_ENTERED, resolved at WRITE time (criterion 12)",
     };
     const countBefore = await rowCount();
 
-    // The PURE collapse first: order must not matter, and the key is (jurisdiction, period, exam, sex).
+    // The PURE collapse first, and order must not matter.
     for (const order of [
-      [schoolEntered, waec],
-      [waec, schoolEntered],
+      [...cohortRows, waec],
+      [waec, ...cohortRows],
     ]) {
       const survivors = collapseBySourcePrecedence(order);
       expect(survivors).toHaveLength(1);
+      expect(survivors[0]!.sex).toBe("ALL");
       expect(survivors[0]!.source).toBe("WAEC_EXTRACT");
       expect(survivors[0]!.candidates).toBe(777);
       expect(survivors[0]!.qualified).toBe(555);
+      // NOT ONE school-entered row survives the cohort.
+      expect(survivors.some((r) => r.source === "SCHOOL_ENTERED")).toBe(false);
     }
+    // A cohort WAEC does NOT cover is untouched — the collapse is per cohort, not per table, so the
+    // school-entered split of the school's OTHER exam survives in full.
+    const otherExam: FactPerformanceExamRow[] = cohortRows.map((r) => ({
+      ...r,
+      exam: "WASSCE",
+    }));
+    const mixedBatch = collapseBySourcePrecedence([...cohortRows, waec, ...otherExam]);
+    expect(mixedBatch.filter((r) => r.exam === "WASSCE")).toHaveLength(3);
+    expect(mixedBatch.filter((r) => r.exam === "BECE")).toHaveLength(1);
 
     try {
-      // …and through the real write path, which is where the collapse has to happen: feeding BOTH
-      // sources for one key writes ONE row, and it is the WAEC one.
+      // …and through the real write path, which is where the collapse has to happen.
       const result = await writePerformanceExamFacts(sql, [
         {
           periodId,
-          jurisdictionIds: [schoolEntered.jurisdictionId],
+          jurisdictionIds: [jurisdictionId],
           rows: [
             ...(
               await sql<Record<string, unknown>[]>`
                 select * from fact_performance_exam
                  where period_id = ${periodId}::uuid
-                   and jurisdiction_id = ${schoolEntered.jurisdictionId}::uuid`
+                   and jurisdiction_id = ${jurisdictionId}::uuid`
             ).map((r) => factRowFrom(r, periodId)),
             waec,
           ],
         },
       ]);
-      expect(result.superseded).toBe(1);
+      // All THREE school-entered rows of that cohort were superseded by the one WAEC row.
+      expect(result.superseded).toBe(3);
       const survived = await sql<{ source: string; candidates: number; sex: string }[]>`
         select source::text as source, candidates, sex::text as sex from fact_performance_exam
-         where period_id = ${periodId}::uuid
-           and jurisdiction_id = ${schoolEntered.jurisdictionId}::uuid
-           and exam = ${schoolEntered.exam}::exam and sex = 'ALL'`;
+         where period_id = ${periodId}::uuid and jurisdiction_id = ${jurisdictionId}::uuid
+           and exam = 'BECE' order by sex`;
       expect(survived).toHaveLength(1);
+      expect(survived[0]!.sex).toBe("ALL");
       expect(survived[0]!.source).toBe("WAEC_EXTRACT");
       expect(Number(survived[0]!.candidates)).toBe(777);
-      // The row count did not grow — the two sources did not BOTH insert, which is the doubling this
-      // collapse exists to prevent.
-      expect(await rowCount()).toBe(countBefore);
+      // NO SCHOOL_ENTERED row for that cohort remains…
+      const leftovers = await sql<{ n: number }[]>`
+        select count(*)::int as n from fact_performance_exam
+         where period_id = ${periodId}::uuid and jurisdiction_id = ${jurisdictionId}::uuid
+           and exam = 'BECE' and source = 'SCHOOL_ENTERED'`;
+      expect(leftovers[0]!.n).toBe(0);
+      // …and the row count FELL by exactly the two dropped split rows: the two sources did not BOTH
+      // insert (the doubling this collapse exists to prevent), and the cohort is now ALL-only.
+      expect(await rowCount()).toBe(countBefore - 2);
     } finally {
       report = await runEtl();
     }
+    expect(await rowCount()).toBe(countBefore);
   }, 300_000);
 
   it("`source` is NOT part of any uniqueness key — the table has no grain UNIQUE at all", async () => {
@@ -1219,10 +1260,10 @@ describe("the WAEC_EXTRACT arm is an explicitly-EMPTY documented path (criteria 
     // honest encoding, because zeros would report "no girls sat the exam", which is a measurement and a
     // false one.
     const periodId = await cohortPeriodId(COHORT.sittingYear);
-    // A WAEC-ONLY cohort means a school the EXTRACT covers and the SCHOOL-ENTERED arm does not, so the
-    // victims are schools that file NO terminal_exam_result at all (a KG/PRIMARY school never presents
-    // candidates). A school that filed BOTH would have a school-entered split beside the WAEC total —
-    // the MIXED case, asserted separately below — and would not test the asymmetry at all.
+    // Two victim shapes, and under the PER-COHORT collapse they end up IDENTICAL — which is the ruling:
+    //   · a school the extract covers that filed NOTHING (a KG/PRIMARY school never presents candidates);
+    //   · a school that filed school-entered figures AND is covered by the extract — WAEC wins its WHOLE
+    //     cohort, so its school-entered split is dropped too (asserted at the foot of this test).
     const victims = dataset.schools
       .filter((s) => s.onSchoolup && examsPresentedBy(s.schoolType).length === 0)
       .slice(0, 2);
@@ -1233,8 +1274,8 @@ describe("the WAEC_EXTRACT arm is an explicitly-EMPTY documented path (criteria 
          where level = 'SCHOOL' and ges_code = any(${victims.map((v) => v.emisSchoolId)})`
     ).map((r) => r.jurisdiction_id);
     expect(ids).toHaveLength(2);
-    // A mixed school — filed school-entered AND covered by the extract — for the second half.
-    const mixed = (
+    // A school that filed school-entered figures AND is then covered by the extract — the second half.
+    const alsoFiled = (
       await sql<{ emis: string; jurisdiction_id: string }[]>`
         select distinct d.ges_code as emis, d.jurisdiction_id::text as jurisdiction_id
           from fact_performance_exam f
@@ -1244,7 +1285,7 @@ describe("the WAEC_EXTRACT arm is an explicitly-EMPTY documented path (criteria 
     )[0]!;
 
     try {
-      for (const emis of [...victims.map((v) => v.emisSchoolId), mixed.emis])
+      for (const emis of [...victims.map((v) => v.emisSchoolId), alsoFiled.emis])
         await sql`
           insert into ref_waec_results_extract
             (emis_school_id, academic_year, exam, subject, candidates, qualified, source, as_of_date)
@@ -1254,9 +1295,9 @@ describe("the WAEC_EXTRACT arm is an explicitly-EMPTY documented path (criteria 
       expect(run.status).toBe("SUCCESS");
       const cohort = run.examCohorts.find((c) => c.sittingYear === COHORT.sittingYear)!;
       expect(cohort.waecRows).toBe(3);
-      // The MIXED school's school-entered ALL row was superseded; the two WAEC-only schools had nothing
-      // to supersede.
-      expect(cohort.superseded).toBe(1);
+      // The school that ALSO filed loses its WHOLE school-entered BECE cohort — all THREE sex rows — to
+      // the one WAEC row. The two WAEC-only schools had nothing to supersede.
+      expect(cohort.superseded).toBe(3);
 
       const bySex = await sql<{ sex: string; source: string; n: number }[]>`
         select sex::text as sex, source::text as source, count(*)::int as n
@@ -1284,25 +1325,45 @@ describe("the WAEC_EXTRACT arm is an explicitly-EMPTY documented path (criteria 
            and jurisdiction_id = any(${ids}::uuid[]) and sex in ('MALE', 'FEMALE')`;
       expect(split[0]!.total).toBeNull();
 
-      // ── THE MIXED COHORT, documented rather than hidden ───────────────────────────────────────────
-      // Only the contested key (sex='ALL') is replaced by WAEC; MALE/FEMALE are uncontested and stay the
-      // school's own. The consequence is that for such a school ALL ≠ MALE + FEMALE — the two figures
-      // come from DIFFERENT SOURCES measuring the same sitting. That is the precedence ruling applied
-      // literally, and it is why the strict ALL = MALE + FEMALE invariant is asserted PER SOURCE ARM at
-      // transform time rather than over the mixed table. See the header note in lib/etl/performance.ts.
-      const mixedRows = await sql<{ sex: string; source: string; candidates: number }[]>`
+      // ── A COHORT IS NEVER HALF ONE SOURCE AND HALF THE OTHER (the per-cohort ruling) ──────────────
+      // The school that ALSO filed its own figures ends up ALL-ONLY too: WAEC won the whole cohort, so no
+      // school-entered row of it survives. Keeping the split would have attributed WAEC's authoritative
+      // total to a split WAEC never published, and made `ALL = MALE + FEMALE` false by construction.
+      const covered = await sql<{ sex: string; source: string; candidates: number }[]>`
         select sex::text as sex, source::text as source, candidates
           from fact_performance_exam
          where period_id = ${periodId}::uuid and exam = 'BECE'
-           and jurisdiction_id = ${mixed.jurisdiction_id}::uuid
+           and jurisdiction_id = ${alsoFiled.jurisdiction_id}::uuid
          order by sex`;
-      expect(mixedRows.map((r) => `${r.sex}:${r.source}`)).toEqual([
-        "ALL:WAEC_EXTRACT",
-        "FEMALE:SCHOOL_ENTERED",
-        "MALE:SCHOOL_ENTERED",
-      ]);
-      const mixedAll = mixedRows.find((r) => r.sex === "ALL")!;
-      expect(Number(mixedAll.candidates)).toBe(200);
+      expect(covered.map((r) => `${r.sex}:${r.source}`)).toEqual(["ALL:WAEC_EXTRACT"]);
+      expect(Number(covered[0]!.candidates)).toBe(200);
+      // Its OTHER exam, which the extract does NOT cover, keeps its full school-entered split — the
+      // collapse is per cohort, not per school. (COMBINED schools are the ones that have one.)
+      const uncovered = await sql<{ sex: string; source: string }[]>`
+        select sex::text as sex, source::text as source from fact_performance_exam
+         where period_id = ${periodId}::uuid and exam = 'WASSCE'
+           and jurisdiction_id = ${alsoFiled.jurisdiction_id}::uuid
+         order by sex`;
+      if (uncovered.length > 0) {
+        expect(uncovered).toHaveLength(3);
+        expect(uncovered.every((r) => r.source === "SCHOOL_ENTERED")).toBe(true);
+      }
+      // AND THE INVARIANT HOLDS EVERYWHERE IN THE TABLE: every cohort either carries all three sex rows
+      // with ALL = MALE + FEMALE, or carries ALL alone (and satisfies it vacuously). Nothing in between.
+      const badShape = await sql<{ n: number }[]>`
+        select count(*)::int as n from (
+          select jurisdiction_id, period_id, exam,
+                 count(*)::int as rows_n,
+                 sum(case when sex = 'ALL' then candidates end)    as all_c,
+                 sum(case when sex = 'MALE' then candidates end)   as male_c,
+                 sum(case when sex = 'FEMALE' then candidates end) as female_c
+            from fact_performance_exam
+           group by jurisdiction_id, period_id, exam
+        ) x
+         where rows_n not in (1, 3)
+            or (rows_n = 1 and all_c is null)
+            or (rows_n = 3 and all_c is distinct from male_c + female_c)`;
+      expect(badShape[0]!.n).toBe(0);
     } finally {
       await sql`delete from ref_waec_results_extract`;
       // ⚠ WITHDRAWING THE FEED DOES NOT DELETE WHAT IT PUBLISHED, and that is the bounded delete working:
@@ -1722,6 +1783,52 @@ describe("the pure aggregation refuses what it cannot honestly aggregate", () =>
     expect(() => assertSchoolExamInvariants(averaged, "GH-TEST-0001")).toThrow(
       /never summed and never averaged/,
     );
+  });
+
+  it("a WAEC ALL-ONLY cohort satisfies the strict equality VACUOUSLY, and half a split does not", () => {
+    // The per-cohort precedence ruling's other half: a WAEC cohort has no MALE/FEMALE rows at all, so the
+    // invariant must not demand a split — it must hold vacuously. (And `ALL` is still never optional.)
+    const waecOnly = waecExtractFactRows(
+      [
+        {
+          emisSchoolId: "GH-TEST-0001",
+          academicYear: "2025/26",
+          exam: "BECE",
+          candidates: 200,
+          qualified: 150,
+          asOfDate: "2026-08-01",
+        },
+      ],
+      {
+        periodId: unitTarget.periodId,
+        etlRunId: unitTarget.etlRunId,
+        asOfDate: unitTarget.asOfDate,
+        jurisdictionOf: () => unitTarget.jurisdictionId,
+      },
+    );
+    const asResult = {
+      rows: waecOnly,
+      exams: ["BECE" as const],
+      candidates: 200,
+      qualified: 150,
+    };
+    expect(() => assertSchoolExamInvariants(asResult, "GH-TEST-0001")).not.toThrow();
+
+    // HALF a split is neither legal shape, and is a defect in the transform rather than a source state.
+    const half = aggregateSchoolSitting([sourceRow({})], unitTarget);
+    expect(() =>
+      assertSchoolExamInvariants(
+        { ...half, rows: half.rows.filter((r) => r.sex !== "FEMALE") },
+        "GH-TEST-0001",
+      ),
+    ).toThrow(/written as a WHOLE or not at all/);
+    // …and a cohort with NO total at all is refused outright.
+    expect(() =>
+      assertSchoolExamInvariants(
+        { ...half, rows: half.rows.filter((r) => r.sex !== "ALL") },
+        "GH-TEST-0001",
+      ),
+    ).toThrow(/no sex='ALL' row/);
   });
 
   it("the seeded-period assertion names the fix, and passes once the period exists", async () => {

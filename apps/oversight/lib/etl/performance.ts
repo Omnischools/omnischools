@@ -23,9 +23,13 @@ import { stampProvenance, type EtlSource } from "./run";
  * keyed figures (SCHOOL_ENTERED) or the official extract (WAEC_EXTRACT) — and if it were part of any
  * uniqueness key then BOTH sources could insert the same cohort and every roll-up above it would
  * DOUBLE, while staying internally consistent at every tier and therefore invisible. Instead the
- * precedence WAEC_EXTRACT > SCHOOL_ENTERED is resolved AT WRITE TIME to exactly ONE surviving row per
- * (jurisdiction, period, exam, sex) — see `collapseBySourcePrecedence` — and the post-insert duplicate
- * assertion is the enforcement backstop.
+ * precedence WAEC_EXTRACT > SCHOOL_ENTERED is resolved AT WRITE TIME, **PER COHORT**: if WAEC has any row
+ * for `(jurisdiction, period, exam)` it wins the WHOLE cohort (its `sex='ALL'` row survives and every
+ * SCHOOL_ENTERED row of that cohort is dropped), so a WAEC-covered cohort is ALL-ONLY and one cohort never
+ * mixes two sources. `sex` is NOT part of the precedence decision — see `collapseBySourcePrecedence` for
+ * the two defects a per-sex-key collapse causes. The post-insert duplicate assertion over
+ * (jurisdiction, period, exam, sex) is the enforcement backstop, and it also catches the bug in which an
+ * ALL row from each source survived.
  *
  * ── TIME SEMANTICS: A PER-COHORT SNAPSHOT. NOT A STOCK AND NOT A FLOW. ─────────────────────────
  * DO NOT reuse `fact_infrastructure`'s ANNUAL stock ruling or `fact_enrolment`'s roll ruling here. A
@@ -61,19 +65,19 @@ import { stampProvenance, type EtlSource } from "./run";
  * ── SEX: 'ALL' IS SYNTHESISED, AND THE INVARIANT IS STRICT EQUALITY ────────────────────────────
  * The source's four leaves are per-sex and NOT NULL, so MALE and FEMALE are read and 'ALL' is computed
  * here as MALE + FEMALE — never read, never approximated. Per (jurisdiction, period, exam), asserted
- * per school BEFORE the write:
+ * per school BEFORE the write, WHENEVER THE SPLIT IS PRESENT:
  *       candidates(ALL) = candidates(MALE) + candidates(FEMALE)
  *       qualified(ALL)  = qualified(MALE)  + qualified(FEMALE)
  * STRICT equality, because there is no third category and no unknown-sex bucket to absorb a difference.
  *
- * ⚠ AND THE ONE PLACE THAT EQUALITY DOES **NOT** HOLD IN THE TABLE: a MIXED cohort. The WAEC extract
- * supplies `sex = 'ALL'` only, so when both sources cover one (school, sitting, exam) the precedence
- * collapse replaces ONLY the contested ALL key and the MALE/FEMALE rows remain the SCHOOL'S OWN. For such
- * a school ALL ≠ MALE + FEMALE, because the total and the split are then measurements by DIFFERENT
- * AUTHORITIES of the same sitting. That is the precedence ruling applied literally — the alternative
- * (deleting a split WAEC cannot replace, or scaling it to WAEC's total) would either destroy the only
- * sex information that exists or fabricate it. Hence the strict equality is asserted PER ARM at transform
- * time, never over the mixed table, and a reader comparing the two must expect the official total to win.
+ * ⚠ "WHENEVER THE SPLIT IS PRESENT" IS NOT A LOOPHOLE — it is what makes the invariant TRUE EVERYWHERE
+ * rather than selectively enforced. On the SCHOOL_ENTERED arm the split is ALWAYS present (the source's
+ * four leaves are NOT NULL), so the equality is checked on every cohort that arm produces, and a MISSING
+ * split there is itself a failure. A WAEC cohort is ALL-ONLY by construction — the extract publishes no
+ * sex column — so it satisfies the equality VACUOUSLY, with no split to disagree with the total. The
+ * per-cohort precedence collapse is what guarantees those are the only two shapes that can exist: one
+ * cohort never carries an authoritative total beside a self-reported split, which is the single
+ * arrangement in which the equality would be false by construction.
  *
  * ⚠ THE COROLLARY FOR EVERY READER: a roll-up above the school MUST filter `sex = 'ALL'` (or
  * `sex IN ('MALE','FEMALE')` for the split) AND to ONE `exam` AND to ONE `period_id`. Omitting the sex
@@ -279,9 +283,10 @@ export function aggregateSchoolSitting(
  *
  * Four claims, all of them things a reader will rely on and none of them expressible as a table CHECK
  * (each spans several rows):
- *   1. every (exam, sex) key appears exactly once, and all three sexes are present;
- *   2. candidates(ALL) = candidates(MALE) + candidates(FEMALE) — STRICT;
- *   3. qualified(ALL)  = qualified(MALE)  + qualified(FEMALE)  — STRICT;
+ *   1. every (exam, sex) key appears exactly once, `sex='ALL'` is always present, and the MALE/FEMALE
+ *      split is present-or-absent AS A WHOLE (absent only on a WAEC cohort — see the module header);
+ *   2. candidates(ALL) = candidates(MALE) + candidates(FEMALE) — STRICT, WHEN THE SPLIT IS PRESENT;
+ *   3. qualified(ALL)  = qualified(MALE)  + qualified(FEMALE)  — STRICT, WHEN THE SPLIT IS PRESENT;
  *   4. every row's stored rate is the rate its OWN counts imply (so a summed or averaged rate, or a
  *      stale one left behind by an edit, cannot ship).
  * A failure here is a defect in `aggregateSchoolSitting`, not in the data, so it names the key.
@@ -320,10 +325,27 @@ export function assertSchoolExamInvariants(
     const male = sexes.get("MALE");
     const female = sexes.get("FEMALE");
     const all = sexes.get("ALL");
-    if (!male || !female || !all)
+    // THE TOTAL IS NEVER OPTIONAL. Whatever a cohort's source, `sex = 'ALL'` is the roll-up-safe figure
+    // and its absence is a silent undercount for every tier above.
+    if (!all)
       throw new PerformanceTransformError(
-        `${emisSchoolId}: ${exam} is missing one of MALE/FEMALE/ALL — the sex split and its total are ` +
-          "written together or not at all.",
+        `${emisSchoolId}: ${exam} has no sex='ALL' row — the total is the only roll-up-safe figure, so ` +
+          "its absence is a silent undercount.",
+      );
+    // ⚠ THE SPLIT IS CHECKED WHEN IT IS PRESENT, AND IS PRESENT-OR-ABSENT AS A WHOLE (Kofi's per-cohort
+    // precedence ruling). Two legal shapes, and only two:
+    //   · MALE + FEMALE + ALL — every SCHOOL_ENTERED cohort, where the strict equality below is checked;
+    //   · ALL alone           — a WAEC_EXTRACT cohort: the extract publishes NO sex column, so the split
+    //                          is ABSENT rather than zero (zeros would report "no girls sat the exam"),
+    //                          and the equality holds VACUOUSLY.
+    // HALF a split is neither, and is a defect in this transform: it would leave a total that no split
+    // accounts for, which is the shape the per-cohort collapse exists to make impossible.
+    if (!male && !female) continue;
+    if (!male || !female)
+      throw new PerformanceTransformError(
+        `${emisSchoolId}: ${exam} carries ${male ? "MALE" : "FEMALE"} but not ` +
+          `${male ? "FEMALE" : "MALE"} — the sex split is written as a WHOLE or not at all (a WAEC ` +
+          "cohort is sex='ALL' only; a school-entered one carries both).",
       );
     if (all.candidates !== male.candidates + female.candidates)
       throw new PerformanceTransformError(
@@ -393,43 +415,71 @@ export function waecExtractFactRows(
 // ── the write ───────────────────────────────────────────────────────────────────────────────────
 
 /**
- * THE PRECEDENCE COLLAPSE — WAEC_EXTRACT > SCHOOL_ENTERED, resolved HERE, at write time.
+ * THE PRECEDENCE COLLAPSE — WAEC_EXTRACT > SCHOOL_ENTERED, resolved HERE, at write time, and
+ * **PER COHORT** (Kofi's follow-up ruling).
+ *
+ * THE COLLAPSE UNIT IS THE COHORT: `(jurisdiction_id, period_id, exam)`. **SEX IS NOT PART OF THE
+ * PRECEDENCE DECISION.** If WAEC_EXTRACT has ANY row for a cohort, WAEC WINS THE WHOLE COHORT: its
+ * `sex = 'ALL'` row survives and EVERY SCHOOL_ENTERED row of that cohort — MALE, FEMALE and ALL alike —
+ * is dropped. So a WAEC-covered cohort is ALL-ONLY. Where WAEC is absent, SCHOOL_ENTERED supplies
+ * MALE/FEMALE/ALL exactly as before.
+ *
+ * ⚠ WHY NOT PER (…, sex) KEY — the two defects a per-key collapse causes, and it causes both at once:
+ *   1. A PROVENANCE FALSEHOOD. WAEC publishes no sex split. Keeping the school's MALE/FEMALE rows beside
+ *      WAEC's authoritative total silently attributes that total to a split WAEC never published, and the
+ *      `source` column would say WAEC on one row and the school on the next for the SAME cohort — two
+ *      authorities and two `as_of_date`s describing one sitting.
+ *   2. IT BREAKS `ALL = MALE + FEMALE` BY CONSTRUCTION. The authoritative total is not the self-reported
+ *      split's sum, so the invariant every reader leans on would be false for exactly the cohorts whose
+ *      figures matter most — and false with no defect anywhere to point at.
+ * Collapsing per cohort keeps ONE `source` and ONE `as_of_date` per cohort, and the invariant stays true
+ * VACUOUSLY on an ALL-only cohort (there is no split to disagree with the total). The cost is stated and
+ * accepted: a WAEC-covered cohort has NO sex split at all, which is the documented asymmetry — a
+ * `sex IN ('MALE','FEMALE')` read over such a cohort returns NOTHING while `sex = 'ALL'` is complete.
  *
  * WHY IT IS A COLLAPSE AND NOT A UNIQUE KEY. `source` is PROVENANCE, not grain (see the module header):
  * if it were part of a uniqueness key, both sources would insert the same cohort and every roll-up above
  * it would double — internally consistent at every tier, and therefore invisible to every reader and
- * every reviewer. So exactly ONE row per (jurisdiction, period, exam, sex) survives, and when both
- * sources offer that key the WAEC one wins: the official extract is the authority, and the school's own
- * keyed figures are the stand-in used until it arrives.
+ * every reviewer.
  *
  * It is written and tested NOW even though only the SCHOOL_ENTERED arm is exercised, because the day the
  * WAEC feed lands is the day this would otherwise double the country.
  *
- * Order is preserved for the survivors (first-seen order per key), so the write stays deterministic.
+ * Order is preserved (first-seen cohort order, and the surviving source's own row order within it), so
+ * the write stays deterministic.
  */
 export function collapseBySourcePrecedence(
   rows: FactPerformanceExamRow[],
 ): FactPerformanceExamRow[] {
   const PRECEDENCE: Record<string, number> = { WAEC_EXTRACT: 2, SCHOOL_ENTERED: 1 };
   const rank = (row: FactPerformanceExamRow) => PRECEDENCE[row.source] ?? 0;
-  const keyOf = (r: FactPerformanceExamRow) =>
-    `${r.jurisdictionId}\u0000${r.periodId}\u0000${r.exam}\u0000${r.sex}`;
-  const winners = new Map<string, FactPerformanceExamRow>();
+  // THE COHORT KEY — no `sex`. That absence IS the ruling.
+  const cohortOf = (r: FactPerformanceExamRow) =>
+    `${r.jurisdictionId}\u0000${r.periodId}\u0000${r.exam}`;
+
+  // Pass 1: the winning source of each cohort. Pass 2: keep that source's rows and drop the rest, so a
+  // cohort is never half one source and half the other.
+  const winningRank = new Map<string, number>();
   const order: string[] = [];
   for (const row of rows) {
-    const key = keyOf(row);
-    const held = winners.get(key);
-    if (!held) {
-      winners.set(key, row);
-      order.push(key);
-      continue;
-    }
-    // Strictly greater: a second row of the SAME source does not replace the first (it is a defect, and
-    // the post-insert duplicate assertion is not the place to discover it) — it is dropped, and the
-    // per-school invariants above are what stop one being produced in the first place.
-    if (rank(row) > rank(held)) winners.set(key, row);
+    const cohort = cohortOf(row);
+    if (!winningRank.has(cohort)) order.push(cohort);
+    winningRank.set(cohort, Math.max(winningRank.get(cohort) ?? 0, rank(row)));
   }
-  return order.map((key) => winners.get(key)!);
+
+  const kept = new Map<string, FactPerformanceExamRow[]>();
+  for (const row of rows) {
+    const cohort = cohortOf(row);
+    if (rank(row) < winningRank.get(cohort)!) continue; // superseded: a losing source's row
+    const held = kept.get(cohort);
+    // A second row of the SAME source at the SAME sex is a defect, not a precedence question — it is
+    // dropped here rather than left for the post-insert duplicate assertion to discover, and the
+    // per-school invariants above are what stop one being produced in the first place.
+    if (held) {
+      if (!held.some((r) => r.sex === row.sex)) held.push(row);
+    } else kept.set(cohort, [row]);
+  }
+  return order.flatMap((cohort) => kept.get(cohort) ?? []);
 }
 
 /**
@@ -453,7 +503,10 @@ export interface PerformanceWriteBatch {
 export interface PerformanceWriteResult {
   deleted: number;
   inserted: number;
-  /** Rows dropped by the precedence collapse — SCHOOL_ENTERED keys a WAEC row superseded. */
+  /**
+   * Rows dropped by the per-cohort precedence collapse — the SCHOOL_ENTERED rows (typically all THREE
+   * sex rows) of a cohort WAEC_EXTRACT covers.
+   */
   superseded: number;
   perPeriod: {
     periodId: string;
