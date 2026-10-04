@@ -188,6 +188,25 @@ export function decomposeFacilitiesSnapshot(
   ] as const) {
     requireNonNegativeInt(value, field, emisSchoolId);
   }
+  // The NULLABLE optional-detail columns get the same guard, skipping NULL. Operationally they are
+  // CHECK ≥ 0 too (a CHECK that evaluates to NULL is satisfied, so an omitted value passes and a
+  // negative one is rejected) — and they are the columns most likely to arrive from the "source that
+  // lost the CHECKs" case above, because a hand-assembled extract is exactly where "-1 means not
+  // answered" gets invented. A negative count here would subtract real facilities from a district
+  // total, which is worse than a missing one: NULL is visibly unanswered, -1 is silently wrong.
+  for (const [field, value] of [
+    ["student_desks_usable", source.studentDesksUsable],
+    ["student_desks_broken", source.studentDesksBroken],
+    ["teacher_desks", source.teacherDesks],
+    ["chalkboards", source.chalkboards],
+    ["whiteboards", source.whiteboards],
+    ["projectors", source.projectors],
+    ["computers_total", source.computersTotal],
+    ["computers_working", source.computersWorking],
+    ["library_book_count", source.libraryBookCount],
+  ] as const) {
+    if (value !== null) requireNonNegativeInt(value, field, emisSchoolId);
+  }
   if (source.classroomsGood + source.classroomsRepair > source.classroomsTotal)
     throw new InfrastructureTransformError(
       `${emisSchoolId}: classrooms_good (${source.classroomsGood}) + classrooms_repair ` +
@@ -344,9 +363,13 @@ export function assertRowInvariants(
  *     SHRINK, with no error and no empty table to notice. A school that failed compute therefore KEEPS
  *     ITS PRIOR ROW — stale-but-honest, the same rule a FAILED run follows.
  *
- *  2. ONE TRANSACTION, so a mid-write failure rolls the DELETE back too and leaves the prior night's
- *     data intact. This is the mechanism behind `etl_run`'s FAILED semantics; `lib/etl/run.ts` only
- *     records the state.
+ *  2. ONE TRANSACTION FOR THE WHOLE RUN — every period together, not one transaction per period. This
+ *     is the mechanism behind `etl_run`'s FAILED semantics ("a FAILED run wrote nothing"), and
+ *     per-period transactions would quietly break it in two ways: a run that fails the failure-rate
+ *     policy would already have published the surviving schools, and in a multi-period run a throw
+ *     while writing period 2 would leave period 1 committed — a half-published night, with a FAILED
+ *     banner over it. `lib/etl/pipeline.ts` therefore computes EVERY period, takes the verdict, and
+ *     only then calls this function once.
  *
  *  3. DELETE-THEN-INSERT RATHER THAN `on conflict` UPSERT, even though `fact_infrastructure` HAS a
  *     grain UNIQUE and could upsert. One path for all twelve fact tables: the original eight are
@@ -355,95 +378,117 @@ export function assertRowInvariants(
  *     still earns its keep — it is what makes a duplicate INSERT raise instead of doubling every
  *     roll-up silently.
  */
+/** One period's computed rows. The writer takes ALL of them, so the whole run is one transaction. */
+export interface InfrastructureWriteBatch {
+  periodId: string;
+  rows: FactInfrastructureRow[];
+}
+
+export interface InfrastructureWriteResult {
+  deleted: number;
+  inserted: number;
+  perPeriod: { periodId: string; deleted: number; inserted: number }[];
+}
+
 export async function writeInfrastructureFacts(
   sql: postgres.Sql,
-  periodId: string,
-  rowsToWrite: FactInfrastructureRow[],
-): Promise<{ deleted: number; inserted: number }> {
-  const jurisdictionIds = rowsToWrite.map((r) => r.jurisdictionId);
-
+  batches: InfrastructureWriteBatch[],
+): Promise<InfrastructureWriteResult> {
   return (await sql.begin(async (tx) => {
-    let deleted = 0;
-    if (jurisdictionIds.length > 0) {
-      const removed = await tx`
-        delete from fact_infrastructure
-         where period_id = ${periodId}::uuid
-           and jurisdiction_id = any(${jurisdictionIds}::uuid[])`;
-      deleted = removed.count;
+    const perPeriod: InfrastructureWriteResult["perPeriod"] = [];
+    let totalDeleted = 0;
+    let totalInserted = 0;
+
+    for (const batch of batches) {
+      const { periodId, rows: rowsToWrite } = batch;
+      const jurisdictionIds = rowsToWrite.map((r) => r.jurisdictionId);
+
+      let deleted = 0;
+      if (jurisdictionIds.length > 0) {
+        const removed = await tx`
+          delete from fact_infrastructure
+           where period_id = ${periodId}::uuid
+             and jurisdiction_id = any(${jurisdictionIds}::uuid[])`;
+        deleted = removed.count;
+      }
+
+      let inserted = 0;
+      const CHUNK = 500;
+      for (let i = 0; i < rowsToWrite.length; i += CHUNK) {
+        const chunk = rowsToWrite.slice(i, i + CHUNK).map((r) => ({
+          jurisdiction_id: r.jurisdictionId,
+          period_id: r.periodId,
+          schools_reporting: r.schoolsReporting,
+          classrooms_total: r.classroomsTotal,
+          classrooms_good: r.classroomsGood,
+          classrooms_repair: r.classroomsRepair,
+          latrines_boys: r.latrinesBoys,
+          latrines_girls: r.latrinesGirls,
+          latrines_staff: r.latrinesStaff,
+          student_desks_usable: r.studentDesksUsable,
+          student_desks_broken: r.studentDesksBroken,
+          teacher_desks: r.teacherDesks,
+          chalkboards: r.chalkboards,
+          whiteboards: r.whiteboards,
+          projectors: r.projectors,
+          computers_total: r.computersTotal,
+          computers_working: r.computersWorking,
+          library_book_count: r.libraryBookCount,
+          has_electricity_count: r.hasElectricityCount,
+          has_water_count: r.hasWaterCount,
+          has_handwashing_count: r.hasHandwashingCount,
+          has_library_count: r.hasLibraryCount,
+          has_ict_lab_count: r.hasIctLabCount,
+          has_internet_count: r.hasInternetCount,
+          gsfp_participating_count: r.gsfpParticipatingCount,
+          has_kitchen_count: r.hasKitchenCount,
+          water_borehole_count: r.waterBoreholeCount,
+          water_pipe_count: r.waterPipeCount,
+          water_well_count: r.waterWellCount,
+          water_none_count: r.waterNoneCount,
+          electricity_grid_count: r.electricityGridCount,
+          electricity_solar_count: r.electricitySolarCount,
+          electricity_generator_count: r.electricityGeneratorCount,
+          electricity_none_count: r.electricityNoneCount,
+          latrine_wc_count: r.latrineWcCount,
+          latrine_kvip_count: r.latrineKvipCount,
+          latrine_pit_count: r.latrinePitCount,
+          latrine_none_count: r.latrineNoneCount,
+          computers_reporting_count: r.computersReportingCount,
+          library_books_reporting_count: r.libraryBooksReportingCount,
+          furniture_reporting_count: r.furnitureReportingCount,
+          source: r.source,
+          as_of_date: r.asOfDate,
+          etl_run_id: r.etlRunId,
+        }));
+        const result = await tx`insert into fact_infrastructure ${tx(chunk)}`;
+        inserted += result.count;
+      }
+
+      // THE POST-INSERT DUPLICATE ASSERTION (scope §3). `fact_infrastructure` has a grain UNIQUE so a
+      // duplicate would already have raised — this runs anyway, because it is the assertion the eight
+      // PK-only fact tables will need verbatim and the pattern is being set here, in the slice whose
+      // job is to set it. Inside the transaction, so tripping it rolls the whole run back.
+      const dupes = await tx<{ n: number }[]>`
+        select count(*)::int as n from (
+          select jurisdiction_id, period_id
+            from fact_infrastructure
+           where period_id = ${periodId}::uuid
+           group by jurisdiction_id, period_id
+          having count(*) > 1
+        ) d`;
+      if ((dupes[0]?.n ?? 0) > 0)
+        throw new Error(
+          `fact_infrastructure has ${dupes[0]!.n} duplicated grain key(s) for period ${periodId}. ` +
+            "A duplicate silently DOUBLES every roll-up above it, and the result is internally " +
+            "consistent, so it is invisible at every tier.",
+        );
+
+      perPeriod.push({ periodId, deleted, inserted });
+      totalDeleted += deleted;
+      totalInserted += inserted;
     }
 
-    let inserted = 0;
-    const CHUNK = 500;
-    for (let i = 0; i < rowsToWrite.length; i += CHUNK) {
-      const chunk = rowsToWrite.slice(i, i + CHUNK).map((r) => ({
-        jurisdiction_id: r.jurisdictionId,
-        period_id: r.periodId,
-        schools_reporting: r.schoolsReporting,
-        classrooms_total: r.classroomsTotal,
-        classrooms_good: r.classroomsGood,
-        classrooms_repair: r.classroomsRepair,
-        latrines_boys: r.latrinesBoys,
-        latrines_girls: r.latrinesGirls,
-        latrines_staff: r.latrinesStaff,
-        student_desks_usable: r.studentDesksUsable,
-        student_desks_broken: r.studentDesksBroken,
-        teacher_desks: r.teacherDesks,
-        chalkboards: r.chalkboards,
-        whiteboards: r.whiteboards,
-        projectors: r.projectors,
-        computers_total: r.computersTotal,
-        computers_working: r.computersWorking,
-        library_book_count: r.libraryBookCount,
-        has_electricity_count: r.hasElectricityCount,
-        has_water_count: r.hasWaterCount,
-        has_handwashing_count: r.hasHandwashingCount,
-        has_library_count: r.hasLibraryCount,
-        has_ict_lab_count: r.hasIctLabCount,
-        has_internet_count: r.hasInternetCount,
-        gsfp_participating_count: r.gsfpParticipatingCount,
-        has_kitchen_count: r.hasKitchenCount,
-        water_borehole_count: r.waterBoreholeCount,
-        water_pipe_count: r.waterPipeCount,
-        water_well_count: r.waterWellCount,
-        water_none_count: r.waterNoneCount,
-        electricity_grid_count: r.electricityGridCount,
-        electricity_solar_count: r.electricitySolarCount,
-        electricity_generator_count: r.electricityGeneratorCount,
-        electricity_none_count: r.electricityNoneCount,
-        latrine_wc_count: r.latrineWcCount,
-        latrine_kvip_count: r.latrineKvipCount,
-        latrine_pit_count: r.latrinePitCount,
-        latrine_none_count: r.latrineNoneCount,
-        computers_reporting_count: r.computersReportingCount,
-        library_books_reporting_count: r.libraryBooksReportingCount,
-        furniture_reporting_count: r.furnitureReportingCount,
-        source: r.source,
-        as_of_date: r.asOfDate,
-        etl_run_id: r.etlRunId,
-      }));
-      const result = await tx`insert into fact_infrastructure ${tx(chunk)}`;
-      inserted += result.count;
-    }
-
-    // THE POST-INSERT DUPLICATE ASSERTION (scope §3). `fact_infrastructure` has a grain UNIQUE so a
-    // duplicate would already have raised — this runs anyway, because it is the assertion the eight
-    // PK-only fact tables will need verbatim and the pattern is being set here, in the slice whose
-    // job is to set it.
-    const dupes = await tx<{ n: number }[]>`
-      select count(*)::int as n from (
-        select jurisdiction_id, period_id
-          from fact_infrastructure
-         where period_id = ${periodId}::uuid
-         group by jurisdiction_id, period_id
-        having count(*) > 1
-      ) d`;
-    if ((dupes[0]?.n ?? 0) > 0)
-      throw new Error(
-        `fact_infrastructure has ${dupes[0]!.n} duplicated grain key(s) for period ${periodId}. ` +
-          "A duplicate silently DOUBLES every roll-up above it, and the result is internally " +
-          "consistent, so it is invisible at every tier.",
-      );
-
-    return { deleted, inserted };
-  })) as unknown as { deleted: number; inserted: number };
+    return { deleted: totalDeleted, inserted: totalInserted, perPeriod };
+  })) as unknown as InfrastructureWriteResult;
 }

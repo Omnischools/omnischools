@@ -23,13 +23,25 @@ import type { RegisterRow } from "./register";
  * ═══ PERIOD MAPPING — THE Q3 GAP, AND THE INTERIM RULE THIS SLICE USES ═══════════════════════════
  * Operational `academic_period` is PER SCHOOL (every school has its own uuid for "2025/26 Term 1");
  * analytics `dim_period` is GLOBAL. Scope §2 flags the mapping as missing and needing a Kofi ruling
- * (Q3: straddling terms, SENIOR_F3, which period is the ANNUAL cut). None of those cases arise for
- * `fact_infrastructure`, which is TERM-only and has no exam cohort, so the slice uses the obvious
- * narrow rule and states it:
- *     (academic_year, term) → the dim_period row with that (academic_year, term, period_type='TERM')
- * The operational row supplies `academic_year` and `term`; nothing is inferred from dates. A school
- * whose period cannot be mapped is EXCLUDED from the run with a named failure — never defaulted to
- * "the current term", which would silently file one school's Term 1 census under another's Term 2.
+ * (Q3: straddling terms, SENIOR_F3, which period is the ANNUAL cut).
+ *
+ * THE OPERATIONAL SIDE HAS NO `term` COLUMN. It has `period_number` (smallint) and `product_line`
+ * (SENIOR | BASIC | SENIOR_F3, NOT NULL), and the LINE is what gives the NUMBER its meaning: Basic
+ * runs 3 terms, Senior 2 semesters. `period_number = 1` is therefore not one thing, and mapping a
+ * SENIOR semester onto a `dim_period` TERM row would file half an academic year under a third of one.
+ *
+ * So the interim rule is narrow, and narrow on purpose:
+ *     product_line = 'BASIC' AND (academic_year, period_number)
+ *       → the dim_period row with (academic_year, term = period_number, period_type = 'TERM')
+ * Nothing is inferred from dates. Rows on any OTHER product line are not mapped and not dropped
+ * silently: `lib/etl/source.ts` returns them as `skippedProductLines`, which the pipeline carries into
+ * the period outcome and the run's `error_text` — a counted gap, naming the schools. Likewise an
+ * included school with NO census row for the period appears in the outcome's `noSourceRow` list rather
+ * than just failing to show up.
+ *
+ * What is NOT settled here, and is Kofi's: what a SENIOR semester maps to, SENIOR_F3's early
+ * post-WASSCE calendar, straddling terms, and which period is the ANNUAL cut. None of them arise for
+ * `fact_infrastructure` (TERM-only, no exam cohort) — they arise for H9/H12, on a proven harness.
  */
 
 export interface JurisdictionIndex {

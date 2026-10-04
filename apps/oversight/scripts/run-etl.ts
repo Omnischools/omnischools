@@ -66,11 +66,37 @@ async function main(): Promise<void> {
     });
 
     const { coverage } = report;
-    console.log(`✓ etl_run ${report.runId} → ${report.status}`);
+
+    // ── THE EXIT CODE IS THE SCHEDULER'S ONLY SIGNAL ──────────────────────────────────────────────
+    // A cron (or the generic HTTP-POST job runner H21 lands) does not read this prose; it reads the
+    // status. A FAILED run that exits 0 is indistinguishable from a clean one, so the night the
+    // pipeline breaks is the night nobody is paged — and the dashboard quietly serves yesterday under
+    // today's heading. Three outcomes, three distinct signals:
+    //   ✓ clean SUCCESS        exit 0
+    //   ⚠ SUCCESS WITH GAPS    exit 0, but visibly not clean (some schools / product lines unmapped)
+    //   ✗ FAILED               exit 1, nothing was written
+    const gapped = report.status === "SUCCESS" && report.errorText !== null;
+    if (report.status === "FAILED") {
+      process.exitCode = 1;
+      console.error(
+        `✗ etl_run ${report.runId} → FAILED — NOTHING WAS WRITTEN (prior data intact)`,
+      );
+    } else if (gapped) {
+      console.log(`⚠ etl_run ${report.runId} → SUCCESS WITH GAPS`);
+    } else {
+      console.log(`✓ etl_run ${report.runId} → SUCCESS`);
+    }
+
+    // Guarded: an empty register is a real state (a first run against a fresh DB, or an extract that
+    // parsed to zero usable rows), and `0/0` must print as "n/a" rather than "NaN%" — a NaN in a
+    // coverage figure is the kind of thing that gets screenshotted.
+    const coveragePct =
+      coverage.registered > 0
+        ? `${((coverage.onSchoolup / coverage.registered) * 100).toFixed(1)}%`
+        : "n/a — register is empty";
     console.log(
       `  register ${report.registerRows} rows · coverage ${coverage.onSchoolup}/${coverage.registered} ` +
-        `(${((coverage.onSchoolup / coverage.registered) * 100).toFixed(1)}%) on Schoolup · ` +
-        `${coverage.included} in the inclusion set`,
+        `(${coveragePct}) on Schoolup · ${coverage.included} in the inclusion set`,
     );
     if (coverage.unmapped.length > 0)
       console.log(
@@ -81,15 +107,25 @@ async function main(): Promise<void> {
         `  ⚠ ${coverage.unresolved.length} on-Schoolup school(s) have no dim_jurisdiction node`,
       );
     for (const p of report.periods) {
+      const skipped = p.skippedProductLines.reduce(
+        (n, s) => n + s.operationalSchoolIds.length,
+        0,
+      );
       console.log(
         `  ${p.academicYear} T${p.term} · source ${p.sourceRows} → fact_infrastructure ` +
           `${p.inserted} inserted (${p.deleted} replaced)` +
           (p.failures.length > 0
             ? ` · ${p.failures.length} school(s) failed compute`
-            : ""),
+            : "") +
+          (skipped > 0 ? ` · ${skipped} unmapped product-line school(s)` : "") +
+          (p.noSourceRow.length > 0 ? ` · ${p.noSourceRow.length} filed no census` : ""),
       );
     }
-    if (report.errorText) console.log(`  note: ${report.errorText}`);
+    if (report.errorText) {
+      const line = `  note: ${report.errorText}`;
+      if (report.status === "FAILED") console.error(line);
+      else console.log(line);
+    }
   } finally {
     await sql.end({ timeout: 5 });
   }

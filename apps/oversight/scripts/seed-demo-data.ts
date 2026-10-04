@@ -1,6 +1,6 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import postgres from "postgres";
 import {
   GHANA_REGIONS,
@@ -166,13 +166,44 @@ export interface DemoFacilitiesRow {
   capturedAt: string;
 }
 
+/**
+ * One row of operational `academic_period` — the REAL column set (period_number / period_label /
+ * product_line), not a convenience "term". See db/seed/demo/demo-source-schema.sql.
+ */
 export interface DemoOperationalPeriod {
   schoolId: string;
   periodId: string;
   academicYear: string;
-  term: number;
+  /** `period_number`: a TERM on a BASIC row, a SEMESTER on a SENIOR one. Not interchangeable. */
+  periodNumber: number;
+  /** `period_label`: "Term 2" / "Semester 1". Display only — never a key. */
+  periodLabel: string;
   startsOn: string;
   endsOn: string;
+  /** `product_line`: SENIOR | BASIC | SENIOR_F3. */
+  productLine: "BASIC" | "SENIOR" | "SENIOR_F3";
+}
+
+/**
+ * Which product line a school's periods sit on.
+ *
+ * Basic schools run 3 TERMS, senior schools 2 SEMESTERS (apps/web
+ * `ref_academic_period_config.period_count`), and that is why `period_number` cannot be read without
+ * its line. SHS schools really do file facilities censuses, so the demo generates them on the SENIOR
+ * line — which means the ETL reports them as an unmapped NAMED GAP rather than filing a semester as a
+ * term. That gap is the point: it is the Q3 ruling made visible instead of guessed.
+ *
+ * SIMPLIFICATION, stated: a COMBINED school in reality carries BOTH lines (a basic department and a
+ * senior one, each with its own `academic_period` rows). Modelling two lines for one school is not
+ * needed to exercise anything here, so COMBINED is generated on BASIC — its basic department's
+ * calendar. The ETL's behaviour is identical either way: it maps BASIC rows and names the rest.
+ */
+export function productLineFor(schoolType: DemoSchoolType): "BASIC" | "SENIOR" {
+  return schoolType === "SHS" ? "SENIOR" : "BASIC";
+}
+
+function periodLabelFor(productLine: "BASIC" | "SENIOR", periodNumber: number): string {
+  return productLine === "SENIOR" ? `Semester ${periodNumber}` : `Term ${periodNumber}`;
 }
 
 export interface DemoDataset {
@@ -621,15 +652,20 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     if (!school.onSchoolup) continue; // no tenant → no operational census → no fact row
     const schoolIndex = Number(school.operationalSchoolId!.slice(-12));
     let previous: DemoFacilitiesRow | null = null;
+    const productLine = productLineFor(school.schoolType);
     for (const term of DEMO_TERMS) {
       const periodId = demoOperationalPeriodId(schoolIndex, term.term);
       periods.push({
         schoolId: school.operationalSchoolId!,
         periodId,
         academicYear: term.academicYear,
-        term: term.term,
+        // Term 1/2 of the analytics calendar is period_number 1/2 operationally on BOTH lines — the
+        // NUMBER coincides, the MEANING does not, which is exactly the trap product_line exists for.
+        periodNumber: term.term,
+        periodLabel: periodLabelFor(productLine, term.term),
         startsOn: term.startsOn,
         endsOn: term.endsOn,
+        productLine,
       });
       // captured_at is the census VINTAGE and becomes the fact row's as_of_date, so it must be
       // deterministic: a wall-clock value here would make a re-run differ in provenance and turn the
@@ -667,13 +703,19 @@ export function emisExtractFor(dataset: DemoDataset): EmisExtractFile {
 
 // ── loading ─────────────────────────────────────────────────────────────────────────────────────
 
-/** Where the generated EMIS extract lands. Committed, so the demo runs without the generator. */
-export const DEMO_EMIS_EXTRACT_PATH = join(
-  process.cwd(),
-  "db/seed/demo/emis-register-extract.json",
-);
+/**
+ * Both demo artefact paths are resolved relative to THIS MODULE, not to `process.cwd()`.
+ *
+ * cwd-relative paths work only when the script is launched from `apps/oversight`, which is how the
+ * pnpm scripts happen to launch it and is not how a cron, a CI step or a `tsx` invocation from the repo
+ * root does. The failure is a confusing `ENOENT` on a file that is sitting right there in git.
+ */
+const DEMO_DIR = join(fileURLToPath(new URL("../db/seed/demo/", import.meta.url)));
 
-const DEMO_SOURCE_SCHEMA_SQL = join(process.cwd(), "db/seed/demo/demo-source-schema.sql");
+/** Where the generated EMIS extract lands. Committed, so the demo runs without the generator. */
+export const DEMO_EMIS_EXTRACT_PATH = join(DEMO_DIR, "emis-register-extract.json");
+
+const DEMO_SOURCE_SCHEMA_SQL = join(DEMO_DIR, "demo-source-schema.sql");
 
 /**
  * (Re)create `demo_source` and load the operational-shaped rows. DROP-and-CREATE, not upsert: this
@@ -684,7 +726,6 @@ export async function loadDemoSource(
   dataset: DemoDataset,
   schemaSqlPath: string = DEMO_SOURCE_SCHEMA_SQL,
 ): Promise<{ periods: number; facilities: number }> {
-  const { readFileSync } = await import("node:fs");
   await sql.unsafe(readFileSync(schemaSqlPath, "utf8"));
 
   const CHUNK = 500;
@@ -692,12 +733,14 @@ export async function loadDemoSource(
     const chunk = dataset.periods.slice(i, i + CHUNK);
     await sql`insert into demo_source.academic_period ${sql(
       chunk.map((p) => ({
-        school_id: p.schoolId,
         period_id: p.periodId,
+        school_id: p.schoolId,
         academic_year: p.academicYear,
-        term: p.term,
+        period_number: p.periodNumber,
+        period_label: p.periodLabel,
         starts_on: p.startsOn,
         ends_on: p.endsOn,
+        product_line: p.productLine,
       })),
     )}`;
   }

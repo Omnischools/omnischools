@@ -1,13 +1,30 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- `demo_source` — THE OPERATIONAL STAND-IN FOR THE INCREMENT-H DEMO.
 --
--- WHAT THIS IS. Two tables whose columns, types and CHECK allow-lists are copied byte-for-byte from
--- the real operational schema in apps/web (`db/schema/facilities-snapshot.ts` and the
--- (school_id, period_id) half of `db/schema/periods.ts`). The demo generator writes
+-- WHAT THIS IS. Two tables standing in for the real operational schema in apps/web
+-- (`db/schema/facilities-snapshot.ts` and `db/schema/periods.ts`). The demo generator writes
 -- OPERATIONAL-SHAPED rows here, and the ETL transform reads them and performs the real
 -- decomposition — booleans → has_*_count, the three CHECK families → one 0/1 count per allowed
 -- value, nullable detail → *_reporting_count denominators. Nothing in the demo hand-seeds a fact
 -- row; `fact_infrastructure` is only ever written by `lib/etl/infrastructure.ts`.
+--
+-- ⚠ EXACTLY WHAT IS AND IS NOT COPIED — stated precisely, because `lib/etl/source.ts` has to run
+-- against the REAL table unchanged, and a stand-in that quietly renames a column guarantees it will
+-- not (the first version of this file invented `term integer` where the real table has
+-- `period_number smallint`; the ETL's filter would have failed on prod with
+-- `column p.term does not exist`).
+--
+--   NAMES AND TYPES ARE NEVER CHANGED. Every column below has the operational name and type.
+--   COLUMNS MAY BE OMITTED. A DELIBERATE SUBSET, listed here so the omission is reviewable:
+--     academic_period     — `closed_at`, `closed_by_user_id` (the term-lifecycle pair). The ETL does
+--                           not read them; whether a closed term should be the only aggregatable one
+--                           is a real question, and an open one, so the stand-in does not prejudge it.
+--     facilities_snapshot — none; all columns are present, including the two person-identifying ones
+--                           (`captured_by`, `caterer_name`) which exist here precisely so the
+--                           transform can be SEEN not to carry them across.
+--   FKs that reach tables this stand-in does not carry (ref_school, ref_user,
+--   ref_academic_period_config) are dropped; the intra-tenant composite FK between the two tables
+--   below is kept, because that one is load-bearing for the grain.
 --
 -- WHY A SEPARATE SCHEMA IN THE ANALYTICS DATABASE, AND NOT THE REAL OPERATIONAL ONE.
 -- The ETL's real operational reader DOES NOT EXIST YET: it needs the cross-tenant `oversight_etl`
@@ -19,9 +36,11 @@
 -- part H1 is going to supply.
 --
 -- IN REAL OPERATION this schema is not used. `lib/etl/source.ts` takes the source schema name as a
--- parameter, so pointing the same transform at operational `public.facilities_snapshot` over an
--- `oversight_etl` connection — per-school, with `app.current_school` set, inside the H1 allow-list —
--- is a connection change at the call site, not a rewrite of the transform.
+-- parameter, so pointing the same query at operational `public.facilities_snapshot` /
+-- `public.academic_period` over an `oversight_etl` connection — per-school, with `app.current_school`
+-- set, inside the H1 allow-list — is a connection change at the call site, not a rewrite of the
+-- transform. That claim is only true because the column NAMES above are the operational ones; it is
+-- the reason the subset rule in the header is "omit, never rename".
 --
 -- ⚠ NOT `public`. The §6 prod-paste-0006 re-run rule (scope §6) is triggered by a new object in the
 -- analytics `public` schema; `demo_source` is a separate schema created by a DEMO script that never
@@ -32,19 +51,36 @@
 drop schema if exists demo_source cascade;
 create schema demo_source;
 
--- Mirrors the (school_id, period_id) grain of operational `academic_period`. The point of its
--- existence is that operational periods are PER SCHOOL — every school has its OWN period_id for
--- "2025/26 Term 1" — while analytics `dim_period` is GLOBAL. This table is where that mismatch
--- lives, and `lib/etl/dimensions.ts` is where it is resolved (see the Q3 note there).
+-- Operational `academic_period` (apps/web/db/schema/periods.ts:62) minus the two term-lifecycle
+-- columns. The point of its existence is that operational periods are PER SCHOOL — every school has
+-- its OWN period_id for "2025/26 Term 1" — while analytics `dim_period` is GLOBAL. This table is
+-- where that mismatch lives, and `lib/etl/dimensions.ts` is where it is resolved (the Q3 note there).
+--
+-- THREE COLUMNS THE ETL CANNOT IGNORE, and the first version of this file got all three wrong:
+--   `period_number` smallint, NOT `term`. There is no `term` column anywhere in operational Postgres.
+--   `period_label`  free text ("Semester 1", "Term 2") — display, never a key.
+--   `product_line`  NOT NULL, SENIOR | BASIC | SENIOR_F3. THIS IS THE ONE THAT MATTERS: period_number
+--                   means a TERM on a BASIC row and a SEMESTER on a SENIOR row, so `period_number = 1`
+--                   is not one thing. Mapping a SENIOR semester onto analytics `dim_period` term 1
+--                   would file half a year under a third of one. `lib/etl/source.ts` therefore reads
+--                   every line and reports the non-mapped ones as a NAMED GAP.
 create table demo_source.academic_period (
+  period_id     uuid primary key default gen_random_uuid(),
   school_id     uuid not null,
-  period_id     uuid not null,
   academic_year text not null,
-  term          integer not null,
-  starts_on     date,
-  ends_on       date,
-  primary key (school_id, period_id),
-  constraint demo_source_academic_period_term_valid check (term in (1, 2, 3))
+  period_number smallint not null,
+  period_label  text not null,
+  starts_on     date not null,
+  ends_on       date not null,
+  product_line  text not null,
+  -- The real table's `academic_period_tenant_uk` — the composite-FK target that makes a cross-tenant
+  -- period reference structurally impossible. Kept because facilities_snapshot's FK below needs it,
+  -- AND because together with the period_id PK it is what stops the ETL's join fanning out.
+  constraint academic_period_tenant_uk unique (school_id, period_id),
+  -- Not a CHECK on the real table (it is a plain text discriminator there); asserted here so the demo
+  -- cannot generate a product line the ETL has no rule for.
+  constraint demo_source_academic_period_product_line_valid
+    check (product_line in ('SENIOR', 'BASIC', 'SENIOR_F3'))
 );
 
 -- Column-for-column apps/web `facilities_snapshot`, minus the FKs that reach tables this stand-in

@@ -125,6 +125,12 @@ export function computePerSchool<S, T>(
  * `maxFailureRate` of the inclusion set may fail and the run still closes SUCCESS, with the gap list
  * in `error_text`; above it the run closes FAILED and writes nothing. The default is 1%.
  *
+ * "WRITES NOTHING" IS ENFORCED BY THE CALLER'S PHASING, NOT BY THIS FUNCTION. `failureVerdict` is pure;
+ * what makes the claim true is that `lib/etl/pipeline.ts` computes every period BEFORE taking the
+ * verdict and only writes if it is SUCCESS, in one transaction across all periods. If a future fact
+ * table's pipeline writes inside its compute loop, this comment becomes a lie and a FAILED run will
+ * have published a partial country — so copy the phasing, not just the policy.
+ *
  * WHY NOT ZERO TOLERANCE: one bad census row out of 400 schools would blank the entire national
  * dashboard, which inverts the stale-but-honest principle — it converts a one-school data-quality
  * problem into a total outage.
@@ -151,9 +157,18 @@ export function failureVerdict(
 ): { status: "SUCCESS" | "FAILED"; errorText: string | null } {
   if (failures.length === 0) return { status: "SUCCESS", errorText: null };
   const rate = attempted === 0 ? 1 : failures.length / attempted;
+  // The school is named once. Transform errors already lead with the EMIS id (that is how
+  // `InfrastructureTransformError` is written, so the message is useful on its own), so prefixing
+  // unconditionally produced "GH-GA-0001: GH-GA-0001: …" across a 1,500-school gap report. Errors that
+  // do NOT name their school — anything thrown from outside the transform — still get the prefix,
+  // because an unattributed failure in this list is useless.
   const detail = failures
     .slice(0, 20)
-    .map((f) => `${f.emisSchoolId}: ${f.message}`)
+    .map((f) =>
+      f.message.startsWith(`${f.emisSchoolId}:`)
+        ? f.message
+        : `${f.emisSchoolId}: ${f.message}`,
+    )
     .join("; ");
   const more = failures.length > 20 ? ` (+${failures.length - 20} more)` : "";
   const summary = `${failures.length}/${attempted} schools failed compute (${(rate * 100).toFixed(2)}%) — ${detail}${more}`;

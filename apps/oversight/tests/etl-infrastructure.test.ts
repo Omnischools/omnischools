@@ -11,6 +11,7 @@ import {
   type DemoDataset,
   type DemoFacilitiesRow,
   type DemoSchool,
+  productLineFor,
 } from "@/scripts/seed-demo-data";
 import { runInfrastructureEtl, type EtlRunReport } from "@/lib/etl/pipeline";
 import {
@@ -140,13 +141,31 @@ async function nodeId(level: string, name: string): Promise<string> {
 }
 
 /** Hand-computed expectation: the census rows of the on-Schoolup schools matching a predicate. */
+/**
+ * Does this school produce a fact row at all?
+ *
+ * Registered ∧ live is not sufficient: a SENIOR-line school's `period_number` is a SEMESTER, which the
+ * slice deliberately does not map onto a `dim_period` TERM (see lib/etl/source.ts's product_line note).
+ * Those schools file censuses, are counted as a named gap, and have no fact row — so every
+ * hand-computed expectation below has to use THIS predicate, not `onSchoolup`. Using `onSchoolup` would
+ * make the roll-up tests fail for the right reason and look like a transform bug.
+ */
+function mapsToFacts(s: DemoSchool): boolean {
+  return s.onSchoolup && productLineFor(s.schoolType) === "BASIC";
+}
+
+/** Schools that should have a fact row per period — the real denominator for the sums below. */
+function mappedSchoolCount(): number {
+  return dataset.schools.filter(mapsToFacts).length;
+}
+
 function expectedSum(
   predicate: (s: DemoSchool) => boolean,
   term: number,
   measure: (c: DemoFacilitiesRow) => number,
 ): number {
   return dataset.schools
-    .filter((s) => s.onSchoolup && predicate(s))
+    .filter((s) => mapsToFacts(s) && predicate(s))
     .reduce((total, s) => {
       const census = censusBySchoolTerm.get(`${s.emisSchoolId}|${term}`);
       return census ? total + measure(census) : total;
@@ -223,9 +242,12 @@ describe("the run (scope §8 slice exit)", () => {
       select status::text as status, finished_at, error_text from etl_run where run_id = ${report.runId}::uuid`;
     expect(rows[0]!.status).toBe("SUCCESS");
     expect(rows[0]!.finished_at).not.toBeNull();
-    // A clean run carries NO error_text. (SUCCESS-with-gaps would carry the gap report — see
-    // failureVerdict; this run has no failures, so a non-null value here would mean one slipped in.)
-    expect(rows[0]!.error_text).toBeNull();
+    // No COMPUTE failures. `error_text` is not null, though, and deliberately so: it carries the
+    // unmapped-product-line note, because a run that could not map the whole SHS estate is not a
+    // failure but is not a silent success either. What must be absent is a gap report about schools
+    // that FAILED.
+    expect(rows[0]!.error_text).toMatch(/UNMAPPED PRODUCT LINES/);
+    expect(rows[0]!.error_text).not.toMatch(/SUCCESS WITH GAPS/);
     expect(report.periods.every((p) => p.failures.length === 0)).toBe(true);
   });
 
@@ -242,8 +264,10 @@ describe("the run (scope §8 slice exit)", () => {
     expect(vintages).toEqual([{ as_of: TERM_1.endsOn }]);
   });
 
-  it("writes one row per included school per term, and nothing else", async () => {
-    const included = report.coverage.included;
+  it("writes one row per MAPPED school per term, and nothing else", async () => {
+    // Not `coverage.included`: the SENIOR-line schools are included in the run and deliberately not
+    // mapped. See `mapsToFacts`.
+    const included = mappedSchoolCount();
     const rows = await sql<{ period_id: string; n: number }[]>`
       select period_id::text as period_id, count(*)::int as n from fact_infrastructure group by period_id`;
     expect(rows).toHaveLength(DEMO_TERMS.length);
@@ -577,7 +601,7 @@ describe("fact_infrastructure is a STOCK, never summed across periods (scope §1
   it("schools_reporting is per period too — the denominator does not accumulate either", async () => {
     const nationalId = await nodeId("NATIONAL", "Ghana");
     const perTerm = await rollUp(nationalId, await periodIdFor(2), "schools_reporting");
-    expect(perTerm).toBe(report.coverage.included);
+    expect(perTerm).toBe(mappedSchoolCount());
     const unfiltered = await sql<{ total: number }[]>`
       select sum(schools_reporting)::int as total from fact_infrastructure`;
     expect(unfiltered[0]!.total).toBe(perTerm * DEMO_TERMS.length);
@@ -608,7 +632,8 @@ describe("per-school isolation and the failure policy (scope §3, Q11 interim ru
     schoolId: "a1000000-0000-4000-8000-000000000001",
     periodId: "b1000001-0000-4000-8000-000000000001",
     academicYear: "2025/26",
-    term: 1,
+    periodNumber: 1,
+    productLine: "BASIC",
     classroomsTotal: 10,
     classroomsGood: 6,
     classroomsRepair: 3,
@@ -702,6 +727,24 @@ describe("per-school isolation and the failure policy (scope §3, Q11 interim ru
     expect(computed).toHaveLength(2);
     expect(failures).toHaveLength(1);
     expect(failures[0]!.message).toMatch(/latrine_type/);
+  });
+
+  it("names each failed school exactly once in the gap report", () => {
+    // The report is read by a human scanning 1,500 lines for a pattern. "GH-GA-0001: GH-GA-0001: …"
+    // doubles its width and buries the message, so the id is added only when the error did not
+    // already lead with it.
+    const verdict = failureVerdict(10, [
+      {
+        emisSchoolId: "GH-XX-0001",
+        jurisdictionId: null,
+        message: "GH-XX-0001: water_source bad",
+      },
+      { emisSchoolId: "GH-XX-0002", jurisdictionId: null, message: "connection reset" },
+    ]);
+    expect(verdict.errorText).toContain("GH-XX-0001: water_source bad");
+    expect(verdict.errorText).not.toContain("GH-XX-0001: GH-XX-0001");
+    // An error that does NOT name its school still gets attributed — unattributed is worse than noisy.
+    expect(verdict.errorText).toContain("GH-XX-0002: connection reset");
   });
 
   it("the threshold separates 'a school's row is bad' from 'our pipeline is bad'", () => {
@@ -891,7 +934,8 @@ describe("every written row re-derives from its SOURCE census row (independent o
       join dim_period dp on dp.period_id = f.period_id
       join demo_source.academic_period ap
         on ap.school_id = r.operational_school_id
-       and ap.academic_year = dp.academic_year and ap.term = dp.term
+       and ap.academic_year = dp.academic_year and ap.period_number = dp.term
+       and ap.product_line = 'BASIC'
       join demo_source.facilities_snapshot s
         on s.school_id = ap.school_id and s.period_id = ap.period_id`;
 
@@ -1022,9 +1066,10 @@ describe("the delete scope is bounded, not period-wide (scope §3's named trap)"
        where period_id = ${t1}::uuid and jurisdiction_id = ${rewritten!.jurisdiction_id}::uuid`;
     const row = factRowFrom(existing[0]!, t1);
 
-    const result = await writeInfrastructureFacts(sql, t1, [row]);
+    const result = await writeInfrastructureFacts(sql, [{ periodId: t1, rows: [row] }]);
     // Exactly ONE row deleted — the one being rewritten. A period-wide delete would report ~849.
-    expect(result).toEqual({ deleted: 1, inserted: 1 });
+    expect(result).toMatchObject({ deleted: 1, inserted: 1 });
+    expect(result.perPeriod).toEqual([{ periodId: t1, deleted: 1, inserted: 1 }]);
 
     const survived = await sql<{ n: number }[]>`
       select count(*)::int as n from fact_infrastructure
@@ -1095,9 +1140,9 @@ describe("the post-insert duplicate assertion really fires (scope §3, for the P
 
     await sql`drop index fact_infrastructure_jurisdiction_period_idx`;
     try {
-      await expect(writeInfrastructureFacts(sql, t1, [row, { ...row }])).rejects.toThrow(
-        /duplicated grain key/,
-      );
+      await expect(
+        writeInfrastructureFacts(sql, [{ periodId: t1, rows: [row, { ...row }] }]),
+      ).rejects.toThrow(/duplicated grain key/);
     } finally {
       await sql`create unique index fact_infrastructure_jurisdiction_period_idx
                   on fact_infrastructure (jurisdiction_id, period_id)`;
@@ -1128,7 +1173,8 @@ describe("idempotency is REPLACE, not append-and-ignore", () => {
           join dim_period dp on dp.period_id = f.period_id
           join demo_source.academic_period ap
             on ap.school_id = r.operational_school_id
-           and ap.academic_year = dp.academic_year and ap.term = dp.term
+           and ap.academic_year = dp.academic_year and ap.period_number = dp.term
+       and ap.product_line = 'BASIC'
          where f.period_id = ${t2}::uuid
          order by d.ges_code limit 1`
     )[0]!;
@@ -1280,5 +1326,276 @@ describe("the written facts are jurisdiction-isolated as the NON-OWNER app role"
         await tx`delete from fact_infrastructure`;
       }),
     ).rejects.toThrow(/permission denied/i);
+  });
+});
+
+// ── Dex gate: the stand-in really is drop-in, and FAILED really writes nothing ───────────────────
+
+describe("the source stand-in matches the REAL operational academic_period (Dex blocking 1)", () => {
+  /**
+   * The first version of the stand-in invented `term integer` where operational Postgres has
+   * `period_number smallint` — so `lib/etl/source.ts` would have failed on prod with
+   * `column p.term does not exist`, while passing every test here. This pins the column NAMES against
+   * apps/web/db/schema/periods.ts so the "drop-in" claim is checked rather than asserted.
+   */
+  it("carries period_number / period_label / product_line, and no invented `term`", async () => {
+    const columns = await sql<{ column_name: string; data_type: string }[]>`
+      select column_name, data_type from information_schema.columns
+       where table_schema = 'demo_source' and table_name = 'academic_period'`;
+    const names = columns.map((c) => c.column_name).sort();
+
+    expect(names).toContain("period_number");
+    expect(names).toContain("period_label");
+    expect(names).toContain("product_line");
+    // The whole point: no convenience column that does not exist upstream.
+    expect(names).not.toContain("term");
+
+    // period_number is a smallint upstream; a widened type here would hide an overflow that prod has.
+    expect(columns.find((c) => c.column_name === "period_number")?.data_type).toBe(
+      "smallint",
+    );
+  });
+
+  it("the ETL's own join keys are unique, so the census cannot fan out", async () => {
+    // period_id PK + (school_id, period_id) UNIQUE on academic_period, and (school_id, period_id)
+    // UNIQUE on facilities_snapshot → one census row in, at most one fact row out. That is what lets
+    // schools_reporting = 1 be asserted instead of counted.
+    const dupes = await sql<{ n: number }[]>`
+      select count(*)::int as n from (
+        select school_id, period_id from demo_source.academic_period
+        group by school_id, period_id having count(*) > 1
+      ) d`;
+    expect(dupes[0]!.n).toBe(0);
+  });
+});
+
+describe("product_line is a NAMED gap, never a silent mapping (Dex blocking 1)", () => {
+  it("SENIOR-line census rows exist in the source and are reported, not mapped", async () => {
+    // SHS schools really do file facilities censuses, and `period_number = 1` for a SENIOR school is
+    // Semester 1 — not analytics term 1. Mapping it would file half a year under a third of one.
+    const senior = await sql<{ n: number }[]>`
+      select count(*)::int as n from demo_source.academic_period where product_line = 'SENIOR'`;
+    expect(senior[0]!.n).toBeGreaterThan(0); // there is really something to skip
+
+    const skippedIds = new Set(
+      report.periods.flatMap((p) =>
+        p.skippedProductLines.flatMap((s) => s.operationalSchoolIds),
+      ),
+    );
+    expect(skippedIds.size).toBeGreaterThan(0);
+    for (const p of report.periods) {
+      expect(p.skippedProductLines.map((s) => s.productLine)).toEqual(["SENIOR"]);
+    }
+
+    // The run SAYS so — a reader of etl_run.error_text can see which estate is missing and why.
+    expect(report.errorText).toMatch(/UNMAPPED PRODUCT LINES/);
+    expect(report.errorText).toMatch(/SENIOR=\d+ school\(s\)/);
+
+    // And those schools have NO fact row — absent, counted, explained. Never half-mapped.
+    const ids = [...skippedIds];
+    const facts = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_infrastructure f
+        join dim_jurisdiction d on d.jurisdiction_id = f.jurisdiction_id
+        join ref_emis_school_register e on e.emis_school_id = d.ges_code
+       where e.operational_school_id = any(${ids}::uuid[])`;
+    expect(facts[0]!.n).toBe(0);
+  });
+
+  it("every school in the inclusion set is accounted for: mapped, skipped, or census-less", async () => {
+    // No school may simply vanish between the inclusion set and the facts. This is the A4 claim the
+    // period-mapping doc makes, made checkable.
+    for (const p of report.periods) {
+      const skipped = p.skippedProductLines.reduce(
+        (n, s) => n + s.operationalSchoolIds.length,
+        0,
+      );
+      expect(p.inserted + skipped + p.noSourceRow.length + p.failures.length).toBe(
+        report.coverage.included,
+      );
+    }
+  });
+});
+
+describe("a FAILED run writes NOTHING — the banner's whole justification (Dex blocking 2)", () => {
+  it("a breached failure-rate policy publishes no rows at all, in any period", async () => {
+    // The defect this closes: with the write inside the compute loop, a run that breached the policy
+    // had ALREADY published the surviving schools, and in a multi-period run period 1 survived a
+    // period-2 throw. Both leave a partially-published night under a FAILED banner.
+    const fingerprintBefore = await sql<{ f: string }[]>`
+      select md5(string_agg(t.row, '|' order by t.row)) as f
+        from (select (to_jsonb(f) - 'fact_id' - 'etl_run_id')::text as row
+                from fact_infrastructure f) t`;
+    const countBefore = (
+      await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+    )[0]!.n;
+    expect(countBefore).toBeGreaterThan(0);
+
+    // Corrupt ONE school's census beyond what the transform will accept, then run with zero tolerance
+    // so a single failure is enough to fail the run. The schools either side of it are perfectly fine —
+    // which is exactly what makes "nothing was written" the interesting assertion.
+    const victim = await sql<{ id: string; water_source: string }[]>`
+      select id::text as id, water_source from demo_source.facilities_snapshot
+        join demo_source.academic_period using (school_id, period_id)
+       where product_line = 'BASIC' order by id limit 1`;
+    await sql`alter table demo_source.facilities_snapshot
+                drop constraint demo_facilities_snapshot_water_source_valid`;
+    try {
+      await sql`update demo_source.facilities_snapshot set water_source = 'RIVER'
+                 where id = ${victim[0]!.id}::uuid`;
+
+      const failed = await runInfrastructureEtl(sql, {
+        emisExtractText: extractText(dataset),
+        periods: periodsOption(),
+        sourceSchema: "demo_source",
+        policy: { maxFailureRate: 0 },
+      });
+
+      expect(failed.status).toBe("FAILED");
+      expect(failed.errorText).toMatch(/allow-list/i);
+      // NOT ONE ROW inserted or deleted, in EITHER period.
+      for (const p of failed.periods) {
+        expect(p.inserted).toBe(0);
+        expect(p.deleted).toBe(0);
+      }
+      // …and the table is byte-for-byte what it was. The prior night stands: stale, and honest.
+      const after = await sql<{ f: string }[]>`
+        select md5(string_agg(t.row, '|' order by t.row)) as f
+          from (select (to_jsonb(f) - 'fact_id' - 'etl_run_id')::text as row
+                  from fact_infrastructure f) t`;
+      expect(after[0]!.f).toBe(fingerprintBefore[0]!.f);
+      expect(
+        (
+          await sql<{ n: number }[]>`select count(*)::int as n from fact_infrastructure`
+        )[0]!.n,
+      ).toBe(countBefore);
+
+      // The run is on record as FAILED with a reason, and the banner still reads the last SUCCESS.
+      const row = await sql<{ status: string; error_text: string | null }[]>`
+        select status::text as status, error_text from etl_run where run_id = ${failed.runId}::uuid`;
+      expect(row[0]!.status).toBe("FAILED");
+      expect(row[0]!.error_text).toBeTruthy();
+    } finally {
+      await sql`update demo_source.facilities_snapshot set water_source = ${victim[0]!.water_source}
+                 where id = ${victim[0]!.id}::uuid`;
+      await sql`alter table demo_source.facilities_snapshot
+                  add constraint demo_facilities_snapshot_water_source_valid
+                  check (water_source in ('BOREHOLE', 'PIPE', 'WELL', 'NONE'))`;
+    }
+  }, 180_000);
+
+  it("and the same run under the DEFAULT policy is SUCCESS-with-gaps that DOES write", async () => {
+    // The other half of the policy: one bad row out of ~850 must not blank the country. The run
+    // completes, writes, and SAYS what it could not compute.
+    const victim = await sql<{ id: string; water_source: string }[]>`
+      select id::text as id, water_source from demo_source.facilities_snapshot
+        join demo_source.academic_period using (school_id, period_id)
+       where product_line = 'BASIC' order by id limit 1`;
+    await sql`alter table demo_source.facilities_snapshot
+                drop constraint demo_facilities_snapshot_water_source_valid`;
+    try {
+      await sql`update demo_source.facilities_snapshot set water_source = 'RIVER'
+                 where id = ${victim[0]!.id}::uuid`;
+
+      const gapped = await runInfrastructureEtl(sql, {
+        emisExtractText: extractText(dataset),
+        periods: periodsOption(),
+        sourceSchema: "demo_source",
+      });
+
+      expect(gapped.status).toBe("SUCCESS");
+      expect(gapped.errorText).toMatch(/SUCCESS WITH GAPS/);
+      expect(gapped.periods.some((p) => p.inserted > 0)).toBe(true);
+      // The failed school keeps its PRIOR row rather than being deleted-and-not-reinserted: it is
+      // excluded from the delete scope, which is the stale-but-honest rule applied per school.
+      const stillThere = await sql<{ n: number }[]>`
+        select count(*)::int as n from fact_infrastructure f
+          join dim_jurisdiction d on d.jurisdiction_id = f.jurisdiction_id
+          join ref_emis_school_register e on e.emis_school_id = d.ges_code
+          join demo_source.facilities_snapshot s on s.school_id = e.operational_school_id
+         where s.id = ${victim[0]!.id}::uuid and f.period_id = s.period_id`;
+      expect(stillThere[0]!.n).toBe(0); // no prior row existed for it in this DB state
+    } finally {
+      await sql`update demo_source.facilities_snapshot set water_source = ${victim[0]!.water_source}
+                 where id = ${victim[0]!.id}::uuid`;
+      await sql`alter table demo_source.facilities_snapshot
+                  add constraint demo_facilities_snapshot_water_source_valid
+                  check (water_source in ('BOREHOLE', 'PIPE', 'WELL', 'NONE'))`;
+      // Restore the table to the clean state the rest of the suite's fingerprints assume.
+      await runEtl();
+    }
+  }, 180_000);
+});
+
+/** A minimal valid source row, used only by the A3 guard test below. */
+const negativeDetailBase: FacilitiesSnapshotSourceRow = {
+  schoolId: "a1000000-0000-4000-8000-000000000001",
+  periodId: "b1000001-0000-4000-8000-000000000001",
+  academicYear: "2025/26",
+  periodNumber: 1,
+  productLine: "BASIC",
+  classroomsTotal: 10,
+  classroomsGood: 6,
+  classroomsRepair: 3,
+  waterSource: "BOREHOLE",
+  electricitySource: "GRID",
+  latrinesBoys: 2,
+  latrinesGirls: 2,
+  latrinesStaff: 1,
+  latrineType: "KVIP",
+  handwashing: true,
+  hasLibrary: false,
+  hasIctLab: false,
+  internet: false,
+  hasKitchen: true,
+  gsfpParticipating: false,
+  libraryBookCount: 10,
+  computersTotal: 4,
+  computersWorking: 2,
+  studentDesksUsable: 100,
+  studentDesksBroken: 5,
+  teacherDesks: 3,
+  chalkboards: 3,
+  whiteboards: 1,
+  projectors: 0,
+  capturedAt: "2025-12-19T12:00:00.000Z",
+};
+
+const negativeDetailTarget = {
+  jurisdictionId: "10000000-0000-4000-8000-000000000011",
+  periodId: "20000000-0000-4000-8000-000000000001",
+  emisSchoolId: "GH-TEST-A3",
+  etlRunId: "30000000-0000-4000-8000-0000000000aa",
+};
+
+describe("the nullable optional-detail guard (Dex A3)", () => {
+  it("refuses a negative desk / computer / book count instead of subtracting it from a district", () => {
+    // A hand-assembled extract is exactly where "-1 means not answered" gets invented, and a negative
+    // count would SUBTRACT real facilities from a district total. NULL is visibly unanswered; -1 is
+    // silently wrong.
+    for (const field of [
+      "studentDesksUsable",
+      "studentDesksBroken",
+      "teacherDesks",
+      "chalkboards",
+      "whiteboards",
+      "projectors",
+      "computersTotal",
+      "computersWorking",
+      "libraryBookCount",
+    ] as const) {
+      expect(() =>
+        decomposeFacilitiesSnapshot(
+          { ...negativeDetailBase, [field]: -1 },
+          negativeDetailTarget,
+        ),
+      ).toThrow(/non-negative integer/);
+    }
+    // NULL stays perfectly legal — that is the whole reason these columns are nullable.
+    expect(() =>
+      decomposeFacilitiesSnapshot(
+        { ...negativeDetailBase, computersTotal: null, computersWorking: null },
+        negativeDetailTarget,
+      ),
+    ).not.toThrow();
   });
 });

@@ -156,6 +156,18 @@ global **period mapping** (Q3 — see `dimensions.ts`) and the **run-failure pol
 `SchoolFailurePolicy` in `run.ts`, default: ≤1% of schools may fail and the run still closes
 SUCCESS-with-gaps).
 
+**The `product_line` gap is deliberate and reported.** Operational `academic_period` has no `term`
+column — it has `period_number` plus `product_line` (SENIOR | BASIC | SENIOR_F3), and the line is what
+gives the number its meaning (Basic runs 3 terms, Senior 2 semesters). The slice maps **BASIC only**;
+SENIOR-line census rows are read and returned as `skippedProductLines`, which the run records in
+`etl_run.error_text` and the CLI prints. So an SHS school shows up as a counted, named gap rather than
+as a semester filed under a term, and the run exits `⚠ SUCCESS WITH GAPS`. Closing it needs the Q3
+ruling.
+
+Three outcomes, three signals, because a scheduler reads the exit code and not the prose:
+`✓ SUCCESS` exit 0 · `⚠ SUCCESS WITH GAPS` exit 0 · `✗ FAILED` exit 1 and **nothing written** (the run
+computes every period, takes the verdict, then writes once in one transaction).
+
 ## Tests
 
 ```bash

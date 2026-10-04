@@ -15,9 +15,24 @@ import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
  * status would date tonight's figures to tonight on the very night the pipeline broke — the one night
  * it matters.
  *
+ * ⚠ THAT RESTS ON A PROPERTY OF THE WRITER, NOT OF THIS QUERY. "A FAILED row wrote nothing" is true
+ * because `lib/etl/pipeline.ts` computes every period, takes the failure verdict, and only then writes —
+ * once, in one transaction spanning all periods. A pipeline that wrote as it computed would leave a
+ * partially-published night under a FAILED row, and this banner would then be dating visible figures to
+ * the last run that happened to succeed, which is older than the data on screen. Any new fact table's
+ * ETL has to keep that phasing for this read to stay honest.
+ *
  * NULL IS A REAL ANSWER, NOT AN ERROR. An analytics DB with no successful run yet (the state the demo
  * starts from) must say so. The caller renders an honest "No successful run yet" rather than a dash
  * that could equally mean zero, loading, or broken.
+ *
+ * FAIL-SOFT, AND THE FALLBACK LIVES HERE RATHER THAN AT THE CALL SITE. A failed read returns null, the
+ * same as "no run yet" — identical from the reader's point of view, because in both cases we cannot
+ * state a vintage. It is handled in this module so that every caller gets it (a `.catch(() => null)`
+ * bolted onto one page is a promise the next page's author has to remember to repeat), and the
+ * precedent is `getJurisdictionNode()`: this is CHROME. It is not authoritative for anything, no gate
+ * or boundary reads it, and losing the vintage label must degrade a card — never take the landing page
+ * down for an officer who is entitled to see it.
  */
 
 export interface EtlRunStatus {
@@ -36,21 +51,26 @@ function rowsOf(result: unknown): Record<string, unknown>[] {
 export async function getLatestSuccessfulEtlRun(
   scope: JurisdictionScope,
 ): Promise<EtlRunStatus | null> {
-  return withJurisdiction(scope, async (tx) => {
-    const result = await tx.execute(sql`
-      select run_id::text as run_id, finished_at
-        from etl_run
-       where status = 'SUCCESS' and finished_at is not null
-       order by finished_at desc
-       limit 1
-    `);
-    const row = rowsOf(result)[0];
-    if (!row) return null;
-    return {
-      runId: row.run_id as string,
-      finishedAt: new Date(row.finished_at as string),
-    };
-  });
+  try {
+    return await withJurisdiction(scope, async (tx) => {
+      const result = await tx.execute(sql`
+        select run_id::text as run_id, finished_at
+          from etl_run
+         where status = 'SUCCESS' and finished_at is not null
+         order by finished_at desc
+         limit 1
+      `);
+      const row = rowsOf(result)[0];
+      if (!row) return null;
+      return {
+        runId: row.run_id as string,
+        finishedAt: new Date(row.finished_at as string),
+      };
+    });
+  } catch {
+    // Chrome only — see FAIL-SOFT above. Indistinguishable from "no run yet", deliberately.
+    return null;
+  }
 }
 
 /**

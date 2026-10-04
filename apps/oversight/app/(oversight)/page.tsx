@@ -62,9 +62,9 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
  */
 export default async function OversightHome() {
   const officer = await getOfficerSession();
-  const latestRun = officer
-    ? await getLatestSuccessfulEtlRun(scopeFor(officer)).catch(() => null)
-    : null;
+  // No `.catch` here: `getLatestSuccessfulEtlRun` is fail-soft in the lib, so every caller inherits it
+  // rather than each one remembering to.
+  const latestRun = officer ? await getLatestSuccessfulEtlRun(scopeFor(officer)) : null;
 
   return (
     <main className="mx-auto max-w-page px-4 py-10 md:px-8">
