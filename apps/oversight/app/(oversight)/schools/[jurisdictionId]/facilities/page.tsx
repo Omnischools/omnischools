@@ -86,7 +86,7 @@ export default async function SchoolFacilitiesPage({
               ["Source", "annual census · read-only via the analytics boundary"],
               [
                 "Grain",
-                "one census row per school × term · summed spatially, never across terms",
+                "one census row per school × academic year · summed spatially, never across years",
               ],
               [
                 "Not gated",
