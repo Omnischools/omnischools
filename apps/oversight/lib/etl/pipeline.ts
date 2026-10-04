@@ -35,7 +35,9 @@ import {
 } from "./run";
 
 /**
- * THE RUN SEQUENCE (spec §7 / scope §3), end-to-end for the `fact_infrastructure` slice.
+ * THE RUN SEQUENCE (spec §7 / scope §3), end-to-end for the increment-H fact slices — ONE run that
+ * computes and writes BOTH arms, `fact_infrastructure` AND `fact_enrolment`, under one verdict and in
+ * one transaction (see the TWO FACTS, ONE RUN note below).
  *
  *   1  open the `etl_run` row (RUNNING)
  *   2  refresh dimensions — `dim_jurisdiction` spine + `dim_period` (TERM rows AND the ANNUAL cut of
@@ -73,6 +75,17 @@ import {
  * saying so. Both arms file at the SAME ANNUAL period, so a dashboard that joins them is joining one
  * vintage.
  *
+ * ⚠ THE ENROLMENT ARM RUNS FOR THE CURRENT ACADEMIC YEAR ONLY; the infrastructure arm runs for every
+ * year in the run. The asymmetry is forced by the two sources. A census row carries `captured_at` and
+ * is SELECTED BY academic year, so a backfill of 2024/25 reads 2024/25's censuses and the figure is
+ * genuinely that year's. The ROSTER carries no period at all (`students` is the live state of the
+ * school), so there is exactly ONE roster and it is tonight's: filing it against a PAST year's ANNUAL
+ * period would publish tonight's roll as that year's MEASURED enrolment, stamped with that year's
+ * `ends_on` — a provenance falsehood with nothing downstream able to detect it. What a past year's
+ * roll ought to be (an archived roster? a census table? nothing at all?) is a future Kofi question,
+ * not something to invent here, so until it is ruled the honest answer for a non-current year is NO
+ * ENROLMENT ROWS — and `fact_enrolment`'s bounded delete means the year simply keeps whatever it had.
+ *
  * ⚠ THE GRAIN IS ANNUAL (Kofi's Q3 ruling — the mapping rule and its reasoning are in
  * `lib/etl/dimensions.ts`). `options.periods` still DECLARES the run in terms, because the terms are
  * what the calendar is made of and the TERM rows of `dim_period` are still upserted for the other
@@ -81,7 +94,7 @@ import {
  * line. A BASIC school that filed three term censuses therefore produces one row, not three.
  */
 
-export interface InfrastructureEtlOptions {
+export interface EtlRunOptions {
   /** The EMIS extract file's contents. Parsed, never trusted. */
   emisExtractText: string;
   /**
@@ -109,15 +122,26 @@ export interface InfrastructureEtlOptions {
    * So the run DECLARES a frozen census date, exactly as `apps/web/lib/reports/census-enrolment-data.ts`
    * freezes its `censusDate` at generation (GOV8-02) rather than ageing children against the clock.
    *
-   * Default: the academic year's ANNUAL `ends_on` (i.e. the last declared term's end), which reads as
-   * "the roll as filed for this academic year". Pass this option to pin a real census date — a backfill
-   * of an earlier year MUST pass it, or every year's roll would claim its own year-end vintage from
-   * one night's data.
+   * Default: the CURRENT academic year's ANNUAL `ends_on` (i.e. the last declared term's end), falling
+   * back to its `starts_on`, which reads as "the roll as filed for this academic year". Pass this
+   * option to pin a real census date.
+   *
+   * `startsOn`/`endsOn` are both OPTIONAL on `PeriodSpec` (`{ academicYear, term: null }` is a blessed
+   * ANNUAL declaration), so there is a shape of run in which NEITHER default exists. That case THROWS,
+   * naming this option as the fix: `fact_enrolment.as_of_date` is a `timestamptz`, and the old final
+   * fallback — the bare academic-year string, "2025/26" — died much later, inside step 5c, as a raw
+   * Postgres cast error with no indication of which option to set.
    */
   rosterAsOf?: string;
 }
 
-/** What one school's enrolment arm produced, as the run reports it. See `PeriodOutcome.enrolment`. */
+/**
+ * What the enrolment arm produced for one period, as the run reports it. See `PeriodOutcome.enrolment`.
+ *
+ * ALL ZEROES AND EMPTY LISTS on a NON-CURRENT academic year: the arm did not run there, by design (see
+ * the header). Zero `schoolsComputed` is therefore also an empty delete scope, so that year's existing
+ * rows are left exactly as they were rather than deleted-and-not-reinserted.
+ */
 export interface EnrolmentOutcome {
   /** Grouped roster slices read from the source — counts of children, never children. */
   sourceGroups: number;
@@ -180,9 +204,9 @@ export interface EtlRunReport {
   periods: PeriodOutcome[];
 }
 
-export async function runInfrastructureEtl(
+export async function runOversightEtl(
   sql: postgres.Sql,
-  options: InfrastructureEtlOptions,
+  options: EtlRunOptions,
 ): Promise<EtlRunReport> {
   // Parsing happens BEFORE the run is opened: a malformed extract is not a failed run, it is a
   // rejected input, and opening a RUNNING row for it would put noise in the banner's history.
@@ -245,6 +269,86 @@ export async function runInfrastructureEtl(
     const allFailures: SchoolFailure[] = [];
     let attempted = 0;
 
+    // ── the ENROLMENT arm's SOURCE READ — ONCE for the whole run, and for ONE year only ──────────
+    //
+    // HOISTED OUT OF THE PERIOD LOOP for two independent reasons:
+    //
+    //  1. CORRECTNESS. `readActiveRosterGroups` takes NO academic year — `students` is the live state
+    //     of the school and carries no period (see `lib/etl/enrolment-source.ts`) — so the read returns
+    //     the SAME roster however many times it is issued. Calling it per year and writing the result
+    //     against each year's ANNUAL period stamped that year's `ends_on` published TONIGHT'S roll as a
+    //     PAST year's measured roll. Hence the second half: the arm attaches to the CURRENT academic
+    //     year only, and a non-current year in a multi-year/backfill run gets NO enrolment rows. The
+    //     INFRASTRUCTURE arm is unaffected and still backfills every year — its source really is
+    //     selected by academic year. See the header for why a past year's roll is a Kofi question.
+    //  2. COST. One aggregate read over the whole national roster (~200k rows) instead of one per year.
+    //
+    // NO current annual spec (which should not happen in the nightly run, where `is_current` comes from
+    // the calendar) SKIPS THE ARM CLEANLY — zero rows, zero delete scope, nothing attempted — rather
+    // than erroring or guessing a year.
+    const enrolmentSpec = annualSpecs.find((s) => s.isCurrent === true) ?? null;
+    let enrolmentArm: {
+      spec: PeriodSpec;
+      rosterAsOf: string;
+      sourceGroups: number;
+      /** Schools that returned ANY roster row, keyed by operational id. The compute candidates. */
+      items: { schoolId: string; rows: RosterGroupSourceRow[] }[];
+      noRoster: string[];
+    } | null = null;
+    if (enrolmentSpec) {
+      // `as_of_date` is a `timestamptz` and MUST resolve to a real timestamp. `startsOn`/`endsOn` are
+      // optional on `PeriodSpec`, so refuse the run here, naming the option — the old bare-year-string
+      // fallback ("2025/26") reached the INSERT and died as a raw Postgres cast error.
+      const rosterAsOf =
+        options.rosterAsOf ?? enrolmentSpec.endsOn ?? enrolmentSpec.startsOn;
+      if (!rosterAsOf)
+        throw new Error(
+          `the current academic year ${enrolmentSpec.academicYear} declares neither starts_on nor ` +
+            "ends_on, so fact_enrolment.as_of_date has no vintage to freeze. Pass the `rosterAsOf` " +
+            "option (an ISO date/timestamp) or declare the terms' dates in `options.periods`.",
+        );
+      const { groups } = await readActiveRosterGroups(sql, {
+        schemaName: options.sourceSchema,
+        operationalSchoolIds: inclusion.schools.map((s) => s.operationalSchoolId),
+      });
+      const groupsBySchool = new Map<string, RosterGroupSourceRow[]>();
+      for (const group of groups) {
+        const held = groupsBySchool.get(group.schoolId);
+        if (held) held.push(group);
+        else groupsBySchool.set(group.schoolId, [group]);
+      }
+      // A school whose roster read returned NOTHING AT ALL is not a failure and not computed: it keeps
+      // its prior rows (stale-but-honest), exactly as a census-less school does on the other arm. A
+      // school that DID return groups but whose every class is out-of-scope/unmapped IS computed — to
+      // zero rows — and is therefore in the delete scope, so an emptied stage really empties.
+      enrolmentArm = {
+        spec: enrolmentSpec,
+        rosterAsOf,
+        sourceGroups: groups.length,
+        items: [...groupsBySchool.entries()].map(([schoolId, rows]) => ({
+          schoolId,
+          rows,
+        })),
+        noRoster: inclusion.schools
+          .filter((s) => !groupsBySchool.has(s.operationalSchoolId))
+          .map((s) => s.emisSchoolId),
+      };
+    }
+
+    /** The arm did not run for this year. Zero everything — and an EMPTY delete scope. */
+    const noEnrolment = (): EnrolmentOutcome => ({
+      sourceGroups: 0,
+      schoolsComputed: 0,
+      deleted: 0,
+      inserted: 0,
+      headcount: 0,
+      outOfScopeHeadcount: 0,
+      unmappedHeadcount: 0,
+      noRoster: [],
+      stageDrift: [],
+      failures: [],
+    });
+
     // ONE ITERATION PER ACADEMIC YEAR, not per term — the ANNUAL grain.
     for (const spec of annualSpecs) {
       const periodId = periodIndex.get(periodKey(spec.academicYear, null));
@@ -303,33 +407,26 @@ export async function runInfrastructureEtl(
       );
       allFailures.push(...failures);
 
-      // ── the ENROLMENT arm, same period, same isolation ────────────────────────────────────────
-      // The roster read takes NO academic year: `students` carries no period (see
-      // `lib/etl/enrolment-source.ts`), so the run files the CURRENT roll under this ANNUAL period and
-      // stamps it with the declared, frozen vintage.
-      const rosterAsOf =
-        options.rosterAsOf ?? spec.endsOn ?? spec.startsOn ?? `${spec.academicYear}`;
-      const { groups } = await readActiveRosterGroups(sql, {
-        schemaName: options.sourceSchema,
-        operationalSchoolIds: inclusion.schools.map((s) => s.operationalSchoolId),
-      });
-      const groupsBySchool = new Map<string, RosterGroupSourceRow[]>();
-      for (const group of groups) {
-        const held = groupsBySchool.get(group.schoolId);
-        if (held) held.push(group);
-        else groupsBySchool.set(group.schoolId, [group]);
+      // ── the ENROLMENT arm, same period, same isolation — CURRENT YEAR ONLY ────────────────────
+      // The roster was read ONCE, above the loop, and belongs to exactly one year: tonight's. On any
+      // other year this arm contributes nothing at all — no rows, no delete scope, and nothing added
+      // to `attempted` (pooling roster schools into the denominator of a year the arm never ran would
+      // inflate the tolerated absolute failure count for free).
+      if (!enrolmentArm || enrolmentArm.spec !== spec) {
+        pending.push({
+          spec,
+          periodId,
+          sourceRows: sourceRows.length,
+          computed,
+          failures,
+          noSourceRow,
+          enrolmentRows: [],
+          enrolmentScope: [],
+          enrolment: noEnrolment(),
+        });
+        continue;
       }
-      // A school whose roster read returned NOTHING AT ALL is not a failure and not computed: it keeps
-      // its prior rows (stale-but-honest), exactly as a census-less school does on the other arm. A
-      // school that DID return groups but whose every class is out-of-scope/unmapped IS computed — to
-      // zero rows — and is therefore in the delete scope, so an emptied stage really empties.
-      const noRoster = inclusion.schools
-        .filter((s) => !groupsBySchool.has(s.operationalSchoolId))
-        .map((s) => s.emisSchoolId);
-      const rosterItems = [...groupsBySchool.entries()].map(([schoolId, rows]) => ({
-        schoolId,
-        rows,
-      }));
+      const { rosterAsOf, items: rosterItems } = enrolmentArm;
       attempted += rosterItems.length;
 
       const enrolmentCompute = computePerSchool<
@@ -369,7 +466,7 @@ export async function runInfrastructureEtl(
       const enrolmentRows = enrolmentCompute.computed.flatMap((c) => c.rows);
       const enrolmentScope = enrolmentCompute.computed.map((c) => c.jurisdictionId);
       const enrolment: EnrolmentOutcome = {
-        sourceGroups: groups.length,
+        sourceGroups: enrolmentArm.sourceGroups,
         schoolsComputed: enrolmentCompute.computed.length,
         deleted: 0,
         inserted: 0,
@@ -384,7 +481,7 @@ export async function runInfrastructureEtl(
           (t, c) => t + c.unmappedHeadcount,
           0,
         ),
-        noRoster,
+        noRoster: enrolmentArm.noRoster,
         stageDrift: enrolmentCompute.computed
           .filter((c) => c.stageDrift.length > 0)
           .map((c) => ({
@@ -411,6 +508,14 @@ export async function runInfrastructureEtl(
     // ── step 5b · THE VERDICT, over the WHOLE run ───────────────────────────────────────────────
     // Before any write, and over every period's failures together, because the policy is a RATE over
     // the run's attempted schools.
+    //
+    // ⚠ `attempted` IS POOLED ACROSS BOTH ARMS — census schools plus roster schools — so with two arms
+    // the denominator is roughly double what it was for infrastructure alone, and therefore so is the
+    // ABSOLUTE number of failed schools the same percentage policy tolerates. That is the shipped
+    // behaviour (one run, one verdict), but it means a wholesale enrolment breakage can hide inside the
+    // combined rate while every infrastructure school computes fine. PER-ARM BUDGETS are the right
+    // shape once a third arm lands — by then the pooled rate will be tolerating three arms' worth of
+    // absolute failures and the signal will be too diluted to act on.
     const verdict = failureVerdict(attempted, allFailures, options.policy);
 
     // ── step 5c · WRITE — once, one transaction, every period; only on SUCCESS ───────────────────

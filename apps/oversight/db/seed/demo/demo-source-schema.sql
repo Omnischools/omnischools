@@ -235,10 +235,12 @@ create table demo_source.students (
   current_class_label text,
   class_id            uuid,
   constraint students_tenant_uk unique (school_id, id),
-  -- The real composite school-scoped FK — the class must belong to the same tenant.
+  -- The real composite school-scoped FK — the class must belong to the same tenant. NO `on delete`
+  -- clause, matching the real constraint in apps/web/db/schema/students.ts (NO ACTION): deleting a
+  -- class a child still points at is REFUSED, not allowed to delete the child with it.
   constraint students_class_fk
     foreign key (school_id, class_id)
-    references demo_source.class (school_id, id) on delete cascade
+    references demo_source.class (school_id, id)
 );
 
 -- The ETL's roster read is per school and groups by class label; both of these mirror what the real

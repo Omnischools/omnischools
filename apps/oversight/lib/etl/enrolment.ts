@@ -145,7 +145,7 @@ export function aggregateSchoolRoster(
     periodId: string;
     emisSchoolId: string;
     etlRunId: string;
-    /** The roster's frozen vintage — see `EnrolmentEtlVintage` in `lib/etl/pipeline.ts`. */
+    /** The roster's frozen vintage — see `EtlRunOptions.rosterAsOf` in `lib/etl/pipeline.ts`. */
     asOfDate: string;
     /** The register's `school_type`, used ONLY for the drift flag — never to derive a stage. */
     schoolType?: string | null;

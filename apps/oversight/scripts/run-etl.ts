@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
-import { runInfrastructureEtl } from "@/lib/etl/pipeline";
+import { runOversightEtl } from "@/lib/etl/pipeline";
 import { DEMO_EMIS_EXTRACT_PATH, DEMO_TERMS } from "@/scripts/seed-demo-data";
 
 /**
@@ -18,7 +18,7 @@ import { DEMO_EMIS_EXTRACT_PATH, DEMO_TERMS } from "@/scripts/seed-demo-data";
  * Here, in `apps/oversight/scripts/`, alongside every other loader. Spec §7 suggests a cron in
  * `apps/web`; this slice does not settle that, and nothing about the decision is baked in: the
  * pipeline is a plain function over a `postgres.Sql`, so a cron in either app, or a generic HTTP
- * POST + shared-secret job runner, calls the same `runInfrastructureEtl()`. Scheduling is task H21.
+ * POST + shared-secret job runner, calls the same `runOversightEtl()`. Scheduling is task H21.
  *
  * ── THE SOURCE SCHEMA ARGUMENT ──────────────────────────────────────────────────────────────────
  * `--source-schema` defaults to `demo_source`, the operational stand-in the demo generator writes
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
     "postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev";
   const sql = postgres(url, { max: 1, prepare: false });
   try {
-    const report = await runInfrastructureEtl(sql, {
+    const report = await runOversightEtl(sql, {
       emisExtractText: readFileSync(args.extract, "utf8"),
       periods: DEMO_TERMS.map((t) => ({
         academicYear: t.academicYear,

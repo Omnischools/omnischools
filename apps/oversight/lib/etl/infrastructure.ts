@@ -377,6 +377,13 @@ export function assertRowInvariants(
  * THREE PROPERTIES, all of them deliberate:
  *
  *  1. THE DELETE IS BOUNDED BY `(period_id, jurisdiction_id ∈ rowsToWrite)` — never period-wide. A
+ *     scope DERIVED FROM THE ROWS, which is equivalent to `fact_enrolment`'s separately-passed
+ *     "schools this run computed" scope ONLY because this module emits EXACTLY ONE ROW PER COMPUTED
+ *     SCHOOL: a computed school is always present in `rows`, so the two scopes cannot differ. A future
+ *     WIDER-GRAIN fact (one whose school can legitimately compute to zero rows, as enrolment's can)
+ *     MUST NOT copy this rows-derived form — that school would fall out of the scope and keep last
+ *     night's figures for ever. Pass the computed-school list explicitly, as `writeEnrolmentFacts` does.
+ *     A
  *     period-wide delete would remove the rows of schools that have since dropped out of the inclusion
  *     set, or whose compute failed this run, and never re-insert them: the district total would simply
  *     SHRINK, with no error and no empty table to notice. A school that failed compute therefore KEEPS

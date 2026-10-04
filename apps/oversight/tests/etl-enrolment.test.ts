@@ -13,7 +13,7 @@ import {
   type DemoSchool,
   type DemoStudentGroup,
 } from "@/scripts/seed-demo-data";
-import { runInfrastructureEtl, type EtlRunReport } from "@/lib/etl/pipeline";
+import { runOversightEtl, type EtlRunReport } from "@/lib/etl/pipeline";
 import {
   EnrolmentTransformError,
   aggregateSchoolRoster,
@@ -78,7 +78,7 @@ function periodsOption() {
 }
 
 async function runEtl(d: DemoDataset = dataset): Promise<EtlRunReport> {
-  return runInfrastructureEtl(sql, {
+  return runOversightEtl(sql, {
     emisExtractText: extractText(d),
     periods: periodsOption(),
     sourceSchema: "demo_source",
@@ -992,7 +992,7 @@ describe("idempotency and the bounded delete (criterion 16)", () => {
     const before = await countRows();
     expect(before).toBeGreaterThan(0);
     try {
-      const run = await runInfrastructureEtl(sql, {
+      const run = await runOversightEtl(sql, {
         emisExtractText: withoutIt,
         periods: periodsOption(),
         sourceSchema: "demo_source",
@@ -1006,6 +1006,203 @@ describe("idempotency and the bounded delete (criterion 16)", () => {
       expect(await countRows()).toBe(before);
     } finally {
       await runEtl();
+    }
+  }, 300_000);
+});
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// THE MULTI-YEAR RUN — the enrolment arm attaches to the CURRENT academic year ONLY
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("a multi-year run writes enrolment for the CURRENT year only", () => {
+  /**
+   * ⚠ THE REGRESSION GUARD FOR THE PER-YEAR ROSTER BUG (Dex B1).
+   *
+   * The roster read takes NO academic year — `students` is the live state of the school and carries no
+   * period — so there is exactly ONE roster and it is tonight's. Issued once per annual spec and written
+   * to every year's ANNUAL period stamped with that year's `ends_on`, a two-year/backfill run published
+   * TONIGHT'S roll as a PAST year's MEASURED enrolment: internally consistent, undetectable downstream,
+   * and false. The arm therefore runs for the CURRENT year only.
+   *
+   * The INFRASTRUCTURE arm is unaffected and still backfills every year — its source really is selected
+   * by academic year — so this file asserts BOTH halves. A fix that simply skipped past years for the
+   * whole run would pass the enrolment half and fail the infrastructure one.
+   *
+   * The demo dataset is one academic year, so the past year is planted here: two TERM specs plus a
+   * handful of real past-year censuses, removed again in the `finally`.
+   */
+  const PAST_YEAR = "2024/25";
+  const PAST_TERMS = [
+    {
+      academicYear: PAST_YEAR,
+      term: 1,
+      startsOn: "2024-09-16",
+      endsOn: "2024-12-20",
+      isCurrent: false,
+    },
+    {
+      academicYear: PAST_YEAR,
+      term: 2,
+      startsOn: "2025-01-13",
+      endsOn: "2025-04-03",
+      isCurrent: false,
+    },
+  ];
+
+  async function annualIdFor(academicYear: string): Promise<string> {
+    const rows = await sql<{ period_id: string }[]>`
+      select period_id::text as period_id from dim_period
+       where academic_year = ${academicYear} and term is null and period_type = 'ANNUAL'`;
+    expect(rows).toHaveLength(1);
+    return rows[0]!.period_id;
+  }
+
+  /** Plant ONE past-year census per school, so the infrastructure arm has a past year to backfill. */
+  async function plantPastCensuses(operationalIds: string[]): Promise<void> {
+    for (const op of operationalIds) {
+      const period = await sql<{ period_id: string }[]>`
+        insert into demo_source.academic_period
+          (school_id, academic_year, period_number, period_label, starts_on, ends_on, product_line)
+        values (${op}::uuid, ${PAST_YEAR}, 2, 'Term 2', ${PAST_TERMS[1]!.startsOn},
+                ${PAST_TERMS[1]!.endsOn}, 'BASIC')
+        returning period_id::text as period_id`;
+      await sql`
+        insert into demo_source.facilities_snapshot
+          (school_id, period_id, classrooms_total, classrooms_good, classrooms_repair,
+           water_source, electricity_source, latrines_boys, latrines_girls, latrines_staff,
+           latrine_type, handwashing, has_library, has_ict_lab, internet, has_kitchen,
+           gsfp_participating, captured_at)
+        values (${op}::uuid, ${period[0]!.period_id}::uuid, 12, 10, 2, 'BOREHOLE', 'GRID',
+                2, 2, 1, 'KVIP', true, false, false, false, true, true,
+                ${`${PAST_TERMS[1]!.endsOn}T12:00:00Z`}::timestamptz)`;
+    }
+  }
+
+  /** Undo everything this block plants, on either path, and restore the single-year baseline. */
+  async function restore(): Promise<void> {
+    await sql`
+      delete from fact_enrolment
+       where period_id in (select period_id from dim_period where academic_year = ${PAST_YEAR})`;
+    await sql`
+      delete from fact_infrastructure
+       where period_id in (select period_id from dim_period where academic_year = ${PAST_YEAR})`;
+    await sql`delete from dim_period where academic_year = ${PAST_YEAR}`;
+    // The stand-in source is DROP-and-CREATE, so reloading it removes the planted periods/censuses.
+    await loadDemoSource(sql, dataset);
+    await runEtl();
+  }
+
+  it("writes enrolment ONLY on the current year's ANNUAL period, while infrastructure writes BOTH", async () => {
+    const victims = (
+      await sql<{ op: string }[]>`
+        select r.operational_school_id::text as op from ref_emis_school_register r
+         where r.on_schoolup and r.operational_school_id is not null
+         order by r.emis_school_id limit 3`
+    ).map((r) => r.op);
+    expect(victims).toHaveLength(3);
+
+    try {
+      await plantPastCensuses(victims);
+      // TWO academic years in ONE run — the backfill shape. Only 2025/26 is current (DEMO_TERMS term 2).
+      const run = await runOversightEtl(sql, {
+        emisExtractText: extractText(dataset),
+        periods: [...PAST_TERMS, ...periodsOption()],
+        sourceSchema: "demo_source",
+      });
+      expect(run.status).toBe("SUCCESS");
+      expect(run.errorText).toBeNull();
+      expect(run.periods).toHaveLength(2); // one per YEAR, both ANNUAL
+      const past = run.periods.find((p) => p.academicYear === PAST_YEAR)!;
+      const current = run.periods.find((p) => p.academicYear === ACADEMIC_YEAR)!;
+      expect(past).toBeDefined();
+      expect(current).toBeDefined();
+
+      // ── the report: the arm did not run for the past year AT ALL ─────────────────────────────────
+      expect(past.enrolment).toMatchObject({
+        sourceGroups: 0,
+        schoolsComputed: 0, // ⇒ an EMPTY delete scope, so the year keeps whatever it had
+        deleted: 0,
+        inserted: 0,
+        headcount: 0,
+        outOfScopeHeadcount: 0,
+        unmappedHeadcount: 0,
+        noRoster: [],
+        stageDrift: [],
+        failures: [],
+      });
+      // …and it did run, in full, for the current one — the same national roll the single-year run gets.
+      expect(current.enrolment.inserted).toBeGreaterThan(10_000);
+      expect(current.enrolment.headcount).toBe(expectedHeadcount(() => true));
+      expect(current.enrolment.failures).toEqual([]);
+
+      // ── the database: ZERO enrolment rows at the past year's ANNUAL period ───────────────────────
+      const pastAnnual = await annualIdFor(PAST_YEAR);
+      const currentAnnual = await annualPeriodId();
+      expect(pastAnnual).not.toBe(currentAnnual);
+      const counts = (
+        await sql<
+          {
+            enrol_past: number;
+            enrol_now: number;
+            infra_past: number;
+            infra_now: number;
+          }[]
+        >`
+          select (select count(*)::int from fact_enrolment
+                   where period_id = ${pastAnnual}::uuid)       as enrol_past,
+                 (select count(*)::int from fact_enrolment
+                   where period_id = ${currentAnnual}::uuid)    as enrol_now,
+                 (select count(*)::int from fact_infrastructure
+                   where period_id = ${pastAnnual}::uuid)       as infra_past,
+                 (select count(*)::int from fact_infrastructure
+                   where period_id = ${currentAnnual}::uuid)    as infra_now`
+      )[0]!;
+      expect(counts.enrol_past).toBe(0);
+      expect(counts.enrol_now).toBe(current.enrolment.inserted);
+      // THE OTHER HALF: infrastructure really did backfill the past year — exactly the three schools
+      // that filed a past-year census — so this is not a blanket "skip every non-current year".
+      expect(counts.infra_past).toBe(victims.length);
+      expect(past.inserted).toBe(victims.length);
+      expect(counts.infra_now).toBeGreaterThan(0);
+
+      // No enrolment row anywhere claims the PAST year's vintage: there is exactly one as-of in the
+      // table, and it is the current year's. A per-year roster read would have produced two.
+      const vintages = await sql<{ as_of: string }[]>`
+        select distinct as_of_date::date::text as as_of from fact_enrolment`;
+      expect(vintages).toEqual([{ as_of: ROSTER_AS_OF }]);
+    } finally {
+      await restore();
+    }
+  }, 300_000);
+
+  it("a run with NO current academic year skips the enrolment arm cleanly rather than erroring", async () => {
+    // Should not happen in the nightly run (`is_current` comes from the calendar), so the requirement is
+    // only that it is a clean no-op: no throw, no rows, and — because the delete scope is empty — the
+    // current year's existing enrolment keeps its last good figures.
+    const currentAnnual = await annualPeriodId();
+    const before = (
+      await sql<{ n: number }[]>`
+        select count(*)::int as n from fact_enrolment where period_id = ${currentAnnual}::uuid`
+    )[0]!.n;
+    expect(before).toBeGreaterThan(0);
+    try {
+      const run = await runOversightEtl(sql, {
+        emisExtractText: extractText(dataset),
+        periods: PAST_TERMS, // not one of them is current
+        sourceSchema: "demo_source",
+      });
+      expect(run.status).toBe("SUCCESS");
+      expect(run.periods).toHaveLength(1);
+      expect(run.periods[0]!.enrolment.inserted).toBe(0);
+      expect(run.periods[0]!.enrolment.schoolsComputed).toBe(0);
+      expect(
+        (
+          await sql<{ n: number }[]>`
+            select count(*)::int as n from fact_enrolment where period_id = ${currentAnnual}::uuid`
+        )[0]!.n,
+      ).toBe(before);
+    } finally {
+      await restore();
     }
   }, 300_000);
 });

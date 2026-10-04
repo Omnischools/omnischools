@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import postgres from "postgres";
 import { TEST_DB_CONFIG_PATH, type TestDbConfig } from "./paths";
+import { STAGES } from "../../db/seed/config";
 
 /**
  * Provision the two databases the §6 gate needs, from scratch, on every run.
@@ -220,12 +221,18 @@ export default async function globalSetup() {
     // provision time by db/seed/config.ts, changed only by a deliberate config edit). `fact_enrolment.
     // stage` is a FK to it, so the increment-H enrolment arm cannot write a single row against a
     // database that was migrated but never seeded — on prod `pnpm db:setup` runs the seed, and this is
-    // that one step, kept to the four rows the ETL's FK needs and byte-identical to the seed's values.
-    await demoAdmin.unsafe(`
-      insert into dim_stage (stage, official_age_low, official_age_high, display_order) values
-        ('KG', 4, 5, 1), ('PRIMARY', 6, 11, 2), ('JHS', 12, 14, 3), ('SHS', 15, 17, 4)
-      on conflict (stage) do nothing;
-    `);
+    // that one step, kept to the rows the ETL's FK needs.
+    //
+    // THE VALUES ARE THE SEED'S OWN `STAGES` CONSTANT, imported, not restated here: a hand-copied
+    // literal claiming to be "byte-identical to the seed" stops being so the first time the seed is
+    // edited, and the test database would then be silently stale against the config the product ships.
+    for (const stage of STAGES) {
+      await demoAdmin`
+        insert into dim_stage (stage, official_age_low, official_age_high, display_order)
+        values (${stage.stage}, ${stage.officialAgeLow}, ${stage.officialAgeHigh},
+                ${stage.displayOrder})
+        on conflict (stage) do nothing`;
+    }
   } finally {
     await demoAdmin.end({ timeout: 5 });
   }

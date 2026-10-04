@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { config } from "dotenv";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -19,11 +20,16 @@ const url =
   process.env.DATABASE_URL ??
   "postgresql://omnischools:omnischools@localhost:55432/omnischools_analytics_dev";
 
-const client = postgres(url, { max: 1 });
-const db = drizzle(client, { schema, casing: "snake_case" });
-
-// dim_stage — the age-for-stage mapping (§3.3). Config, so a curriculum reform is a one-row edit.
-const STAGES = [
+/**
+ * dim_stage — the age-for-stage mapping (§3.3). Config, so a curriculum reform is a one-row edit.
+ *
+ * EXPORTED because `fact_enrolment.stage` is a FK to this table, so the test harness has to seed the
+ * same four rows (`tests/setup/global-setup.ts`) — and it builds its insert FROM THIS CONSTANT rather
+ * than restating the values, so a curriculum edit here cannot leave the test database silently stale.
+ * Which is also why the `main()` call below is guarded by the entry-point check: importing this module
+ * must not run a seed.
+ */
+export const STAGES = [
   { stage: "KG", officialAgeLow: 4, officialAgeHigh: 5, displayOrder: 1 },
   { stage: "PRIMARY", officialAgeLow: 6, officialAgeHigh: 11, displayOrder: 2 },
   { stage: "JHS", officialAgeLow: 12, officialAgeHigh: 14, displayOrder: 3 },
@@ -78,19 +84,26 @@ const RULES = [
 ];
 
 async function main() {
-  await db.insert(schema.dimStage).values(STAGES).onConflictDoNothing();
-  await db.insert(schema.dimSubject).values(SUBJECTS).onConflictDoNothing();
-  await db.insert(schema.refAnomalyRule).values(RULES).onConflictDoNothing();
-  // Sanity: prove the RLS helper compiles against a live DB (no rows expected).
-  await db.execute(sql`select 1`);
-  console.log(
-    `✓ seeded config: ${STAGES.length} stages, ${SUBJECTS.length} subjects, ${RULES.length} anomaly rules`,
-  );
+  const client = postgres(url, { max: 1 });
+  const db = drizzle(client, { schema, casing: "snake_case" });
+  try {
+    await db.insert(schema.dimStage).values(STAGES).onConflictDoNothing();
+    await db.insert(schema.dimSubject).values(SUBJECTS).onConflictDoNothing();
+    await db.insert(schema.refAnomalyRule).values(RULES).onConflictDoNothing();
+    // Sanity: prove the RLS helper compiles against a live DB (no rows expected).
+    await db.execute(sql`select 1`);
+    console.log(
+      `✓ seeded config: ${STAGES.length} stages, ${SUBJECTS.length} subjects, ${RULES.length} anomaly rules`,
+    );
+  } finally {
+    await client.end();
+  }
 }
 
-main()
-  .catch((err) => {
+// Only when RUN, never when imported — `STAGES` is imported by the test harness.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((err) => {
     console.error("✗ config seed failed:", err);
     process.exit(1);
-  })
-  .finally(() => client.end());
+  });
+}
