@@ -2027,15 +2027,18 @@ describe("CRITERION 23 · ONE arm, ONE fact_fees: dues and categorised lines sha
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
-// THE PRIOR ARMS ARE UNTOUCHED (the additivity claim of the demo seam itself)
+// THE FEE PASS IS DETERMINISTIC AND DRAWS FROM ITS OWN SALT
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 
-describe("the fees RNG pass leaves the four prior arms' demo figures BYTE-IDENTICAL", () => {
-  it("a fresh salt means the censuses, rosters, sittings and registers are unchanged", () => {
-    // The generator's fee pass draws from its OWN stream (`seed ^ 0x46454553`), so it cannot shift the
-    // three earlier passes. Pinned as a SHA-256 of each prior artefact, computed from the dataset this
-    // suite is running against: if a future edit moves a draw into an existing stream, every one of
-    // these digests changes at once and this test says so before a reviewer has to diff demo figures.
+describe("the fees RNG pass is deterministic and draws from its own salt", () => {
+  it("the same seed reproduces every prior arm's artefacts, and the fee salt is distinct", () => {
+    // What this proves: the generator is deterministic (same seed → identical artefacts) AND the fee
+    // pass draws from its OWN stream (`seed ^ 0x46454553`), distinct from the attendance salt. It does
+    // NOT by itself prove the fee pass left the prior arms unchanged vs an EARLIER generator — both
+    // sides here come from the same current generator, so a draw moved into an existing stream would
+    // shift both identically and this test would still pass. That cross-version non-drift was proven at
+    // the review gate by digesting the prior-arm artefacts at the base commit and comparing; it is not
+    // provable from inside a single generator.
     const digest = (value: unknown) =>
       createHash("sha256").update(JSON.stringify(value)).digest("hex");
     const fresh = generateDemoDataset();
@@ -2048,7 +2051,7 @@ describe("the fees RNG pass leaves the four prior arms' demo figures BYTE-IDENTI
       "terminalExamResults",
       "attendanceMarks",
     ] as const)
-      expect(digest(fresh[arm]), `${arm} drifted`).toBe(digest(dataset[arm]));
+      expect(digest(fresh[arm]), `${arm} is not reproduced`).toBe(digest(dataset[arm]));
     // The fee pass itself is deterministic too — same seed, same fee book.
     expect(digest(fresh.invoiceRuns)).toBe(digest(dataset.invoiceRuns));
     expect(digest(fresh.feeCategories)).toBe(digest(dataset.feeCategories));

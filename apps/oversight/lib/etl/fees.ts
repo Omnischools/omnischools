@@ -86,8 +86,10 @@ import { stampProvenance, type Provenance } from "./run";
  *   · fees' whole-school figure is NOT recoverable from its stage rows AT ALL — means and medians do not
  *     recombine — so if it is not materialised it does not exist.
  * ⚠ IT IS COMPUTED FROM THE **POOLED CROSS-STAGE PER-STUDENT DISTRIBUTION**, never derived from the
- * per-stage rows. Its mean is generally not any weighting of theirs and its median is generally not
- * between them. `assertSchoolFeesInvariants` asserts the two properties that DO hold (the pooled
+ * per-stage rows. Its mean is not recoverable from theirs using anything this table stores — the
+ * pupil-count weighting that would recover it exactly is a denominator `fact_fees` deliberately does not
+ * carry — and its median is not recoverable from theirs at any weighting at all.
+ * `assertSchoolFeesInvariants` asserts the two properties that DO hold (the pooled
  * distribution is the UNION of the per-stage ones — same students, same total) precisely so that the
  * ones that do not hold are not assumed by the next reader.
  *

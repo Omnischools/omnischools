@@ -247,7 +247,7 @@ async function main(): Promise<void> {
             : "") +
           (f.noInvoices.length > 0 ? ` · ${f.noInvoices.length} issued no bill` : ""),
       );
-      if (Number(f.otherBilled) > 0)
+      if (Number(f.otherBilled) > 0 || Number(f.otherCategoryNames) > 0)
         console.log(
           `    ⓘ GHS ${f.otherBilled} published under OTHER across ${f.otherCategoryNames} distinct ` +
             `unmapped category name(s) — the pure resolver's coverage signal, read it before adding a keyword`,
@@ -262,7 +262,7 @@ async function main(): Promise<void> {
       const worst = [...f.perSchool].sort(
         (a, b) => Number(b.otherBilled) - Number(a.otherBilled),
       )[0];
-      if (worst && Number(worst.otherBilled) > 0)
+      if (worst && (Number(worst.otherBilled) > 0 || Number(worst.otherCategoryNames) > 0))
         console.log(
           `    ⓘ most OTHER-bucketed: ${worst.emisSchoolId} (GHS ${worst.otherBilled}, ` +
             `${worst.otherCategoryNames} unmapped name(s)) — ${f.perSchool.length} school(s) have tallies`,
