@@ -49,6 +49,13 @@ import {
   readAttendanceMarkGroups,
   type AttendanceMarkGroupRow,
 } from "./attendance-source";
+import { aggregateSchoolFees, ghsOf, writeFeesFactsTx, type FactFeesRow } from "./fees";
+import {
+  countInvoicesWithoutPeriod,
+  readFeeLineGroups,
+  type FeeLineGroupRow,
+} from "./fees-source";
+import type { OvFeeCategory } from "./fee-category";
 import { loadEmisRegister, parseEmisExtract, type RegisterRow } from "./register";
 import { readLatestFacilitiesSnapshots } from "./source";
 import type { AnalyticsStage } from "./stage";
@@ -95,6 +102,29 @@ import {
  *
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
+ *
+ * ⚠ FIVE FACTS, ONE RUN (increment H fifth slice, task H11). `fact_fees` is the FIFTH ARM, threaded
+ * exactly as the fourth was — a SELF-CONTAINED PER-TERM LOOP, computed in 5a under `computePerSchool`, its
+ * failures tallied into the SAME run-wide verdict, its rows written in the SAME `sql.begin` in 5c with its
+ * own per-term delete scope, and reported under `EtlRunReport.feeTerms` (a TERM outcome does not fit
+ * `PeriodOutcome`, which is ANNUAL by construction). What is NOT like any earlier arm is its MEASURE
+ * SHAPE, and every structural difference follows from it:
+ *   · IT IS THE FIRST **NON-ADDITIVE** TABLE, IN BOTH TIME AND SPACE. `fact_fees` stores `mean_amount`
+ *     and `median_amount` and no summable column at all, so there is NO roll-up: a district fee figure is
+ *     neither the sum nor the average of its schools' rows, and a year's figure is not a combination of
+ *     its terms'. The H19 roll-up harness must EXCLUDE this table (see `lib/etl/fees.ts`).
+ *   · IT WRITES A `stage IS NULL` ALL-STAGES ROW — the MIRROR-IMAGE of the attendance arm, which writes
+ *     none. Attendance's stages Σ-reconstruct the whole; fees' do not reconstruct it at all, so the
+ *     whole-school figure must be materialised from the POOLED per-student distribution or it does not
+ *     exist.
+ *   · ITS PERIOD COMES FROM THE INVOICE, NOT FROM A DATE ON THE ROW. An invoice carries `period_id` →
+ *     operational `academic_period`, and the TERM is resolved from that period's `academic_year` plus its
+ *     own `starts_on` (never `period_number`, which means a term on BASIC and a semester on SENIOR — the
+ *     Q3 problem). `period_id IS NULL` invoices are TALLIED, not dropped
+ *     (`EtlRunReport.feesNullPeriodInvoices`).
+ *   · ZERO IS A MEASUREMENT AND ABSENCE IS NOT: a billed-0 tuition row is the FREE SHS signal and is
+ *     WRITTEN, while a category nobody billed produces no row. That is the opposite of attendance's
+ *     zero-denominator suppression — see `lib/etl/fees.ts`.
  *
  * ⚠ FOUR FACTS, ONE RUN (increment H fourth slice, task H10). `fact_attendance` is the FOURTH ARM,
  * threaded exactly as the second and third were: computed in 5a under `computePerSchool`, its failures
@@ -369,6 +399,72 @@ export interface TermAttendanceOutcome {
   failures: SchoolFailure[];
 }
 
+/**
+ * ONE SCHOOL'S FEE TALLIES for one term — the degradation-visibility signals, PER SCHOOL so a bad figure
+ * is attributable to the school that produced it rather than only to the country.
+ *
+ * All three money figures are GHS strings (numeric(10,2) shaped), never floats: they come from exact
+ * integer pesewas (see `lib/etl/fees-source.ts`) and a float would make a published national figure
+ * depend on binary rounding.
+ */
+export interface SchoolFeeTally {
+  emisSchoolId: string;
+  /** Billed GHS published under OTHER — the pure resolver's own coverage signal. */
+  otherBilled: string;
+  /** DISTINCT `fee_category.name` values that resolved to OTHER. A count, never the names. */
+  otherCategoryNames: number;
+  /** Billed GHS whose invoiced pupil is in a below-KG class. In NO row, never dropped. */
+  outOfScopeBilled: string;
+  /** Billed GHS whose invoiced pupil's class label resolved to no stage. In NO row, never dropped. */
+  unmappedStageBilled: string;
+}
+
+/**
+ * What the fees arm produced for ONE DECLARED TERM. One of these per TERM spec in the run.
+ *
+ * ⚠ THERE IS NO NATIONAL MEAN ON THIS OUTCOME, AND THAT IS THE RULING MADE PHYSICAL. Every other arm
+ * reports a pooled figure beside its per-period rows; this one reports only COUNTS and the TALLIES,
+ * because a national mean fee cannot be computed from school means (and a national median cannot be
+ * computed from school medians at all). Publishing one here would be the exact mistake the table's
+ * non-additivity exists to prevent — so the field simply does not exist.
+ */
+export interface TermFeesOutcome {
+  academicYear: string;
+  /** 1 | 2 | 3 — a TERM outcome is always numbered. Never null (that would be the ANNUAL cut). */
+  term: number;
+  /** ALWAYS "TERM". Stated so a reader never re-derives it from `term`. */
+  periodType: "TERM";
+  periodId: string;
+  /** The term's civil-date window — the window each invoice's operational period was assigned by. */
+  startsOn: string;
+  endsOn: string;
+  /** Grouped billed-line slices read from the source — (pupil × label × dues × class) keys, never lines. */
+  sourceGroups: number;
+  /** Schools whose invoices were aggregated (including to ZERO rows) — the DELETE scope for this term. */
+  schoolsComputed: number;
+  deleted: number;
+  inserted: number;
+  /** Distinct pupils who reached a row, nationally. The measures' denominator — NOT a published figure. */
+  billedStudents: number;
+  /** The categories written anywhere in this term. */
+  categories: OvFeeCategory[];
+  /** Run-wide sums of the per-school tallies below. Money, so GHS strings. */
+  otherBilled: string;
+  /** DISTINCT unmapped category names across the WHOLE term (a union, not a sum of per-school counts). */
+  otherCategoryNames: number;
+  outOfScopeBilled: string;
+  unmappedStageBilled: string;
+  /** The same four tallies, PER SCHOOL. Only schools with something to report appear. */
+  perSchool: SchoolFeeTally[];
+  /**
+   * Included schools that issued NO billed invoice at all in this term. NOT a failure, NOT computed and
+   * NOT in the delete scope: they keep whatever they had (stale-but-honest). DISTINCT from a school that
+   * billed ZERO, which is computed and gets real 0.00 rows (the Free SHS signal).
+   */
+  noInvoices: string[];
+  failures: SchoolFailure[];
+}
+
 export interface EtlRunReport {
   runId: string;
   status: "SUCCESS" | "FAILED";
@@ -386,6 +482,20 @@ export interface EtlRunReport {
    * third case is a real gap in the published figures and is otherwise completely invisible.
    */
   attendanceOutOfWindowMarks: number;
+  /** The FIFTH arm, at its OWN TERM periods — one entry per declared term. */
+  feeTerms: TermFeesOutcome[];
+  /**
+   * BILLED invoices carrying NO `period_id` — a real operational state (`invoice.period_id` is nullable)
+   * and one that reaches no fact row, because `fact_fees` is TERM-grained and there is no term to file
+   * them against. They are COUNTED rather than dropped, per school AND run-wide: a school that stopped
+   * filling in the term on its invoices would otherwise publish a shrinking fee book and look like a
+   * school that stopped charging. Period-INDEPENDENT, so it is one figure for the run rather than one
+   * per term.
+   */
+  feesNullPeriodInvoices: {
+    total: number;
+    bySchool: { emisSchoolId: string; invoices: number }[];
+  };
 }
 
 export async function runOversightEtl(
@@ -1025,6 +1135,187 @@ export async function runOversightEtl(
       });
     }
 
+    // ── step 5a (continued) · THE FIFTH ARM: fact_fees, at the SAME TERM periods ───────────────────
+    //
+    // A SELF-CONTAINED PER-TERM LOOP, deliberately separate from the attendance loop above even though
+    // both iterate `termSpecs`: the two arms share a GRAIN but nothing else — different source tables,
+    // different allow-lists, different delete scopes, different zero rule — and fusing them would make
+    // one arm's failure mode reach into the other's rows. They are reported apart for the same reason.
+    //
+    // ⚠ WHAT IS NOT HERE: any pooling of the measures. `fact_fees` is NON-ADDITIVE, so this loop sums
+    // COUNTS and TALLIES only; a national mean would be arithmetically wrong and is not computed anywhere.
+    //
+    // NOTHING IS WRITTEN HERE either: each term's rows and its own delete scope are held until the verdict.
+    interface PendingTermFees {
+      outcome: TermFeesOutcome;
+      rows: FactFeesRow[];
+      scope: string[];
+    }
+    const pendingFeeTerms: PendingTermFees[] = [];
+    let nullPeriodInvoices: { emisSchoolId: string; invoices: number }[] = [];
+    if (termSpecs.length > 0) {
+      const operationalIds = inclusion.schools.map((s) => s.operationalSchoolId);
+      for (const spec of termSpecs) {
+        const periodId = periodIndex.get(periodKey(spec.academicYear, spec.term));
+        if (!periodId)
+          throw new Error(
+            `dim_period has no TERM row for ${spec.academicYear} term ${String(spec.term)} after the ` +
+              "refresh.",
+          );
+        // THE WINDOW IS NOT OPTIONAL, for the attendance arm's reason adapted to this source: the TERM an
+        // invoice belongs to is resolved from its operational period's own `starts_on` falling inside this
+        // window (never from `period_number` — see the header), so a dates-less TERM spec would claim NO
+        // invoice, produce an EMPTY term and an empty delete scope, and leave a published term stale under
+        // a SUCCESS banner.
+        if (!spec.startsOn || !spec.endsOn)
+          throw new Error(
+            `the ${spec.academicYear} term ${String(spec.term)} declares ` +
+              `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
+              ", so fact_fees has no window to assign invoices to. An invoice is filed against the " +
+              "declared TERM containing its operational period's `starts_on`, so declare the term's " +
+              "dates in `options.periods` — an undated term would publish nothing and look fine.",
+          );
+        const startsOn: string = spec.startsOn;
+        const endsOn: string = spec.endsOn;
+        const term: number = spec.term!;
+
+        const { groups } = await readFeeLineGroups(sql, {
+          schemaName: options.sourceSchema,
+          operationalSchoolIds: operationalIds,
+          academicYear: spec.academicYear,
+          startsOn,
+          endsOn,
+        });
+        const bySchool = new Map<string, FeeLineGroupRow[]>();
+        for (const group of groups) {
+          const held = bySchool.get(group.schoolId);
+          if (held) held.push(group);
+          else bySchool.set(group.schoolId, [group]);
+        }
+        // A school that issued NO billed invoice in this term is not a failure and NOT computed: it keeps
+        // its prior rows for this term. A school that DID bill but whose every invoiced pupil is
+        // out-of-scope/unmapped IS computed — to zero rows — and is therefore in the delete scope, so a
+        // category that stopped being billed really empties.
+        const noInvoices = inclusion.schools
+          .filter((s) => !bySchool.has(s.operationalSchoolId))
+          .map((s) => s.emisSchoolId);
+
+        const items = [...bySchool.entries()].map(([schoolId, rows]) => ({
+          schoolId,
+          rows,
+        }));
+        attempted += items.length;
+
+        const compute = computePerSchool<
+          (typeof items)[number],
+          { jurisdictionId: string; emisSchoolId: string } & ReturnType<
+            typeof aggregateSchoolFees
+          >
+        >(
+          items,
+          (item) => ({
+            emisSchoolId:
+              jurisdictionOf.get(item.schoolId)?.emisSchoolId ?? item.schoolId,
+            jurisdictionId: jurisdictionOf.get(item.schoolId)?.jurisdictionId ?? null,
+          }),
+          (item) => {
+            const school = jurisdictionOf.get(item.schoolId);
+            if (!school)
+              throw new Error(
+                `operational school ${item.schoolId} is not in the inclusion set — the fees ` +
+                  "read is not bounded by the inclusion set.",
+              );
+            return {
+              jurisdictionId: school.jurisdictionId,
+              emisSchoolId: school.emisSchoolId,
+              ...aggregateSchoolFees(item.rows, {
+                jurisdictionId: school.jurisdictionId,
+                periodId,
+                emisSchoolId: school.emisSchoolId,
+                etlRunId: runId,
+                // The FALLBACK vintage only. The real `as_of_date` is MAX(invoice.issued_at) among the
+                // term's included invoices, derived inside the transform — never `now()`, so a closed
+                // term is immutable and a re-run of an unchanged term is byte-identical.
+                termEndsOn: endsOn,
+              }),
+            };
+          },
+        );
+        allFailures.push(...compute.failures);
+
+        // The DISTINCT unmapped names are a UNION across schools, not a sum of per-school counts: two
+        // schools that both call their printing levy "Printing" are one unmapped name, and summing would
+        // report two.
+        const unmappedNames = new Set<string>();
+        for (const c of compute.computed)
+          for (const name of c.otherCategoryNames) unmappedNames.add(name);
+
+        pendingFeeTerms.push({
+          rows: compute.computed.flatMap((c) => c.rows),
+          scope: compute.computed.map((c) => c.jurisdictionId),
+          outcome: {
+            academicYear: spec.academicYear,
+            term,
+            periodType: "TERM",
+            periodId,
+            startsOn,
+            endsOn,
+            sourceGroups: groups.length,
+            schoolsComputed: compute.computed.length,
+            deleted: 0,
+            inserted: 0,
+            billedStudents: compute.computed.reduce((t, c) => t + c.billedStudents, 0),
+            categories: [
+              ...new Set(compute.computed.flatMap((c) => c.categories)),
+            ] as OvFeeCategory[],
+            otherBilled: ghsOf(
+              compute.computed.reduce((t, c) => t + c.otherBilledPesewas, 0),
+            ),
+            otherCategoryNames: unmappedNames.size,
+            outOfScopeBilled: ghsOf(
+              compute.computed.reduce((t, c) => t + c.outOfScopeBilledPesewas, 0),
+            ),
+            unmappedStageBilled: ghsOf(
+              compute.computed.reduce((t, c) => t + c.unmappedBilledPesewas, 0),
+            ),
+            perSchool: compute.computed
+              .filter(
+                (c) =>
+                  c.otherBilledPesewas > 0 ||
+                  c.otherCategoryNames.length > 0 ||
+                  c.outOfScopeBilledPesewas > 0 ||
+                  c.unmappedBilledPesewas > 0,
+              )
+              .map((c) => ({
+                emisSchoolId: c.emisSchoolId,
+                otherBilled: ghsOf(c.otherBilledPesewas),
+                otherCategoryNames: c.otherCategoryNames.length,
+                outOfScopeBilled: ghsOf(c.outOfScopeBilledPesewas),
+                unmappedStageBilled: ghsOf(c.unmappedBilledPesewas),
+              })),
+            noInvoices,
+            failures: compute.failures,
+          },
+        });
+      }
+
+      // ONE counting query for the WHOLE run — a `period_id IS NULL` invoice belongs to no term, so it is
+      // not derivable from the per-term reads above and is not per-term to report. See
+      // `countInvoicesWithoutPeriod`.
+      const emisByOperational = new Map(
+        inclusion.schools.map((s) => [s.operationalSchoolId, s.emisSchoolId]),
+      );
+      nullPeriodInvoices = (
+        await countInvoicesWithoutPeriod(sql, {
+          schemaName: options.sourceSchema,
+          operationalSchoolIds: operationalIds,
+        })
+      ).map((r) => ({
+        emisSchoolId: emisByOperational.get(r.schoolId) ?? r.schoolId,
+        invoices: r.invoices,
+      }));
+    }
+
     // ── step 5b · THE VERDICT, over the WHOLE run ───────────────────────────────────────────────
     // Before any write, and over every period's failures together, because the policy is a RATE over
     // the run's attempted schools.
@@ -1052,15 +1343,22 @@ export async function runOversightEtl(
     // deliberately unchanged — one run, one verdict is the shipped contract, and per-arm (or per-term)
     // budgets are a Kofi decision with their own acceptance criteria, not something this slice may take on
     // its own initiative.
+    //
+    // ⚠ AND NOW A FIFTH ARM SHARES IT (task H11), on the SAME per-term basis as attendance: every
+    // invoice-issuing school of every declared term is added to `attempted`. A two-term run therefore adds
+    // roughly two inclusion sets on this arm alone, so the pooled 1% now tolerates five arms' worth of
+    // absolute failures. The behaviour is again kept deliberately unchanged — one run, one verdict is the
+    // shipped contract — and this is now the fourth consecutive slice to record the same dilution, which
+    // is itself the argument for per-arm budgets being ruled rather than re-noted.
     const verdict = failureVerdict(attempted, allFailures, options.policy);
 
     // ── step 5c · WRITE — once, one transaction, every period; only on SUCCESS ───────────────────
     // A FAILED verdict writes NOTHING. The prior night's data stays exactly as it was: stale, labelled
     // with its own older as-of, and honest. That is what makes the banner's "latest SUCCESS" read
     // correct rather than merely plausible.
-    // ALL FOUR fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
-    // performance arm's precedence collapse and either table's post-insert duplicate assertion — rolls the
-    // other three back with it. Two transactions would reintroduce the half-published night between the
+    // ALL FIVE fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
+    // performance arm's precedence collapse and any table's post-insert duplicate assertion — rolls the
+    // other four back with it. Two transactions would reintroduce the half-published night between the
     // arms that each writer's own transaction rules out within one arm.
     const written =
       verdict.status === "SUCCESS"
@@ -1095,7 +1393,18 @@ export async function runOversightEtl(
                 rows: t.rows,
               })),
             );
-            return { infra, enrol, exams, attendance };
+            // PER TERM again, with its OWN delete scope — and ONE batch for BOTH the PTA dues rows and
+            // the categorised ones (Kofi's "one arm, one fact_fees": they came through one transform, so
+            // they go through one delete-then-insert).
+            const fees = await writeFeesFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pendingFeeTerms.map((t) => ({
+                periodId: t.outcome.periodId,
+                jurisdictionIds: t.scope,
+                rows: t.rows,
+              })),
+            );
+            return { infra, enrol, exams, attendance, fees };
           })) as unknown as {
             infra: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
@@ -1114,12 +1423,16 @@ export async function runOversightEtl(
             attendance: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
             };
+            fees: {
+              perPeriod: { periodId: string; deleted: number; inserted: number }[];
+            };
           })
         : {
             infra: { perPeriod: [] },
             enrol: { perPeriod: [] },
             exams: { perPeriod: [] },
             attendance: { perPeriod: [] },
+            fees: { perPeriod: [] },
           };
     const writtenByPeriod = new Map(written.infra.perPeriod.map((p) => [p.periodId, p]));
     const enrolledByPeriod = new Map(written.enrol.perPeriod.map((p) => [p.periodId, p]));
@@ -1127,6 +1440,7 @@ export async function runOversightEtl(
     const attendanceByPeriod = new Map(
       written.attendance.perPeriod.map((p) => [p.periodId, p]),
     );
+    const feesByPeriod = new Map(written.fees.perPeriod.map((p) => [p.periodId, p]));
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
@@ -1158,6 +1472,12 @@ export async function runOversightEtl(
       inserted: attendanceByPeriod.get(t.outcome.periodId)?.inserted ?? 0,
     }));
 
+    const feeTermOutcomes: TermFeesOutcome[] = pendingFeeTerms.map((t) => ({
+      ...t.outcome,
+      deleted: feesByPeriod.get(t.outcome.periodId)?.deleted ?? 0,
+      inserted: feesByPeriod.get(t.outcome.periodId)?.inserted ?? 0,
+    }));
+
     // ── step 6 · anomaly hook (increment J — a no-op, by name) ──────────────────────────────────
     await runAnomalyHook(sql, runId);
 
@@ -1178,6 +1498,11 @@ export async function runOversightEtl(
       examCohorts: cohortOutcomes,
       terms: termOutcomes,
       attendanceOutOfWindowMarks: outOfWindowMarks,
+      feeTerms: feeTermOutcomes,
+      feesNullPeriodInvoices: {
+        total: nullPeriodInvoices.reduce((t, r) => t + r.invoices, 0),
+        bySchool: nullPeriodInvoices,
+      },
     };
   } catch (err) {
     // A FAILED run leaves the prior night's data in place. Two mechanisms, both needed: the whole
