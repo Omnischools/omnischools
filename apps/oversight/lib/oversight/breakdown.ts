@@ -138,6 +138,14 @@ export interface BreakdownRow {
    * unsigned pupils-per-teacher.
    */
   ptr: number | null;
+  /**
+   * The two SUMS the child's PTR is `ratio()`'d from — carried on the row (like `candidates`/`qualified`
+   * behind `wassceRate`) so PTR reconciles through `sumOf` exactly as every additive measure does, with
+   * no special fact-side pass. Null when the child filed no staffing row (never a 0). A caller may also
+   * show the roll the ratio divides from these.
+   */
+  staffEnrolment: number | null;
+  teachers: number | null;
   // NOTE: there is deliberately no `isHome` here, and no `scope.jurisdictionId` anywhere in this
   // module. Lucy's gold-tinted home row is a comparison between a child id and the officer's own node,
   // which is PRESENTATION — and keeping every `scope.*` field out of the read means the static guard
@@ -455,6 +463,8 @@ export async function getChildBreakdown(
           register === undefined ? null : ratio(register.reporting, register.registered),
         // Σenrolment ÷ Σteachers, per child — the weighted PTR, never avg(stored ptr). Null when the
         // child filed no staffing row (not a "0 teachers" claim), consistent with every other measure.
+        staffEnrolment: fact?.staffEnrolment ?? null,
+        teachers: fact?.teachers ?? null,
         ptr:
           fact?.staffEnrolment != null && fact.teachers != null
             ? ratio(fact.staffEnrolment, fact.teachers)
@@ -493,20 +503,16 @@ export async function getChildBreakdown(
       const rows = unattributed === null ? children : [...children, unattributed];
       const sumOf = (pick: (row: BreakdownRow) => number | null): number =>
         rows.reduce((acc, row) => acc + (pick(row) ?? 0), 0);
-      // PTR is a RATIO, not additive, so it is reconciled through its two COMPONENTS, summed on the
-      // fact side (the children + the unattributed bucket = the `()` total, the same grouping-sets
-      // invariant the other measures lean on). `factBuckets` holds every child key AND the null bucket.
-      const factSumOf = (pick: (bucket: FactBucket) => number | null): number => {
-        let acc = 0;
-        for (const bucket of factBuckets.values()) acc += pick(bucket) ?? 0;
-        return acc;
-      };
+      // PTR is a RATIO, not additive, so it is reconciled through its two COMPONENTS — the same
+      // `Σ children + unattributed = () total` grouping-sets invariant the other measures lean on. The
+      // components ride on the row now (like candidates/qualified behind wassceRate), so this is the
+      // identical `sumOf` form, no second fact-side pass.
       const reconciles =
         sumOf((r) => r.enrolment) === (total.enrolment ?? 0) &&
         sumOf((r) => r.candidates) === (total.candidates ?? 0) &&
         sumOf((r) => r.qualified) === (total.qualified ?? 0) &&
-        factSumOf((b) => b.staffEnrolment) === (factTotal.staffEnrolment ?? 0) &&
-        factSumOf((b) => b.teachers) === (factTotal.teachers ?? 0) &&
+        sumOf((r) => r.staffEnrolment) === (total.staffEnrolment ?? 0) &&
+        sumOf((r) => r.teachers) === (total.teachers ?? 0) &&
         (!hasCoverage ||
           (sumOf((r) => r.schoolsRegistered) === (total.schoolsRegistered ?? 0) &&
             sumOf((r) => r.schoolsReporting) === (total.schoolsReporting ?? 0)));

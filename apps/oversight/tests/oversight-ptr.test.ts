@@ -18,7 +18,7 @@ import {
 } from "@/lib/oversight/breakdown";
 import { formatRatio } from "@/components/oversight/kpi-card";
 import { BreakdownTable } from "@/components/oversight/breakdown-table";
-import { SpreadPanel } from "@/components/oversight/breakdown-visuals";
+import { PTR_AXIS, SpreadPanel } from "@/components/oversight/breakdown-visuals";
 import { breakdownChrome } from "@/components/oversight/tier-chrome";
 import {
   JUR,
@@ -55,8 +55,10 @@ import {
  *     unattributed bucket, never on a wrong child, and a district officer must not get zero rows.
  *  4. NULL HONESTY AND DIVIDE-BY-ZERO. No staffing row → `null` → `—`. Zero teachers → unavailable,
  *     never `Infinity` and never a fabricated 0.
- *  5. THE `.flat` PILL GATE. "within GES level norms" is a CLAIM. It must not render over a blended
- *     ratio above the ceiling, which is proved by planting a high-PTR row and re-rendering the page.
+ *  5. THE THREE-WAY CHIP GATE (Kofi §10.1). A conformance chip is a CLAIM. Only a blend at/below the
+ *     tightest norm (25) may say "within GES level norms" (green); only one above the loosest (35) may
+ *     say "above GES level norms" (terra); between the two a blend cannot certify level-dependent norms,
+ *     so NO chip renders — proved by planting high/mid/low-PTR rows and re-rendering the page.
  *
  * Every database assertion runs through `withJurisdiction()` as the NON-OWNER `ov_app` role (or, for
  * the raw probes, with the same GUCs on an app-role connection), so each is also an RLS assertion.
@@ -461,14 +463,18 @@ describe("the children + the bucket reconcile to the total on BOTH staffing comp
     });
   }
 
-  it("the guard reads the FACT-side buckets, which is the only place a ratio can reconcile", () => {
+  it("PTR reconciles through its summed COMPONENTS on the row, like every additive measure", () => {
     const code = readCode("lib/oversight/breakdown.ts");
-    expect(code).toMatch(/factSumOf\(\(b\) => b\.staffEnrolment\)/);
-    expect(code).toMatch(/factSumOf\(\(b\) => b\.teachers\)/);
+    // N1 (Dex): the two PTR components ride on `BreakdownRow` now (like candidates/qualified behind
+    // wassceRate), so they reconcile via the SAME `sumOf` over the rows as enrolment/candidates/
+    // qualified — no special fact-side pass, so `factSumOf` is gone.
+    expect(code).not.toMatch(/factSumOf/);
+    expect(code).toMatch(/sumOf\(\(r\) => r\.staffEnrolment\)/);
+    expect(code).toMatch(/sumOf\(\(r\) => r\.teachers\)/);
     // Both must be ANDed into `reconciles`, not computed and dropped.
     const guard = code.slice(code.indexOf("const reconciles ="));
-    expect(guard.slice(0, 600)).toContain("factSumOf((b) => b.staffEnrolment)");
-    expect(guard.slice(0, 600)).toContain("factSumOf((b) => b.teachers)");
+    expect(guard.slice(0, 600)).toContain("sumOf((r) => r.staffEnrolment)");
+    expect(guard.slice(0, 600)).toContain("sumOf((r) => r.teachers)");
   });
 
   it("an unreconciled read degrades the WHOLE section, never a partial total", async () => {
@@ -673,12 +679,14 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     schoolsRegistered: null,
     coverageRatio: null,
     ptr: null,
+    staffEnrolment: null,
+    teachers: null,
     ...fields,
   };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// (7) ONE DECIMAL EVERYWHERE, AND THE SPREAD BAR'S INVERSION (Kofi §3 and §4)
+// (7) ONE DECIMAL EVERYWHERE, AND THE SPREAD BAR'S INVERSION (Kofi §10.5 and §10.3/§10.4)
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 describe("Kofi's precision ruling: ONE decimal, on the Σ÷Σ figure, everywhere", () => {
@@ -726,9 +734,13 @@ describe("Kofi's precision ruling: ONE decimal, on the Σ÷Σ figure, everywhere
 });
 
 describe("the PTR spread bar is INVERTED — green at the low end", () => {
-  /** The shipped axis window, restated here so a silent edit to it shows up as a failure. */
-  const AXIS = { lo: 15, hi: 40 };
-  const project = (v: number) => Math.min(1, Math.max(0, (v - AXIS.lo) / (AXIS.hi - AXIS.lo)));
+  // The shipped axis, imported (not restated) so this bar's projection can never drift from the
+  // component's. Pinned to Kofi §10.4's widened window so a silent edit back to a narrow axis fails.
+  it("the axis is the §10.4 widened window [10, 60], which contains the whole seeded range", () => {
+    expect(PTR_AXIS).toEqual({ lo: 10, hi: 60 });
+  });
+  const project = (v: number) =>
+    Math.min(1, Math.max(0, (v - PTR_AXIS.lo) / (PTR_AXIS.hi - PTR_AXIS.lo)));
 
   async function ptrBarMarkup(): Promise<string> {
     const b = await readBreakdown(regionScope);
@@ -756,7 +768,8 @@ describe("the PTR spread bar is INVERTED — green at the low end", () => {
     const bar = await ptrBarMarkup();
     const green = leftOf(bar, "bg-green");
     const terra = leftOf(bar, "bg-terra");
-    // min = 10.0 → clamped to the axis floor (0%); max = 40.0 → the axis ceiling (100%).
+    // On the [10, 60] axis: min = 10.0 sits at the floor (0%); max = 40.0 projects to 60% — neither
+    // clamps (the whole seeded range fits), so the dots track the real values, not a rail.
     expect(green).toBeCloseTo(project(S.wassaStoredPtr) * 100, 1);
     expect(terra).toBeCloseTo(project(S.sekondiStoredPtr) * 100, 1);
     // THE INVERSION, stated as the thing that must not flip back: for PTR the green dot is LEFT of
@@ -803,7 +816,8 @@ describe("the PTR spread bar is INVERTED — green at the low end", () => {
     const m = /w-\[2px\] bg-navy"[^>]*?left:\s*([\d.]+)%/.exec(bar);
     expect(m, "no mean marker on the PTR bar").not.toBeNull();
     expect(Number(m![1])).toBeCloseTo(project(WEIGHTED_REGION_PTR) * 100, 1);
-    // The midpoint of 10–40 is 25 → 100%. The weighted mean is nowhere near it.
+    // The 10–40 band's midpoint is 25; the weighted mean 19.2 sits well below it, so the marker is in
+    // the left (better-staffed) half of the bar, not at the band centre.
     expect(Number(m![1])).toBeLessThan(50);
   });
 
@@ -817,10 +831,12 @@ describe("the PTR spread bar is INVERTED — green at the low end", () => {
         }),
       ),
     );
-    // 40.0 − 10.0 = 30.0 ratio points. `gapPoints` would have said "3000-point".
-    expect(text).toContain("30.0-point pupil-teacher-ratio gap");
+    // 40.0 − 10.0 = 30.0 ratio points, phrased "spread in…" not "gap" (Kofi §10.3). `gapPoints` would
+    // have said "3000-point".
+    expect(text).toContain("30.0-point spread in pupil-teacher ratio");
+    expect(text).not.toContain("pupil-teacher-ratio gap");
     expect(text).not.toContain("3000-point");
-    // Kofi §4: the caption must not re-state the inversion as a geography claim, and "all three" must
+    // Kofi §10.3: the caption must not re-state the inversion as a geography claim, and "all three" must
     // never be a literal — it is derived from how many bars rendered.
     expect(text).not.toContain("all three");
     expect(text.toLowerCase()).not.toContain("low end");
@@ -851,7 +867,7 @@ describe("the PTR spread bar is INVERTED — green at the low end", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// (8) THE `.flat` PILL IS A CLAIM, AND IT IS GATED — rendered against the real page
+// (8) THE CONFORMANCE CHIP IS A CLAIM, AND IT IS A THREE-WAY GATE — rendered against the real page
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 function chromeSession(base: unknown, jurisdictionName: string) {
@@ -919,7 +935,8 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
     expect(strip).toContain("No successful run yet");
     expect(strip).not.toMatch(/\d/);
     expect(strip).not.toContain("within GES level norms");
-    expect(strip).not.toContain("blended average");
+    expect(strip).not.toContain("above GES level norms");
+    expect(strip).not.toContain("GES norm");
     // The BREAKDOWN table is a separate section and is not run-gated; it still prints the figure. That
     // asymmetry is the shipped design, recorded here so the plant below is read as setup, not a fix.
     expect(textOf(markup)).toContain("19.2:1");
@@ -952,10 +969,10 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
       const text = textOf(
         await renderPage(chromeSession(nationalOfficer, "National · Ministry of Education")),
       );
-      expect(text).toContain("National blended average");
+      expect(text).toContain("National average");
       expect(text).toContain("25:1");
       expect(text).toContain("35:1");
-      // Kofi §1: the level-dependent BAND, not a single target, and no pass/fail verdict glyph.
+      // Kofi §10.2: the level-dependent BAND, not a single target, and no pass/fail verdict glyph.
       expect(text).not.toContain("GES target 25:1");
       expect(text).not.toContain("above target");
       expect(text).not.toContain("▼");
@@ -963,7 +980,9 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
     });
   });
 
-  it("the chip is `.flat` — the neutral token, never the terra 'down' tone", async () => {
+  it("WITHIN branch: a blend at/below the tightest norm (25) gets the GREEN 'within' chip", async () => {
+    // National blend 1130 ÷ 59 = 19.2 ≤ 25, so it is within EVERY level ceiling whatever the mix
+    // (Kofi §10.1 branch 1) → an affirmative chip in the green tone.
     await withEtlRun(async () => {
       const markup = await renderPage(
         chromeSession(nationalOfficer, "National · Ministry of Education"),
@@ -971,17 +990,19 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
       expect(textOf(markup)).toContain("within GES level norms");
       const chip = /<span class="([^"]*)">within GES level norms<\/span>/.exec(markup);
       expect(chip, "no 'within GES level norms' chip rendered").not.toBeNull();
-      // `.flat` = bg-bg / text-navy-3. The mock's `.down` would be bg-terra-bg / text-terra.
-      expect(chip![1]).toContain("bg-bg");
-      expect(chip![1]).toContain("text-navy-3");
+      // Green (`bg-green-bg` / `text-green`), never terra, and no ▲/▼ glyph.
+      expect(chip![1]).toContain("bg-green-bg");
+      expect(chip![1]).toContain("text-green");
       expect(chip![1]).not.toContain("terra");
-      expect(chip![1]).not.toContain("text-green");
+      expect(markup).not.toContain("▲");
+      expect(markup).not.toContain("▼");
     });
   });
 
-  it("⚠ THE GATE: a blended ratio ABOVE the ceiling gets NO chip — no false 'within norms'", async () => {
+  it("ABOVE branch: a blend beyond the loosest norm (35) gets the TERRA 'above' chip", async () => {
     // The district blend is 410/41 = 10.0 today. Plant a second, badly-staffed school in the SAME
-    // district so the blend becomes (410+4000) ÷ (41+50) = 48.5 — above the 35:1 ceiling.
+    // district so the blend becomes (410+4000) ÷ (41+50) = 48.5 — above 35, so above EVERY level
+    // ceiling whatever the mix (Kofi §10.1 branch 2) → an adverse chip in the terra tone.
     const SCHOOL = JUR.schoolPublicNoConsent; // already a SCHOOL under JUR.district
     await owner`
       insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teaching_posts_established, enrolment_total, ptr, vacancies, source, as_of_date)
@@ -993,18 +1014,22 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
       expect(kpi.ratio).toBeGreaterThan(35);
 
       await withEtlRun(async () => {
-        const text = textOf(
-          await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West")),
-        );
-        // The figure itself is still published — withholding the chip is not withholding the measure.
+        const markup = await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West"));
+        const text = textOf(markup);
+        // The figure itself is still published.
         expect(text).toMatch(/48\.5\s*:\s*1/);
-        expect(text).toContain("District blended average");
-        // …but the CLAIM is withheld.
+        expect(text).toContain("District average");
+        // The adverse CLAIM is made — and it is "above GES level norms", never a "within" lie and never
+        // the mock's "above target" single-target wording.
+        expect(text).toContain("above GES level norms");
         expect(text).not.toContain("within GES level norms");
-        // And it is withheld silently, not replaced by a verdict the ruling forbids.
         expect(text).not.toContain("above target");
-        expect(text).not.toContain("outside GES");
-        expect(text).not.toContain("▼");
+        const chip = /<span class="([^"]*)">above GES level norms<\/span>/.exec(markup);
+        expect(chip, "no 'above GES level norms' chip rendered").not.toBeNull();
+        expect(chip![1]).toContain("bg-terra-bg");
+        expect(chip![1]).toContain("text-terra");
+        expect(chip![1]).not.toContain("green");
+        expect(markup).not.toContain("▼");
       });
     } finally {
       await owner`
@@ -1014,22 +1039,29 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
     }
   });
 
-  it("the chip reappears the moment the blend comes back inside the band (the gate is the RATIO)", async () => {
-    // Same district, same page, a well-staffed second school instead: blend (410+400) ÷ (41+40) =
-    // 10.0 ≤ 35 → the chip returns. Together with the test above this proves the gate is driven by
-    // the ratio and not by, say, the tier or the row count.
+  it("⚠ INDETERMINATE branch: a blend BETWEEN the norms (25 < b ≤ 35) gets NO chip at all", async () => {
+    // The honesty case (Kofi §10.1 branch 3): a single blend cannot certify conformance to
+    // level-dependent norms, so between the two ends the card makes NO claim. Plant a school so the
+    // district blend is (410+2590) ÷ (41+50) = 3000/91 = 33.0 — inside the (25, 35] band.
     const SCHOOL = JUR.schoolPublicNoConsent;
     await owner`
       insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teaching_posts_established, enrolment_total, ptr, vacancies, source, as_of_date)
-      values (${SCHOOL}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 40, null, 400, 10.00, null, 'OPERATIONAL_AGG', now())
+      values (${SCHOOL}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 50, null, 2590, 51.80, null, 'OPERATIONAL_AGG', now())
     `;
     try {
+      const kpi = okValue(await getPupilTeacherRatio(districtScope, PERIOD_ID_ANNUAL));
+      expect(kpi.ratio).toBeCloseTo(3000 / 91, 10); // 32.97 → displays 33.0
+      expect(kpi.ratio).toBeGreaterThan(25);
+      expect(kpi.ratio).toBeLessThanOrEqual(35);
+
       await withEtlRun(async () => {
-        const text = textOf(
-          await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West")),
-        );
-        expect(text).toMatch(/10\.0\s*:\s*1/);
-        expect(text).toContain("within GES level norms");
+        const text = textOf(await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West")));
+        // The figure is published; the norm RANGE is still stated in the sub-line so the reader judges.
+        expect(text).toMatch(/33\.0\s*:\s*1/);
+        expect(text).toContain("GES norm 25:1");
+        // But NO conformance chip of EITHER tone — not a "within…" lie, not a substitute neutral text.
+        expect(text).not.toContain("within GES level norms");
+        expect(text).not.toContain("above GES level norms");
       });
     } finally {
       await owner`
@@ -1039,27 +1071,36 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
     }
   });
 
-  it("the ceiling is 35 — the top of the band, not the 25:1 JHS/SHS end", () => {
-    const code = readCode("app/(oversight)/page.tsx");
-    expect(code).toMatch(/GES_PTR_NORM_CEILING\s*=\s*35/);
-    expect(code).toMatch(/ptr\.value\.ratio\s*<=\s*GES_PTR_NORM_CEILING/);
-    // The gate must be an inequality on the ratio, not `shown(ptr)` alone.
-    expect(code).not.toMatch(/ptrWithinNorms\s*=\s*shown\(ptr\);/);
+  it("the gate reads the named level-norm constant, not inline literals (Kofi §10.1/§10.2)", () => {
+    const page = readCode("app/(oversight)/page.tsx");
+    // The three-way verdict and the band ends come from lib/oversight/ptr.ts — the one source the
+    // sub-line also reads — never a bare 35/25 in the gate (Dex B2b/B2c; Kofi §10.1).
+    expect(page).toMatch(/ptrNormVerdict\(/);
+    expect(page).toMatch(/GES_PTR_NORM_MIN/);
+    expect(page).toMatch(/GES_PTR_NORM_MAX/);
+    expect(page).not.toMatch(/GES_PTR_NORM_CEILING/);
+    // No inline "<= 35" / "<= 25" ratio comparison survives in the page; the thresholds live in ptr.ts.
+    expect(page).not.toMatch(/ratio\s*<=\s*3[05]\b/);
+
+    const lib = readCode("lib/oversight/ptr.ts");
+    // The constant is the §3 level-norm map; MIN/MAX are DERIVED from it (bound to one source), not
+    // re-typed literals, so the chip and sub-line cannot drift.
+    expect(lib).toMatch(/GES_PTR_LEVEL_NORMS\s*=\s*\{[^}]*PRIMARY:\s*35[^}]*\}/);
+    expect(lib).toMatch(/GES_PTR_NORM_MIN\s*=\s*Math\.min\(/);
+    expect(lib).toMatch(/GES_PTR_NORM_MAX\s*=\s*Math\.max\(/);
   });
 });
 
-describe("the provenance ledger carries the PTR-not-PTTR caveat (Kofi §2)", () => {
-  it("there is a 'Measure' item, and it names PTTR with an EN-DASH 'Pupil–teacher'", async () => {
+describe("the provenance ledger carries the PTR-not-PTTR caveat (Kofi §10.5)", () => {
+  it("there is a 'Measure' item carrying the §10.5 verbatim all-teacher-PTR caveat", async () => {
     const markup = await renderPage(
       chromeSession(nationalOfficer, "National · Ministry of Education"),
     );
     const found = /<dt[^>]*>Measure<\/dt><dd[^>]*>([^<]*)<\/dd>/.exec(markup);
     expect(found, "no provenance <dd> for 'Measure'").not.toBeNull();
     const line = textOf(found![1]!);
-    // U+2013, verbatim — the ruling names the glyph, and a hyphen here is a different string.
-    expect(line).toContain("Pupil–teacher ratio");
-    expect(line).toContain("all teachers on roll, trained and untrained");
-    expect(line).toContain("Not the trained-teacher ratio (PTTR)");
+    // Kofi §10.5 verbatim: the measure is all-teacher PTR, never PTTR.
+    expect(line).toContain("All-teacher PTR (trained + untrained); not the trained-teacher ratio (PTTR).");
     // The surface must not claim to publish PTTR anywhere else.
     expect(textOf(markup).match(/PTTR/g) ?? []).toHaveLength(1);
   });

@@ -40,16 +40,22 @@ function pct(fraction: number): string {
   return `${(fraction * 100).toFixed(1)}%`;
 }
 
-/**
- * THE PTR SPREAD-BAR AXIS — a STATED presentation domain, not a measurement (cf. the demo PTR bands in
- * lib/etl/staffing.ts, which are "plausibility weights, not measurements"). A pupils-per-teacher count
- * has no 0–100 axis to project onto the way a rate does, so the bar needs an explicit [lo, hi] window.
- * [15, 40] spans the demo's seeded bands (KG 22–45, Primary 25–55, JHS 12–25, SHS 15–28) comfortably;
- * values outside it clamp to the ends rather than overflowing the track. Owner/Kofi-movable.
- */
-const PTR_AXIS = { lo: 15, hi: 40 } as const;
+// PTR_AXIS — STATED presentation domain (owner/Kofi-movable, cf. SCHOOL_LEVEL_BANDS; Kofi §10.4).
+// lo/hi CONTAIN the full §3 seeded single-school range (JHS floor ~12 → primary-north ceiling ~60),
+// so no demo value clamps. This is load-bearing for honesty: the equity caption (§10.3) quotes the
+// TRUE (max − min) gap, so any value that clamped to a rail would make the bar UNDER-DRAW the stated
+// gap. Therefore the axis MUST be widened before plotting any real/future value outside [lo,hi];
+// never let projectPtr silently clamp data the caption then over-states. Prefer a dev assertion that
+// every plotted min/max lies within [lo,hi] (fail loud) over a silent clamp.
+export const PTR_AXIS = { lo: 10, hi: 60 } as const;
 
-/** A PTR value → its 0..1 position on `PTR_AXIS`, clamped so an out-of-window ratio sits at an end. */
+/**
+ * A PTR value → its 0..1 position on `PTR_AXIS`. The clamp is a LAST RESORT: a value outside [lo,hi]
+ * would make the bar under-draw a gap the §10.3 caption still quotes, so the axis is sized to contain
+ * the whole §3 seeded range and `tests/oversight-child-breakdown.test.ts` asserts no seeded tier/child
+ * value clamps (Kofi §10.4). Widen PTR_AXIS, do not let this clamp silently, before plotting any future
+ * value outside the window.
+ */
 function projectPtr(value: number): number {
   return Math.min(1, Math.max(0, (value - PTR_AXIS.lo) / (PTR_AXIS.hi - PTR_AXIS.lo)));
 }
@@ -136,20 +142,24 @@ export function SpreadPanel({
   const ptr = spreadOf(breakdown, (row) => row.ptr);
 
   /**
-   * One gap clause per bar that rendered, derived — the mock's "18-point" figures are its own data. The
-   * list is built from whichever spreads exist so "all three" is never a literal: WASSCE and coverage
-   * gaps are PERCENTAGE points (×100), PTR's is RATIO points (max − min directly — it is not a rate, so
-   * ×100 would invent a "810-point" gap). Kofi §4: PTR belongs in the shared equity framing, as the
-   * third disparity; the inversion (worst = highest) is carried by the bar's dots, not re-stated here.
+   * One clause per bar that rendered, derived — the mock's "18-point" figures are its own data. The list
+   * is built from whichever spreads exist so "all three" is never a literal: WASSCE and coverage gaps are
+   * PERCENTAGE points (×100), PTR's is RATIO points (max − min directly — not a rate, so ×100 would
+   * invent an "810-point" gap). Kofi §10.3: PTR JOINS the shared equity framing as a DISPERSION clause —
+   * honest whatever the level mix, because it states the spread, not a conformance verdict — and is
+   * phrased "spread in pupil-teacher ratio", not "gap". It names no geography (§10.3(b)): the read
+   * supports a dispersion number, not a geographic cause. The inversion (worst = highest) is carried by
+   * the bar's dots, not re-stated here.
    */
-  // "an" before a figure whose spoken form opens on a vowel (8-, 11-, 18-, 80-…), else "a" — so a PTR
-  // gap of 8.1 or 18 reads "an 8.1-point", not "a 8.1-point".
+  // "an" before a figure whose spoken form opens on a vowel (8-, 11-, 18-, 80-…), else "a".
+  const article = (points: string) => (/^(8|11|18)/.test(points) ? "an" : "a");
   const gapClause = (points: string, measure: string) =>
-    `${/^(8|11|18)/.test(points) ? "an" : "a"} ${points}-point ${measure} gap`;
+    `${article(points)} ${points}-point ${measure} gap`;
+  const ptrGap = ptr === null ? null : (ptr.max - ptr.min).toFixed(1);
   const gapClauses = [
     wassce === null ? null : gapClause(gapPoints(wassce.min, wassce.max), "WASSCE"),
     coverage === null ? null : gapClause(gapPoints(coverage.min, coverage.max), "coverage"),
-    ptr === null ? null : gapClause((ptr.max - ptr.min).toFixed(1), "pupil-teacher-ratio"),
+    ptrGap === null ? null : `${article(ptrGap)} ${ptrGap}-point spread in pupil-teacher ratio`,
   ].filter((clause): clause is string => clause !== null);
 
   // "X is the disparity" / "X and Y are…" / "X, Y and Z are…" — grammatical for 1, 2 or 3 clauses, and
@@ -208,10 +218,10 @@ export function SpreadPanel({
             />
           )}
           {/*
-            PTR, INVERTED (Lucy §3, Kofi §4): green dot at the LOW end (lower ratio = better-staffed), so
-            `goodEnd="low"`. Positions are projected onto the STATED `PTR_AXIS`, not the 0–100% rate axis —
-            a pupils-per-teacher count has no natural percentage scale. The range/mean text is ratio
-            points (formatRatio, no `%`), one decimal per Kofi's precision ruling.
+            PTR, INVERTED (Lucy §3; lower ratio = better-staffed, Kofi §10.2 norms): green dot at the LOW
+            end, so `goodEnd="low"`. Positions project onto the STATED `PTR_AXIS` (§10.4), not the 0–100%
+            rate axis — a pupils-per-teacher count has no natural percentage scale. The range/mean text is
+            ratio points (formatRatio, no `%`), one decimal per Kofi's precision ruling (§10.5).
           */}
           {ptr === null ? null : (
             <SpreadBar

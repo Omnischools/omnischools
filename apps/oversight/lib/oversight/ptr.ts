@@ -35,6 +35,38 @@ import { ok, unavailable, type Reading } from "./reading";
  * hand-written copy of the ceiling (the `lib/oversight/enrolment.ts` precedent, binding here).
  */
 
+/**
+ * GES/FCUBE level norms, pupils per teacher — §3 of STAFFING-PTR-DOMAIN-RULING. The tier KPI card shows
+ * a single BLENDED Σ÷Σ ratio, but GES norms are LEVEL-DEPENDENT, so the card can only compare the blend
+ * to the BAND these norms span, never a single flat target (Kofi §10.1/§10.2). Named here (not inline
+ * on the surface) so the chip gate and the sub-line read the SAME numbers and cannot drift, mirroring
+ * `SCHOOL_LEVEL_BANDS` in lib/etl/staffing.ts.
+ */
+export const GES_PTR_LEVEL_NORMS = { KG: 30, PRIMARY: 35, JHS: 25, SHS: 25 } as const;
+
+/** The tightest (JHS/SHS, 25) level norm — a blend at or below it is within EVERY level ceiling. */
+export const GES_PTR_NORM_MIN = Math.min(...Object.values(GES_PTR_LEVEL_NORMS));
+/** The loosest (primary/FCUBE, 35) level norm — a blend above it is above EVERY level ceiling. */
+export const GES_PTR_NORM_MAX = Math.max(...Object.values(GES_PTR_LEVEL_NORMS));
+
+export type PtrNormVerdict = "within" | "above" | "indeterminate";
+
+/**
+ * THE THREE-WAY HONEST CONFORMANCE VERDICT for a blended tier PTR (Kofi §10.1). Gate on the ONE-DECIMAL
+ * DISPLAYED value (`Number(formatRatio(ratio, 1))`), so the chip can never disagree with the number the
+ * card shows.
+ * - `within`        : blend ≤ tightest norm (25) → within EVERY level ceiling, whatever the level mix.
+ * - `above`         : blend >  loosest norm (35) → above  EVERY level ceiling, whatever the level mix.
+ * - `indeterminate` : 25 < blend ≤ 35 → a single blend cannot certify conformance to level-dependent
+ *   norms (a 34.9 blend is within primary's 35 but ~40% above a JHS/SHS tier's 25). The card shows NO
+ *   chip; the sub-line's norm RANGE is what lets the reader judge. NEVER a "within…" claim here.
+ */
+export function ptrNormVerdict(displayedRatio: number): PtrNormVerdict {
+  if (displayedRatio <= GES_PTR_NORM_MIN) return "within";
+  if (displayedRatio > GES_PTR_NORM_MAX) return "above";
+  return "indeterminate";
+}
+
 export interface PupilTeacherRatio {
   /** Σ enrolment_total ÷ Σ teachers_on_roll over the pinned ANNUAL period — the weighted tier PTR. */
   ratio: number;

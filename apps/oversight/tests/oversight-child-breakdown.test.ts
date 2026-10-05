@@ -31,7 +31,7 @@ import {
   initialsOf,
 } from "@/components/oversight/breakdown-table";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
-import { SpreadPanel } from "@/components/oversight/breakdown-visuals";
+import { PTR_AXIS, SpreadPanel } from "@/components/oversight/breakdown-visuals";
 import {
   JUR,
   OFFICER,
@@ -626,9 +626,10 @@ describe("per-child rates are candidate-weighted", () => {
     // PTR is the exception that proves the rule: fact_staffing IS read here (aliased `fs`), for the
     // PTR numerator/denominator — but its STORED per-school `ptr` column is NEVER selected. The
     // roll-up is Σenrolment ÷ Σteachers, re-derived, never the stored rate. So the precise guard is
-    // "fs.ptr is never selected", not "the substring ptr never appears" (the re-derived `row.ptr`
-    // field and the module's own prose legitimately contain it).
-    expect(code).not.toMatch(/\bfs\.ptr\b/);
+    // "the stored ptr column is never selected under ANY alias", not "the substring ptr never appears"
+    // (the re-derived `row.ptr` field and the module's own prose legitimately contain it). Widened past
+    // the current `fs` alias so a future rename/re-alias cannot smuggle the stored rate back in (Dex N3).
+    expect(code).not.toMatch(/\b(fs|st|fact_staffing)\.ptr\b/);
   });
 
   it("no cohort means NO RATE — never a confident 0%", async () => {
@@ -845,6 +846,23 @@ describe("the spread is derived from the same rows, and its mean is the weighted
     const b = await readBreakdown(districtScope);
     // Only one district-tier school filed enrolment, so there is no enrolment-rate spread to draw.
     expect(spreadOf(b, (r) => r.coverageRatio)).toBeNull();
+  });
+
+  it("no seeded PTR value clamps against PTR_AXIS — the bar never under-draws the caption (Kofi §10.4)", async () => {
+    // B3's defect was an axis too narrow for the data: a plotted min/max outside [lo,hi] clamps to a
+    // rail while the §10.3 caption quotes the TRUE (max−min) gap, so the bar under-draws it. The axis is
+    // sized to contain the whole §3 seeded range; prove it across the tiers the spread bar renders at.
+    for (const scope of [nationalScope, regionScope]) {
+      const b = await readBreakdown(scope);
+      const ptr = spreadOf(b, (r) => r.ptr);
+      if (ptr === null) continue; // fewer than two children with a PTR at this tier — no bar drawn.
+      for (const value of [ptr.min, ptr.max, ptr.mean]) {
+        if (value === null) continue;
+        expect(value, `seeded PTR ${value} clamps against PTR_AXIS [${PTR_AXIS.lo}, ${PTR_AXIS.hi}]`)
+          .toBeGreaterThanOrEqual(PTR_AXIS.lo);
+        expect(value).toBeLessThanOrEqual(PTR_AXIS.hi);
+      }
+    }
   });
 });
 
@@ -1131,6 +1149,8 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     schoolsRegistered: null,
     coverageRatio: null,
     ptr: null,
+    staffEnrolment: null,
+    teachers: null,
     ...fields,
   };
 }
@@ -1579,7 +1599,8 @@ describe("the spread caption lists the gaps as a grammatical sentence", () => {
     childLevel: "REGION",
     hasCoverage: true,
     unattributed: null,
-    // WASSCE 52%→70% = an 18-point gap; coverage 60%→90% = a 30-point gap; PTR 10→28 = an 18.0-point gap.
+    // WASSCE 52%→70% = an 18-point gap; coverage 60%→90% = a 30-point gap; PTR 10→28 = an 18.0-point
+    // spread in pupil-teacher ratio (Kofi §10.3 phrasing: "spread in…", not "gap").
     children: [
       row({ childId: "a", name: "A", wassceRate: 0.7, coverageRatio: 0.9, ptr: 10, candidates: 100 }),
       row({ childId: "b", name: "B", wassceRate: 0.52, coverageRatio: 0.6, ptr: 28, candidates: 100 }),
@@ -1599,7 +1620,11 @@ describe("the spread caption lists the gaps as a grammatical sentence", () => {
     expect(text).not.toMatch(/\.\s+a 18-point WASSCE gap/);
     // Mid-sentence clauses keep their lower case and their own article.
     expect(text).toContain("a 30-point coverage gap");
-    expect(text).toContain("an 18.0-point pupil-teacher-ratio gap");
+    expect(text).toContain("an 18.0-point spread in pupil-teacher ratio");
+    // The PTR clause is a DISPERSION phrasing, never a "gap" and never a geography claim (Kofi §10.3) —
+    // the struck mock line "northern regions sit at the low end" must not return through PTR.
+    expect(text).not.toContain("pupil-teacher-ratio gap");
+    expect(text).not.toMatch(/northern/i);
     expect(text).toContain("are the disparities national policy exists to close.");
   });
 });

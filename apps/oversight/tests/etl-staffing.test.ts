@@ -1146,7 +1146,9 @@ describe("the structural half of the read rule — the stored ptr column stays o
         .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
         .join("\n");
       if (/from\s+fact_staffing/.test(code)) staffingReaders.push(file);
-      if (/\bfs\.ptr\b/.test(code)) offenders.push(file);
+      // Widened past the current `fs` alias (Dex N3): `st`/`fact_staffing` too, so a future re-alias of
+      // the staffing table cannot smuggle the stored rate back into an allow-list unnoticed.
+      if (/\b(fs|st|fact_staffing)\.ptr\b/.test(code)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
     // The surfacing slice HAS landed, so there ARE staffing readers now — the national PTR KPI read and

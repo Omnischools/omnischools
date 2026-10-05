@@ -7,7 +7,13 @@ import {
   sittingYearOf,
 } from "@/lib/oversight/period";
 import { getEnrolmentTotal, type EnrolmentTotal } from "@/lib/oversight/enrolment";
-import { getPupilTeacherRatio, type PupilTeacherRatio } from "@/lib/oversight/ptr";
+import {
+  getPupilTeacherRatio,
+  ptrNormVerdict,
+  GES_PTR_NORM_MIN,
+  GES_PTR_NORM_MAX,
+  type PupilTeacherRatio,
+} from "@/lib/oversight/ptr";
 import { getSchoolCoverage } from "@/lib/oversight/coverage";
 import {
   getExamQualification,
@@ -60,11 +66,13 @@ import {
  * ═══ FOUR CARDS, AND THE SAME FOUR AT EVERY TIER ═══════════════════════════════════════════════
  * Lucy's §3.3 fourth card, Pupil-teacher ratio, is now built: `fact_staffing` has an ETL producer
  * (`lib/etl/staffing.ts`), so PTR has data at every tier. It is the ANNUAL-pinned Σenrolment ÷
- * Σteachers (lib/oversight/ptr.ts), displayed to one decimal with a `: 1` unit, carrying a `.flat`
- * "within GES level norms" context chip rather than a pass/fail pill — the GES norm is level-dependent
- * (basic 1:35, JHS/SHS ~1:25), so a flat "above target 25:1" verdict would be a basic-category error on
- * a blended national figure (Kofi's ruling). The chip is gated: it is only shown when the tier's blended
- * PTR is within the GES norm band, so it can never assert "within norms" over a ratio that is not.
+ * Σteachers (lib/oversight/ptr.ts), displayed to one decimal with a `: 1` unit. GES norms are
+ * LEVEL-DEPENDENT (primary/FCUBE ~1:35, JHS/SHS ~1:25), and the card carries only a single BLENDED
+ * figure, so a flat "above target 25:1" verdict would be a category error. The chip is a THREE-WAY
+ * HONEST GATE on the displayed blend (Kofi §10.1): at or below the tightest norm (25) → green "within
+ * GES level norms"; above the loosest norm (35) → terra "above GES level norms"; in between → NO chip,
+ * because a blend genuinely cannot certify conformance to level-dependent norms (the sub-line's norm
+ * RANGE is what lets the reader judge there). No pass/fail glyph, no YoY delta.
  *
  * Slice 2 adds NO tier-specific card (Lucy's tier map §2). The older district mock shows a different
  * strip — attendance and teachers-on-post in place of coverage and WASSCE — but that predates the
@@ -207,15 +215,13 @@ export default async function OversightHome() {
   const enrolmentValue = kpi(enrolment, (e) => formatPupilCount(e.total));
   const coverageValue = kpi(coverage, (c) => formatRatioPercent(c.ratio, 1));
   const wassceValue = kpi(wassce, (w) => formatRatioPercent(w.rate, 0));
-  // One decimal (Kofi): the Σ÷Σ tier figure's DISPLAY precision, not the stored numeric(5,2) scale.
+  // One decimal (Kofi §10.5): the Σ÷Σ tier figure's DISPLAY precision, not the stored numeric(5,2).
   const ptrValue = kpi(ptr, (p) => formatRatio(p.ratio, 1));
-  // Kofi §1: the GES pupil–teacher norm is LEVEL-DEPENDENT — basic 1:35, JHS/SHS ~1:25 — so 35:1 is the
-  // top of the band, not a flat 25:1 target. The blended national figure sits inside it; the "within GES
-  // level norms" context chip is shown ONLY while the tier's blended PTR does, so it can never assert a
-  // ratio above the band is within it (a northern district's blend could exceed 35 — then no chip, never
-  // a false claim). GES_PTR_NORM_CEILING is an owner-movable presentation threshold, flagged for Kofi.
-  const GES_PTR_NORM_CEILING = 35;
-  const ptrWithinNorms = shown(ptr) && ptr.value.ratio <= GES_PTR_NORM_CEILING;
+  // Kofi §10.1: a THREE-WAY HONEST GATE against the level-norm band (lib/oversight/ptr.ts owns the
+  // thresholds). Gate on the ONE-DECIMAL DISPLAYED value, so the chip can never disagree with the number
+  // on the card: "within" only at/below the tightest norm (25, within every level ceiling); "above"
+  // only beyond the loosest (35, above every ceiling); between the two the blend cannot say, so NO chip.
+  const ptrVerdict = shown(ptr) ? ptrNormVerdict(Number(formatRatio(ptr.value.ratio, 1))) : null;
   const sittingYear = isOk(wassceCohort)
     ? sittingYearOf(wassceCohort.value.academicYear)
     : null;
@@ -381,21 +387,29 @@ export default async function OversightHome() {
             /* The ":1" is the unit, the way "%" is coverage's — never part of the value (formatRatio
                returns just the number). Stripped automatically in the absence state by `shown`. */
             unit={shown(ptr) ? ": 1" : undefined}
+            /* The norm RANGE, not a flat target (Kofi §10.2) — the min/max come from the one named
+               constant the chip gate also reads, so the two can never drift. The number is NOT
+               hard-coded here. */
             sub={
               shown(ptr) ? (
                 <>
-                  {chrome.tierAdjective} blended average · GES norm 25:1 (JHS/SHS) to 35:1
-                  (primary)
+                  {chrome.tierAdjective} average · GES norm {GES_PTR_NORM_MIN}:1&ndash;
+                  {GES_PTR_NORM_MAX}:1 (JHS/SHS&ndash;primary)
                 </>
               ) : null
             }
             /* NOT a year-over-year delta (the "no delta pills" rule stands for those — one demo year,
-               no comparator). This is a `.flat` CONTEXT chip against the GES norm band, admissible
-               because the ratio and the norm both exist. Kofi: no pass/fail verdict, no ▲/▼ glyph. */
+               no comparator). This is the THREE-WAY conformance chip (Kofi §10.1): green "within" only
+               at/below the tightest norm, terra "above" only beyond the loosest, and NO chip in between
+               because a blend cannot certify level-dependent norms. No ▲/▼ glyph. */
             delta={
-              ptrWithinNorms ? (
-                <span className="mt-2 inline-flex items-center rounded-pill bg-bg px-[7px] py-0.5 text-[10px] font-bold text-navy-3">
+              ptrVerdict === "within" ? (
+                <span className="mt-2 inline-flex items-center rounded-pill bg-green-bg px-[7px] py-0.5 text-[10px] font-bold text-green">
                   within GES level norms
+                </span>
+              ) : ptrVerdict === "above" ? (
+                <span className="mt-2 inline-flex items-center rounded-pill bg-terra-bg px-[7px] py-0.5 text-[10px] font-bold text-terra">
+                  above GES level norms
                 </span>
               ) : null
             }
@@ -430,7 +444,7 @@ export default async function OversightHome() {
           Lucy §3.4. Five items against the primitive's `sm:grid-cols-3`, so the last two wrap — which
           §3.4 rules acceptable. The Coverage line is COMPUTED, including the "not yet on Omnischools"
           gap: it is the surface's core discipline, not decoration, so it must be the real number. The
-          Measure line is the PTR honesty caveat (Kofi §2): PTR, not the trained-teacher ratio.
+          Measure line is the PTR honesty caveat (Kofi §10.5): PTR, not the trained-teacher ratio.
         */}
         <Provenance
           items={[
@@ -461,13 +475,13 @@ export default async function OversightHome() {
             ],
             ["Mode", "aggregate · no named records on this surface"],
             [
-              // ⚠ THE PTR HONESTY CAVEAT (Kofi §2). This column is PTR — ALL teachers on roll, trained
-              // and untrained — NOT the trained-teacher ratio (PTTR), which GES tracks as its sharpest
-              // equity signal and which a single un-split column cannot carry. Stated here, in the
-              // surface's honesty ledger, so an official who knows the PTTR distinction is not misled
-              // into reading this as one; the banner stays informational and does not carry it.
+              // ⚠ THE PTR HONESTY CAVEAT (domain basis Kofi §2; surface wording ruled §10.5). This is
+              // PTR — ALL teachers on roll, trained and untrained — NOT the trained-teacher ratio
+              // (PTTR), which GES tracks as its sharpest equity signal and which a single un-split
+              // column cannot carry. Stated here, in the surface's honesty ledger, so an official who
+              // knows the PTTR distinction is not misled; the banner stays informational and omits it.
               "Measure",
-              "Pupil–teacher ratio — all teachers on roll, trained and untrained. Not the trained-teacher ratio (PTTR).",
+              "All-teacher PTR (trained + untrained); not the trained-teacher ratio (PTTR).",
             ],
             [
               // The ceiling, stated per tier (Lucy §1.5). This replaces slice 1's generic "scoped to
