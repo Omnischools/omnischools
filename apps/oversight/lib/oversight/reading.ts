@@ -37,9 +37,6 @@ export function isOk<T>(reading: Reading<T>): reading is { status: "ok"; value: 
   return reading.status === "ok";
 }
 
-/** Rows out of a drizzle `tx.execute`, which returns an array or a `{ rows }` envelope by driver. */
-export function rowsOf(result: unknown): Record<string, unknown>[] {
-  return (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
-  ) as Record<string, unknown>[];
-}
+// `rowsOf()` used to live here too, which made it the THIRD copy of the same five lines (Dex M1). It
+// now lives once, beside `withJurisdiction()` in lib/db/rls.ts — the module every reader of a
+// `tx.execute` result already imports — and this file is back to being pure, with no imports at all.

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
-import { ok, rowsOf, unavailable, type Reading } from "./reading";
+import { examEnum } from "@/db/schema/_enums";
+import { rowsOf, withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import { ok, unavailable, type Reading } from "./reading";
 
 /**
  * EXAM QUALIFICATION — the WASSCE KPI (Lucy §3.3 card 3): the share of candidates graded credit or
@@ -33,8 +34,19 @@ import { ok, rowsOf, unavailable, type Reading } from "./reading";
  * what is visible is the subtree's own weighted rate.
  */
 
+/**
+ * The exams the analytics DB knows about, DERIVED FROM THE SCHEMA rather than restated (Dex M2).
+ *
+ * It was hand-written as `"WASSCE" | "BECE"` in three signatures across two files, each a copy that
+ * could drift from `examEnum` — and a drift here is not a type error anywhere: the value is
+ * interpolated into `::exam`, so a stale member would be a Postgres cast failure at request time, on
+ * the one surface that must not throw. Taken off `examEnum.enumValues`, adding a third exam to the
+ * schema widens this automatically and the compiler finds the switch statements that have to grow.
+ */
+export type Exam = (typeof examEnum.enumValues)[number];
+
 export interface ExamQualification {
-  exam: "WASSCE" | "BECE";
+  exam: Exam;
   candidates: number;
   qualified: number;
   /** Σqualified ÷ Σcandidates, in 0..1. Re-derived, never an average of stored rates. */
@@ -43,7 +55,7 @@ export interface ExamQualification {
 
 export async function getExamQualification(
   scope: JurisdictionScope,
-  exam: "WASSCE" | "BECE",
+  exam: Exam,
   periodId: string,
 ): Promise<Reading<ExamQualification>> {
   try {

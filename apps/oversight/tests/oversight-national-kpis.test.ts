@@ -118,8 +118,22 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Leave the shared fixture exactly as it was found — see THE FIXTURE DECOYS above.
-  await owner`delete from fact_performance_exam`;
-  await owner`delete from fact_enrolment where class_form is not null or sex <> 'ALL'`;
+  //
+  // EVERY DELETE IS SCOPED TO WHAT THIS FILE INSERTED (Dex's test-cleanup ruling). The first two used
+  // to be unqualified / by-SHAPE — "all exam rows", "any row that is sexed or per-form" — which is a
+  // clean-up that works only because the seed happens not to contain such rows today. The day
+  // analytics-seed.sql grows a per-form or MALE/FEMALE enrolment row, a shape-based delete silently
+  // removes fixture data and the file that notices is some other test, three runs later.
+  await owner`
+    delete from fact_performance_exam
+     where period_id in (${PERIOD_ID_EXAM_COHORT}::uuid, ${OLDER_EXAM_COHORT}::uuid)
+  `;
+  await owner`
+    delete from fact_enrolment
+     where period_id = ${PERIOD_ID_TERM}::uuid
+       and jurisdiction_id in (${JUR.schoolPublicConsented}::uuid, ${JUR.schoolOutsideSubtree}::uuid)
+       and (class_form is not null or sex <> 'ALL')
+  `;
   await owner`delete from dim_period where period_id = ${OLDER_EXAM_COHORT}::uuid`;
   await owner`delete from ref_emis_school_register where emis_school_id in (${TEST_REGISTER_IN}, ${TEST_REGISTER_OUT})`;
   await owner.end({ timeout: 5 });
@@ -409,6 +423,91 @@ describe("getSchoolCoverage divides by the EMIS register", () => {
     expect(coverage.reporting).toBe(Number(direct.reporting));
     expect(coverage.registered).toBe(Number(direct.registered));
     expect(coverage.registered - coverage.reporting).toBeGreaterThan(0);
+  });
+
+  it("an EMPTY register yields unavailable — never 0%, never NaN% (Quinn L3)", async () => {
+    // The `registered === 0` branch was the only unreachable one in the four libs, because every
+    // fixture subtree has register rows. A brand-new district that EMIS has not extracted yet is the
+    // real-world shape, so this test makes one: an empty DISTRICT node under Western Region, scoped to
+    // by a district officer. Inserted and removed inside the test so the shared spine is untouched.
+    const EMPTY_DISTRICT = "10000000-0000-4000-8000-0000000000e2";
+    await owner`
+      insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, is_reporting)
+      values (${EMPTY_DISTRICT}::uuid, 'DISTRICT', ${JUR.region}::uuid, 'Not-yet-extracted District', false)
+    `;
+    try {
+      const emptyScope = scopeFor(
+        officerFixture({
+          officerId: OFFICER.districtId,
+          officerRole: OFFICER.role,
+          jurisdictionId: EMPTY_DISTRICT,
+          level: "DISTRICT",
+        }),
+      );
+      // The premise: this scope really does see zero register rows, so the branch under test is the
+      // one actually being exercised.
+      const visible = await asOfficer(emptyScope, async (tx) => {
+        const rows = (await tx`
+          select count(*)::int as n from ref_emis_school_register
+        `) as unknown as { n: number }[];
+        return Number(rows[0]!.n);
+      });
+      expect(visible).toBe(0);
+
+      const coverage = await getSchoolCoverage(emptyScope);
+      expect(coverage.status).toBe("unavailable");
+      // 0 ÷ 0 is NaN and `0 of 0` is a sentence that reads like a measurement. Neither may escape:
+      // without the guard this returns `ok` with `ratio: NaN`, and the card renders "NaN%".
+      expect("value" in coverage).toBe(false);
+    } finally {
+      await owner`delete from dim_jurisdiction where jurisdiction_id = ${EMPTY_DISTRICT}::uuid`;
+    }
+  });
+
+  it("regions is NULL, never 0, when the visible register names no region (Quinn L2)", async () => {
+    // `region_id` is NULLABLE on the register, so `count(distinct region_id)` can be 0 while schools
+    // exist — and "Rolled up from 0 regions" is a false claim, not a missing one. The shape is built
+    // honestly: a district whose only register row has no region, read by that district's officer.
+    const REGIONLESS_DISTRICT = "10000000-0000-4000-8000-0000000000e3";
+    const REGIONLESS_SCHOOL = "EMIS-KPI-903";
+    await owner`
+      insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, is_reporting)
+      values (${REGIONLESS_DISTRICT}::uuid, 'DISTRICT', ${JUR.region}::uuid, 'Region-less District', false)
+    `;
+    await owner`
+      insert into ref_emis_school_register
+        (emis_school_id, name, district_id, region_id, school_type, ownership_type, on_schoolup,
+         operational_school_id, source, as_of_date)
+      values (${REGIONLESS_SCHOOL}, 'Region-less JHS', ${REGIONLESS_DISTRICT}::uuid, null, 'JHS', 'PUBLIC', true, null, 'EMIS_EXTRACT', current_date)
+    `;
+    try {
+      const scope = scopeFor(
+        officerFixture({
+          officerId: OFFICER.districtId,
+          officerRole: OFFICER.role,
+          jurisdictionId: REGIONLESS_DISTRICT,
+          level: "DISTRICT",
+        }),
+      );
+      const coverage = okValue(await getSchoolCoverage(scope));
+      // The register IS readable — one row, fully reporting — so this is not the empty-register path.
+      expect(coverage.registered).toBe(1);
+      expect(coverage.reporting).toBe(1);
+      expect(coverage.ratio).toBe(1);
+      // …and the region count came back as an ABSENCE, which is what makes the page drop the clause
+      // instead of pluralising a zero.
+      expect(coverage.regions).toBeNull();
+      expect(coverage.regions).not.toBe(0);
+    } finally {
+      await owner`delete from ref_emis_school_register where emis_school_id = ${REGIONLESS_SCHOOL}`;
+      await owner`delete from dim_jurisdiction where jurisdiction_id = ${REGIONLESS_DISTRICT}::uuid`;
+    }
+  });
+
+  it("regions is a real count when the register DOES name regions", async () => {
+    // The other half of the contract: null must mean "none named", not "never populated".
+    const coverage = okValue(await getSchoolCoverage(districtScope));
+    expect(coverage.regions).toBe(1); // every fixture school sits in Western Region
   });
 });
 

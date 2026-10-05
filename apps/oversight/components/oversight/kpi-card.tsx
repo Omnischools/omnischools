@@ -23,6 +23,7 @@ export function KpiCard({
   sub,
   delta,
   lead = false,
+  state = false,
 }: {
   label: string;
   /** The figure, already formatted — or the honest "Unavailable" / "No successful run yet" string. */
@@ -33,6 +34,15 @@ export function KpiCard({
   /** Lucy's `.k-delta` pill. Unrendered on this surface — see the note above. */
   delta?: ReactNode;
   lead?: boolean;
+  /**
+   * `value` is an ABSENCE STATEMENT ("Unavailable", "No successful run yet"), not a figure.
+   *
+   * It gets a smaller, non-italic, muted treatment instead of the 33px gold-italic display face,
+   * because at display size an absence reads like a measurement — the lead card would have rendered
+   * "No successful run yet" in the same confident gold as "2.41M" (Dex M6). The honesty rule is about
+   * what the officer SEES, so it has to reach the typography and not stop at the string.
+   */
+  state?: boolean;
 }) {
   return (
     <div
@@ -54,7 +64,15 @@ export function KpiCard({
           {label}
         </div>
         <div className="font-display text-[33px] font-medium leading-none -tracking-[0.02em] text-navy">
-          {lead ? <em className="accent-italic font-normal">{value}</em> : value}
+          {state ? (
+            <span className="font-body text-[15px] font-medium not-italic text-navy-3">
+              {value}
+            </span>
+          ) : lead ? (
+            <em className="accent-italic font-normal">{value}</em>
+          ) : (
+            value
+          )}
           {unit ? (
             <span className="ml-1 font-body text-[13px] font-medium text-navy-3">
               {unit}

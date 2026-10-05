@@ -78,22 +78,8 @@ function Stat({ children }: { children: ReactNode }) {
   return <b className="text-navy-2">{children}</b>;
 }
 
-/**
- * ONE RULE FOR EVERY KPI VALUE, so no card can invent a number.
- *
- * The no-run case wins over the per-card case deliberately: with no successful ETL run there is no
- * vintage for ANY figure, so "No successful run yet" is the true statement for all three — and it is
- * the honesty rule the scaffold's as-of card already followed.
- */
-function kpiValue<T>(
-  reading: Reading<T>,
-  hasRun: boolean,
-  format: (value: T) => string,
-): string {
-  if (!hasRun) return "No successful run yet";
-  if (!isOk(reading)) return "Unavailable";
-  return format(reading.value);
-}
+// ONE RULE FOR EVERY KPI VALUE, so no card can invent a number: `shown()` + `kpi()` below, built
+// inside the component because the rule closes over `hasRun`.
 
 export default async function OversightHome() {
   const officer = await getOfficerSession();
@@ -146,9 +132,34 @@ export default async function OversightHome() {
   ]);
 
   const hasRun = latestRun !== null;
-  const enrolmentValue = kpiValue(enrolment, hasRun, (e) => formatPupilCount(e.total));
-  const coverageValue = kpiValue(coverage, hasRun, (c) => formatRatioPercent(c.ratio, 1));
-  const wassceValue = kpiValue(wassce, hasRun, (w) => formatRatioPercent(w.rate, 0));
+
+  /**
+   * THE DISPLAY RULE, DEFINED ONCE (Dex M3) — "may this figure be stated at all?".
+   *
+   * It was `hasRun && isOk(x)` written out at seven call sites (the value, and each card's `unit` and
+   * `sub`), which is the same rule hand-copied seven times; the eighth copy is the one that gets it
+   * wrong and shows a unit beside the words "Unavailable". As a type predicate it also narrows, so
+   * the sub-lines below can reach `.value` without a second check.
+   */
+  const shown = <T,>(reading: Reading<T>): reading is { status: "ok"; value: T } =>
+    hasRun && isOk(reading);
+
+  /**
+   * …and the value string derives FROM that same predicate, so the two can never disagree. The no-run
+   * case outranks the per-card one deliberately: with no successful ETL run there is no vintage for
+   * ANY figure, so "No successful run yet" is the true statement for all three — the honesty rule the
+   * scaffold's as-of card already followed.
+   */
+  const kpi = <T,>(reading: Reading<T>, format: (value: T) => string): string =>
+    shown(reading)
+      ? format(reading.value)
+      : hasRun
+        ? "Unavailable"
+        : "No successful run yet";
+
+  const enrolmentValue = kpi(enrolment, (e) => formatPupilCount(e.total));
+  const coverageValue = kpi(coverage, (c) => formatRatioPercent(c.ratio, 1));
+  const wassceValue = kpi(wassce, (w) => formatRatioPercent(w.rate, 0));
   const sittingYear = isOk(wassceCohort)
     ? sittingYearOf(wassceCohort.value.academicYear)
     : null;
@@ -158,15 +169,21 @@ export default async function OversightHome() {
   // refusing to show. Each fragment is also independently omitted when its read is unavailable —
   // better a shorter true sentence than a placeholder inside one.
   const ledeFragments: ReactNode[] = [];
-  if (hasRun && isOk(coverage)) {
+  if (shown(coverage)) {
+    // `regions` is null when the visible register names no region at all (coverage.ts), so the
+    // "rolled up from N regions" clause is dropped rather than rendered as "0 regions".
+    if (coverage.value.regions !== null) {
+      ledeFragments.push(
+        <>
+          Rolled up from{" "}
+          <Stat>
+            {formatCount(coverage.value.regions)}{" "}
+            {coverage.value.regions === 1 ? "region" : "regions"}
+          </Stat>
+        </>,
+      );
+    }
     ledeFragments.push(
-      <>
-        Rolled up from{" "}
-        <Stat>
-          {formatCount(coverage.value.regions)}{" "}
-          {coverage.value.regions === 1 ? "region" : "regions"}
-        </Stat>
-      </>,
       <>
         <Stat>
           {formatCount(coverage.value.reporting)} of{" "}
@@ -176,10 +193,12 @@ export default async function OversightHome() {
       </>,
     );
   }
-  if (hasRun && isOk(enrolment)) {
+  if (shown(enrolment)) {
     ledeFragments.push(
       <>
-        <Stat>{formatCount(enrolment.value.total)} pupils</Stat>
+        {/* The SAME formatter the enrolment card uses (Dex M4): one screen must not state one
+            number two ways — "2.41M" on the card and "2,410,000" in the lede. */}
+        <Stat>{formatPupilCount(enrolment.value.total)} pupils</Stat>
       </>,
     );
   }
@@ -252,7 +271,9 @@ export default async function OversightHome() {
                   official <b className="text-navy">WAEC</b> extract.
                 </>
               ) : null}
-              {isOk(coverage) && coverage.value.regions > 1 ? (
+              {isOk(coverage) &&
+              coverage.value.regions !== null &&
+              coverage.value.regions > 1 ? (
                 <>
                   {" "}
                   Every figure is the sum or mean of {formatCount(
@@ -278,11 +299,15 @@ export default async function OversightHome() {
             lead
             label="Total enrolment"
             value={enrolmentValue}
-            unit={isOk(enrolment) && hasRun ? "pupils" : undefined}
+            /* `state` tells the card its value is an ABSENCE statement, not a figure, so it is not
+               typeset as one (Dex M6). It is the negation of the one display rule, never a second. */
+            state={!shown(enrolment)}
+            unit={shown(enrolment) ? "pupils" : undefined}
             sub={
-              isOk(enrolment) && hasRun ? (
+              shown(enrolment) ? (
                 <>
-                  Across {formatCount(enrolment.value.schoolsCounted)} reporting schools
+                  Across {formatCount(enrolment.value.schoolsCounted)} reporting{" "}
+                  {enrolment.value.schoolsCounted === 1 ? "school" : "schools"}
                 </>
               ) : null
             }
@@ -290,9 +315,10 @@ export default async function OversightHome() {
           <KpiCard
             label="School coverage"
             value={coverageValue}
-            unit={isOk(coverage) && hasRun ? "%" : undefined}
+            state={!shown(coverage)}
+            unit={shown(coverage) ? "%" : undefined}
             sub={
-              isOk(coverage) && hasRun ? (
+              shown(coverage) ? (
                 <>
                   <b className="font-bold text-navy-2">
                     {formatCount(coverage.value.reporting)} of{" "}
@@ -306,9 +332,10 @@ export default async function OversightHome() {
           <KpiCard
             label="WASSCE qualification"
             value={wassceValue}
-            unit={isOk(wassce) && hasRun ? "%" : undefined}
+            state={!shown(wassce)}
+            unit={shown(wassce) ? "%" : undefined}
             sub={
-              isOk(wassce) && hasRun ? (
+              shown(wassce) ? (
                 <>
                   {tier}
                   {sittingYear !== null ? ` · ${sittingYear}` : ""} · credit or above
@@ -327,13 +354,22 @@ export default async function OversightHome() {
           items={[
             [
               "Source",
-              isOk(coverage)
+              // Null regions ⇒ the register names none, so the clause is dropped rather than printed
+              // as "0 region rollups" (Quinn L2 — the type makes this impossible to forget).
+              isOk(coverage) && coverage.value.regions !== null
                 ? `Omnischools analytics DB · ${formatCount(coverage.value.regions)} region rollup${
                     coverage.value.regions === 1 ? "" : "s"
                   }`
                 : "Omnischools analytics DB",
             ],
             [
+              // ⚠ INTENTIONALLY NOT GATED ON `hasRun`, unlike the coverage CARD above (Dex M5). The
+              // register is reference data with its own `as_of_date`; it does not come from the
+              // nightly ETL, so its counts are true whether or not a run has ever succeeded. Lucy
+              // §3.5 requires this line to survive the empty state ("Keep the provenance Coverage
+              // line") precisely because the coverage caveat is the surface's core discipline: the
+              // one night the pipeline has never run is the night an officer most needs to know how
+              // much of the country is missing. Do not "fix" the asymmetry by adding `shown()` here.
               "Coverage",
               isOk(coverage)
                 ? `${formatCount(coverage.value.reporting)} of ${formatCount(

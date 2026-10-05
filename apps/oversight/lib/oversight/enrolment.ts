@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
-import { ok, rowsOf, unavailable, type Reading } from "./reading";
+import { rowsOf, withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import { ok, unavailable, type Reading } from "./reading";
 
 /**
  * TOTAL ENROLMENT — the National Overview's lead KPI (Lucy §3.3 card 1).

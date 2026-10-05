@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
-import { ok, rowsOf, unavailable, type Reading } from "./reading";
+import { rowsOf, withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import { ok, unavailable, type Reading } from "./reading";
+import type { Exam } from "./performance";
 
 /**
  * PERIOD RESOLUTION FOR THE NATIONAL OVERVIEW — the one place a dashboard figure learns WHICH period
@@ -101,7 +102,7 @@ export async function getCurrentPeriod(
  */
 export async function getLatestExamCohortPeriod(
   scope: JurisdictionScope,
-  exam: "WASSCE" | "BECE",
+  exam: Exam,
 ): Promise<Reading<AnalyticsPeriod>> {
   try {
     return await withJurisdiction(scope, async (tx) => {

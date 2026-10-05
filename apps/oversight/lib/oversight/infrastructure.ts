@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import { rowsOf, withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
 
 /**
  * SCHOOL FACILITIES CENSUS DETAIL — the NON-GATED drill (Lucy C5).
@@ -150,10 +150,7 @@ export async function getSchoolFacilitiesCensus(
       limit 1
     `);
 
-    const rows = (
-      Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
-    ) as Record<string, unknown>[];
-    const row = rows[0];
+    const row = rowsOf(result)[0];
     if (!row) return null;
 
     assertNoForbiddenCensusFields(row);

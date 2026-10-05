@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
-import { ok, rowsOf, unavailable, type Reading } from "./reading";
+import { rowsOf, withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import { ok, unavailable, type Reading } from "./reading";
 
 /**
  * SCHOOL COVERAGE — "how much of the country can this dashboard actually see" (Lucy §3.3 card 2).
@@ -42,8 +42,15 @@ export interface SchoolCoverage {
    * PageHead lede and the provenance Source line make. Counted HERE, off the same RLS-scoped table
    * in the same round trip, rather than hard-coded as 16: at a region or district scope the honest
    * answer is 1, and "16" would be a statement about Ghana made on a page showing one district.
+   *
+   * ⚠ NULLABLE, AND THE TYPE IS THE FIX (Quinn L2 / Dex's widening of it). `region_id` is nullable on
+   * `ref_emis_school_register`, so `count(distinct region_id)` is 0 for a register whose rows all
+   * lack a region — a real state, and NOT "this subtree contains zero regions". It surfaced in two
+   * separate sentences on the page, so gating each one would be two chances to forget. Returning
+   * `null` instead makes "absent" un-ignorable at every call site: a third sentence added later
+   * cannot print it without handling the absent case first.
    */
-  regions: number;
+  regions: number | null;
 }
 
 export async function getSchoolCoverage(
@@ -66,11 +73,14 @@ export async function getSchoolCoverage(
       // An EMPTY register is not "0% coverage" — it is no register, so there is no ratio to state.
       // Dividing anyway would print a confident 0% for a subtree whose register simply has not loaded.
       if (registered === 0) return unavailable<SchoolCoverage>();
+      const regions = Number(row.regions);
       return ok({
         reporting,
         registered,
         ratio: reporting / registered,
-        regions: Number(row.regions),
+        // 0 distinct regions means the visible register names none, not that none exist — see the
+        // field's note. Null here rather than a 0 the copy would happily pluralise.
+        regions: regions === 0 ? null : regions,
       });
     });
   } catch {
