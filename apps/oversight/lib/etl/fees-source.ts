@@ -20,6 +20,9 @@ import type postgres from "postgres";
  *     pta_dues_charge     school_id · line_item_id                     (EXISTENCE ONLY — see below)
  *     students            school_id · id · class_id · current_class_label
  *     class               school_id · id · level · name
+ *     academic_period     school_id · period_id · academic_year · starts_on   (JOIN/FILTER ONLY —
+ *                                     no column of it is SELECTed into a row; it only maps an invoice
+ *                                     to its global TERM)
  *
  * ⚠ AND THE HARD DENIALS, each for its own reason, none of them a style preference:
  *   `invoice_line_item.description`   FREE TEXT a bursar typed onto ONE CHILD'S BILL ("Ama's arrears —
