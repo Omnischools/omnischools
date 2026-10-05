@@ -47,7 +47,8 @@ import type { FactEnrolmentRow } from "@/lib/etl/enrolment";
  * ⚠ THE RECONCILIATION TEST CARRIES TWO NEGATIVE ASSERTIONS. A test that only says "these two sums
  * agree" cannot tell you whether it is sensitive to the two filters that make the enrolment surface
  * roll-up-safe. So it also asserts that dropping `sex = 'ALL'` and dropping `class_form IS NULL` each
- * BREAK the equality — ≈3× and ≈2× respectively.
+ * BREAK the equality — ≈2× and ≈2× respectively (the ALL row is stored beside MALE/FEMALE, so an
+ * unfiltered sex sum is ALL + MALE + FEMALE = 2 × ALL).
  *
  * ⚠ NOTHING IN THIS FILE READS OR IMPORTS THE NAMED-STAFF PATH. `teachers_on_roll` is a count of
  * teachers, never a teacher; `fact_staffing` has no `sex` column and no person column, and two tests
@@ -523,7 +524,7 @@ describe("CRITERION 13 + 14 · RECONCILIATION to the enrolment surface, and it i
     expect(off).toEqual([]);
   });
 
-  it("⚠ DROPPING sex='ALL' BREAKS IT (≈3×) — the test is sensitive to the filter", async () => {
+  it("⚠ DROPPING sex='ALL' BREAKS IT (≈2×) — the test is sensitive to the filter", async () => {
     const [agg] = await sql<{ stored: number; unfiltered: number }[]>`
       select sum(fs.enrolment_total)::int as stored,
              sum(x.n)::int                as unfiltered

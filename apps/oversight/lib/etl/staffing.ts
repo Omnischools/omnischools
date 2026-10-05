@@ -26,8 +26,9 @@ import { stampProvenance, type Provenance } from "./run";
  * `enrolment_total` IS the enrolment arm's own published figure, taken from the SAME in-memory
  * `FactEnrolmentRow[]` the same transaction is about to write:
  *       Σ headcount WHERE sex = 'ALL' AND class_form IS NULL, over all stages
- * BOTH filters are mandatory and neither is optional-by-accident here: dropping `sex = 'ALL'` TRIPLES
- * the figure (the ALL row is stored IN ADDITION to MALE/FEMALE) and dropping `class_form IS NULL`
+ * BOTH filters are mandatory and neither is optional-by-accident here: dropping `sex = 'ALL'` DOUBLES
+ * the figure (the ALL row is stored IN ADDITION to MALE and FEMALE, so an unfiltered sex sum is
+ * ALL + MALE + FEMALE = 2 × ALL) and dropping `class_form IS NULL`
  * roughly DOUBLES it (a null `class_form` IS the stage total, with per-form rows beside it). Deriving
  * from the enrolment arm's rows rather than from a second source makes the pin ONE NUMBER rather than
  * two numbers and a hope — PTR cannot quietly divide a different roll than the enrolment panel shows.
@@ -121,7 +122,8 @@ export interface SchoolStaffingResult {
  * THE PIN (ruling §5). Σ headcount over `sex = 'ALL' AND class_form IS NULL`, across every stage.
  *
  * Both predicates are expressed HERE, in the one place they cannot be forgotten by a later query
- * author, and both are load-bearing: without the sex filter the figure is ~3× too big, without the
+ * author, and both are load-bearing: without the sex filter the figure is ~2× too big (the ALL row is
+ * stored beside MALE/FEMALE, so an unfiltered sum is ALL + MALE + FEMALE = 2 × ALL), without the
  * class_form filter ~2×, and both wrong figures stay internally consistent at every tier.
  */
 export function pinnedEnrolmentTotal(
@@ -352,17 +354,17 @@ export const PTR_MAX = 999.99;
 export function ptrOf(
   enrolmentTotal: number,
   teachersOnRoll: number,
-  emisSchoolId: string,
+  label: string,
 ): string {
   if (!Number.isInteger(teachersOnRoll) || teachersOnRoll < 1)
     throw new StaffingTransformError(
-      `${emisSchoolId}: teachers_on_roll must be an integer ≥ 1 to divide by, got ` +
+      `${label}: teachers_on_roll must be an integer ≥ 1 to divide by, got ` +
         `${String(teachersOnRoll)} — ptr is enrolment_total ÷ teachers_on_roll and 0 teachers is not a ` +
         "school with an infinite ratio, it is a school with no ratio.",
     );
   if (!Number.isInteger(enrolmentTotal) || enrolmentTotal < 0)
     throw new StaffingTransformError(
-      `${emisSchoolId}: enrolment_total must be a non-negative integer, got ${String(enrolmentTotal)}.`,
+      `${label}: enrolment_total must be a non-negative integer, got ${String(enrolmentTotal)}.`,
     );
   const scaled = enrolmentTotal * 100;
   const whole = Math.floor(scaled / teachersOnRoll);
@@ -370,7 +372,7 @@ export function ptrOf(
   const hundredths = rem * 2 >= teachersOnRoll ? whole + 1 : whole;
   if (hundredths > 99_999)
     throw new StaffingTransformError(
-      `${emisSchoolId}: ptr ${enrolmentTotal}/${teachersOnRoll} exceeds numeric(5,2)'s ${PTR_MAX} ` +
+      `${label}: ptr ${enrolmentTotal}/${teachersOnRoll} exceeds numeric(5,2)'s ${PTR_MAX} ` +
         "ceiling, so the INSERT would raise `numeric field overflow` with no school named. A ratio " +
         "this size is not a staffing figure, it is a defect in the roll or the roster.",
     );
