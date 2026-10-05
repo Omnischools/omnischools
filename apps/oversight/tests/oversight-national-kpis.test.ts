@@ -1,5 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { createElement, Fragment, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { scopeFor, type JurisdictionScope } from "@/lib/db/rls";
@@ -12,6 +14,15 @@ import {
 import { getEnrolmentTotal } from "@/lib/oversight/enrolment";
 import { getSchoolCoverage } from "@/lib/oversight/coverage";
 import { getExamQualification } from "@/lib/oversight/performance";
+import {
+  buildLedeFragments,
+  buildTitle,
+  childCountOf,
+  pluralise,
+  rollupClause,
+  sourceLine,
+  tierChrome,
+} from "@/components/oversight/tier-chrome";
 import { JUR, OFFICER, PERIOD_ID_EXAM_COHORT, PERIOD_ID_TERM } from "./fixtures/ids";
 import {
   adminAnalytics,
@@ -49,14 +60,13 @@ import {
 const districtScope = scopeFor(districtOfficer);
 const nationalScope = scopeFor(nationalOfficer);
 /** The middle tier — derived from a fixture session so the resolution brand survives (helpers.ts). */
-const regionScope: JurisdictionScope = scopeFor(
-  officerFixture({
-    officerId: OFFICER.regionId,
-    officerRole: OFFICER.regionRole,
-    jurisdictionId: JUR.region,
-    level: "REGION",
-  }),
-);
+const regionOfficer = officerFixture({
+  officerId: OFFICER.regionId,
+  officerRole: OFFICER.regionRole,
+  jurisdictionId: JUR.region,
+  level: "REGION",
+});
+const regionScope: JurisdictionScope = scopeFor(regionOfficer);
 
 /** A SECOND sitting cohort, older than the fixture's. Data rows only — no new DB object. */
 const OLDER_EXAM_COHORT = "20000000-0000-4000-8000-0000000000e1";
@@ -509,6 +519,152 @@ describe("getSchoolCoverage divides by the EMIS register", () => {
     const coverage = okValue(await getSchoolCoverage(districtScope));
     expect(coverage.regions).toBe(1); // every fixture school sits in Western Region
   });
+
+  // ── slice 2: the distinct-DISTRICT count the region tier's chrome names ────────────────────────
+
+  it("districts counts the distinct districts in the VISIBLE register, and scopes with RLS", async () => {
+    // A district officer sees one district; a region officer sees both of theirs. This is the scalar
+    // the regional chrome says "rolled up from N districts" with — and the fact that it moves with the
+    // officer's ceiling is the whole reason it is read per request rather than configured.
+    expect(okValue(await getSchoolCoverage(districtScope)).districts).toBe(1);
+    expect(okValue(await getSchoolCoverage(regionScope)).districts).toBe(2);
+    expect(okValue(await getSchoolCoverage(nationalScope)).districts).toBe(2);
+  });
+
+  it("districts agrees with a direct count under the same ceiling", async () => {
+    const coverage = okValue(await getSchoolCoverage(regionScope));
+    const direct = await asOfficer(regionScope, async (tx) => {
+      const rows = (await tx`
+        select count(distinct district_id)::int as n from ref_emis_school_register
+      `) as unknown as { n: number }[];
+      return Number(rows[0]!.n);
+    });
+    expect(coverage.districts).toBe(direct);
+  });
+
+  it("it is a SCALAR off the register, not the slice-3 child roll-up", async () => {
+    // Lucy §3.3's warning, pinned: the count must come from the register the coverage read already
+    // scans, NOT from walking dim_jurisdiction children. If it ever did the walk it would count
+    // districts with no registered schools too, and these two numbers would diverge.
+    const coverage = okValue(await getSchoolCoverage(nationalScope));
+    const districtsInSpine = (await owner`
+      select count(*)::int as n from dim_jurisdiction where level = 'DISTRICT'
+    `) as unknown as { n: number }[];
+    const districtsInRegister = (await owner`
+      select count(distinct district_id)::int as n from ref_emis_school_register
+    `) as unknown as { n: number }[];
+    expect(coverage.districts).toBe(Number(districtsInRegister[0]!.n));
+    expect(Number(districtsInSpine[0]!.n)).toBeGreaterThanOrEqual(coverage.districts!);
+    // And the query names exactly one table — no join, no recursion, no children. Comments stripped,
+    // because the doc comment NAMES `dim_jurisdiction` to say the walk is what this is not.
+    const code = readCode("lib/oversight/coverage.ts");
+    expect(code).not.toMatch(/dim_jurisdiction/);
+    expect(code).not.toMatch(/with recursive/i);
+    expect(code).not.toMatch(/\bjoin\b/i);
+  });
+
+  it("districts is NULL, never 0, when the visible register names no district", async () => {
+    // Same discipline as `regions`, and for the same reason: `district_id` is nullable, so 0 means the
+    // register names none. A region officer whose only register row has no district must not read
+    // "rolled up from 0 districts".
+    const DISTRICTLESS_SCHOOL = "EMIS-KPI-904";
+    const OTHER_REGION = "10000000-0000-4000-8000-0000000000e4";
+    await owner`
+      insert into dim_jurisdiction (jurisdiction_id, level, parent_id, name, is_reporting)
+      values (${OTHER_REGION}::uuid, 'REGION', ${JUR.national}::uuid, 'District-less Region', false)
+    `;
+    await owner`
+      insert into ref_emis_school_register
+        (emis_school_id, name, district_id, region_id, school_type, ownership_type, on_schoolup,
+         operational_school_id, source, as_of_date)
+      values (${DISTRICTLESS_SCHOOL}, 'District-less JHS', null, ${OTHER_REGION}::uuid, 'JHS', 'PUBLIC', true, null, 'EMIS_EXTRACT', current_date)
+    `;
+    try {
+      const scope = scopeFor(
+        officerFixture({
+          officerId: OFFICER.regionId,
+          officerRole: OFFICER.regionRole,
+          jurisdictionId: OTHER_REGION,
+          level: "REGION",
+        }),
+      );
+      // ⚠ A district_id of NULL means `ov_in_subtree(district_id)` cannot place the row, so RLS hides
+      // it from everyone except a NATIONAL officer (whose predicate short-circuits). That is correct
+      // and is exactly the state the null guard exists for: the row is in the register and in no
+      // district, so no non-national officer can count a district for it.
+      const visible = await asOfficer(scope, async (tx) => {
+        const rows = (await tx`
+          select count(*)::int as n from ref_emis_school_register
+        `) as unknown as { n: number }[];
+        return Number(rows[0]!.n);
+      });
+      expect(visible).toBe(0);
+      expect((await getSchoolCoverage(scope)).status).toBe("unavailable");
+
+      // The national officer DOES see it, so assert the null-vs-zero rule where it is observable: the
+      // district-less row contributes to `registered` but to no district count.
+      const national = okValue(await getSchoolCoverage(nationalScope));
+      expect(national.registered).toBeGreaterThan(0);
+      expect(national.districts).not.toBe(0);
+      const distinctDistricts = (await owner`
+        select count(distinct district_id)::int as n from ref_emis_school_register
+      `) as unknown as { n: number }[];
+      expect(national.districts).toBe(Number(distinctDistricts[0]!.n));
+    } finally {
+      await owner`delete from ref_emis_school_register where emis_school_id = ${DISTRICTLESS_SCHOOL}`;
+      await owner`delete from dim_jurisdiction where jurisdiction_id = ${OTHER_REGION}::uuid`;
+    }
+  });
+
+  it("districts is NULL, never 0, when NO visible register row names a district (Quinn L1)", async () => {
+    // ⚠ THE CASE ABOVE NEVER REACHES THE GUARD. One district-less row beside rows that DO name
+    // districts leaves `count(distinct district_id)` ≥ 1, so `districts === 0` — the only input the
+    // null guard converts — is never produced, and deleting the guard would not fail it. This one
+    // produces that input: every district_id on the register is nulled as the OWNER, so a NATIONAL
+    // officer (whose `ov_in_subtree` short-circuits, so the rows stay visible) reads a register that
+    // is fully populated and names no district at all.
+    const before = (await owner`
+      select emis_school_id, district_id from ref_emis_school_register
+    `) as unknown as { emis_school_id: string; district_id: string | null }[];
+    expect(before.length).toBeGreaterThan(0);
+    try {
+      await owner`update ref_emis_school_register set district_id = null`;
+
+      const national = okValue(await getSchoolCoverage(nationalScope));
+      // Not the empty-register path: the rows are all still there and still counted.
+      expect(national.registered).toBe(before.length);
+      expect(national.reporting).toBeGreaterThan(0);
+      // …and the count came back as an ABSENCE. Without the `districts === 0 ? null` guard this is 0,
+      // and the chrome below then states "Rolled up from 0 districts" — a false claim, not a missing
+      // one — and sources the page to "0 district rollups".
+      expect(national.districts).toBeNull();
+      expect(national.districts).not.toBe(0);
+      // `regions` is untouched by the same update, which proves the null is this column's and not a
+      // whole-read collapse.
+      expect(national.regions).not.toBeNull();
+
+      // The structural consequence, asserted on the chrome the page actually renders with.
+      const regionChrome = tierChrome("REGION", "Western Region");
+      expect(childCountOf(regionChrome, national)).toBeNull();
+      expect(rollupClause(regionChrome, null)).toBeNull();
+      expect(sourceLine(regionChrome, null)).toBe("Omnischools analytics DB");
+      expect(sourceLine(regionChrome, null)).not.toContain("0");
+    } finally {
+      // Restore from the SNAPSHOT, row by row — not from a pattern over `emis_school_id`, which would
+      // silently stop restoring rows the day the seed grows a new id shape (the afterAll ruling).
+      for (const row of before) {
+        await owner`
+          update ref_emis_school_register
+             set district_id = ${row.district_id}::uuid
+           where emis_school_id = ${row.emis_school_id}
+        `;
+      }
+      const restored = (await owner`
+        select count(*)::int as n from ref_emis_school_register where district_id is not null
+      `) as unknown as { n: number }[];
+      expect(Number(restored[0]!.n)).toBe(before.filter((r) => r.district_id !== null).length);
+    }
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -770,5 +926,570 @@ describe("the dashboard path reaches no named-record machinery, even transitivel
         expect(code, `${file} / ${column}`).not.toContain(column);
       }
     }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// INCREMENT I · SLICE 2 — TIER-AWARE CHROME (Lucy's tier design map §1)
+//
+// The figures were already each officer's own (the tier matrix above proves it). What slice 2 fixes is
+// the WORDING around them: a regional director reading their region's numbers under the headline
+// "Ghana · national dashboard" is the one error class a dashboard must not make, because a figure
+// labelled with the wrong jurisdiction is actionable rather than merely missing.
+//
+// These assert the chrome against Lucy's per-tier tables STRING BY STRING, not shape-by-shape: the
+// whole value of the spec is the exact copy, and "contains the region name somewhere" would pass for a
+// crumb that says "Oversight · Western Region · National dashboard". The two ReactNode builders are
+// rendered with `renderToStaticMarkup` so the gold-italic em, the trailing period inside it and the
+// bolded stat spans are checked as MARKUP rather than as intentions.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Render a fragment list the way the PageHead lede composes it: " · " between, "." after. */
+function renderNodes(nodes: ReactNode[]): string {
+  return renderToStaticMarkup(createElement(Fragment, null, ...nodes));
+}
+
+/**
+ * Strip every HTML tag, replacing each with `replacement`. The removal is applied until the string
+ * stops changing, so a tag split by an earlier removal (e.g. `<<b>b>`) cannot survive one pass — this
+ * is text extraction over our own `renderToStaticMarkup` output, not a security sanitiser, but the
+ * fixpoint loop keeps it honest for any markup.
+ */
+function stripTags(markup: string, replacement: string): string {
+  let out = markup;
+  let prev: string;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]*>/g, replacement);
+  } while (out !== prev);
+  return out;
+}
+
+const RENDERED_ENTITIES = new Map<string, string>([
+  ["&#x27;", "'"],
+  ["&middot;", "·"],
+  ["&quot;", '"'],
+  ["&amp;", "&"],
+]);
+
+/**
+ * Decode the handful of entities `renderToStaticMarkup` emits, in ONE left-to-right pass. A single
+ * `replace` never re-scans the text it produced, so decoding `&amp;` to `&` cannot combine with the
+ * following characters into a second entity (`&amp;quot;` stays `&quot;`, it does not become `"`).
+ */
+function decodeEntities(s: string): string {
+  return s.replace(
+    /&#x27;|&middot;|&quot;|&amp;/g,
+    (entity) => RENDERED_ENTITIES.get(entity) ?? entity,
+  );
+}
+
+/** Markup with tags stripped, so a copy assertion reads like the sentence an officer sees. */
+function renderText(node: ReactNode): string {
+  return decodeEntities(
+    stripTags(renderToStaticMarkup(createElement(Fragment, null, node)), ""),
+  );
+}
+
+const NATIONAL_CHROME = tierChrome("NATIONAL", "National · Ministry of Education");
+const REGION_CHROME = tierChrome("REGION", "Western Region");
+const DISTRICT_CHROME = tierChrome("DISTRICT", "Wassa Amenfi West");
+
+describe("the crumb names the jurisdiction at region and district, and does not at national", () => {
+  it("national keeps the two-part crumb — there is no node to insert", () => {
+    expect(NATIONAL_CHROME.crumb).toBe("Oversight · National dashboard");
+  });
+
+  it("region and district insert their own node name as the middle segment", () => {
+    expect(REGION_CHROME.crumb).toBe("Oversight · Western Region · Regional dashboard");
+    expect(DISTRICT_CHROME.crumb).toBe(
+      "Oversight · Wassa Amenfi West · District dashboard",
+    );
+  });
+});
+
+describe("the title's lead word — and the national special case", () => {
+  it("national leads with the literal 'Ghana', NOT the session's jurisdictionName", () => {
+    // The national session's node label is "National · Ministry of Education"; using it would render
+    // "National · Ministry of Education · national dashboard." The literal is the fix, and it is the
+    // one place in the chrome where the session value is deliberately ignored.
+    expect(NATIONAL_CHROME.titleLead).toBe("Ghana");
+    expect(NATIONAL_CHROME.titleLead).not.toContain("Ministry");
+    expect(renderText(buildTitle(NATIONAL_CHROME))).toBe("Ghana · national dashboard.");
+  });
+
+  it("region and district lead with their own jurisdictionName", () => {
+    expect(renderText(buildTitle(REGION_CHROME))).toBe(
+      "Western Region · regional dashboard.",
+    );
+    expect(renderText(buildTitle(DISTRICT_CHROME))).toBe(
+      "Wassa Amenfi West · district dashboard.",
+    );
+  });
+
+  it("the gold italic and the trailing period INSIDE the em survive at every tier", () => {
+    for (const chrome of [NATIONAL_CHROME, REGION_CHROME, DISTRICT_CHROME]) {
+      const markup = renderToStaticMarkup(
+        createElement(Fragment, null, buildTitle(chrome)),
+      );
+      // Lucy §1.2: `<em className="accent-italic">… dashboard.</em>` — the period is inside the em,
+      // which is a typographic decision (the gold accent closes the sentence), not an accident.
+      expect(markup, chrome.tierAdjective).toMatch(
+        /<em class="accent-italic">[a-z]+ dashboard\.<\/em>/,
+      );
+    }
+  });
+});
+
+describe("the lede's child noun, and the district's different shape", () => {
+  const coverage = {
+    reporting: 431,
+    registered: 508,
+    ratio: 431 / 508,
+    regions: 16,
+    districts: 14,
+  };
+  const enrolment = { total: 198_400, schoolsCounted: 431 };
+
+  it("national rolls up from REGIONS", () => {
+    const text = renderText(
+      createElement(
+        Fragment,
+        null,
+        ...buildLedeFragments(NATIONAL_CHROME, coverage, enrolment),
+      ),
+    );
+    expect(text).toContain("Rolled up from 16 regions");
+    expect(text).not.toContain("districts");
+  });
+
+  it("region rolls up from DISTRICTS — the same pattern, the child noun swapped", () => {
+    const text = renderText(
+      createElement(
+        Fragment,
+        null,
+        ...buildLedeFragments(REGION_CHROME, coverage, enrolment),
+      ),
+    );
+    expect(text).toContain("Rolled up from 14 districts");
+    // The number must be the DISTRICT count, not the region count the same read also carries.
+    expect(text).not.toContain("16");
+    expect(text).not.toContain("regions");
+    // …and the other two fragments are unchanged from national.
+    expect(text).toContain("431 of 508 schools");
+    expect(text).toContain("198,400 pupils");
+  });
+
+  it("district drops the rolled-up-from clause and states its own schools instead", () => {
+    const fragments = buildLedeFragments(DISTRICT_CHROME, coverage, enrolment);
+    const text = renderText(createElement(Fragment, null, ...fragments));
+    expect(text).toBe("Reporting on 431 schools that report into Omnischools");
+    expect(text).not.toContain("Rolled up from");
+    // One clause, so the lede reads as a sentence rather than a dot-separated list.
+    expect(fragments).toHaveLength(1);
+  });
+
+  it("the superseded data-sharing-agreement wording is NOT reintroduced at district", () => {
+    // The district mock says "schools in the district that have signed the GES data-sharing
+    // agreement". The DSA concept was removed (there is no agreement to sign), so the sentence would
+    // be describing a gate that does not exist — Lucy §1.3 supersedes it explicitly.
+    const text = renderText(
+      createElement(
+        Fragment,
+        null,
+        ...buildLedeFragments(DISTRICT_CHROME, coverage, enrolment),
+      ),
+    );
+    expect(text).not.toMatch(/data.sharing/i);
+    expect(text).not.toMatch(/agreement/i);
+  });
+
+  it("the unbuildable basic/SHS split is omitted, not placeholdered", () => {
+    // The district mock's "31 of 37 basic schools and 3 of 3 senior high schools" needs the register
+    // counted by school level, which no read produces. A shorter true sentence beats a fabricated one.
+    const text = renderText(
+      createElement(
+        Fragment,
+        null,
+        ...buildLedeFragments(DISTRICT_CHROME, coverage, enrolment),
+      ),
+    );
+    expect(text).not.toMatch(/basic/i);
+    expect(text).not.toMatch(/senior high/i);
+  });
+
+  it("the stat fragments are still bolded spans at every tier (Lucy's `.lede b`)", () => {
+    for (const chrome of [NATIONAL_CHROME, REGION_CHROME, DISTRICT_CHROME]) {
+      const markup = renderNodes(buildLedeFragments(chrome, coverage, enrolment));
+      expect(markup, chrome.tierAdjective).toContain('<b class="text-navy-2">');
+    }
+  });
+
+  it("an unavailable read drops its own fragment and leaves the rest standing", () => {
+    expect(
+      renderText(
+        createElement(
+          Fragment,
+          null,
+          ...buildLedeFragments(REGION_CHROME, coverage, null),
+        ),
+      ),
+    ).not.toContain("pupils");
+    // Coverage gone takes both of its fragments with it, including the child-noun clause, because the
+    // count rides on the same read.
+    const noCoverage = buildLedeFragments(REGION_CHROME, null, enrolment);
+    expect(renderText(createElement(Fragment, null, ...noCoverage))).toBe(
+      "198,400 pupils",
+    );
+    // And a district with no coverage read has nothing left to say at all, rather than a stub.
+    expect(buildLedeFragments(DISTRICT_CHROME, null, enrolment)).toEqual([]);
+  });
+
+  it("a null child count drops the clause rather than pluralising a zero", () => {
+    const regionless = { ...coverage, regions: null, districts: null };
+    const text = renderText(
+      createElement(
+        Fragment,
+        null,
+        ...buildLedeFragments(REGION_CHROME, regionless, enrolment),
+      ),
+    );
+    expect(text).not.toContain("Rolled up from");
+    expect(text).not.toContain("0 districts");
+    // The fragments that do not depend on the child count are untouched.
+    expect(text).toContain("431 of 508 schools");
+  });
+});
+
+describe("the period banner's child-rollup sentence", () => {
+  it("names regions at national and districts at region", () => {
+    expect(rollupClause(NATIONAL_CHROME, 16)).toBe(
+      "Every figure is the sum or mean of 16 regions.",
+    );
+    expect(rollupClause(REGION_CHROME, 14)).toBe(
+      "Every figure is the sum or mean of 14 districts.",
+    );
+  });
+
+  it("is OMITTED at district — a district has no child jurisdictions (Lucy §1.4)", () => {
+    // Null however many children were counted: the absence is a property of the tier, not of the data,
+    // so no count can talk the clause back into existence.
+    for (const count of [14, 1, 0, null]) {
+      expect(rollupClause(DISTRICT_CHROME, count), `count=${String(count)}`).toBeNull();
+    }
+  });
+
+  it("is omitted when there is nothing to roll up — one child, or no count", () => {
+    // "The sum or mean of 1 district" is not a roll-up, it is the same number restated.
+    expect(rollupClause(REGION_CHROME, 1)).toBeNull();
+    expect(rollupClause(REGION_CHROME, null)).toBeNull();
+  });
+});
+
+describe("the provenance Scope line states the ceiling per tier", () => {
+  it("national — no ceiling, and it says so", () => {
+    expect(NATIONAL_CHROME.scopeLine).toBe(
+      "national · no jurisdiction ceiling — all regions visible",
+    );
+  });
+
+  it("region names the region; district uses the GENERIC word, and the asymmetry is the mock's", () => {
+    expect(REGION_CHROME.scopeLine).toBe(
+      "Western Region · sibling regions not visible here",
+    );
+    expect(DISTRICT_CHROME.scopeLine).toBe(
+      "district-ceiling · you cannot see other districts here",
+    );
+    // Lucy §1.5: the district line deliberately does NOT carry the district's name.
+    expect(DISTRICT_CHROME.scopeLine).not.toContain("Wassa");
+  });
+
+  it("the slice-1 generic placeholder is gone from every tier", () => {
+    for (const chrome of [NATIONAL_CHROME, REGION_CHROME, DISTRICT_CHROME]) {
+      expect(chrome.scopeLine, chrome.tierAdjective).not.toContain(
+        "scoped to your jurisdiction subtree",
+      );
+    }
+    expect(readFileSync(join(ROOT, DASHBOARD_PAGE), "utf8")).not.toContain(
+      "scoped to your jurisdiction subtree",
+    );
+  });
+});
+
+describe("the provenance Source line counts the right children", () => {
+  it("national and region count their own child tier", () => {
+    expect(sourceLine(NATIONAL_CHROME, 16)).toBe(
+      "Omnischools analytics DB · 16 region rollups",
+    );
+    expect(sourceLine(REGION_CHROME, 14)).toBe(
+      "Omnischools analytics DB · 14 district rollups",
+    );
+  });
+
+  it("district names its sources instead, because it has no child rollups", () => {
+    expect(sourceLine(DISTRICT_CHROME, null)).toBe(
+      "Omnischools analytics DB · school feeds + WAEC & EMIS reference extracts",
+    );
+    // And a stray count cannot turn it into a rollup claim.
+    expect(sourceLine(DISTRICT_CHROME, 14)).toBe(
+      "Omnischools analytics DB · school feeds + WAEC & EMIS reference extracts",
+    );
+  });
+
+  it("a null count falls back to the plain source, never '0 rollups'", () => {
+    expect(sourceLine(NATIONAL_CHROME, null)).toBe("Omnischools analytics DB");
+    expect(sourceLine(REGION_CHROME, null)).toBe("Omnischools analytics DB");
+  });
+
+  it("singular and plural are both right", () => {
+    expect(sourceLine(REGION_CHROME, 1)).toBe(
+      "Omnischools analytics DB · 1 district rollup",
+    );
+    expect(pluralise(1, "district")).toBe("1 district");
+    expect(pluralise(2, "district")).toBe("2 districts");
+    expect(pluralise(1_200, "school")).toBe("1,200 schools");
+  });
+});
+
+describe("the WASSCE sub-line's tier word, and the one tier config behind it", () => {
+  it("reads National / Regional / District", () => {
+    expect(NATIONAL_CHROME.tierAdjective).toBe("National");
+    expect(REGION_CHROME.tierAdjective).toBe("Regional");
+    expect(DISTRICT_CHROME.tierAdjective).toBe("District");
+  });
+
+  it("the page reads the tier word from the chrome config, not a second table", () => {
+    // Slice 1 had a local TIER_LABEL beside it; two sources for one word is how they drift.
+    const code = readCode(DASHBOARD_PAGE);
+    expect(code).not.toContain("TIER_LABEL");
+    expect(code).toContain("chrome.tierAdjective");
+  });
+
+  it("the page hand-rolls no pluralisation of its own either (Dex N2)", () => {
+    // Same argument as the tier word, applied to the OTHER rule this slice claims to have written
+    // once: `pluralNoun()`. The enrolment card used to inline `n === 1 ? "school" : "schools"`, which
+    // is a second copy — and the second copy is the one that is wrong when the rule changes.
+    const code = readCode(DASHBOARD_PAGE);
+    expect(code).not.toMatch(/\?\s*"[a-z]+"\s*:\s*"[a-z]+s"/);
+    expect(code).toContain('pluralNoun(enrolment.value.schoolsCounted, "school")');
+  });
+});
+
+describe("the child-noun selection reads the right count off the one coverage read", () => {
+  const coverage = {
+    reporting: 8,
+    registered: 11,
+    ratio: 8 / 11,
+    regions: 16,
+    districts: 14,
+  };
+
+  it("national takes regions, region takes districts, district takes neither", () => {
+    expect(childCountOf(NATIONAL_CHROME, coverage)).toBe(16);
+    expect(childCountOf(REGION_CHROME, coverage)).toBe(14);
+    expect(childCountOf(DISTRICT_CHROME, coverage)).toBeNull();
+  });
+
+  it("an unavailable coverage read yields no count at any tier", () => {
+    for (const chrome of [NATIONAL_CHROME, REGION_CHROME, DISTRICT_CHROME]) {
+      expect(childCountOf(chrome, null), chrome.tierAdjective).toBeNull();
+    }
+  });
+
+  it("a null count on the chosen column survives selection instead of collapsing to 0", () => {
+    expect(childCountOf(REGION_CHROME, { ...coverage, districts: null })).toBeNull();
+    // …and the OTHER column's value must not be substituted for it.
+    expect(childCountOf(REGION_CHROME, { ...coverage, districts: null })).not.toBe(16);
+  });
+});
+
+describe("SCHOOL is handled, though no session can carry it", () => {
+  it("is a total function — never 'undefined dashboard'", () => {
+    // `ref_oversight_officer` refuses a SCHOOL-node officer (Kofi R1, asserted by the fixture
+    // self-checks), so this branch is unreachable today. It exists so that relaxing that guard
+    // degrades to the TIGHTEST ceiling rather than to a broken headline.
+    const school = tierChrome("SCHOOL", "Asankrangwa SHS");
+    expect(renderText(buildTitle(school))).toBe("Asankrangwa SHS · school dashboard.");
+    expect(school.crumb).toBe("Oversight · Asankrangwa SHS · School dashboard");
+    expect(school.childNoun).toBeNull();
+    expect(rollupClause(school, 12)).toBeNull();
+    expect(school.scopeLine).toContain("you cannot see other schools");
+    expect(JSON.stringify(school)).not.toContain("undefined");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// SLICE 2 · THE PAGE ACTUALLY WIRES THE CONFIG TO THE RIGHT SLOT (Quinn M1)
+//
+// Everything above tests `tierChrome()` and its builders in isolation. That leaves one hole, and it is
+// the hole that matters on a security-relevant surface: a page that passed `chrome.scopeLine` into the
+// provenance SOURCE slot, or `buildTitle()` into the crumb, or that kept slice 1's hard-coded national
+// strings beside the new config and never read it, satisfies every unit assertion in this file.
+//
+// So these RENDER the real server component — `await OversightHome()` with `getOfficerSession` mocked
+// per tier, against the real database as the real app role — and read the markup back. They are the
+// only cases here that can distinguish "the config is right" from "the config is USED".
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The CHROME session the page consumes: `lib/auth`'s `OfficerSession`, which extends the branded gate
+ * session with `displayName`/`jurisdictionName`. SPREAD, never re-minted, so the resolution brand
+ * `scopeFor()` requires survives (tests/helpers.ts).
+ */
+function chromeSession(base: unknown, jurisdictionName: string) {
+  return { ...(base as object), displayName: "Test Officer", jurisdictionName };
+}
+
+/** The page's own markup, produced by invoking the server component and rendering its tree. */
+async function renderPage(officer: unknown): Promise<string> {
+  vi.resetModules();
+  vi.doMock("@/lib/auth", async (orig) => ({
+    ...(await orig<typeof import("@/lib/auth")>()),
+    getOfficerSession: async () => officer,
+  }));
+  try {
+    const mod = await import("@/app/(oversight)/page");
+    const tree = await (mod.default as () => Promise<unknown>)();
+    return renderToStaticMarkup(createElement(Fragment, null, tree as never));
+  } finally {
+    vi.doUnmock("@/lib/auth");
+    vi.resetModules();
+  }
+}
+
+/** Entity-decoded text of a markup fragment — the sentence an officer actually reads. */
+function decode(fragment: string): string {
+  return decodeEntities(stripTags(fragment, " "))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The crumb, read out of PageHead's own gold eyebrow rather than from the page text at large. */
+function crumbOf(markup: string): string {
+  return decode(/text-gold">([^<]*)<\/p>/.exec(markup)?.[1] ?? "");
+}
+
+/** The h1's inner markup, so the gold-italic em is still visible to an assertion. */
+function titleMarkupOf(markup: string): string {
+  return /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(markup)?.[1] ?? "";
+}
+
+/**
+ * ONE provenance term's `<dd>`, keyed by its `<dt>` — the assertion that makes a slot SWAP visible.
+ * Asserting on the whole page text cannot: both lines are present either way round.
+ */
+function provenanceOf(markup: string, term: string): string {
+  const found = new RegExp(`<dt[^>]*>${term}</dt><dd[^>]*>([^<]*)</dd>`).exec(markup);
+  expect(found, `no provenance <dd> for "${term}"`).not.toBeNull();
+  return decode(found![1]!);
+}
+
+describe("the page renders each tier's chrome into the right slot", () => {
+  /** Rendered once per tier — three server-component invocations, each a real round of DB reads. */
+  let NATIONAL = "";
+  let REGION = "";
+  let DISTRICT = "";
+
+  beforeAll(async () => {
+    // The national session's node label is deliberately the MINISTRY string, which is what
+    // `lib/auth` puts there: it is the value the title's "Ghana" special case has to override.
+    NATIONAL = await renderPage(chromeSession(nationalOfficer, "National · Ministry of Education"));
+    REGION = await renderPage(chromeSession(regionOfficer, "Western Region"));
+    DISTRICT = await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West"));
+  });
+
+  it("the crumb is the tier's crumb, in the crumb slot", () => {
+    expect(crumbOf(NATIONAL)).toBe("Oversight · National dashboard");
+    expect(crumbOf(REGION)).toBe("Oversight · Western Region · Regional dashboard");
+    expect(crumbOf(DISTRICT)).toBe("Oversight · Wassa Amenfi West · District dashboard");
+    // The failure a "contains the name somewhere" assertion would wave through: slice 1's hard-coded
+    // national crumb surviving beside the config.
+    expect(crumbOf(REGION)).not.toContain("National dashboard");
+    expect(crumbOf(DISTRICT)).not.toContain("National dashboard");
+    expect(crumbOf(DISTRICT)).not.toContain("Regional dashboard");
+    // …and the crumb slot is not the title slot.
+    expect(crumbOf(NATIONAL)).not.toContain("Ghana");
+  });
+
+  it("the title leads with the tier's lead — 'Ghana' at national, the node's own name below", () => {
+    expect(decode(titleMarkupOf(NATIONAL))).toBe("Ghana · national dashboard.");
+    expect(decode(titleMarkupOf(REGION))).toBe("Western Region · regional dashboard.");
+    expect(decode(titleMarkupOf(DISTRICT))).toBe("Wassa Amenfi West · district dashboard.");
+    // The whole point of the national special case: the session's own label is NOT the headline.
+    expect(titleMarkupOf(NATIONAL)).not.toContain("Ministry of Education");
+    // The gold italic, with the trailing period inside it, survives the wiring at every tier.
+    for (const [name, markup, word] of [
+      ["NATIONAL", NATIONAL, "national"],
+      ["REGION", REGION, "regional"],
+      ["DISTRICT", DISTRICT, "district"],
+    ] as const) {
+      expect(markup, name).toContain(`<em class="accent-italic">${word} dashboard.</em>`);
+    }
+  });
+
+  it("Scope and Source are DISTINCT slots, each carrying its own line", async () => {
+    // The expected Source line is derived from the same coverage read the page makes, so this does not
+    // hard-code a fixture count — but it is still the page's wiring under test: a page that sourced the
+    // Scope string here, or counted the wrong child tier, fails.
+    const sourceFor = async (
+      chrome: ReturnType<typeof tierChrome>,
+      scope: JurisdictionScope,
+    ): Promise<string> =>
+      sourceLine(chrome, childCountOf(chrome, okValue(await getSchoolCoverage(scope))));
+
+    expect(provenanceOf(NATIONAL, "Source")).toBe(
+      await sourceFor(NATIONAL_CHROME, nationalScope),
+    );
+    expect(provenanceOf(NATIONAL, "Source")).toMatch(/^Omnischools analytics DB · \d+ region rollup/);
+    expect(provenanceOf(REGION, "Source")).toMatch(
+      /^Omnischools analytics DB · \d+ district rollup/,
+    );
+    // District has no child jurisdictions to count, so it names its feeds instead.
+    expect(provenanceOf(DISTRICT, "Source")).toBe(
+      "Omnischools analytics DB · school feeds + WAEC & EMIS reference extracts",
+    );
+    expect(provenanceOf(DISTRICT, "Source")).not.toContain("rollup");
+
+    // The Scope slot carries the ceiling claim — VERBATIM, and only in this slot.
+    expect(provenanceOf(NATIONAL, "Scope")).toBe(
+      "national · no jurisdiction ceiling — all regions visible",
+    );
+    expect(provenanceOf(REGION, "Scope")).toBe("Western Region · sibling regions not visible here");
+    expect(provenanceOf(DISTRICT, "Scope")).toBe(
+      "district-ceiling · you cannot see other districts here",
+    );
+    // The two slots cannot have been swapped or aliased.
+    for (const [name, markup] of [
+      ["NATIONAL", NATIONAL],
+      ["REGION", REGION],
+      ["DISTRICT", DISTRICT],
+    ] as const) {
+      expect(provenanceOf(markup, "Scope"), name).not.toContain("Omnischools analytics DB");
+      expect(provenanceOf(markup, "Source"), name).not.toContain("visible here");
+      expect(provenanceOf(markup, "Source"), name).not.toContain("ceiling");
+      // Slice 1's generic placeholder is gone from the rendered page, not merely from the config.
+      expect(markup, name).not.toContain("scoped to your jurisdiction subtree");
+    }
+    // The district Scope line is deliberately GENERIC: it must not name the district (Lucy §1.5).
+    expect(provenanceOf(DISTRICT, "Scope")).not.toContain("Wassa Amenfi West");
+  });
+
+  it("the no-session backstop renders TIER-NEUTRAL chrome, never the widest tier", async () => {
+    const markup = await renderPage(null);
+    expect(crumbOf(markup)).toBe("Oversight · Dashboard");
+    expect(markup).toContain('<em class="accent-italic">dashboard.</em>');
+    expect(decode(markup)).toContain("Sign in required.");
+    // The regression this exists for: reverting to slice 1's headline would claim the widest ceiling
+    // on the very screen that is refusing to show anything.
+    expect(decode(markup)).not.toContain("Ghana");
+    expect(decode(markup)).not.toContain("national");
+    expect(decode(markup)).not.toContain("Scope");
+  });
+
+  it("the tab title stays tier-neutral, because one route serves three tiers", async () => {
+    vi.resetModules();
+    const mod = await import("@/app/(oversight)/page");
+    expect((mod.metadata as { title: string }).title).toBe("Oversight dashboard");
+    vi.resetModules();
   });
 });
