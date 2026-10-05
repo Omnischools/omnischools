@@ -8,7 +8,13 @@ import { scopeFor, type JurisdictionScope } from "@/lib/db/rls";
 import { isOk, type Reading } from "@/lib/oversight/reading";
 import { getCurrentPeriod } from "@/lib/oversight/period";
 import { getEnrolmentTotal } from "@/lib/oversight/enrolment";
-import { getPupilTeacherRatio } from "@/lib/oversight/ptr";
+import {
+  getPupilTeacherRatio,
+  ptrNormVerdict,
+  GES_PTR_LEVEL_NORMS,
+  GES_PTR_NORM_MAX,
+  GES_PTR_NORM_MIN,
+} from "@/lib/oversight/ptr";
 import {
   childLevelFor,
   getChildBreakdown,
@@ -972,6 +978,14 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
       expect(text).toContain("National average");
       expect(text).toContain("25:1");
       expect(text).toContain("35:1");
+      // ⚠ QA-ADDED (Quinn): §10.2's sub-line is ruled VERBATIM —
+      // `{tierAdjective} average · GES norm {min}:1–{max}:1 (JHS/SHS–primary)`. The three `toContain`s
+      // above pass on any string merely mentioning the two ends, so assert the whole shape: the `·`
+      // separator, the en-dashed RANGE, and the level attribution that tells the reader which end is
+      // which. Built from the named constants, so it tracks the one source rather than re-typing 25/35.
+      expect(text).toContain(
+        `National average · GES norm ${GES_PTR_NORM_MIN}:1–${GES_PTR_NORM_MAX}:1 (JHS/SHS–primary)`,
+      );
       // Kofi §10.2: the level-dependent BAND, not a single target, and no pass/fail verdict glyph.
       expect(text).not.toContain("GES target 25:1");
       expect(text).not.toContain("above target");
@@ -1062,6 +1076,147 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
         // But NO conformance chip of EITHER tone — not a "within…" lie, not a substitute neutral text.
         expect(text).not.toContain("within GES level norms");
         expect(text).not.toContain("above GES level norms");
+      });
+    } finally {
+      await owner`
+        delete from fact_staffing
+         where jurisdiction_id = ${SCHOOL}::uuid and period_id = ${PERIOD_ID_ANNUAL}::uuid
+      `;
+    }
+  });
+
+  /**
+   * ⚠ QA-ADDED (Quinn, re-verification of eb38443). The three branch tests above land at 19.2, 48.5 and
+   * 33.0 — comfortably inside their bands — so NONE of them touches the two properties §10.1 states
+   * most precisely: (a) the exact boundary placement (`≤ 25.0` green, `35.0` ITSELF indeterminate,
+   * `> 35.0` terra) and (b) that the gate reads the ONE-DECIMAL DISPLAYED value, not the raw quotient.
+   * Proved by mutation: replacing `ptrNormVerdict(Number(formatRatio(ratio, 1)))` with
+   * `ptrNormVerdict(ratio)` in page.tsx left all 49 tests GREEN. The two blocks below close that.
+   */
+  it("BOUNDARIES: 25.0 is within, 35.0 ITSELF is indeterminate, 35.1 is above (Kofi §10.1)", () => {
+    // The ends are the §10.2 map's own min/max, so this cannot drift from the constant.
+    expect([GES_PTR_NORM_MIN, GES_PTR_NORM_MAX]).toEqual([25, 35]);
+    expect(Math.min(...Object.values(GES_PTR_LEVEL_NORMS))).toBe(GES_PTR_NORM_MIN);
+    expect(Math.max(...Object.values(GES_PTR_LEVEL_NORMS))).toBe(GES_PTR_NORM_MAX);
+
+    // ≤ 25.0 → within EVERY level ceiling. 25.0 is INCLUSIVE.
+    expect(ptrNormVerdict(10)).toBe("within");
+    expect(ptrNormVerdict(24.9)).toBe("within");
+    expect(ptrNormVerdict(25)).toBe("within");
+    // Just past the tightest norm the blend can no longer certify anything — no chip.
+    expect(ptrNormVerdict(25.1)).toBe("indeterminate");
+    expect(ptrNormVerdict(30)).toBe("indeterminate");
+    expect(ptrNormVerdict(34.9)).toBe("indeterminate");
+    // 35.0 ITSELF is indeterminate — "above" needs STRICTLY greater than the loosest norm. This is the
+    // off-by-one the withdrawn single-ceiling gate got wrong in the other direction (it said "within").
+    expect(ptrNormVerdict(35)).toBe("indeterminate");
+    expect(ptrNormVerdict(35.1)).toBe("above");
+    expect(ptrNormVerdict(60)).toBe("above");
+  });
+
+  /**
+   * THE GATE IS ON THE DISPLAYED VALUE. Each case plants a school in the district so the blend's RAW
+   * quotient and its one-decimal DISPLAY fall on opposite sides of a norm end. The chip must follow the
+   * number the officer can see — §10.1's "gate on the shown value so chip and number never disagree".
+   */
+  for (const probe of [
+    {
+      what: "raw 25.01 displays 25.0 → the GREEN 'within' chip, following the SHOWN number",
+      teachers: 59,
+      enrolment: 2091, // (410+2091) ÷ (41+59) = 2501/100 = 25.01 → "25.0"
+      shown: "25.0",
+      raw: 25.01,
+      diverges: true,
+      chip: "within GES level norms",
+      absent: "above GES level norms",
+    },
+    {
+      what: "raw 35.04 displays 35.0 → NO chip (35.0 itself is indeterminate), not a terra 'above'",
+      teachers: 59,
+      enrolment: 3094, // (410+3094) ÷ 100 = 3504/100 = 35.04 → "35.0"
+      shown: "35.0",
+      raw: 35.04,
+      diverges: true,
+      chip: null,
+      absent: null,
+    },
+    {
+      what: "raw 35.1 displays 35.1 → the TERRA 'above' chip, the first value past the loosest norm",
+      teachers: 59,
+      enrolment: 3100, // 3510/100 = 35.10
+      shown: "35.1",
+      raw: 35.1,
+      // Not a divergence case: this one pins the far side of the §10.1 boundary (the FIRST displayed
+      // value that may say "above"), beside the 35.04 case that must NOT.
+      diverges: false,
+      chip: "above GES level norms",
+      absent: "within GES level norms",
+    },
+  ] as const) {
+    it(`DISPLAYED-VALUE GATE: ${probe.what}`, async () => {
+      const SCHOOL = JUR.schoolPublicNoConsent; // already a SCHOOL under JUR.district
+      await owner`
+        insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teaching_posts_established, enrolment_total, ptr, vacancies, source, as_of_date)
+        values (${SCHOOL}::uuid, ${PERIOD_ID_ANNUAL}::uuid, ${probe.teachers}, null, ${probe.enrolment}, 1.00, null, 'OPERATIONAL_AGG', now())
+      `;
+      try {
+        // The premise: the RAW quotient really is on the far side of the norm end from the display, so
+        // a gate on the raw value would reach the OPPOSITE verdict. Without this the probe is vacuous.
+        const kpi = okValue(await getPupilTeacherRatio(districtScope, PERIOD_ID_ANNUAL));
+        expect(kpi.ratio).toBeCloseTo(probe.raw, 6);
+        expect(formatRatio(kpi.ratio, 1)).toBe(probe.shown);
+        if (probe.diverges) {
+          expect(ptrNormVerdict(kpi.ratio), "raw-value verdict (the mutation)").not.toBe(
+            ptrNormVerdict(Number(probe.shown)),
+          );
+        }
+
+        await withEtlRun(async () => {
+          const text = textOf(await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West")));
+          // The figure is published either way, and the norm RANGE sub-line always is.
+          expect(text).toMatch(new RegExp(`${probe.shown.replace(".", "\\.")}\\s*:\\s*1`));
+          expect(text).toContain(`GES norm ${GES_PTR_NORM_MIN}:1`);
+          if (probe.chip === null) {
+            // §10.1 branch 3: NO chip of either tone, and no substitute neutral text in the slot.
+            expect(text).not.toContain("within GES level norms");
+            expect(text).not.toContain("above GES level norms");
+          } else {
+            expect(text).toContain(probe.chip);
+            expect(text).not.toContain(probe.absent!);
+          }
+        });
+      } finally {
+        await owner`
+          delete from fact_staffing
+           where jurisdiction_id = ${SCHOOL}::uuid and period_id = ${PERIOD_ID_ANNUAL}::uuid
+        `;
+      }
+    });
+  }
+
+  it("INDETERMINATE leaves the delta slot EMPTY — no substitute neutral chip in the markup", async () => {
+    // The honesty fix's structural half: not merely "the two labels are absent" (which a reworded
+    // neutral chip would also satisfy) but that the card's delta slot renders NOTHING, while the value,
+    // the unit and the norm-range sub-line all still publish. Blend = 3000/91 = 33.0, inside (25, 35].
+    const SCHOOL = JUR.schoolPublicNoConsent;
+    await owner`
+      insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teaching_posts_established, enrolment_total, ptr, vacancies, source, as_of_date)
+      values (${SCHOOL}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 50, null, 2590, 51.80, null, 'OPERATIONAL_AGG', now())
+    `;
+    try {
+      await withEtlRun(async () => {
+        const markup = await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West"));
+        const strip = stripOf(markup);
+        const card = strip.slice(strip.indexOf("Pupil-teacher ratio"));
+        // The figure and the norm range DO publish on this very card…
+        expect(textOf(card)).toMatch(/33\.0\s*:\s*1/);
+        expect(textOf(card)).toContain("GES norm 25:1");
+        // …and the delta slot carries no pill at all. Every chip the card can emit uses the shared
+        // `rounded-pill` token class, so its absence IS the empty slot (a reworded neutral chip, a
+        // "—" placeholder or a "level mix unknown" note would all trip this).
+        expect(card).not.toContain("rounded-pill");
+        expect(card).not.toMatch(/GES level norms/);
+        expect(card).not.toMatch(/\b(indeterminate|cannot|unknown|n\/a)\b/i);
       });
     } finally {
       await owner`
