@@ -283,6 +283,17 @@ insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, 
   ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 410, 'OPERATIONAL_AGG', now()),
   ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 720, 'OPERATIONAL_AGG', now());
 
+-- fact_staffing: one school row in EACH district, at the ANNUAL period (the staffing grain), so the
+-- tier matrix exercises the policy against a NON-EMPTY table — a policy test over an empty table
+-- proves nothing. The pairs are deliberately lopsided (41 teachers for 410 pupils vs 18 for 720) so a
+-- leak is identifiable BY VALUE and so Σenrolment ÷ Σteachers (10.00 vs 40.00) differs visibly from
+-- avg(ptr): the roll-up rule is readable straight off the fixture. The second row is PRIVATE-shaped —
+-- NULL establishment and therefore NULL vacancies, never 0 (Kofi's staffing ruling §4) — so the
+-- null-handling path is in the fixture rather than discovered later.
+insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teaching_posts_established, enrolment_total, ptr, vacancies, source, as_of_date) values
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000002', 41, 38,   410, 10.00, -3,   'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000002', 18, null, 720, 40.00, null, 'OPERATIONAL_AGG', now());
+
 -- ref_gss_population: scoped on `district_id`, not `jurisdiction_id` — a different column for the
 -- same predicate, which is exactly the kind of difference a per-table policy gets wrong.
 insert into ref_gss_population (district_id, stage, population, source, as_of_date) values

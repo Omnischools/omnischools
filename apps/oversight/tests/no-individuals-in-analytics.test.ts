@@ -137,6 +137,51 @@ describe("the analytics DB holds no individual-grain table", () => {
     }
   });
 
+  it("keeps fact_staffing a count of POSTS — no person column, and in particular NO sex", async () => {
+    // The staffing arm (`lib/etl/staffing.ts`) publishes `teachers_on_roll` as ONE integer: a count of
+    // teachers, never a teacher. Two properties are pinned here against the LIVE schema rather than
+    // against the schema file, so a hand-applied prod migration that "helpfully" added either would be
+    // caught too:
+    //   · NO person-identifying column, so the gated §6 named-staff path stays the only way to reach a
+    //     person and this table can never become a shortcut around it;
+    //   · NO `sex` column. That absence is why the sexed-staff small-cell helper in
+    //     `lib/oversight/suppression.ts` does not apply to `fact_staffing` (Kofi's staffing ruling §7) —
+    //     there is no sex split here to disclose an individual through. A sexed teacher breakdown on a
+    //     two-teacher school is a disclosure vector, so growing the column would silently invalidate
+    //     that reasoning. This test is what makes a "small addition" trip a wire.
+    const sql = adminAnalytics();
+    try {
+      const names = (
+        (await sql`
+          select column_name
+          from information_schema.columns
+          where table_schema = 'public' and table_name = 'fact_staffing'
+          order by column_name
+        `) as unknown as { column_name: string }[]
+      ).map((r) => r.column_name);
+      expect(names.length).toBeGreaterThan(0);
+      expect(names).not.toContain("sex");
+      for (const forbidden of [
+        "full_name",
+        "staff_profile_id",
+        "ntc_licence_number",
+        "teacher_id",
+        "person_id",
+        "date_of_birth",
+        "phone",
+        "email",
+      ]) {
+        expect(names).not.toContain(forbidden);
+      }
+      // …and it still carries the measures, so the assertion above cannot pass vacuously.
+      for (const measure of ["teachers_on_roll", "enrolment_total", "ptr", "vacancies"]) {
+        expect(names).toContain(measure);
+      }
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
   it("no table in the analytics DB is named for an individual", async () => {
     const sql = adminAnalytics();
     try {

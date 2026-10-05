@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import { runOversightEtl } from "@/lib/etl/pipeline";
 import { attendanceRateOf } from "@/lib/etl/attendance";
+import { ptrOf } from "@/lib/etl/staffing";
 import {
   DEMO_EMIS_EXTRACT_PATH,
   DEMO_EXAM_COHORTS,
@@ -10,9 +11,12 @@ import {
 } from "@/scripts/seed-demo-data";
 
 /**
- * THE ETL ENTRY POINT for the increment-H fact slices — `fact_infrastructure`, `fact_enrolment`,
- * `fact_performance_exam`, `fact_attendance` AND `fact_fees`, which are ONE run, one verdict and one
- * transaction (see `lib/etl/pipeline.ts`). The third arm files at its own EXAM_COHORT periods, one per
+ * THE ETL ENTRY POINT for the fact slices — `fact_infrastructure`, `fact_enrolment`,
+ * `fact_performance_exam`, `fact_attendance`, `fact_fees` AND `fact_staffing`, which are ONE run, one
+ * verdict and one transaction (see `lib/etl/pipeline.ts`). The sixth arm files at the SAME ANNUAL period
+ * as the first two and has no source of its own: its `enrolment_total` IS the enrolment arm's published
+ * roll, so its line below is printed under the same academic year and prints Σ÷Σ rather than any average
+ * of the stored per-school `ptr`. The third arm files at its own EXAM_COHORT periods, one per
  * sitting year; the fourth at the TERM periods, one per declared term (it is the first FLOW — pupil-days
  * over a window — so it is the only arm whose figures may be summed across periods); the fifth files at
  * the SAME TERM periods and is the first NON-ADDITIVE table — distributional mean/median figures that may
@@ -162,6 +166,41 @@ async function main(): Promise<void> {
           `    ⚠ ${e.stageDrift.length} school(s) teach a stage their register school_type does not ` +
             `account for (e.g. ${e.stageDrift[0]!.emisSchoolId} is ${String(e.stageDrift[0]!.schoolType)} ` +
             `and teaches ${e.stageDrift[0]!.stages.join("/")})`,
+        );
+      // ── THE SIXTH FACT TABLE, at the SAME ANNUAL period and PINNED to the line above ─────────────
+      // The national PTR printed here is Σ enrolment_total ÷ Σ teachers_on_roll over this period's
+      // SCHOOL rows — re-derived from the two summable counts, NEVER the mean of the stored school
+      // `ptr` values, which would weight a 40-pupil school equally with a 1,200-pupil one (Kofi §6).
+      // The two counts are printed BESIDE it so the figure is checkable and so nobody has to trust the
+      // ratio alone. `enrolment_total` is the SAME number as "on roll" above, by construction.
+      const st = p.staffing;
+      const nationalPtr =
+        st.teachersOnRoll > 0
+          ? ptrOf(st.enrolmentTotal, st.teachersOnRoll, `${p.academicYear} national`)
+          : "n/a — no teachers on roll";
+      console.log(
+        `  ${p.academicYear} ANNUAL · pinned to the roll above → fact_staffing ${st.inserted} inserted ` +
+          `(${st.deleted} replaced) across ${st.schoolsComputed} school(s) · ${st.teachersOnRoll} ` +
+          `teachers for ${st.enrolmentTotal} pupils — PTR ${nationalPtr} (Σenrolment ÷ Σteachers, ` +
+          `NEVER avg(ptr))` +
+          (st.failures.length > 0
+            ? ` · ${st.failures.length} school(s) failed compute`
+            : "") +
+          (st.noEnrolment.length > 0
+            ? ` · ${st.noEnrolment.length} had a reconciled roll of 0 and get NO row`
+            : ""),
+      );
+      // The establishment figures carry their OWN denominator, stated rather than implied: PRIVATE and
+      // MISSION schools have no GES establishment at all (NULL, not 0 — Kofi §4), so summing vacancies
+      // across every school would describe a base that does not exist. `vacancies` is SIGNED, so a
+      // national total near zero can mean "balanced" OR "a northern shortage cancelling a southern
+      // surplus" — which is why the sign and the school count are both printed.
+      if (st.postsEstablishedSchools > 0)
+        console.log(
+          `    ⓘ ${st.postsEstablished} GES-authorised post(s) and ${st.vacancies} vacanc(ies) (SIGNED: ` +
+            `negative = over establishment) across the ${st.postsEstablishedSchools} PUBLIC school(s) ` +
+            `that have an establishment — the other ${st.schoolsComputed - st.postsEstablishedSchools} ` +
+            `(PRIVATE/MISSION) are NULL, not 0, and are excluded from both sums`,
         );
     }
     // ── THE THIRD ARM, at its OWN EXAM_COHORT periods (one line per SITTING, never per year) ───────
