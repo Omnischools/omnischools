@@ -123,6 +123,26 @@ export function scopeFor(session: OfficerSession): JurisdictionScope {
  * jurisdiction and therefore cannot have one — quarantined in a file whose entire content is that
  * single query, for exactly this reason.
  */
+/**
+ * THE ROW SHAPE OF A `tx.execute()` RESULT, in one place (Dex M1).
+ *
+ * drizzle hands back either a bare array or a `{ rows }` envelope depending on the driver, so every
+ * raw read needs this unwrap. It lived three times over — in `lib/oversight/etl-status.ts`, inline in
+ * `lib/oversight/infrastructure.ts`, and in `lib/oversight/reading.ts` — and a fourth copy was about
+ * to be written. It belongs HERE rather than in a helper module of its own because `withJurisdiction`
+ * is the only sanctioned way to obtain such a result in the first place: anybody who has a result to
+ * unwrap has already imported this file.
+ *
+ * Deliberately NOT generic over the row type. It returns `Record<string, unknown>` so each caller
+ * still converts its own columns explicitly (`Number(row.headcount)`), which is what keeps a column
+ * type change a compile-or-test failure rather than a silently wrong figure.
+ */
+export function rowsOf(result: unknown): Record<string, unknown>[] {
+  return (
+    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  ) as Record<string, unknown>[];
+}
+
 export async function withJurisdiction<T>(
   scope: JurisdictionScope,
   fn: (tx: Tx) => Promise<T>,

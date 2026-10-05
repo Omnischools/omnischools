@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
+import { rowsOf, withJurisdiction, type JurisdictionScope } from "@/lib/db/rls";
 
 /**
  * THE AS-OF BANNER'S DATA (scope task H20).
@@ -39,12 +39,6 @@ export interface EtlRunStatus {
   runId: string;
   /** When the SUCCESS run closed — the vintage the banner prints. */
   finishedAt: Date;
-}
-
-function rowsOf(result: unknown): Record<string, unknown>[] {
-  return (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
-  ) as Record<string, unknown>[];
 }
 
 /** The latest SUCCESS run, or null when there has never been one. */

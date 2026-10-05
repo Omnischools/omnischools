@@ -143,7 +143,13 @@ export function PageHead({
 }: {
   crumb: string;
   title: ReactNode;
-  lede: string;
+  /**
+   * ReactNode, not `string`: Lucy's lede bolds its stat fragments (`.lede b` → `<b
+   * className="text-navy-2">`), and on the National Overview those fragments are COMPUTED figures.
+   * Widened rather than re-implemented per page so every surface keeps one head. Plain strings, which
+   * is what every existing caller passes, are unaffected.
+   */
+  lede: ReactNode;
   actions?: ReactNode;
 }) {
   return (
