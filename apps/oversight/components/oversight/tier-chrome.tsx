@@ -61,9 +61,22 @@ export interface TierChrome {
   sourceWithoutChildren: string;
 }
 
-/** `3 districts` / `1 district` — the pluralisation rule, written once. */
+/**
+ * `district` / `districts` — the pluralisation rule itself, written ONCE for this surface.
+ *
+ * Exported separately from `pluralise()` because callers split two ways: some need the whole phrase
+ * ("3 districts"), and some already have the formatted count in their own markup and need only the
+ * noun (the enrolment card's "Across 12 reporting schools", where the count is its own span). A call
+ * site that hand-rolls `n === 1 ? "school" : "schools"` is a SECOND copy of this rule, and the second
+ * copy is the one that is wrong when the rule changes.
+ */
+export function pluralNoun(count: number, singular: string): string {
+  return count === 1 ? singular : `${singular}s`;
+}
+
+/** `3 districts` / `1 district` — the count and the noun together. */
 export function pluralise(count: number, singular: string): string {
-  return `${formatCount(count)} ${count === 1 ? singular : `${singular}s`}`;
+  return `${formatCount(count)} ${pluralNoun(count, singular)}`;
 }
 
 /**
@@ -77,6 +90,18 @@ export function pluralise(count: number, singular: string): string {
  */
 export function tierChrome(
   level: JurisdictionLevel,
+  /**
+   * ⚠ KNOWN DEGRADATION, DEFERRED TO SLICE 3 (Dex L2a). The caller's value comes from
+   * `lib/auth/index.ts:328`, which is `node?.name ?? institutionLabel(resolved.level)` — so when the
+   * officer's own jurisdiction-node read FAILS at a sub-national tier, this parameter arrives as the
+   * institution label "Ghana Education Service" rather than a place name, and the crumb, the title
+   * lead and the regional Scope line all quietly say it ("Ghana Education Service · sibling regions
+   * not visible here"). That is a misleading SUBJECT on a line that is a security claim, not copy.
+   *
+   * The fix belongs in `lib/auth` (return null and let the chrome state the absence), NOT here:
+   * widening this signature to `string | null` alone would be dead code while `lib/auth` still returns
+   * a non-null string for every session. So nothing changes this slice.
+   */
   jurisdictionName: string,
 ): TierChrome {
   const withoutChildRollups =

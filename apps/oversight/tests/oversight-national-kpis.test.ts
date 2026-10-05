@@ -60,14 +60,13 @@ import {
 const districtScope = scopeFor(districtOfficer);
 const nationalScope = scopeFor(nationalOfficer);
 /** The middle tier — derived from a fixture session so the resolution brand survives (helpers.ts). */
-const regionScope: JurisdictionScope = scopeFor(
-  officerFixture({
-    officerId: OFFICER.regionId,
-    officerRole: OFFICER.regionRole,
-    jurisdictionId: JUR.region,
-    level: "REGION",
-  }),
-);
+const regionOfficer = officerFixture({
+  officerId: OFFICER.regionId,
+  officerRole: OFFICER.regionRole,
+  jurisdictionId: JUR.region,
+  level: "REGION",
+});
+const regionScope: JurisdictionScope = scopeFor(regionOfficer);
 
 /** A SECOND sitting cohort, older than the fixture's. Data rows only — no new DB object. */
 const OLDER_EXAM_COHORT = "20000000-0000-4000-8000-0000000000e1";
@@ -614,6 +613,56 @@ describe("getSchoolCoverage divides by the EMIS register", () => {
     } finally {
       await owner`delete from ref_emis_school_register where emis_school_id = ${DISTRICTLESS_SCHOOL}`;
       await owner`delete from dim_jurisdiction where jurisdiction_id = ${OTHER_REGION}::uuid`;
+    }
+  });
+
+  it("districts is NULL, never 0, when NO visible register row names a district (Quinn L1)", async () => {
+    // ⚠ THE CASE ABOVE NEVER REACHES THE GUARD. One district-less row beside rows that DO name
+    // districts leaves `count(distinct district_id)` ≥ 1, so `districts === 0` — the only input the
+    // null guard converts — is never produced, and deleting the guard would not fail it. This one
+    // produces that input: every district_id on the register is nulled as the OWNER, so a NATIONAL
+    // officer (whose `ov_in_subtree` short-circuits, so the rows stay visible) reads a register that
+    // is fully populated and names no district at all.
+    const before = (await owner`
+      select emis_school_id, district_id from ref_emis_school_register
+    `) as unknown as { emis_school_id: string; district_id: string | null }[];
+    expect(before.length).toBeGreaterThan(0);
+    try {
+      await owner`update ref_emis_school_register set district_id = null`;
+
+      const national = okValue(await getSchoolCoverage(nationalScope));
+      // Not the empty-register path: the rows are all still there and still counted.
+      expect(national.registered).toBe(before.length);
+      expect(national.reporting).toBeGreaterThan(0);
+      // …and the count came back as an ABSENCE. Without the `districts === 0 ? null` guard this is 0,
+      // and the chrome below then states "Rolled up from 0 districts" — a false claim, not a missing
+      // one — and sources the page to "0 district rollups".
+      expect(national.districts).toBeNull();
+      expect(national.districts).not.toBe(0);
+      // `regions` is untouched by the same update, which proves the null is this column's and not a
+      // whole-read collapse.
+      expect(national.regions).not.toBeNull();
+
+      // The structural consequence, asserted on the chrome the page actually renders with.
+      const regionChrome = tierChrome("REGION", "Western Region");
+      expect(childCountOf(regionChrome, national)).toBeNull();
+      expect(rollupClause(regionChrome, null)).toBeNull();
+      expect(sourceLine(regionChrome, null)).toBe("Omnischools analytics DB");
+      expect(sourceLine(regionChrome, null)).not.toContain("0");
+    } finally {
+      // Restore from the SNAPSHOT, row by row — not from a pattern over `emis_school_id`, which would
+      // silently stop restoring rows the day the seed grows a new id shape (the afterAll ruling).
+      for (const row of before) {
+        await owner`
+          update ref_emis_school_register
+             set district_id = ${row.district_id}::uuid
+           where emis_school_id = ${row.emis_school_id}
+        `;
+      }
+      const restored = (await owner`
+        select count(*)::int as n from ref_emis_school_register where district_id is not null
+      `) as unknown as { n: number }[];
+      expect(Number(restored[0]!.n)).toBe(before.filter((r) => r.district_id !== null).length);
     }
   });
 });
@@ -1182,6 +1231,15 @@ describe("the WASSCE sub-line's tier word, and the one tier config behind it", (
     expect(code).not.toContain("TIER_LABEL");
     expect(code).toContain("chrome.tierAdjective");
   });
+
+  it("the page hand-rolls no pluralisation of its own either (Dex N2)", () => {
+    // Same argument as the tier word, applied to the OTHER rule this slice claims to have written
+    // once: `pluralNoun()`. The enrolment card used to inline `n === 1 ? "school" : "schools"`, which
+    // is a second copy — and the second copy is the one that is wrong when the rule changes.
+    const code = readCode(DASHBOARD_PAGE);
+    expect(code).not.toMatch(/\?\s*"[a-z]+"\s*:\s*"[a-z]+s"/);
+    expect(code).toContain('pluralNoun(enrolment.value.schoolsCounted, "school")');
+  });
 });
 
 describe("the child-noun selection reads the right count off the one coverage read", () => {
@@ -1224,5 +1282,185 @@ describe("SCHOOL is handled, though no session can carry it", () => {
     expect(rollupClause(school, 12)).toBeNull();
     expect(school.scopeLine).toContain("you cannot see other schools");
     expect(JSON.stringify(school)).not.toContain("undefined");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// SLICE 2 · THE PAGE ACTUALLY WIRES THE CONFIG TO THE RIGHT SLOT (Quinn M1)
+//
+// Everything above tests `tierChrome()` and its builders in isolation. That leaves one hole, and it is
+// the hole that matters on a security-relevant surface: a page that passed `chrome.scopeLine` into the
+// provenance SOURCE slot, or `buildTitle()` into the crumb, or that kept slice 1's hard-coded national
+// strings beside the new config and never read it, satisfies every unit assertion in this file.
+//
+// So these RENDER the real server component — `await OversightHome()` with `getOfficerSession` mocked
+// per tier, against the real database as the real app role — and read the markup back. They are the
+// only cases here that can distinguish "the config is right" from "the config is USED".
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The CHROME session the page consumes: `lib/auth`'s `OfficerSession`, which extends the branded gate
+ * session with `displayName`/`jurisdictionName`. SPREAD, never re-minted, so the resolution brand
+ * `scopeFor()` requires survives (tests/helpers.ts).
+ */
+function chromeSession(base: unknown, jurisdictionName: string) {
+  return { ...(base as object), displayName: "Test Officer", jurisdictionName };
+}
+
+/** The page's own markup, produced by invoking the server component and rendering its tree. */
+async function renderPage(officer: unknown): Promise<string> {
+  vi.resetModules();
+  vi.doMock("@/lib/auth", async (orig) => ({
+    ...(await orig<typeof import("@/lib/auth")>()),
+    getOfficerSession: async () => officer,
+  }));
+  try {
+    const mod = await import("@/app/(oversight)/page");
+    const tree = await (mod.default as () => Promise<unknown>)();
+    return renderToStaticMarkup(createElement(Fragment, null, tree as never));
+  } finally {
+    vi.doUnmock("@/lib/auth");
+    vi.resetModules();
+  }
+}
+
+/** Entity-decoded text of a markup fragment — the sentence an officer actually reads. */
+function decode(fragment: string): string {
+  return fragment
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The crumb, read out of PageHead's own gold eyebrow rather than from the page text at large. */
+function crumbOf(markup: string): string {
+  return decode(/text-gold">([^<]*)<\/p>/.exec(markup)?.[1] ?? "");
+}
+
+/** The h1's inner markup, so the gold-italic em is still visible to an assertion. */
+function titleMarkupOf(markup: string): string {
+  return /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(markup)?.[1] ?? "";
+}
+
+/**
+ * ONE provenance term's `<dd>`, keyed by its `<dt>` — the assertion that makes a slot SWAP visible.
+ * Asserting on the whole page text cannot: both lines are present either way round.
+ */
+function provenanceOf(markup: string, term: string): string {
+  const found = new RegExp(`<dt[^>]*>${term}</dt><dd[^>]*>([^<]*)</dd>`).exec(markup);
+  expect(found, `no provenance <dd> for "${term}"`).not.toBeNull();
+  return decode(found![1]!);
+}
+
+describe("the page renders each tier's chrome into the right slot", () => {
+  /** Rendered once per tier — three server-component invocations, each a real round of DB reads. */
+  let NATIONAL = "";
+  let REGION = "";
+  let DISTRICT = "";
+
+  beforeAll(async () => {
+    // The national session's node label is deliberately the MINISTRY string, which is what
+    // `lib/auth` puts there: it is the value the title's "Ghana" special case has to override.
+    NATIONAL = await renderPage(chromeSession(nationalOfficer, "National · Ministry of Education"));
+    REGION = await renderPage(chromeSession(regionOfficer, "Western Region"));
+    DISTRICT = await renderPage(chromeSession(districtOfficer, "Wassa Amenfi West"));
+  });
+
+  it("the crumb is the tier's crumb, in the crumb slot", () => {
+    expect(crumbOf(NATIONAL)).toBe("Oversight · National dashboard");
+    expect(crumbOf(REGION)).toBe("Oversight · Western Region · Regional dashboard");
+    expect(crumbOf(DISTRICT)).toBe("Oversight · Wassa Amenfi West · District dashboard");
+    // The failure a "contains the name somewhere" assertion would wave through: slice 1's hard-coded
+    // national crumb surviving beside the config.
+    expect(crumbOf(REGION)).not.toContain("National dashboard");
+    expect(crumbOf(DISTRICT)).not.toContain("National dashboard");
+    expect(crumbOf(DISTRICT)).not.toContain("Regional dashboard");
+    // …and the crumb slot is not the title slot.
+    expect(crumbOf(NATIONAL)).not.toContain("Ghana");
+  });
+
+  it("the title leads with the tier's lead — 'Ghana' at national, the node's own name below", () => {
+    expect(decode(titleMarkupOf(NATIONAL))).toBe("Ghana · national dashboard.");
+    expect(decode(titleMarkupOf(REGION))).toBe("Western Region · regional dashboard.");
+    expect(decode(titleMarkupOf(DISTRICT))).toBe("Wassa Amenfi West · district dashboard.");
+    // The whole point of the national special case: the session's own label is NOT the headline.
+    expect(titleMarkupOf(NATIONAL)).not.toContain("Ministry of Education");
+    // The gold italic, with the trailing period inside it, survives the wiring at every tier.
+    for (const [name, markup, word] of [
+      ["NATIONAL", NATIONAL, "national"],
+      ["REGION", REGION, "regional"],
+      ["DISTRICT", DISTRICT, "district"],
+    ] as const) {
+      expect(markup, name).toContain(`<em class="accent-italic">${word} dashboard.</em>`);
+    }
+  });
+
+  it("Scope and Source are DISTINCT slots, each carrying its own line", async () => {
+    // The expected Source line is derived from the same coverage read the page makes, so this does not
+    // hard-code a fixture count — but it is still the page's wiring under test: a page that sourced the
+    // Scope string here, or counted the wrong child tier, fails.
+    const sourceFor = async (
+      chrome: ReturnType<typeof tierChrome>,
+      scope: JurisdictionScope,
+    ): Promise<string> =>
+      sourceLine(chrome, childCountOf(chrome, okValue(await getSchoolCoverage(scope))));
+
+    expect(provenanceOf(NATIONAL, "Source")).toBe(
+      await sourceFor(NATIONAL_CHROME, nationalScope),
+    );
+    expect(provenanceOf(NATIONAL, "Source")).toMatch(/^Omnischools analytics DB · \d+ region rollup/);
+    expect(provenanceOf(REGION, "Source")).toMatch(
+      /^Omnischools analytics DB · \d+ district rollup/,
+    );
+    // District has no child jurisdictions to count, so it names its feeds instead.
+    expect(provenanceOf(DISTRICT, "Source")).toBe(
+      "Omnischools analytics DB · school feeds + WAEC & EMIS reference extracts",
+    );
+    expect(provenanceOf(DISTRICT, "Source")).not.toContain("rollup");
+
+    // The Scope slot carries the ceiling claim — VERBATIM, and only in this slot.
+    expect(provenanceOf(NATIONAL, "Scope")).toBe(
+      "national · no jurisdiction ceiling — all regions visible",
+    );
+    expect(provenanceOf(REGION, "Scope")).toBe("Western Region · sibling regions not visible here");
+    expect(provenanceOf(DISTRICT, "Scope")).toBe(
+      "district-ceiling · you cannot see other districts here",
+    );
+    // The two slots cannot have been swapped or aliased.
+    for (const [name, markup] of [
+      ["NATIONAL", NATIONAL],
+      ["REGION", REGION],
+      ["DISTRICT", DISTRICT],
+    ] as const) {
+      expect(provenanceOf(markup, "Scope"), name).not.toContain("Omnischools analytics DB");
+      expect(provenanceOf(markup, "Source"), name).not.toContain("visible here");
+      expect(provenanceOf(markup, "Source"), name).not.toContain("ceiling");
+      // Slice 1's generic placeholder is gone from the rendered page, not merely from the config.
+      expect(markup, name).not.toContain("scoped to your jurisdiction subtree");
+    }
+    // The district Scope line is deliberately GENERIC: it must not name the district (Lucy §1.5).
+    expect(provenanceOf(DISTRICT, "Scope")).not.toContain("Wassa Amenfi West");
+  });
+
+  it("the no-session backstop renders TIER-NEUTRAL chrome, never the widest tier", async () => {
+    const markup = await renderPage(null);
+    expect(crumbOf(markup)).toBe("Oversight · Dashboard");
+    expect(markup).toContain('<em class="accent-italic">dashboard.</em>');
+    expect(decode(markup)).toContain("Sign in required.");
+    // The regression this exists for: reverting to slice 1's headline would claim the widest ceiling
+    // on the very screen that is refusing to show anything.
+    expect(decode(markup)).not.toContain("Ghana");
+    expect(decode(markup)).not.toContain("national");
+    expect(decode(markup)).not.toContain("Scope");
+  });
+
+  it("the tab title stays tier-neutral, because one route serves three tiers", async () => {
+    vi.resetModules();
+    const mod = await import("@/app/(oversight)/page");
+    expect((mod.metadata as { title: string }).title).toBe("Oversight dashboard");
+    vi.resetModules();
   });
 });

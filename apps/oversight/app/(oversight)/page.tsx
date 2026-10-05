@@ -26,6 +26,7 @@ import {
   buildLedeFragments,
   buildTitle,
   childCountOf,
+  pluralNoun,
   rollupClause,
   sourceLine,
   tierChrome,
@@ -80,9 +81,11 @@ import {
  * enforces it for every App-Router entry point, this one included).
  */
 export const dynamic = "force-dynamic";
-// TIER-NEUTRAL, because one route serves three tiers and `metadata` cannot see the session (reading
-// it here would mean a second `getOfficerSession()` per request just to word a browser tab). The
-// in-page crumb and h1 carry the tier; see `tierChrome()`.
+// TIER-NEUTRAL, because one route serves three tiers and we CHOSE not to tier the browser tab. A
+// `generateMetadata()` could read the session — App Router allows it — but `getAuthContext` is not
+// `cache()`-wrapped, so it would cost a SECOND un-memoised `getOfficerSession()` per request (a
+// directory lookup plus a jurisdiction-node read) to word a tab title. The in-page crumb and h1
+// carry the tier; see `tierChrome()`.
 export const metadata = { title: "Oversight dashboard" };
 
 // ONE RULE FOR EVERY KPI VALUE, so no card can invent a number: `shown()` + `kpi()` below, built
@@ -293,7 +296,7 @@ export default async function OversightHome() {
               shown(enrolment) ? (
                 <>
                   Across {formatCount(enrolment.value.schoolsCounted)} reporting{" "}
-                  {enrolment.value.schoolsCounted === 1 ? "school" : "schools"}
+                  {pluralNoun(enrolment.value.schoolsCounted, "school")}
                 </>
               ) : null
             }
