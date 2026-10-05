@@ -51,6 +51,22 @@ export interface SchoolCoverage {
    * cannot print it without handling the absent case first.
    */
   regions: number | null;
+  /**
+   * Distinct DISTRICTS in the visible register — the region tier's "rolled up from N districts"
+   * clause, and its `N district rollups` provenance line (increment I slice 2, Lucy §3.3/§4).
+   *
+   * ⚠ THIS IS A SCALAR, NOT THE CHILD ROLL-UP, and the distinction is the whole reason it is one line
+   * in this query rather than a new module. Lucy's §3.3 warning: slice 2 needs only "how many
+   * districts am I looking at", which is a `count(distinct …)` over rows the register already shows
+   * this officer. The districts TABLE — an aggregate row per district, walked down
+   * `dim_jurisdiction` — is slice 3 and shares nothing with this but the word. Do not grow this field
+   * into that.
+   *
+   * Same null-when-zero discipline as `regions` above, for the same reason and with the same force:
+   * `district_id` is nullable too, so 0 means "the visible register names none", never "there are
+   * none", and the type refuses to let a call site pluralise a zero.
+   */
+  districts: number | null;
 }
 
 export async function getSchoolCoverage(
@@ -58,12 +74,15 @@ export async function getSchoolCoverage(
 ): Promise<Reading<SchoolCoverage>> {
   try {
     return await withJurisdiction(scope, async (tx) => {
-      // Explicit allow-list: three named aggregates over two columns (`on_schoolup`, `region_id`),
-      // so the register's `name` and `operational_school_id` never cross into this process.
+      // Explicit allow-list: four named aggregates over three columns (`on_schoolup`, `region_id`,
+      // `district_id`), so the register's `name` and `operational_school_id` never cross into this
+      // process. The two distinct-counts ride along in the SAME round trip — one query, one RLS
+      // transaction, one scan — which is the reason the tier chrome needs no second read.
       const result = await tx.execute(sql`
         select count(*) filter (where r.on_schoolup)::int as reporting,
                count(*)::int                             as registered,
-               count(distinct r.region_id)::int          as regions
+               count(distinct r.region_id)::int          as regions,
+               count(distinct r.district_id)::int        as districts
           from ref_emis_school_register r
       `);
       const row = rowsOf(result)[0];
@@ -74,6 +93,7 @@ export async function getSchoolCoverage(
       // Dividing anyway would print a confident 0% for a subtree whose register simply has not loaded.
       if (registered === 0) return unavailable<SchoolCoverage>();
       const regions = Number(row.regions);
+      const districts = Number(row.districts);
       return ok({
         reporting,
         registered,
@@ -81,6 +101,9 @@ export async function getSchoolCoverage(
         // 0 distinct regions means the visible register names none, not that none exist — see the
         // field's note. Null here rather than a 0 the copy would happily pluralise.
         regions: regions === 0 ? null : regions,
+        // Identical rule, deliberately written out rather than folded into a shared helper: two
+        // columns, two independent nullable counts, and a helper would hide that each is its own claim.
+        districts: districts === 0 ? null : districts,
       });
     });
   } catch {
