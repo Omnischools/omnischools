@@ -148,6 +148,68 @@ describe("fact_* — scoped through jurisdiction_id", () => {
       2,
     );
   });
+
+  /**
+   * `fact_staffing` — the SIXTH fact arm, and the newest table in this sweep. It is already inside
+   * `policies.sql`'s fact loop, so the deliverable here is that the matrix now runs against a
+   * NON-EMPTY `fact_staffing` (see the fixture): a policy test over an empty table proves nothing, and
+   * "the table was in the loop" is not the same claim as "the predicate is attached to this column".
+   */
+  it("the district officer sees their school's staffing row ONLY, with its measures", async () => {
+    const rows = await asTier(DISTRICT, async (tx) => {
+      return (await tx`
+        select teachers_on_roll, enrolment_total, ptr::text as ptr,
+               teaching_posts_established, vacancies
+          from fact_staffing order by teachers_on_roll`) as unknown as {
+        teachers_on_roll: number;
+        enrolment_total: number;
+        ptr: string;
+        teaching_posts_established: number | null;
+        vacancies: number | null;
+      }[];
+    });
+    // The VALUES, not just the count: a leak returning the other district's row would still pass a
+    // count assertion. 41/410 is the in-district school; 18/720 is the Sekondi one.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].teachers_on_roll).toBe(41);
+    expect(rows[0].enrolment_total).toBe(410);
+    // And the SIGNED vacancy survives the policy intact — a surplus school reads as a surplus school.
+    expect(rows[0].vacancies).toBe(-3);
+  });
+
+  it("a sibling district's staffing rows are INVISIBLE — and so is the Σ÷Σ roll-up over them", async () => {
+    const leaked = await asTier(DISTRICT, async (tx) => {
+      return (await tx`
+        select count(*)::int as n,
+               sum(enrolment_total)::text   as e,
+               sum(teachers_on_roll)::text  as t
+          from fact_staffing
+         where jurisdiction_id = '10000000-0000-4000-8000-000000000018'::uuid`) as unknown as {
+        n: number;
+        e: string | null;
+        t: string | null;
+      }[];
+    });
+    // Zero rows, not an error, and the ROLL-UP's two inputs come back NULL rather than a number: the
+    // leak a reporting bug would actually write here is the correct Σ÷Σ formula aimed at the wrong
+    // subtree, so that exact shape is the one asserted.
+    expect(leaked[0].n).toBe(0);
+    expect(leaked[0].e).toBeNull();
+    expect(leaked[0].t).toBeNull();
+  });
+
+  it("the region and the nation see both staffing rows", async () => {
+    expect(await count(REGION, "select count(*)::int as n from fact_staffing")).toBe(2);
+    expect(await count(NATIONAL, "select count(*)::int as n from fact_staffing")).toBe(2);
+  });
+
+  it("an UNSET jurisdiction GUC sees NO staffing row — fail closed, not fail open", async () => {
+    const blind = await count(
+      { label: "unset", officerId: OFFICER.districtId, jurisdictionId: null, level: "DISTRICT" },
+      "select count(*)::int as n from fact_staffing",
+    );
+    expect(blind).toBe(0);
+  });
 });
 
 describe("ref_* — the same predicate through a DIFFERENT column, and through a join", () => {

@@ -51,6 +51,12 @@ import {
 } from "./attendance-source";
 import { aggregateSchoolFees, ghsOf, writeFeesFactsTx, type FactFeesRow } from "./fees";
 import {
+  deriveSchoolStaffing,
+  readCurrentEstablishment,
+  writeStaffingFactsTx,
+  type FactStaffingRow,
+} from "./staffing";
+import {
   countInvoicesWithoutPeriod,
   readFeeLineGroups,
   type FeeLineGroupRow,
@@ -102,6 +108,26 @@ import {
  *
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
+ *
+ * ⚠ SIX FACTS, ONE RUN (increment I, the staffing/PTR slice). `fact_staffing` is the SIXTH ARM, and it
+ * is the FIRST ARM WITH NO SOURCE READ OF ITS OWN. It sits INSIDE the ANNUAL period loop, immediately
+ * after the enrolment arm, under the SAME current-academic-year guard, and its input is the enrolment
+ * arm's own in-memory `FactEnrolmentRow[]` — not a second source. Everything structural about it
+ * follows from that and from Kofi's `STAFFING-PTR-DOMAIN-RULING.md`:
+ *   · THE PTR DENOMINATOR IS PINNED STRUCTURALLY, NOT RECONCILED. `enrolment_total` is
+ *     Σ headcount WHERE sex='ALL' AND class_form IS NULL over the rows this same transaction is about
+ *     to write, so there is ONE number rather than two numbers and a hope. A separate source read
+ *     (plan §2.2 Option B) would have turned the pin back into a reconciliation problem plus a test.
+ *   · IT CANNOT RUN FOR A YEAR THE ENROLMENT ARM SKIPPED — its denominator would not exist. On a
+ *     non-current year it is a clean no-op: zero rows, EMPTY delete scope, nothing added to
+ *     `attempted`, so that year keeps whatever it had (stale-but-honest).
+ *   · A SCHOOL WHOSE RECONCILED ROLL IS 0 EMITS NO ROW and is OUT of the delete scope (ruling §5):
+ *     there is no ratio to compute, and a stored `0.00` ptr would be a false measurement.
+ *   · IT IS A STOCK AT ANNUAL GRAIN, so it fits `PeriodOutcome` directly (unlike the term/cohort arms)
+ *     and is reported as `PeriodOutcome.staffing`. NEVER sum `teachers_on_roll` across periods.
+ *   · NO NATIONAL `ptr` IS REPORTED ANYWHERE on the run report, deliberately: a run-level PTR field
+ *     would be an invitation to average. Any PTR above one school is Σ enrolment_total ÷ Σ
+ *     teachers_on_roll (ruling §6), so the outcome carries the two SUMMABLE INPUTS and no rate.
  *
  * ⚠ FIVE FACTS, ONE RUN (increment H fifth slice, task H11). `fact_fees` is the FIFTH ARM, threaded
  * exactly as the fourth was — a SELF-CONTAINED PER-TERM LOOP, computed in 5a under `computePerSchool`, its
@@ -328,6 +354,47 @@ export interface EnrolmentOutcome {
   failures: SchoolFailure[];
 }
 
+/**
+ * What the staffing arm produced for one period, as the run reports it. See `PeriodOutcome.staffing`.
+ *
+ * ALL ZEROES AND EMPTY LISTS on a NON-CURRENT academic year: the arm did not run there, by design (it
+ * has no denominator outside the year the enrolment arm ran for). Zero `schoolsComputed` is therefore
+ * also an empty delete scope, so that year's existing rows are left exactly as they were.
+ *
+ * ⚠ THERE IS NO `ptr` FIELD HERE, AND THAT IS THE RULING MADE PHYSICAL (Kofi §6). `teachersOnRoll` and
+ * `enrolmentTotal` are the two SUMMABLE INPUTS and are reported as counts; a national PTR is
+ * `enrolmentTotal / teachersOnRoll`, computed at the point of display from those two. A stored
+ * national `ptr` field on this outcome would be an invitation for the next reader to average the
+ * schools' stored rates instead, which weights a 40-pupil school equally with a 1,200-pupil one.
+ */
+export interface StaffingOutcome {
+  /** Schools that produced A ROW — the DELETE SCOPE. Zero-roll schools are NOT in it (ruling §5). */
+  schoolsComputed: number;
+  deleted: number;
+  inserted: number;
+  /** Σ `teachers_on_roll` over the written rows. A count of POSTS FILLED, never a teacher. */
+  teachersOnRoll: number;
+  /** Σ `enrolment_total` — the pinned roll, identical to the enrolment arm's `headcount`. */
+  enrolmentTotal: number;
+  /**
+   * Σ `teaching_posts_established` and Σ `vacancies`, over the PUBLIC schools only — the rows where
+   * the establishment is NOT NULL (ruling §6). `postsEstablishedSchools` is that sum's denominator and
+   * is reported beside it so a reader can state it; mixing a NULL establishment into the sum would
+   * understate the district establishment and silently widen the vacancy base.
+   */
+  postsEstablished: number;
+  /** SIGNED (ruling §4): a national surplus and a national shortage can cancel, and should be able to. */
+  vacancies: number;
+  postsEstablishedSchools: number;
+  /**
+   * Included, rostered schools whose RECONCILED roll came to 0 — all-nursery or wholly-unmapped
+   * classes. NOT a failure, NO row, and NOT in the delete scope: they keep whatever they had. Listed
+   * rather than inferred from a subtraction, because "no PTR" and "a PTR of 0.00" are different claims.
+   */
+  noEnrolment: string[];
+  failures: SchoolFailure[];
+}
+
 export interface PeriodOutcome {
   academicYear: string;
   /** ALWAYS null: the grain is the academic YEAR, and `term = null` is what makes a period ANNUAL. */
@@ -355,6 +422,8 @@ export interface PeriodOutcome {
   noSourceRow: string[];
   /** The second fact table's arm, at the SAME ANNUAL period. See `EnrolmentOutcome`. */
   enrolment: EnrolmentOutcome;
+  /** The SIXTH arm, at the SAME ANNUAL period and pinned to `enrolment`. See `StaffingOutcome`. */
+  staffing: StaffingOutcome;
 }
 
 /**
@@ -567,8 +636,17 @@ export async function runOversightEtl(
       enrolmentRows: FactEnrolmentRow[];
       enrolmentScope: string[];
       enrolment: EnrolmentOutcome;
+      /** The staffing arm's rows and its delete scope, held unwritten until the verdict. */
+      staffingRows: FactStaffingRow[];
+      staffingScope: string[];
+      staffing: StaffingOutcome;
     }
     const schoolTypeOf = new Map(registerRows.map((r) => [r.emisSchoolId, r.schoolType]));
+    // The staffing arm's gradient drivers and its ownership rule come from the REGISTER, which is the
+    // only statement of a school's region/district/ownership the ETL has. `ownership_type` is
+    // load-bearing rather than descriptive: PRIVATE and MISSION schools are not on the GES payroll
+    // establishment, so they get a NULL `teaching_posts_established` (Kofi §4).
+    const registerByEmis = new Map(registerRows.map((r) => [r.emisSchoolId, r]));
     const pending: PendingPeriod[] = [];
     const allFailures: SchoolFailure[] = [];
     let attempted = 0;
@@ -638,6 +716,34 @@ export async function runOversightEtl(
           .map((s) => s.emisSchoolId),
       };
     }
+
+    // ── the STAFFING arm's ONE reference read — the GES establishment's current vintage ──────────
+    //
+    // Read ONCE for the whole run, not per school and not per year: `ref_ges_teacher_establishment` is
+    // reference data keyed by EMIS id with one vintage per `as_of_date`, and the current vintage is the
+    // MAX. Where a school has one, the REAL loaded figure is preferred over a generated establishment
+    // (Kofi §4) — free fidelity, no new object, no new grant. An EMPTY table is the normal demo state
+    // (nothing is loaded until `pnpm db:load-establishment` runs) and is not an error: the generated
+    // branch is then the one the demo exercises. It is hoisted above the loop because the establishment
+    // is a property of the SCHOOL, not of the academic year.
+    const establishmentByEmis = await readCurrentEstablishment(
+      sql,
+      inclusion.schools.map((s) => s.emisSchoolId),
+    );
+
+    /** The arm did not run for this year. Zero everything — and an EMPTY delete scope. */
+    const noStaffing = (): StaffingOutcome => ({
+      schoolsComputed: 0,
+      deleted: 0,
+      inserted: 0,
+      teachersOnRoll: 0,
+      enrolmentTotal: 0,
+      postsEstablished: 0,
+      vacancies: 0,
+      postsEstablishedSchools: 0,
+      noEnrolment: [],
+      failures: [],
+    });
 
     /** The arm did not run for this year. Zero everything — and an EMPTY delete scope. */
     const noEnrolment = (): EnrolmentOutcome => ({
@@ -733,6 +839,14 @@ export async function runOversightEtl(
           enrolmentRows: [],
           enrolmentScope: [],
           enrolment: noEnrolment(),
+          // THE SIXTH ARM IS SKIPPED HERE TOO, AND IT HAS NO CHOICE: its `enrolment_total` is the
+          // enrolment arm's own figure, so a year with no enrolment rows has no PTR denominator to pin
+          // to. Inventing one from a past census would publish tonight's teachers against a year whose
+          // roll nobody measured. Zero rows, EMPTY delete scope, nothing attempted — that year keeps
+          // whatever staffing it had.
+          staffingRows: [],
+          staffingScope: [],
+          staffing: noStaffing(),
         });
         continue;
       }
@@ -802,6 +916,85 @@ export async function runOversightEtl(
         failures: enrolmentCompute.failures,
       };
 
+      // ── the STAFFING arm, SAME period, SAME isolation, PINNED to the rows just computed ────────
+      //
+      // Its input is `enrolmentCompute.computed` — the enrolment arm's own per-school result objects —
+      // so the PTR denominator is the enrolment figure BY IDENTITY rather than by reconciliation. It
+      // runs only here, inside the current-year branch, for the reason the header gives.
+      //
+      // ⚠ `attempted` GROWS AGAIN, by the same schools the enrolment arm already added. That is
+      // consistent with every arm before it (one run, one verdict, a pooled rate) and it dilutes the
+      // same 1% a sixth time — and it is the FIRST arm whose schools were ALREADY counted by another
+      // arm, so the pooled denominator now double-counts the roster estate. The behaviour is kept
+      // deliberately unchanged: per-arm budgets are a Kofi decision with their own acceptance
+      // criteria, not something this slice may take on its own initiative. What it means in practice
+      // is that the tolerated ABSOLUTE failure count is a little higher again, never that a staffing
+      // failure is hidden — every one of them is named in the gap report.
+      const staffingItems = enrolmentCompute.computed;
+      attempted += staffingItems.length;
+
+      const staffingCompute = computePerSchool<
+        (typeof staffingItems)[number],
+        ReturnType<typeof deriveSchoolStaffing>
+      >(
+        staffingItems,
+        (item) => ({
+          emisSchoolId: item.emisSchoolId,
+          jurisdictionId: item.jurisdictionId,
+        }),
+        (item) => {
+          const register = registerByEmis.get(item.emisSchoolId);
+          if (!register)
+            throw new Error(
+              `${item.emisSchoolId} is not in the loaded EMIS register, so its region/district/ownership ` +
+                "are unknown — the inclusion set is built FROM the register, so this cannot happen " +
+                "without a defect in `buildInclusionSet`.",
+            );
+          return deriveSchoolStaffing(item.rows, {
+            jurisdictionId: item.jurisdictionId,
+            periodId,
+            emisSchoolId: item.emisSchoolId,
+            etlRunId: runId,
+            academicYear: spec.academicYear,
+            // THE SAME FROZEN VINTAGE AS THE ROSTER, never `now()`: the staffing figures describe the
+            // same population at the same moment as the roll they are divided into (Kofi AC 21).
+            asOfDate: rosterAsOf,
+            regionName: register.regionName,
+            districtName: register.districtName,
+            ownershipType: register.ownershipType,
+            schoolType: register.schoolType,
+            refPostsEstablished: establishmentByEmis.get(item.emisSchoolId) ?? null,
+          });
+        },
+      );
+      allFailures.push(...staffingCompute.failures);
+
+      // A school with NO row (reconciled roll 0) is deliberately absent from BOTH the rows and the
+      // scope — see `StaffingWriteBatch`.
+      const staffingWithRow = staffingCompute.computed.filter((c) => c.row !== null);
+      const staffingRows = staffingWithRow.map((c) => c.row!);
+      const staffingScope = staffingWithRow.map((c) => c.jurisdictionId);
+      const staffing: StaffingOutcome = {
+        schoolsComputed: staffingWithRow.length,
+        deleted: 0,
+        inserted: 0,
+        teachersOnRoll: staffingRows.reduce((t, r) => t + r.teachersOnRoll, 0),
+        enrolmentTotal: staffingRows.reduce((t, r) => t + r.enrolmentTotal, 0),
+        // PUBLIC-ESTABLISHMENT ROWS ONLY (Kofi §6). The filter is the figure's denominator, not a tidy-up.
+        postsEstablished: staffingRows.reduce(
+          (t, r) => t + (r.teachingPostsEstablished ?? 0),
+          0,
+        ),
+        vacancies: staffingRows.reduce((t, r) => t + (r.vacancies ?? 0), 0),
+        postsEstablishedSchools: staffingRows.filter(
+          (r) => r.teachingPostsEstablished !== null,
+        ).length,
+        noEnrolment: staffingCompute.computed
+          .filter((c) => c.row === null)
+          .map((c) => c.emisSchoolId),
+        failures: staffingCompute.failures,
+      };
+
       pending.push({
         spec,
         periodId,
@@ -812,6 +1005,9 @@ export async function runOversightEtl(
         enrolmentRows,
         enrolmentScope,
         enrolment,
+        staffingRows,
+        staffingScope,
+        staffing,
       });
     }
 
@@ -1356,10 +1552,13 @@ export async function runOversightEtl(
     // A FAILED verdict writes NOTHING. The prior night's data stays exactly as it was: stale, labelled
     // with its own older as-of, and honest. That is what makes the banner's "latest SUCCESS" read
     // correct rather than merely plausible.
-    // ALL FIVE fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
+    // ALL SIX fact tables in ONE `sql.begin`, so a throw while writing any arm — including the
     // performance arm's precedence collapse and any table's post-insert duplicate assertion — rolls the
-    // other four back with it. Two transactions would reintroduce the half-published night between the
-    // arms that each writer's own transaction rules out within one arm.
+    // other five back with it. Two transactions would reintroduce the half-published night between the
+    // arms that each writer's own transaction rules out within one arm. For the staffing arm this is
+    // not merely consistency: `fact_staffing.enrolment_total` is pinned to `fact_enrolment`'s headcount,
+    // so a night that committed one and rolled back the other would publish a PTR dividing a roll the
+    // enrolment panel does not show.
     const written =
       verdict.status === "SUCCESS"
         ? ((await sql.begin(async (tx) => {
@@ -1404,7 +1603,18 @@ export async function runOversightEtl(
                 rows: t.rows,
               })),
             );
-            return { infra, enrol, exams, attendance, fees };
+            // THE SIXTH ARM, at the SAME ANNUAL period as `enrol` and with its OWN delete scope — which
+            // is NARROWER than the enrolment scope by exactly the zero-roll schools (ruling §5), so a
+            // school with no ratio keeps its prior row instead of being emptied.
+            const staffing = await writeStaffingFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pending.map((p) => ({
+                periodId: p.periodId,
+                jurisdictionIds: p.staffingScope,
+                rows: p.staffingRows,
+              })),
+            );
+            return { infra, enrol, exams, attendance, fees, staffing };
           })) as unknown as {
             infra: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
@@ -1426,6 +1636,9 @@ export async function runOversightEtl(
             fees: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
             };
+            staffing: {
+              perPeriod: { periodId: string; deleted: number; inserted: number }[];
+            };
           })
         : {
             infra: { perPeriod: [] },
@@ -1433,6 +1646,7 @@ export async function runOversightEtl(
             exams: { perPeriod: [] },
             attendance: { perPeriod: [] },
             fees: { perPeriod: [] },
+            staffing: { perPeriod: [] },
           };
     const writtenByPeriod = new Map(written.infra.perPeriod.map((p) => [p.periodId, p]));
     const enrolledByPeriod = new Map(written.enrol.perPeriod.map((p) => [p.periodId, p]));
@@ -1441,6 +1655,9 @@ export async function runOversightEtl(
       written.attendance.perPeriod.map((p) => [p.periodId, p]),
     );
     const feesByPeriod = new Map(written.fees.perPeriod.map((p) => [p.periodId, p]));
+    const staffingByPeriod = new Map(
+      written.staffing.perPeriod.map((p) => [p.periodId, p]),
+    );
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
@@ -1456,6 +1673,11 @@ export async function runOversightEtl(
         ...p.enrolment,
         deleted: enrolledByPeriod.get(p.periodId)?.deleted ?? 0,
         inserted: enrolledByPeriod.get(p.periodId)?.inserted ?? 0,
+      },
+      staffing: {
+        ...p.staffing,
+        deleted: staffingByPeriod.get(p.periodId)?.deleted ?? 0,
+        inserted: staffingByPeriod.get(p.periodId)?.inserted ?? 0,
       },
     }));
 
