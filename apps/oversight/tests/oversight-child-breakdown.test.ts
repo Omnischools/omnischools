@@ -1376,3 +1376,159 @@ describe("the dashboard renders the breakdown section at every tier", () => {
     expect(shell).not.toContain("Districts");
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// QUINN · SLICE-3 GATE ADDITIONS — the §7 properties the file did not yet kill by value
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("`child_level` is a DISPLAY DEPTH, never a second ceiling (Wells §1.4)", () => {
+  /** The module doc's own claim, run: a mis-set depth cannot widen anything. */
+  it("a DISTRICT officer who passes 'REGION' reads an unattributed-only FACT side", async () => {
+    const b = okValue(
+      await getChildBreakdown(districtScope, {
+        childLevel: "REGION",
+        termPeriodId: PERIOD_ID_TERM,
+        examPeriodId: PERIOD_ID_EXAM_COHORT,
+        exam: "WASSCE",
+      }),
+    );
+    // Their own REGION is an ANCESTOR, so `r` is null for every visible fact row and nothing is
+    // attributable: RLS bounded the rows before the `case` was evaluated.
+    expect(b.unattributed).not.toBeNull();
+    expect(b.unattributed!.enrolment).toBe(F.wassaEnrolment);
+    // The one thing that must be true whatever the depth: the TOTAL cannot widen past the ceiling.
+    expect(b.total.enrolment).toBe(F.wassaEnrolment);
+    expect(b.total.candidates).toBe(F.wassaCandidates);
+    // …and no ancestor's NAME is reachable at any depth — the spine's own policy, not this module's.
+    const payload = JSON.stringify(b);
+    expect(payload).not.toContain("Western Region");
+    expect(b.children.every((r) => r.name === null)).toBe(true);
+    /**
+     * ⚠ OBSERVED, AND DELIBERATELY NOT PINNED (Quinn, slice-3 gate). The module doc says a mis-set
+     * depth is "fail-closed-ish, ZERO DISCLOSURE". That is exactly true of the FACT arm and slightly
+     * overstated for the REGISTER arm: `ref_emis_school_register` denormalises `region_id`, so a
+     * district officer at a 'REGION' depth gets one child row keyed on their own OUT-OF-SUBTREE parent
+     * region's bare uuid (with a null label, because `dim_jurisdiction`'s policy withholds the node,
+     * and with their OWN coverage counts, so no figure widens). It is the same accepted bare-uuid
+     * residual Wells §2 describes for `parent_id`, reached only on a path production cannot take:
+     * `childLevelFor()` is total and is the only caller, so a DISTRICT officer's depth is always
+     * 'SCHOOL'. Left as a note rather than an assertion so that tightening it later is not a
+     * "failing" test.
+     */
+  });
+
+  it("…and the DISTRICT depth still shows a district officer only their OWN node", async () => {
+    const b = okValue(
+      await getChildBreakdown(districtScope, {
+        childLevel: "DISTRICT",
+        termPeriodId: PERIOD_ID_TERM,
+        examPeriodId: PERIOD_ID_EXAM_COHORT,
+        exam: "WASSCE",
+      }),
+    );
+    expect(b.children.map((r) => r.name)).toEqual(["Wassa Amenfi West"]);
+    expect(b.total.enrolment).toBe(F.wassaEnrolment);
+    // No sibling district, by name OR by id, at a depth that is not this tier's.
+    const payload = JSON.stringify(b);
+    expect(payload).not.toContain("Sekondi-Takoradi Metro");
+    expect(payload).not.toContain(TINY_DISTRICT);
+    expect(payload).not.toContain(OTHER_REGION_DISTRICT);
+  });
+});
+
+describe("the REGISTER side's null-ancestor row is bucketed too, never filtered", () => {
+  /**
+   * The fact side's unattributed bucket is covered above. The register side has its own: `region_id`
+   * and `district_id` are both NULLABLE (db/schema/ref.ts), so a register row that names no ancestor
+   * groups to `child_id IS NULL` — and dropping it would make Σ(schoolsRegistered) < the total row,
+   * which is the same arithmetic failure in the coverage columns.
+   */
+  const ORPHAN = "EMIS-BRK-905";
+
+  it("a register row with NO region lands in the visible bucket and is in the total", async () => {
+    await owner`
+      insert into ref_emis_school_register
+        (emis_school_id, name, district_id, region_id, school_type, ownership_type, on_schoolup,
+         operational_school_id, source, as_of_date)
+      values (${ORPHAN}, 'No Ancestor JHS', null, null, 'JHS', 'PUBLIC', true, null, 'EMIS_EXTRACT', current_date)
+    `;
+    try {
+      const b = await readBreakdown(nationalScope);
+      expect(b.unattributed).not.toBeNull();
+      // It is COUNTED, in the bucket, and the bucket is in the row set the table prints.
+      expect(b.unattributed!.schoolsRegistered).toBeGreaterThanOrEqual(1);
+      expect(sum(allRows(b), (r) => r.schoolsRegistered)).toBe(b.total.schoolsRegistered);
+      expect(sum(allRows(b), (r) => r.schoolsReporting)).toBe(b.total.schoolsReporting);
+      // …and it is not attributed to any named region.
+      for (const child of b.children) {
+        expect(child.name).not.toBeNull();
+      }
+      // The bucket carries no name, so it can never be mistaken for a sibling (Wells §2 belt 3).
+      expect(b.unattributed!.name).toBeNull();
+    } finally {
+      await owner`delete from ref_emis_school_register where emis_school_id = ${ORPHAN}`;
+    }
+  });
+});
+
+describe("a null label never becomes a sibling's name", () => {
+  it("the bucket's name is null, and every child name is distinct and its own", async () => {
+    const b = await readBreakdown(regionScope);
+    expect(b.unattributed!.name).toBeNull();
+    const names = b.children.map((r) => r.name);
+    // No child inherited the bucket's figures, and no two children share a label (which is what a
+    // fan-out or a mis-keyed merge would produce).
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).not.toContain(null);
+    // The mis-parented school's enrolment appears EXACTLY ONCE in the whole row set.
+    expect(
+      allRows(b).filter((r) => r.enrolment === F.misparentedEnrolment),
+    ).toHaveLength(1);
+  });
+});
+
+describe("the coverage columns are PRESENT above the district tier", () => {
+  /** The positive half of Wells §3 — the absence at district is already asserted above. */
+  it("national and region render the two register columns; district renders neither", () => {
+    const withCoverage = renderToStaticMarkup(
+      createElement(BreakdownTable, {
+        chrome: breakdownChrome("NATIONAL", null),
+        homeId: null,
+        breakdown: {
+          childLevel: "REGION",
+          hasCoverage: true,
+          unattributed: null,
+          children: [
+            row({
+              childId: "a",
+              name: "A Region",
+              schoolsReporting: 8,
+              schoolsRegistered: 10,
+              coverageRatio: 0.8,
+            }),
+          ],
+          total: row({ schoolsReporting: 8, schoolsRegistered: 10, coverageRatio: 0.8 }),
+        },
+      }),
+    );
+    expect(textOf(withCoverage)).toContain("Schools (on / total)");
+    expect(textOf(withCoverage)).toContain("Coverage");
+    expect(textOf(withCoverage)).toContain("8 / 10");
+
+    const withoutCoverage = renderToStaticMarkup(
+      createElement(BreakdownTable, {
+        chrome: breakdownChrome("DISTRICT", "Wassa Amenfi West"),
+        homeId: null,
+        breakdown: {
+          childLevel: "SCHOOL",
+          hasCoverage: false,
+          unattributed: null,
+          children: [row({ childId: "a", name: "A School", enrolment: 10 })],
+          total: row({ enrolment: 10 }),
+        },
+      }),
+    );
+    expect(textOf(withoutCoverage)).not.toContain("Schools (on / total)");
+    expect(textOf(withoutCoverage)).not.toContain("Coverage");
+  });
+});
