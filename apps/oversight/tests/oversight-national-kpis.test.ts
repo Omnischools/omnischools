@@ -807,6 +807,11 @@ const DASHBOARD_LIBS = [
   "lib/oversight/enrolment.ts",
   "lib/oversight/coverage.ts",
   "lib/oversight/performance.ts",
+  // The PTR card's read (increment I). It shipped outside this list, which quietly exempted the
+  // newest dashboard read from all four chokepoint guards below — the one module most likely to
+  // reintroduce a hand-written subtree WHERE, since it is the only one whose fact table is
+  // school-grain-only and whose author had to think about roll-up at all.
+  "lib/oversight/ptr.ts",
 ];
 const DASHBOARD_PAGE = "app/(oversight)/page.tsx";
 

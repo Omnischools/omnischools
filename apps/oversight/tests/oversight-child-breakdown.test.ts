@@ -31,7 +31,14 @@ import {
   initialsOf,
 } from "@/components/oversight/breakdown-table";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
-import { JUR, OFFICER, PERIOD_ID_EXAM_COHORT, PERIOD_ID_TERM } from "./fixtures/ids";
+import { PTR_AXIS, SpreadPanel } from "@/components/oversight/breakdown-visuals";
+import {
+  JUR,
+  OFFICER,
+  PERIOD_ID_ANNUAL,
+  PERIOD_ID_EXAM_COHORT,
+  PERIOD_ID_TERM,
+} from "./fixtures/ids";
 import {
   adminAnalytics,
   districtOfficer,
@@ -246,13 +253,18 @@ function okValue<T>(reading: Reading<T>): T {
 /** The read under test, with the two periods the dashboard pins resolved ONCE and passed in. */
 async function readBreakdown(
   scope: JurisdictionScope,
-  overrides: { examPeriodId?: string | null; termPeriodId?: string | null } = {},
+  overrides: {
+    examPeriodId?: string | null;
+    termPeriodId?: string | null;
+    annualPeriodId?: string | null;
+  } = {},
 ): Promise<ChildBreakdown> {
   return okValue(
     await getChildBreakdown(scope, {
       childLevel: childLevelFor(scope.level),
       termPeriodId: PERIOD_ID_TERM,
       examPeriodId: PERIOD_ID_EXAM_COHORT,
+      annualPeriodId: PERIOD_ID_ANNUAL,
       exam: "WASSCE",
       ...overrides,
     }),
@@ -467,6 +479,7 @@ describe("Σchildren = the total row, at every tier", () => {
         childLevel: "SCHOOL",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: "not-a-uuid",
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     ).toEqual(unavailable());
@@ -602,11 +615,21 @@ describe("per-child rates are candidate-weighted", () => {
     expect(Math.abs(b.total.wassceRate! - unweighted)).toBeGreaterThan(0.1);
   });
 
-  it("`qualification_rate` is structurally out of reach — it is not in the allow-list", () => {
-    expect(readCode("lib/oversight/breakdown.ts")).not.toMatch(/\bqualification_rate\b/);
-    for (const stored of ["attendance_rate", "ptr", "plc_participation_rate"]) {
-      expect(readCode("lib/oversight/breakdown.ts")).not.toContain(stored);
+  it("stored rates are structurally out of reach — none is in the allow-list", () => {
+    const code = readCode("lib/oversight/breakdown.ts");
+    expect(code).not.toMatch(/\bqualification_rate\b/);
+    // These stored rates live on fact tables this module never reads, so the column name must not
+    // appear at all.
+    for (const stored of ["attendance_rate", "plc_participation_rate"]) {
+      expect(code).not.toContain(stored);
     }
+    // PTR is the exception that proves the rule: fact_staffing IS read here (aliased `fs`), for the
+    // PTR numerator/denominator — but its STORED per-school `ptr` column is NEVER selected. The
+    // roll-up is Σenrolment ÷ Σteachers, re-derived, never the stored rate. So the precise guard is
+    // "the stored ptr column is never selected under ANY alias", not "the substring ptr never appears"
+    // (the re-derived `row.ptr` field and the module's own prose legitimately contain it). Widened past
+    // the current `fs` alias so a future rename/re-alias cannot smuggle the stored rate back in (Dex N3).
+    expect(code).not.toMatch(/\b(fs|st|fact_staffing)\.ptr\b/);
   });
 
   it("no cohort means NO RATE — never a confident 0%", async () => {
@@ -824,6 +847,23 @@ describe("the spread is derived from the same rows, and its mean is the weighted
     // Only one district-tier school filed enrolment, so there is no enrolment-rate spread to draw.
     expect(spreadOf(b, (r) => r.coverageRatio)).toBeNull();
   });
+
+  it("no seeded PTR value clamps against PTR_AXIS — the bar never under-draws the caption (Kofi §10.4)", async () => {
+    // B3's defect was an axis too narrow for the data: a plotted min/max outside [lo,hi] clamps to a
+    // rail while the §10.3 caption quotes the TRUE (max−min) gap, so the bar under-draws it. The axis is
+    // sized to contain the whole §3 seeded range; prove it across the tiers the spread bar renders at.
+    for (const scope of [nationalScope, regionScope]) {
+      const b = await readBreakdown(scope);
+      const ptr = spreadOf(b, (r) => r.ptr);
+      if (ptr === null) continue; // fewer than two children with a PTR at this tier — no bar drawn.
+      for (const value of [ptr.min, ptr.max, ptr.mean]) {
+        if (value === null) continue;
+        expect(value, `seeded PTR ${value} clamps against PTR_AXIS [${PTR_AXIS.lo}, ${PTR_AXIS.hi}]`)
+          .toBeGreaterThanOrEqual(PTR_AXIS.lo);
+        expect(value).toBeLessThanOrEqual(PTR_AXIS.hi);
+      }
+    }
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -910,6 +950,7 @@ describe("the roll-up cannot walk around the jurisdiction chokepoint", () => {
         childLevel: "SCHOOL",
         termPeriodId: "not-a-uuid",
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     ).toEqual(unavailable());
@@ -932,6 +973,7 @@ describe("the roll-up cannot walk around the jurisdiction chokepoint", () => {
         childLevel: "SCHOOL",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       });
       expect(reading.status).toBe("unavailable");
@@ -1106,6 +1148,9 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     schoolsReporting: null,
     schoolsRegistered: null,
     coverageRatio: null,
+    ptr: null,
+    staffEnrolment: null,
+    teachers: null,
     ...fields,
   };
 }
@@ -1203,7 +1248,7 @@ describe("the section renders the honest states", () => {
     expect(text).toContain("Showing 1 of 1 district");
   });
 
-  it("no PTR column, no drill arrow, no Compare chip — none of the three has a source or a target", () => {
+  it("PTR column is present now; still no drill arrow and no Compare chip — those have no target", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
         chrome: breakdownChrome("NATIONAL", null),
@@ -1212,13 +1257,16 @@ describe("the section renders the honest states", () => {
           childLevel: "REGION",
           hasCoverage: true,
           unattributed: null,
-          children: [row({ childId: "a", name: "A Region", enrolment: 10 })],
-          total: row({ enrolment: 10 }),
+          children: [row({ childId: "a", name: "A Region", enrolment: 10, ptr: 24.8 })],
+          total: row({ enrolment: 10, ptr: 24.8 }),
         },
       }),
     );
     const text = textOf(markup);
-    expect(text).not.toContain("PTR");
+    // PTR now has an ETL producer, so its column header, sort chip and cells render (the cell as
+    // `24.8:1`). Compare and the drill arrow stay absent — they point at surfaces that do not exist.
+    expect(text).toContain("PTR");
+    expect(text).toContain("24.8:1");
     expect(text).not.toContain("Compare");
     expect(text).not.toContain("→");
     expect(markup).not.toContain("<a ");
@@ -1324,11 +1372,13 @@ describe("the dashboard renders the breakdown section at every tier", () => {
     expect(text).toContain(OTHER_REGION_NAME);
     expect(text).toContain("Ghana · all 2 regions");
     expect(text).toContain("Showing 2 of 2 regions · sorted by WASSCE qualification");
-    // The spread, with two bars and the trimmed caption.
+    // The spread and the KPI strip now carry the PTR measure (the staffing ETL has landed). "all three"
+    // is still never a literal (the caption is derived from the bars that rendered), and national still
+    // has no rank strip.
     expect(text).toContain("The national spread");
     expect(text).toContain("WASSCE qualification");
     expect(text).toContain("School coverage");
-    expect(text).not.toContain("Pupil-teacher ratio");
+    expect(text).toContain("Pupil-teacher ratio");
     expect(text).not.toContain("all three");
     expect(text).not.toContain("Strongest ·");
     // Every figure computed: the mock's placeholders must not appear.
@@ -1389,6 +1439,7 @@ describe("`child_level` is a DISPLAY DEPTH, never a second ceiling (Wells §1.4)
         childLevel: "REGION",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     );
@@ -1423,6 +1474,7 @@ describe("`child_level` is a DISPLAY DEPTH, never a second ceiling (Wells §1.4)
         childLevel: "DISTRICT",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     );
@@ -1530,5 +1582,49 @@ describe("the coverage columns are PRESENT above the district tier", () => {
     );
     expect(textOf(withoutCoverage)).not.toContain("Schools (on / total)");
     expect(textOf(withoutCoverage)).not.toContain("Coverage");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// THE SPREAD CAPTION — a derived sentence, so it must still read like prose (capital lead, right article)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("the spread caption lists the gaps as a grammatical sentence", () => {
+  /**
+   * The caption was inline fragments in slice 3; PTR made it a derived `gapSentence`. The refactor must
+   * NOT lose the leading capital (it opens a new sentence after the "best and worst" full stop) and must
+   * pick "a"/"an" by the figure's spoken form — a PTR or WASSCE gap of 18 or 8 is "an", not "a".
+   */
+  const two = (): ChildBreakdown => ({
+    childLevel: "REGION",
+    hasCoverage: true,
+    unattributed: null,
+    // WASSCE 52%→70% = an 18-point gap; coverage 60%→90% = a 30-point gap; PTR 10→28 = an 18.0-point
+    // spread in pupil-teacher ratio (Kofi §10.3 phrasing: "spread in…", not "gap").
+    children: [
+      row({ childId: "a", name: "A", wassceRate: 0.7, coverageRatio: 0.9, ptr: 10, candidates: 100 }),
+      row({ childId: "b", name: "B", wassceRate: 0.52, coverageRatio: 0.6, ptr: 28, candidates: 100 }),
+    ],
+    total: row({ wassceRate: 0.61, coverageRatio: 0.75, ptr: 19 }),
+  });
+
+  it("opens the disparity sentence with a capital and uses 'an' before 18 / 8", () => {
+    const text = textOf(
+      renderToStaticMarkup(
+        createElement(SpreadPanel, { breakdown: two(), chrome: breakdownChrome("NATIONAL", null) }),
+      ),
+    );
+    // The lead clause is capitalised (WASSCE leads and 18 → "an" → "An"); the regression was a lowercase
+    // "a" sitting directly after the preceding sentence's full stop.
+    expect(text).toContain("An 18-point WASSCE gap");
+    expect(text).not.toMatch(/\.\s+a 18-point WASSCE gap/);
+    // Mid-sentence clauses keep their lower case and their own article.
+    expect(text).toContain("a 30-point coverage gap");
+    expect(text).toContain("an 18.0-point spread in pupil-teacher ratio");
+    // The PTR clause is a DISPERSION phrasing, never a "gap" and never a geography claim (Kofi §10.3) —
+    // the struck mock line "northern regions sit at the low end" must not return through PTR.
+    expect(text).not.toContain("pupil-teacher-ratio gap");
+    expect(text).not.toMatch(/northern/i);
+    expect(text).toContain("are the disparities national policy exists to close.");
   });
 });

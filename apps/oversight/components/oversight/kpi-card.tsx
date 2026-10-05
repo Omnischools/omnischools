@@ -105,6 +105,17 @@ export function formatRatioPercent(ratio: number, decimals: number): string {
   return (ratio * 100).toFixed(decimals);
 }
 
+/**
+ * A pupil–teacher ratio as its own number — NOT a percentage, so no ×100 (that would render "2833"
+ * for a 28.33 ratio). Returns only the figure; the ":1" / ": 1" is the card's or cell's own unit, the
+ * same way `%` is coverage's unit and never part of the value. Kofi's precision ruling is ONE decimal
+ * for the tier (Σ÷Σ) figure, so callers pass `1`; the stored per-school `numeric(5,2)` scale is a
+ * different, single-school concern.
+ */
+export function formatRatio(value: number, decimals: number): string {
+  return value.toFixed(decimals);
+}
+
 export function formatCount(n: number): string {
   return n.toLocaleString("en-GB");
 }
