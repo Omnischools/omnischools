@@ -205,11 +205,14 @@ function stripTags(markup: string): string {
 }
 
 function textOf(markup: string): string {
+  // `&amp;` is unescaped LAST, after every other entity: decoding it earlier could turn a
+  // double-escaped string like `&amp;nbsp;` into `&nbsp;` and then into a space, i.e. double-unescape
+  // it (CodeQL js/double-escaping, CWE-116). Unescaping the `&`-producer last makes that impossible.
   return stripTags(markup)
     .replace(/&#x27;/g, "'")
     .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, "&")
     .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
 }
