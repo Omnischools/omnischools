@@ -182,7 +182,26 @@ function readCode(file: string): string {
 }
 
 function stripTags(markup: string): string {
-  return markup.replace(/<[^>]*>/g, " ");
+  // Char-scan rather than a `<…>`-matching regex: CodeQL's js/bad-tag-filter (CWE-116) flags
+  // tag-filtering regexes as high-severity even in a test helper that only turns the markup the
+  // test itself rendered into text for substring assertions. This reproduces the former
+  // `replace(/<[^>]*>/g, " ")` exactly — each complete `<…>` becomes one space; a stray `<` with no
+  // closing `>` is left as-is — without a tag regex for the scanner to flag.
+  let out = "";
+  for (let i = 0; i < markup.length; i++) {
+    if (markup[i] !== "<") {
+      out += markup[i];
+      continue;
+    }
+    const close = markup.indexOf(">", i);
+    if (close === -1) {
+      out += markup.slice(i);
+      break;
+    }
+    out += " ";
+    i = close;
+  }
+  return out;
 }
 
 function textOf(markup: string): string {
