@@ -62,7 +62,13 @@ import {
 export interface OfficerSession extends GateOfficer {
   /** Chrome only — the sidebar footer and the access strip. Never written to the audit row. */
   displayName: string;
-  jurisdictionName: string;
+  /**
+   * The officer's own node label, or NULL when that chrome-only read could not be satisfied below the
+   * national tier. See the assignment in `getAuthContext()` for why the absence is carried rather than
+   * papered over with the institution label, and `components/oversight/tier-chrome.tsx` for the wording
+   * each consumer chooses.
+   */
+  jurisdictionName: string | null;
 }
 
 /**
@@ -325,7 +331,29 @@ export async function getAuthContext(): Promise<AuthContext> {
     officer: {
       ...resolved,
       displayName: authenticatedName,
-      jurisdictionName: node?.name ?? institutionLabel(resolved.level),
+      /**
+       * ⚠ NULL BELOW NATIONAL WHEN THE NODE READ FAILED — fixed in increment I slice 3 (Dex L2a).
+       *
+       * This used to be `node?.name ?? institutionLabel(resolved.level)`, which for a sub-national
+       * officer substituted the string "Ghana Education Service" for a PLACE NAME. That label then
+       * flowed into the dashboard crumb, the h1 and — the reason it is a defect rather than a blemish —
+       * the provenance Scope line, producing "Ghana Education Service · sibling regions not visible
+       * here": the wrong subject on the one line that is a security claim about what the officer cannot
+       * see. A missing label is a small degradation; a label naming the wrong thing is actionable.
+       *
+       * Null makes the absence un-ignorable at the type level, so each consumer picks its OWN degraded
+       * wording: `tierChrome()`/`breakdownChrome()` say "this region" and drop the crumb's middle
+       * segment, and `officerChrome()` tells the sidebar chip the name is unavailable.
+       *
+       * NATIONAL KEEPS ITS LABEL, and the asymmetry is deliberate: at national the institution label is
+       * "Ministry of Education", which is not a claim about a place (there is no sibling national node
+       * to confuse it with), the dashboard's headline ignores this field entirely in favour of the
+       * literal "Ghana", and the dev shim ships the same string. So there is nothing to mislead and
+       * nothing to gain from dropping it.
+       */
+      jurisdictionName:
+        node?.name ??
+        (resolved.level === "NATIONAL" ? institutionLabel(resolved.level) : null),
     },
   };
 }
@@ -395,6 +423,13 @@ export function officerChrome(session: OfficerSession): {
     role: roleLabel(session.officerRole),
     tier: tierLabel(session.level),
     institution: institutionLabel(session.level),
-    jurisdiction: session.jurisdictionName,
+    /**
+     * The sidebar's "Your jurisdiction" chip picks its OWN degraded wording (slice 3, Dex L2a): the
+     * TIER is known and unaffected — it came from the database resolver, not from the failed label read
+     * — so the chip states the tier and says the name is missing, rather than printing an institution
+     * where a place should be. The ceiling the chip describes is unchanged either way.
+     */
+    jurisdiction:
+      session.jurisdictionName ?? `${tierLabel(session.level)} · name unavailable`,
   };
 }

@@ -12,7 +12,9 @@ import {
   getExamQualification,
   type ExamQualification,
 } from "@/lib/oversight/performance";
+import { childLevelFor, getChildBreakdown } from "@/lib/oversight/breakdown";
 import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
+import { BreakdownSection } from "@/components/oversight/breakdown-section";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Provenance } from "@/components/oversight/primitives";
 import { PeriodBanner } from "@/components/oversight/period-banner";
@@ -138,13 +140,29 @@ export default async function OversightHome() {
 
   // Period-dependent reads. Pinning exactly one period_id is what keeps enrolment from summing two
   // terms of the same children and WASSCE from summing two sittings of different ones.
-  const [enrolment, wassce] = await Promise.all([
+  const [enrolment, wassce, breakdown] = await Promise.all([
     isOk(termPeriod)
       ? getEnrolmentTotal(scope, termPeriod.value.periodId)
       : unavailable<EnrolmentTotal>(),
     isOk(wassceCohort)
       ? getExamQualification(scope, "WASSCE", wassceCohort.value.periodId)
       : unavailable<ExamQualification>(),
+    /**
+     * SLICE 3 — the per-child roll-up behind the breakdown section below the strip.
+     *
+     * ⚠ THE PERIODS ARE RESOLVED ONCE, HERE, AND PASSED IN — never per child. Both resolvers are
+     * tier-sensitive by design (a region whose schools have no rows for the newest national sitting
+     * resolves to its OWN latest sitting), so a per-child resolution would rank children against
+     * DIFFERENT sittings: a ranking with no referent. These are the very same two period ids the three
+     * KPI cards above are computed on, which is also what makes the table's total row able to equal them.
+     */
+    getChildBreakdown(scope, {
+      // A DISPLAY DEPTH, not a ceiling: RLS has already bounded the visible rows before it is applied.
+      childLevel: childLevelFor(officer.level),
+      termPeriodId: isOk(termPeriod) ? termPeriod.value.periodId : null,
+      examPeriodId: isOk(wassceCohort) ? wassceCohort.value.periodId : null,
+      exam: "WASSCE",
+    }),
   ]);
 
   const hasRun = latestRun !== null;
@@ -335,6 +353,30 @@ export default async function OversightHome() {
             }
           />
         </section>
+
+        {/*
+          SLICE 3 — Lucy's Section 02, as a SECTION rather than a route (see BreakdownSection's note).
+          It sits below the KPI strip because its total row IS the strip's figures, computed from the same
+          two periods in the same request: the one place that cross-module commitment can be read is with
+          both on one screen. Fail-soft on its own: an unreadable roll-up renders a warn banner here and
+          leaves everything above it standing.
+        */}
+        <BreakdownSection
+          level={officer.level}
+          jurisdictionName={officer.jurisdictionName}
+          homeId={officer.jurisdictionId}
+          breakdown={breakdown}
+          termLabel={
+            isOk(termPeriod)
+              ? `${termPeriod.value.academicYear}${
+                  termPeriod.value.term === null ? "" : ` Term ${termPeriod.value.term}`
+                }`
+              : null
+          }
+          /* Wells trap 4: the table must STATE the sitting it ranks on, because the resolver is
+             tier-sensitive and two officers can honestly be looking at two different sittings. */
+          sittingLabel={sittingYear === null ? null : `${sittingYear} WASSCE`}
+        />
 
         {/*
           Lucy §3.4. Four items against the primitive's `sm:grid-cols-3`, so the fourth wraps — which

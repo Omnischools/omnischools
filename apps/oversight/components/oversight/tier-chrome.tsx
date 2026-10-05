@@ -88,24 +88,57 @@ export function pluralise(count: number, singular: string): string {
  * `undefined` and renders "undefined dashboard" if that guard is ever relaxed — a total function is
  * the cheaper insurance, and it fails toward the tightest ceiling rather than the widest.
  */
+/**
+ * THE DEGRADED SUBJECT — what to call the officer's own jurisdiction when its NAME could not be read.
+ *
+ * `lib/auth` now returns `jurisdictionName: null` for a sub-national officer whose chrome-only
+ * jurisdiction-node read failed, instead of falling back to `institutionLabel(level)` (increment I
+ * slice 3, Dex L2a). That fallback put the string "Ghana Education Service" into the crumb, the h1 and
+ * — worst — the provenance SCOPE line, which is a security claim: "Ghana Education Service · sibling
+ * regions not visible here" names the wrong subject on the one line that tells an officer what they are
+ * NOT seeing. Null makes the absence un-ignorable, and each consumer picks its own wording.
+ *
+ * The chrome's wording is a GENERIC PLACE WORD ("this region"), not an error: the tier is known — it
+ * came from the database resolver, not from the failed read — so the honest sentence is the one that
+ * states the tier and drops the name. Sentence-initial uses get `Capitalised`.
+ */
+function subjectOf(level: JurisdictionLevel, jurisdictionName: string | null): string {
+  if (jurisdictionName !== null) return jurisdictionName;
+  switch (level) {
+    case "NATIONAL":
+      return "Ghana";
+    case "REGION":
+      return "This region";
+    case "DISTRICT":
+      return "This district";
+    case "SCHOOL":
+      return "This school";
+  }
+}
+
 export function tierChrome(
   level: JurisdictionLevel,
   /**
-   * ⚠ KNOWN DEGRADATION, DEFERRED TO SLICE 3 (Dex L2a). The caller's value comes from
-   * `lib/auth/index.ts:328`, which is `node?.name ?? institutionLabel(resolved.level)` — so when the
-   * officer's own jurisdiction-node read FAILS at a sub-national tier, this parameter arrives as the
-   * institution label "Ghana Education Service" rather than a place name, and the crumb, the title
-   * lead and the regional Scope line all quietly say it ("Ghana Education Service · sibling regions
-   * not visible here"). That is a misleading SUBJECT on a line that is a security claim, not copy.
-   *
-   * The fix belongs in `lib/auth` (return null and let the chrome state the absence), NOT here:
-   * widening this signature to `string | null` alone would be dead code while `lib/auth` still returns
-   * a non-null string for every session. So nothing changes this slice.
+   * NULLABLE since slice 3 (Dex L2a): null ⇒ the officer's own node label could not be read. See
+   * `subjectOf()` above for the wording, and `lib/auth/index.ts` for why a sub-national absence is
+   * never papered over with the institution label.
    */
-  jurisdictionName: string,
+  jurisdictionName: string | null,
 ): TierChrome {
   const withoutChildRollups =
     "Omnischools analytics DB · school feeds + WAEC & EMIS reference extracts";
+  // The place word every sub-national string below shares, so a degraded read cannot be handled three
+  // ways in one config.
+  const subject = subjectOf(level, jurisdictionName);
+  /**
+   * The crumb's middle segment, DROPPED when there is no name — "Oversight · This region · Regional
+   * dashboard" reads as a place called "This region". Dropping it falls back to the national crumb's
+   * own two-part shape, which is a true sentence at any tier.
+   */
+  const crumb = (tier: string): string =>
+    jurisdictionName === null
+      ? `Oversight · ${tier} dashboard`
+      : `Oversight · ${jurisdictionName} · ${tier} dashboard`;
   switch (level) {
     case "NATIONAL":
       return {
@@ -120,32 +153,34 @@ export function tierChrome(
       };
     case "REGION":
       return {
-        titleLead: jurisdictionName,
+        titleLead: subject,
         tierAdjective: "Regional",
         childNoun: "district",
-        crumb: `Oversight · ${jurisdictionName} · Regional dashboard`,
-        // Names the region, because a regional director's ceiling is a specific place.
-        scopeLine: `${jurisdictionName} · sibling regions not visible here`,
+        crumb: crumb("Regional"),
+        // Names the region, because a regional director's ceiling is a specific place — or says "this
+        // region" when the name is unreadable, which is still true and still a ceiling.
+        scopeLine: `${jurisdictionName ?? "this region"} · sibling regions not visible here`,
         sourceWithoutChildren: "Omnischools analytics DB",
       };
     case "DISTRICT":
       return {
-        titleLead: jurisdictionName,
+        titleLead: subject,
         tierAdjective: "District",
         childNoun: null,
-        crumb: `Oversight · ${jurisdictionName} · District dashboard`,
+        crumb: crumb("District"),
         // ⚠ ASYMMETRY WITH REGION, AND IT IS THE MOCK'S (Lucy §1.5): the district line uses the
         // generic word "district-ceiling" rather than the district's name. Preserved deliberately —
-        // the claim is about the KIND of ceiling, and it reads as a rule rather than as a label.
+        // the claim is about the KIND of ceiling, and it reads as a rule rather than as a label. It is
+        // therefore also unaffected by a failed name read.
         scopeLine: "district-ceiling · you cannot see other districts here",
         sourceWithoutChildren: withoutChildRollups,
       };
     case "SCHOOL":
       return {
-        titleLead: jurisdictionName,
+        titleLead: subject,
         tierAdjective: "School",
         childNoun: null,
-        crumb: `Oversight · ${jurisdictionName} · School dashboard`,
+        crumb: crumb("School"),
         scopeLine: "school-ceiling · you cannot see other schools here",
         sourceWithoutChildren: withoutChildRollups,
       };
@@ -279,4 +314,133 @@ export function buildTitle(chrome: TierChrome): ReactNode {
       <em className="accent-italic">{chrome.tierAdjective.toLowerCase()} dashboard.</em>
     </>
   );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE BREAKDOWN SECTION'S PER-TIER STRINGS (increment I slice 3, Lucy's breakdown map §3).
+ *
+ * The same argument as `tierChrome()` above, applied to the second section on the page: the breakdown
+ * is ONE tier-polymorphic surface — a national officer's table lists regions, a regional officer's
+ * lists districts, a district officer's lists schools — so every tier-varying string is a row in this
+ * config rather than a `level === …` ternary in the table's JSX. The one genuinely tier-divergent piece
+ * of LAYOUT (the national spread panel vs. the regional rank strip) is the single `officer.level` gate,
+ * and it lives in the section component.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+export interface BreakdownChrome {
+  /** `region` / `district` / `school` — the noun the fail-soft banner's body sentence uses. */
+  childNounSingular: string;
+  /** `regions` / `districts` / `schools` — headings, captions, the "Showing N of M …" clause. */
+  childNounPlural: string;
+  /** The name column's `th` (Lucy §4.1 column 1). */
+  childColumnHeader: string;
+  /** The all-empty state, inside the table (Lucy §6). */
+  emptyStateCopy: string;
+  /** Identical at every tier today, in the config so a tier could diverge without touching JSX. */
+  rankedByCaption: string;
+  /** The fail-soft banner's title (Lucy §6) — per tier, because it names what is missing. */
+  unavailableTitle: string;
+  /**
+   * The total row's label. The SHAPES differ per tier and the difference is Lucy's, not an accident:
+   * national repeats the noun ("Ghana · all 16 regions") because "Ghana" does not carry it, while
+   * regional drops it ("Western Region · all 14") because the region's name already does.
+   */
+  totalRowLabel: (childCount: number) => string;
+  /**
+   * The footer's bold tail, or null when there is nothing TRUE to put there.
+   *
+   * ⚠ DELIBERATE DEVIATION FROM LUCY §3.1's VERBATIM STRINGS, and it is the honesty rule, not a
+   * shortcut. Her national tail is "tap any region to drill into its districts and schools" — but this
+   * slice mounts the breakdown as a section on the ONE `/` dashboard (the slice-1/2 single-route
+   * decision), and there is no per-region dashboard route to tap through to. Rendering that sentence
+   * would promise a surface that does not exist, which is the same call the shipped `page.tsx` makes
+   * about its three missing actions. So: dropped at national, and at region reduced to the half that
+   * IS true — naming the highlighted home row, and only when a home row actually came back.
+   */
+  drillHint: (homeName: string | null) => string | null;
+}
+
+export function breakdownChrome(
+  level: JurisdictionLevel,
+  jurisdictionName: string | null,
+): BreakdownChrome {
+  // The same subject the dashboard chrome above uses, so the total row and the h1 cannot disagree
+  // about what this officer's jurisdiction is called.
+  const subject = subjectOf(level, jurisdictionName);
+  switch (level) {
+    case "NATIONAL":
+      return {
+        childNounSingular: "region",
+        childNounPlural: "regions",
+        childColumnHeader: "Region",
+        emptyStateCopy: "No regions reporting yet",
+        rankedByCaption: "sorted by WASSCE qualification",
+        unavailableTitle: "Regional breakdown is temporarily unavailable",
+        // The literal "Ghana", the same special case as `titleLead` at this tier.
+        totalRowLabel: (count) => `Ghana · all ${formatCount(count)} regions`,
+        drillHint: () => null,
+      };
+    case "REGION":
+      return {
+        childNounSingular: "district",
+        childNounPlural: "districts",
+        childColumnHeader: "District",
+        emptyStateCopy: "No districts reporting yet",
+        rankedByCaption: "sorted by WASSCE qualification",
+        unavailableTitle: "District breakdown is temporarily unavailable",
+        totalRowLabel: (count) => `${subject} · all ${formatCount(count)}`,
+        drillHint: (homeName) =>
+          homeName === null ? null : `your home district ${homeName} is highlighted`,
+      };
+    case "DISTRICT":
+    case "SCHOOL":
+      return {
+        childNounSingular: "school",
+        childNounPlural: "schools",
+        childColumnHeader: "School",
+        emptyStateCopy: "No schools reporting yet",
+        rankedByCaption: "sorted by WASSCE qualification",
+        unavailableTitle: "School breakdown is temporarily unavailable",
+        // The noun is repeated here for the national reason: a district's name does not carry it.
+        totalRowLabel: (count) => `${subject} · all ${formatCount(count)} schools`,
+        drillHint: () => null,
+      };
+  }
+}
+
+/**
+ * The breakdown panel's title — `The 16 <em>regions.</em>`, with the count DERIVED.
+ *
+ * Lucy §2: the mock spells the count as a word ("The sixteen regions") and hard-codes it; the real lead
+ * takes the numeral from the read. A null count (the read is unavailable) drops the count rather than
+ * leaving an empty slot. The trailing period stays INSIDE the em, as everywhere else.
+ */
+export function buildBreakdownTitle(
+  chrome: BreakdownChrome,
+  childCount: number | null,
+): ReactNode {
+  return (
+    <>
+      The {childCount === null ? null : `${formatCount(childCount)} `}
+      <em className="accent-italic">{chrome.childNounPlural}.</em>
+    </>
+  );
+}
+
+/**
+ * `Showing 14 of 14 districts · sorted by WASSCE qualification` (+ the bold tail, when there is one).
+ *
+ * `shown` and `total` are BOTH counted from the returned rows — the mock's "6 of 16" is mock
+ * pagination, and this surface renders every row the read returned, so they are equal until pagination
+ * exists. The same discipline `coverage.ts` applies to its region count: never a constant 16.
+ */
+export function breakdownFooter(
+  chrome: BreakdownChrome,
+  shown: number,
+  total: number,
+): string {
+  return `Showing ${formatCount(shown)} of ${formatCount(total)} ${pluralNoun(
+    total,
+    chrome.childNounSingular,
+  )} · ${chrome.rankedByCaption}`;
 }
