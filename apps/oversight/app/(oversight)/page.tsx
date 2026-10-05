@@ -7,6 +7,7 @@ import {
   sittingYearOf,
 } from "@/lib/oversight/period";
 import { getEnrolmentTotal, type EnrolmentTotal } from "@/lib/oversight/enrolment";
+import { getPupilTeacherRatio, type PupilTeacherRatio } from "@/lib/oversight/ptr";
 import { getSchoolCoverage } from "@/lib/oversight/coverage";
 import {
   getExamQualification,
@@ -22,6 +23,7 @@ import {
   KpiCard,
   formatCount,
   formatPupilCount,
+  formatRatio,
   formatRatioPercent,
 } from "@/components/oversight/kpi-card";
 import {
@@ -55,11 +57,14 @@ import {
  * `lib/oversight/{period,enrolment,coverage,performance}.ts` and `getLatestSuccessfulEtlRun()`. A
  * hard-coded figure here would be a defect, not a shortcut.
  *
- * ═══ THREE CARDS, NOT FOUR — AND THE SAME THREE AT EVERY TIER ═══════════════════════════════════
- * Lucy's §3.3 specifies a fourth card, Pupil-teacher ratio. It is NOT built: `fact_staffing` has no
- * ETL producer (zero writers in `lib/etl/`), so PTR has no data at any tier. A dash-filled
- * placeholder card would claim the measure exists and is merely missing tonight, which is a
- * different and false statement. When a staffing arm lands, the card is additive.
+ * ═══ FOUR CARDS, AND THE SAME FOUR AT EVERY TIER ═══════════════════════════════════════════════
+ * Lucy's §3.3 fourth card, Pupil-teacher ratio, is now built: `fact_staffing` has an ETL producer
+ * (`lib/etl/staffing.ts`), so PTR has data at every tier. It is the ANNUAL-pinned Σenrolment ÷
+ * Σteachers (lib/oversight/ptr.ts), displayed to one decimal with a `: 1` unit, carrying a `.flat`
+ * "within GES level norms" context chip rather than a pass/fail pill — the GES norm is level-dependent
+ * (basic 1:35, JHS/SHS ~1:25), so a flat "above target 25:1" verdict would be a basic-category error on
+ * a blended national figure (Kofi's ruling). The chip is gated: it is only shown when the tier's blended
+ * PTR is within the GES norm band, so it can never assert "within norms" over a ratio that is not.
  *
  * Slice 2 adds NO tier-specific card (Lucy's tier map §2). The older district mock shows a different
  * strip — attendance and teachers-on-post in place of coverage and WASSCE — but that predates the
@@ -129,21 +134,27 @@ export default async function OversightHome() {
   const chrome = tierChrome(officer.level, officer.jurisdictionName);
 
   // Independent reads, in parallel: each is separately fail-soft, so one failure degrades one card.
-  const [latestRun, termPeriod, coverage, wassceCohort] = await Promise.all([
+  const [latestRun, termPeriod, annualPeriod, coverage, wassceCohort] = await Promise.all([
     getLatestSuccessfulEtlRun(scope),
     // period_type is NAMED. `is_current` alone matches the TERM *and* the ANNUAL row of the same
     // academic year (db/schema/dim.ts), and enrolment hangs off the TERM one.
     getCurrentPeriod(scope, "TERM"),
+    // PTR hangs off the ANNUAL row, not the TERM one: fact_staffing is annual-grain (a stock, not a
+    // per-term flow), so it is pinned separately. See lib/oversight/ptr.ts.
+    getCurrentPeriod(scope, "ANNUAL"),
     getSchoolCoverage(scope),
     getLatestExamCohortPeriod(scope, "WASSCE"),
   ]);
 
   // Period-dependent reads. Pinning exactly one period_id is what keeps enrolment from summing two
   // terms of the same children and WASSCE from summing two sittings of different ones.
-  const [enrolment, wassce, breakdown] = await Promise.all([
+  const [enrolment, ptr, wassce, breakdown] = await Promise.all([
     isOk(termPeriod)
       ? getEnrolmentTotal(scope, termPeriod.value.periodId)
       : unavailable<EnrolmentTotal>(),
+    isOk(annualPeriod)
+      ? getPupilTeacherRatio(scope, annualPeriod.value.periodId)
+      : unavailable<PupilTeacherRatio>(),
     isOk(wassceCohort)
       ? getExamQualification(scope, "WASSCE", wassceCohort.value.periodId)
       : unavailable<ExamQualification>(),
@@ -161,6 +172,8 @@ export default async function OversightHome() {
       childLevel: childLevelFor(officer.level),
       termPeriodId: isOk(termPeriod) ? termPeriod.value.periodId : null,
       examPeriodId: isOk(wassceCohort) ? wassceCohort.value.periodId : null,
+      // The ANNUAL period for the PTR column, resolved once here like the other two (never per child).
+      annualPeriodId: isOk(annualPeriod) ? annualPeriod.value.periodId : null,
       exam: "WASSCE",
     }),
   ]);
@@ -194,6 +207,15 @@ export default async function OversightHome() {
   const enrolmentValue = kpi(enrolment, (e) => formatPupilCount(e.total));
   const coverageValue = kpi(coverage, (c) => formatRatioPercent(c.ratio, 1));
   const wassceValue = kpi(wassce, (w) => formatRatioPercent(w.rate, 0));
+  // One decimal (Kofi): the Σ÷Σ tier figure's DISPLAY precision, not the stored numeric(5,2) scale.
+  const ptrValue = kpi(ptr, (p) => formatRatio(p.ratio, 1));
+  // Kofi §1: the GES pupil–teacher norm is LEVEL-DEPENDENT — basic 1:35, JHS/SHS ~1:25 — so 35:1 is the
+  // top of the band, not a flat 25:1 target. The blended national figure sits inside it; the "within GES
+  // level norms" context chip is shown ONLY while the tier's blended PTR does, so it can never assert a
+  // ratio above the band is within it (a northern district's blend could exceed 35 — then no chip, never
+  // a false claim). GES_PTR_NORM_CEILING is an owner-movable presentation threshold, flagged for Kofi.
+  const GES_PTR_NORM_CEILING = 35;
+  const ptrWithinNorms = shown(ptr) && ptr.value.ratio <= GES_PTR_NORM_CEILING;
   const sittingYear = isOk(wassceCohort)
     ? sittingYearOf(wassceCohort.value.academicYear)
     : null;
@@ -297,10 +319,10 @@ export default async function OversightHome() {
           )}
         </PeriodBanner>
 
-        {/* §9: the mock's 1280 cut becomes `xl:`, falling to 2-up and then 1-up. Three cards, not four. */}
+        {/* §9: the mock's 1280 cut becomes `xl:`, falling to 2-up and then 1-up. Four cards (md 2×2). */}
         <section
           aria-label="Headline indicators"
-          className="grid grid-cols-1 gap-[14px] md:grid-cols-2 xl:grid-cols-3"
+          className="grid grid-cols-1 gap-[14px] md:grid-cols-2 xl:grid-cols-4"
         >
           <KpiCard
             lead
@@ -352,6 +374,32 @@ export default async function OversightHome() {
               ) : null
             }
           />
+          <KpiCard
+            label="Pupil-teacher ratio"
+            value={ptrValue}
+            state={!shown(ptr)}
+            /* The ":1" is the unit, the way "%" is coverage's — never part of the value (formatRatio
+               returns just the number). Stripped automatically in the absence state by `shown`. */
+            unit={shown(ptr) ? ": 1" : undefined}
+            sub={
+              shown(ptr) ? (
+                <>
+                  {chrome.tierAdjective} blended average · GES norm 25:1 (JHS/SHS) to 35:1
+                  (primary)
+                </>
+              ) : null
+            }
+            /* NOT a year-over-year delta (the "no delta pills" rule stands for those — one demo year,
+               no comparator). This is a `.flat` CONTEXT chip against the GES norm band, admissible
+               because the ratio and the norm both exist. Kofi: no pass/fail verdict, no ▲/▼ glyph. */
+            delta={
+              ptrWithinNorms ? (
+                <span className="mt-2 inline-flex items-center rounded-pill bg-bg px-[7px] py-0.5 text-[10px] font-bold text-navy-3">
+                  within GES level norms
+                </span>
+              ) : null
+            }
+          />
         </section>
 
         {/*
@@ -379,9 +427,10 @@ export default async function OversightHome() {
         />
 
         {/*
-          Lucy §3.4. Four items against the primitive's `sm:grid-cols-3`, so the fourth wraps — which
+          Lucy §3.4. Five items against the primitive's `sm:grid-cols-3`, so the last two wrap — which
           §3.4 rules acceptable. The Coverage line is COMPUTED, including the "not yet on Omnischools"
-          gap: it is the surface's core discipline, not decoration, so it must be the real number.
+          gap: it is the surface's core discipline, not decoration, so it must be the real number. The
+          Measure line is the PTR honesty caveat (Kofi §2): PTR, not the trained-teacher ratio.
         */}
         <Provenance
           items={[
@@ -411,6 +460,15 @@ export default async function OversightHome() {
                 : "unavailable — the EMIS register could not be read",
             ],
             ["Mode", "aggregate · no named records on this surface"],
+            [
+              // ⚠ THE PTR HONESTY CAVEAT (Kofi §2). This column is PTR — ALL teachers on roll, trained
+              // and untrained — NOT the trained-teacher ratio (PTTR), which GES tracks as its sharpest
+              // equity signal and which a single un-split column cannot carry. Stated here, in the
+              // surface's honesty ledger, so an official who knows the PTTR distinction is not misled
+              // into reading this as one; the banner stays informational and does not carry it.
+              "Measure",
+              "Pupil–teacher ratio — all teachers on roll, trained and untrained. Not the trained-teacher ratio (PTTR).",
+            ],
             [
               // The ceiling, stated per tier (Lucy §1.5). This replaces slice 1's generic "scoped to
               // your jurisdiction subtree" placeholder. It is a SECURITY CLAIM, not copy: it tells the

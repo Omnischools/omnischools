@@ -31,7 +31,13 @@ import {
   initialsOf,
 } from "@/components/oversight/breakdown-table";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
-import { JUR, OFFICER, PERIOD_ID_EXAM_COHORT, PERIOD_ID_TERM } from "./fixtures/ids";
+import {
+  JUR,
+  OFFICER,
+  PERIOD_ID_ANNUAL,
+  PERIOD_ID_EXAM_COHORT,
+  PERIOD_ID_TERM,
+} from "./fixtures/ids";
 import {
   adminAnalytics,
   districtOfficer,
@@ -246,13 +252,18 @@ function okValue<T>(reading: Reading<T>): T {
 /** The read under test, with the two periods the dashboard pins resolved ONCE and passed in. */
 async function readBreakdown(
   scope: JurisdictionScope,
-  overrides: { examPeriodId?: string | null; termPeriodId?: string | null } = {},
+  overrides: {
+    examPeriodId?: string | null;
+    termPeriodId?: string | null;
+    annualPeriodId?: string | null;
+  } = {},
 ): Promise<ChildBreakdown> {
   return okValue(
     await getChildBreakdown(scope, {
       childLevel: childLevelFor(scope.level),
       termPeriodId: PERIOD_ID_TERM,
       examPeriodId: PERIOD_ID_EXAM_COHORT,
+      annualPeriodId: PERIOD_ID_ANNUAL,
       exam: "WASSCE",
       ...overrides,
     }),
@@ -467,6 +478,7 @@ describe("Σchildren = the total row, at every tier", () => {
         childLevel: "SCHOOL",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: "not-a-uuid",
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     ).toEqual(unavailable());
@@ -602,11 +614,20 @@ describe("per-child rates are candidate-weighted", () => {
     expect(Math.abs(b.total.wassceRate! - unweighted)).toBeGreaterThan(0.1);
   });
 
-  it("`qualification_rate` is structurally out of reach — it is not in the allow-list", () => {
-    expect(readCode("lib/oversight/breakdown.ts")).not.toMatch(/\bqualification_rate\b/);
-    for (const stored of ["attendance_rate", "ptr", "plc_participation_rate"]) {
-      expect(readCode("lib/oversight/breakdown.ts")).not.toContain(stored);
+  it("stored rates are structurally out of reach — none is in the allow-list", () => {
+    const code = readCode("lib/oversight/breakdown.ts");
+    expect(code).not.toMatch(/\bqualification_rate\b/);
+    // These stored rates live on fact tables this module never reads, so the column name must not
+    // appear at all.
+    for (const stored of ["attendance_rate", "plc_participation_rate"]) {
+      expect(code).not.toContain(stored);
     }
+    // PTR is the exception that proves the rule: fact_staffing IS read here (aliased `fs`), for the
+    // PTR numerator/denominator — but its STORED per-school `ptr` column is NEVER selected. The
+    // roll-up is Σenrolment ÷ Σteachers, re-derived, never the stored rate. So the precise guard is
+    // "fs.ptr is never selected", not "the substring ptr never appears" (the re-derived `row.ptr`
+    // field and the module's own prose legitimately contain it).
+    expect(code).not.toMatch(/\bfs\.ptr\b/);
   });
 
   it("no cohort means NO RATE — never a confident 0%", async () => {
@@ -910,6 +931,7 @@ describe("the roll-up cannot walk around the jurisdiction chokepoint", () => {
         childLevel: "SCHOOL",
         termPeriodId: "not-a-uuid",
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     ).toEqual(unavailable());
@@ -932,6 +954,7 @@ describe("the roll-up cannot walk around the jurisdiction chokepoint", () => {
         childLevel: "SCHOOL",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       });
       expect(reading.status).toBe("unavailable");
@@ -1106,6 +1129,7 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     schoolsReporting: null,
     schoolsRegistered: null,
     coverageRatio: null,
+    ptr: null,
     ...fields,
   };
 }
@@ -1203,7 +1227,7 @@ describe("the section renders the honest states", () => {
     expect(text).toContain("Showing 1 of 1 district");
   });
 
-  it("no PTR column, no drill arrow, no Compare chip — none of the three has a source or a target", () => {
+  it("PTR column is present now; still no drill arrow and no Compare chip — those have no target", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
         chrome: breakdownChrome("NATIONAL", null),
@@ -1212,13 +1236,16 @@ describe("the section renders the honest states", () => {
           childLevel: "REGION",
           hasCoverage: true,
           unattributed: null,
-          children: [row({ childId: "a", name: "A Region", enrolment: 10 })],
-          total: row({ enrolment: 10 }),
+          children: [row({ childId: "a", name: "A Region", enrolment: 10, ptr: 24.8 })],
+          total: row({ enrolment: 10, ptr: 24.8 }),
         },
       }),
     );
     const text = textOf(markup);
-    expect(text).not.toContain("PTR");
+    // PTR now has an ETL producer, so its column header, sort chip and cells render (the cell as
+    // `24.8:1`). Compare and the drill arrow stay absent — they point at surfaces that do not exist.
+    expect(text).toContain("PTR");
+    expect(text).toContain("24.8:1");
     expect(text).not.toContain("Compare");
     expect(text).not.toContain("→");
     expect(markup).not.toContain("<a ");
@@ -1324,11 +1351,13 @@ describe("the dashboard renders the breakdown section at every tier", () => {
     expect(text).toContain(OTHER_REGION_NAME);
     expect(text).toContain("Ghana · all 2 regions");
     expect(text).toContain("Showing 2 of 2 regions · sorted by WASSCE qualification");
-    // The spread, with two bars and the trimmed caption.
+    // The spread and the KPI strip now carry the PTR measure (the staffing ETL has landed). "all three"
+    // is still never a literal (the caption is derived from the bars that rendered), and national still
+    // has no rank strip.
     expect(text).toContain("The national spread");
     expect(text).toContain("WASSCE qualification");
     expect(text).toContain("School coverage");
-    expect(text).not.toContain("Pupil-teacher ratio");
+    expect(text).toContain("Pupil-teacher ratio");
     expect(text).not.toContain("all three");
     expect(text).not.toContain("Strongest ·");
     // Every figure computed: the mock's placeholders must not appear.
@@ -1389,6 +1418,7 @@ describe("`child_level` is a DISPLAY DEPTH, never a second ceiling (Wells §1.4)
         childLevel: "REGION",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     );
@@ -1423,6 +1453,7 @@ describe("`child_level` is a DISPLAY DEPTH, never a second ceiling (Wells §1.4)
         childLevel: "DISTRICT",
         termPeriodId: PERIOD_ID_TERM,
         examPeriodId: PERIOD_ID_EXAM_COHORT,
+        annualPeriodId: PERIOD_ID_ANNUAL,
         exam: "WASSCE",
       }),
     );

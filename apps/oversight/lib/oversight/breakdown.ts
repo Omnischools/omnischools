@@ -131,6 +131,13 @@ export interface BreakdownRow {
   schoolsRegistered: number | null;
   /** reporting ÷ registered, 0..1. Null at the DISTRICT tier and when the register names none. */
   coverageRatio: number | null;
+  /**
+   * Σ enrolment_total ÷ Σ teachers_on_roll over the child's schools — the WEIGHTED PTR, never
+   * avg(stored ptr). Null when no staffing row was filed for the child (not a "0 teachers" claim).
+   * LOWER is better (fewer pupils per teacher), which the surface inverts; the number itself is
+   * unsigned pupils-per-teacher.
+   */
+  ptr: number | null;
   // NOTE: there is deliberately no `isHome` here, and no `scope.jurisdictionId` anywhere in this
   // module. Lucy's gold-tinted home row is a comparison between a child id and the officer's own node,
   // which is PRESENTATION — and keeping every `scope.*` field out of the read means the static guard
@@ -190,6 +197,10 @@ interface FactBucket {
   schoolsFiling: number | null;
   candidates: number | null;
   qualified: number | null;
+  /** Σ fact_staffing.enrolment_total over the child. Null = no staffing row filed. */
+  staffEnrolment: number | null;
+  /** Σ fact_staffing.teachers_on_roll over the child — the PTR denominator. Null = none filed. */
+  teachers: number | null;
 }
 
 interface RegisterBucket {
@@ -207,20 +218,27 @@ export async function getChildBreakdown(
     termPeriodId: string | null;
     /** The ONE sitting the WASSCE columns are of. Null ⇒ those columns are simply absent. */
     examPeriodId: string | null;
+    /**
+     * The ONE ANNUAL period the PTR column is of. Null ⇒ the PTR column is simply absent.
+     * It is the ANNUAL row, not the TERM one: `fact_staffing` is annual-grain (a stock, not a
+     * per-term flow), so it hangs off a different period than enrolment — see lib/oversight/ptr.ts.
+     */
+    annualPeriodId: string | null;
     exam: Exam;
   },
 ): Promise<Reading<ChildBreakdown>> {
-  const { childLevel, termPeriodId, examPeriodId, exam } = args;
+  const { childLevel, termPeriodId, examPeriodId, annualPeriodId, exam } = args;
   try {
     return await withJurisdiction(scope, async (tx) => {
       /**
        * QUERY 1 — THE FACT SIDE. One statement, one ancestry walk, one `()` total row.
        *
-       * The two fact tables are UNION ALL'd into a per-school `facts` CTE BEFORE the ancestor join, so
-       * the level-pinned upward walk is written exactly ONCE instead of copy-pasted per measure — and
-       * so the enrolment total and the WASSCE total come from the SAME scan as their own child rows
-       * (Wells trap 5). `measure` separates them again in the `filter (where …)` clauses, which is also
-       * what keeps "no rows" distinguishable from "a measured zero".
+       * The three fact tables (enrolment, exam, staffing) are UNION ALL'd into a per-school `facts` CTE
+       * BEFORE the ancestor join, so the level-pinned upward walk is written exactly ONCE instead of
+       * copy-pasted per measure — and so the enrolment, WASSCE and PTR totals come from the SAME scan as
+       * their own child rows (Wells trap 5). `measure` separates them again in the `filter (where …)`
+       * clauses, which is also what keeps "no rows" distinguishable from "a measured zero". Each arm
+       * carries every measure column, zero-filled where it does not apply, so the UNION's arms line up.
        *
        * A NULL period id compares as NULL and matches nothing, so an unresolved period contributes no
        * rows rather than needing a second query text.
@@ -241,7 +259,9 @@ export async function getChildBreakdown(
                  'ENROLMENT'::text           as measure,
                  fe.headcount::bigint        as headcount,
                  0::bigint                   as candidates,
-                 0::bigint                   as qualified
+                 0::bigint                   as qualified,
+                 0::bigint                   as staff_enrolment,
+                 0::bigint                   as teachers
             from fact_enrolment fe
            where fe.period_id = ${termPeriodId}::uuid
              -- Both mandatory: the ALL row sits beside MALE/FEMALE (×3) and a null class_form IS the
@@ -253,7 +273,9 @@ export async function getChildBreakdown(
                  'EXAM'::text,
                  0::bigint,
                  fpe.candidates::bigint,
-                 fpe.qualified::bigint
+                 fpe.qualified::bigint,
+                 0::bigint,
+                 0::bigint
             from fact_performance_exam fpe
            where fpe.period_id = ${examPeriodId}::uuid
              and fpe.exam = ${exam}::exam
@@ -261,6 +283,20 @@ export async function getChildBreakdown(
              -- cancels) while the candidate count is 3× the real cohort — so three copies of a thin
              -- cohort would silently satisfy the rank-card floor.
              and fpe.sex = 'ALL'::ov_sex
+          union all
+          -- STAFFING — the PTR arm. fact_staffing is ANNUAL grain and has NO sex column, so it pins the
+          -- ANNUAL period and carries no sex filter. enrolment_total and teachers_on_roll are summed as
+          -- the PTR numerator/denominator; the per-child ratio is Σ÷Σ in TS below, never avg(stored ptr)
+          -- (the stored ptr column is deliberately never selected). See lib/oversight/ptr.ts.
+          select fs.jurisdiction_id,
+                 'STAFFING'::text,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 fs.enrolment_total::bigint,
+                 fs.teachers_on_roll::bigint
+            from fact_staffing fs
+           where fs.period_id = ${annualPeriodId}::uuid
         ),
         attributed as (
           select case ${childLevel}::jurisdiction_level
@@ -277,7 +313,9 @@ export async function getChildBreakdown(
                  f.measure                as measure,
                  f.headcount              as headcount,
                  f.candidates             as candidates,
-                 f.qualified              as qualified
+                 f.qualified              as qualified,
+                 f.staff_enrolment        as staff_enrolment,
+                 f.teachers               as teachers
             from facts f
             -- The fact's OWN node. INNER is correct here and only here: the fact row is visible, so its
             -- SCHOOL row is visible too (same predicate, same argument).
@@ -299,7 +337,10 @@ export async function getChildBreakdown(
                  filter (where measure = 'ENROLMENT')::int                       as schools_filing,
                sum(candidates) filter (where measure = 'EXAM')::bigint           as candidates,
                sum(qualified) filter (where measure = 'EXAM')::bigint            as qualified,
-               count(*) filter (where measure = 'EXAM')::int                     as exam_rows
+               count(*) filter (where measure = 'EXAM')::int                     as exam_rows,
+               sum(staff_enrolment) filter (where measure = 'STAFFING')::bigint  as staff_enrolment,
+               sum(teachers) filter (where measure = 'STAFFING')::bigint         as teachers,
+               count(*) filter (where measure = 'STAFFING')::int                 as staffing_rows
           from attributed
          group by grouping sets ((child_id, child_name), ())
       `);
@@ -310,6 +351,7 @@ export async function getChildBreakdown(
       for (const row of factRows) {
         const enrolmentRows = Number(row.enrolment_rows);
         const examRows = Number(row.exam_rows);
+        const staffingRows = Number(row.staffing_rows);
         const bucket: FactBucket = {
           childId: (row.child_id as string | null) ?? null,
           name: (row.child_name as string | null) ?? null,
@@ -318,6 +360,8 @@ export async function getChildBreakdown(
           schoolsFiling: enrolmentRows === 0 ? null : Number(row.schools_filing),
           candidates: examRows === 0 ? null : Number(row.candidates),
           qualified: examRows === 0 ? null : Number(row.qualified),
+          staffEnrolment: staffingRows === 0 ? null : Number(row.staff_enrolment),
+          teachers: staffingRows === 0 ? null : Number(row.teachers),
         };
         if (Number(row.grp) === TOTAL_GROUPING) factTotal = bucket;
         else factBuckets.set(bucket.childId, bucket);
@@ -409,6 +453,12 @@ export async function getChildBreakdown(
         schoolsRegistered: register?.registered ?? null,
         coverageRatio:
           register === undefined ? null : ratio(register.reporting, register.registered),
+        // Σenrolment ÷ Σteachers, per child — the weighted PTR, never avg(stored ptr). Null when the
+        // child filed no staffing row (not a "0 teachers" claim), consistent with every other measure.
+        ptr:
+          fact?.staffEnrolment != null && fact.teachers != null
+            ? ratio(fact.staffEnrolment, fact.teachers)
+            : null,
       });
 
       const childIds = new Set<string>();
@@ -443,10 +493,20 @@ export async function getChildBreakdown(
       const rows = unattributed === null ? children : [...children, unattributed];
       const sumOf = (pick: (row: BreakdownRow) => number | null): number =>
         rows.reduce((acc, row) => acc + (pick(row) ?? 0), 0);
+      // PTR is a RATIO, not additive, so it is reconciled through its two COMPONENTS, summed on the
+      // fact side (the children + the unattributed bucket = the `()` total, the same grouping-sets
+      // invariant the other measures lean on). `factBuckets` holds every child key AND the null bucket.
+      const factSumOf = (pick: (bucket: FactBucket) => number | null): number => {
+        let acc = 0;
+        for (const bucket of factBuckets.values()) acc += pick(bucket) ?? 0;
+        return acc;
+      };
       const reconciles =
         sumOf((r) => r.enrolment) === (total.enrolment ?? 0) &&
         sumOf((r) => r.candidates) === (total.candidates ?? 0) &&
         sumOf((r) => r.qualified) === (total.qualified ?? 0) &&
+        factSumOf((b) => b.staffEnrolment) === (factTotal.staffEnrolment ?? 0) &&
+        factSumOf((b) => b.teachers) === (factTotal.teachers ?? 0) &&
         (!hasCoverage ||
           (sumOf((r) => r.schoolsRegistered) === (total.schoolsRegistered ?? 0) &&
             sumOf((r) => r.schoolsReporting) === (total.schoolsReporting ?? 0)));

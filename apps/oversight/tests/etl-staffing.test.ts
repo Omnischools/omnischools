@@ -1123,38 +1123,43 @@ describe("a FAILED verdict writes NOTHING — across ALL SIX fact tables", () =>
   }, 900_000);
 });
 
-describe("the structural half of the read rule — ptr must not be in a roll-up allow-list", () => {
-  it("no oversight read module selects fact_staffing.ptr at all (no tier surface exists yet)", () => {
-    // `SLICE-3-ROLLUP-RULING.md` §1: the DURABLE form of "never avg(ptr)" is to keep the column out of
-    // the allow-list, so a tier query physically cannot select it and must sum the inputs instead —
-    // exactly how `lib/oversight/performance.ts` handles `qualification_rate`. The PTR dashboard slice
-    // is separate and not built here; this test pins the starting state so adding `ptr` to a BREAKDOWN
-    // or TIER query is a deliberate, reviewable act rather than an autocomplete.
+describe("the structural half of the read rule — the stored ptr column stays out of every allow-list", () => {
+  it("no oversight read module selects fact_staffing.ptr; the tier reads sum the two counts instead", () => {
+    // `SLICE-3-ROLLUP-RULING.md` §1: the DURABLE form of "never avg(ptr)" is to keep the stored per-school
+    // `ptr` column out of the allow-list, so a tier query physically cannot select it and must sum the
+    // two integer inputs instead — exactly how `lib/oversight/performance.ts` handles `qualification_rate`.
+    // The PTR surfacing slice has now landed (ptr.ts + breakdown.ts read fact_staffing), so this is no
+    // longer "no staffing read exists"; it is the lasting rule that the one column they must never touch
+    // is the stored rate. The offence is selecting `fs.ptr` (the stored column, aliased `fs` in both
+    // readers), NOT merely referencing fact_staffing — the readers legitimately sum enrolment_total and
+    // teachers_on_roll and re-derive the ratio.
     const dir = join(process.cwd(), "lib/oversight");
     const offenders: string[] = [];
+    const staffingReaders: string[] = [];
     for (const file of readdirSync(dir)) {
       if (!file.endsWith(".ts")) continue;
       const text = readFileSync(join(dir, file), "utf8");
-      // Comment lines are stripped before the match, so a module that merely REASONS about
-      // `fact_staffing` (as `suppression.ts` does) is not an offender — only one that puts the column
-      // into a query is. The test fails the moment a read module selects `ptr`, which is the moment a
-      // human has to decide whether that surface is a single school or a tier.
+      // Comment lines are stripped first, so prose that REASONS about the stored ptr (as both readers
+      // and suppression.ts do) is not an offence — only a query that selects `fs.ptr` is.
       const code = text
         .split("\n")
         .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
         .join("\n");
-      if (/fact_staffing/.test(code) && /\bptr\b/.test(code)) offenders.push(file);
+      if (/from\s+fact_staffing/.test(code)) staffingReaders.push(file);
+      if (/\bfs\.ptr\b/.test(code)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
-    // Nothing in lib/oversight queries fact_staffing yet AT ALL — the PTR dashboard is a later slice.
-    // Stated so the assertion above is understood as a starting state rather than as proof of a rule.
-    const anyStaffingRead = readdirSync(dir).filter(
-      (f) =>
-        f.endsWith(".ts") &&
-        /from\s+fact_staffing/.test(readFileSync(join(dir, f), "utf8")),
-    );
-    expect(anyStaffingRead).toEqual([]);
-    // And the precedent is still in place, so this test is not asserting a vacuum.
+    // The surfacing slice HAS landed, so there ARE staffing readers now — the national PTR KPI read and
+    // the breakdown PTR column. Asserted so the rule above is understood against real readers, not a vacuum.
+    expect(staffingReaders).toContain("ptr.ts");
+    expect(staffingReaders).toContain("breakdown.ts");
+    // …and each derives the ratio from the two integer counts, never the stored rate.
+    for (const file of staffingReaders) {
+      const code = readFileSync(join(dir, file), "utf8");
+      expect(code).toMatch(/enrolment_total/);
+      expect(code).toMatch(/teachers_on_roll/);
+    }
+    // And the precedent it is modelled on is still in place, so this test is not asserting a vacuum.
     const performance = readFileSync(join(dir, "performance.ts"), "utf8");
     expect(performance).toMatch(/qualification_rate` is absent from it ON PURPOSE/);
   });

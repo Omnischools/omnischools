@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { BreakdownRow, ChildBreakdown } from "@/lib/oversight/breakdown";
-import { formatCount, formatPupilCount, formatRatioPercent } from "./kpi-card";
+import { formatCount, formatPupilCount, formatRatio, formatRatioPercent } from "./kpi-card";
 import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome";
 
 /**
@@ -11,11 +11,14 @@ import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome"
  * IDENTICAL CSS rules in the mocks and differ only in nouns and the home-row highlight, so building two
  * would be building one twice; every tier-varying string arrives in `chrome` (tier-chrome.tsx §3).
  *
+ * THE PTR COLUMN, its sort chip and the spread bar (breakdown-visuals.tsx) are now BUILT: they were
+ * held back only while `fact_staffing` had no ETL producer, which it now has (lib/etl/staffing.ts). PTR
+ * is a plain mono `{ratio}:1` cell with NO colour tone — its band is level-dependent, so one tone over a
+ * blended figure would mislead — and it renders at every tier (every school files a staffing row), so it
+ * is outside the `hasCoverage` pair. The per-child value is Σenrolment ÷ Σteachers (breakdown.ts), never
+ * avg(stored ptr).
+ *
  * ═══ WHAT IS NOT HERE, AND WHY — each omission is a claim this surface would otherwise make ═══════
- * · THE PTR COLUMN, the PTR sort chip and the PTR spread bar. `fact_staffing` has no ETL producer
- *   (zero writers in lib/etl/), which is the same verified reason the shipped dashboard drops the
- *   Pupil-teacher-ratio KPI card. A dash-filled column would claim the measure exists and is merely
- *   missing tonight. When a staffing arm lands, the column is additive and this file is where it goes.
  * · THE DRILL ARROW AND THE ROW LINK. The mock's rows open "that region's regional dashboard", and this
  *   slice mounts the breakdown as a section on the ONE `/` dashboard (the slice-1/2 single-route
  *   decision) — there is no per-jurisdiction route to open. A pointer cursor, a gold `→` and a gold
@@ -187,7 +190,9 @@ export function BreakdownTable({
   const isHome = (row: BreakdownRow): boolean =>
     row.childId !== null && row.childId === homeId;
   const homeRow = children.find(isHome) ?? null;
-  const columns = hasCoverage ? 6 : 4;
+  // +1 for the PTR column, which — unlike Schools/Coverage — renders at EVERY tier (every school files a
+  // staffing row), so it is outside the `hasCoverage` pair: 6→7 with coverage, 4→5 without.
+  const columns = hasCoverage ? 7 : 5;
 
   /** One cell renderer per measure, so the child rows, the unattributed row and the total agree. */
   const schoolsCell = (row: BreakdownRow) =>
@@ -210,15 +215,21 @@ export function BreakdownTable({
   const candidatesCell = (row: BreakdownRow) =>
     row.candidates === null ? <Absent /> : <Num>{formatCount(row.candidates)}</Num>;
 
+  // PTR — a plain mono number, NO colour tone (unlike coverage/WASSCE): lower is better, but the band
+  // that would colour it is level-dependent (ruling §3), so a single tone over a blended figure would
+  // mislead. `{ratio}:1`, one decimal (Kofi), bold on the total row like every other total cell.
+  const ptrCell = (row: BreakdownRow, bold?: boolean) =>
+    row.ptr === null ? <Absent /> : <Num bold={bold}>{formatRatio(row.ptr, 1)}:1</Num>;
+
   return (
     <div>
       {/*
         THE TOOLBAR, PRESENTATIONAL (Lucy §4.1's sanctioned fallback). The sort is applied server-side
         — WASSCE qualification, descending — and client re-sorting is not in this slice, so the chips
-        are static pill spans and not controls: the active one states what the ranking IS, and the other
-        two name the measures a later slice will sort by. They are not `Button` primitives and nothing
-        here is focusable, so no keyboard user is offered a control that does nothing. PTR and Compare
-        are omitted entirely (see the file note).
+        are static pill spans and not controls: the active one states what the ranking IS, and the others
+        name the measures a later slice will sort by (PTR among them — it will sort ascending, lower being
+        better). They are not `Button` primitives and nothing here is focusable, so no keyboard user is
+        offered a control that does nothing. Only Compare is omitted entirely (see the file note).
       */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border-1 px-5 py-3">
         <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-navy-3">
@@ -235,6 +246,11 @@ export function BreakdownTable({
             Coverage
           </span>
         ) : null}
+        {/* PTR, like the others, is a static pill this slice (client re-sort not wired). When it is, PTR
+            sorts ASCENDING — lower ratio is better — the inverse of the rate keys' descending order. */}
+        <span className="rounded-pill border border-border-2 bg-surface px-2.5 py-0.5 text-[10px] text-navy-3">
+          PTR
+        </span>
       </div>
 
       {/* §8: the table scrolls rather than reflowing — the mono numerics stay column-aligned. */}
@@ -263,6 +279,11 @@ export function BreakdownTable({
               </th>
               <th scope="col" className={cn(TH, "text-center")}>
                 WASSCE qual.
+              </th>
+              {/* PTR sits between WASSCE and Candidates — the mock's "WASSCE then PTR" order, with the
+                  shipped Candidates column (the ranking weight) kept last. */}
+              <th scope="col" className={cn(TH, "text-center")}>
+                PTR
               </th>
               {/*
                 THE RANKING WEIGHT, VISIBLE (Wells §5). The rank cards below ignore children with fewer
@@ -319,6 +340,7 @@ export function BreakdownTable({
                 <td className={cn(TD, "text-center")}>
                   {row.wassceRate === null ? <Absent /> : <QualPill rate={row.wassceRate} />}
                 </td>
+                <td className={cn(TD, "text-center")}>{ptrCell(row)}</td>
                 <td className={cn(TD, "text-center")}>{candidatesCell(row)}</td>
               </tr>
             ))}
@@ -358,6 +380,7 @@ export function BreakdownTable({
                     <QualPill rate={unattributed.wassceRate} />
                   )}
                 </td>
+                <td className={cn(TD, "text-center")}>{ptrCell(unattributed)}</td>
                 <td className={cn(TD, "text-center")}>{candidatesCell(unattributed)}</td>
               </tr>
             )}
@@ -389,6 +412,7 @@ export function BreakdownTable({
               <td className={cn(TD, "text-center")}>
                 {total.wassceRate === null ? <Absent /> : <QualPill rate={total.wassceRate} />}
               </td>
+              <td className={cn(TD, "text-center")}>{ptrCell(total, true)}</td>
               <td className={cn(TD, "text-center")}>{candidatesCell(total)}</td>
             </tr>
           </tbody>

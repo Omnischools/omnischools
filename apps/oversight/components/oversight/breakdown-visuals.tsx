@@ -6,7 +6,7 @@ import {
   type ChildBreakdown,
 } from "@/lib/oversight/breakdown";
 import { Panel } from "./primitives";
-import { formatRatioPercent } from "./kpi-card";
+import { formatRatio, formatRatioPercent } from "./kpi-card";
 import type { BreakdownChrome } from "./tier-chrome";
 
 /**
@@ -23,16 +23,35 @@ import type { BreakdownChrome } from "./tier-chrome";
  * spread. That asymmetry is the design's, and it is the only `officer.level` gate in this slice (made in
  * the section component): everything else that varies by tier is a string in `breakdownChrome()`.
  *
- * ═══ TWO BARS, NOT THREE ═════════════════════════════════════════════════════════════════════════
- * The mock's third bar is Pupil-teacher ratio, which has no ETL producer — the same reason the PTR KPI
- * card and the PTR column are absent. The caption's "all three" is trimmed with it: the text may not
- * out-claim the chart. When staffing lands, the row is additive and is INVERTED (lower is better), which
- * is why that is written down here rather than rediscovered.
+ * ═══ THREE BARS — AND THE THIRD IS INVERTED ══════════════════════════════════════════════════════
+ * The third bar is Pupil-teacher ratio, held back in slice 3 because `fact_staffing` had no ETL
+ * producer. It does now (lib/etl/staffing.ts), so the bar is live — and it is INVERTED: for WASSCE and
+ * coverage higher is better, so the green dot sits at the high/right end; for PTR LOWER is better
+ * (fewer pupils per teacher), so the green dot sits at the low/left end. "Inverted" is purely which end
+ * is green — the axis still increases left→right. `SpreadBar` takes track POSITIONS and a `goodEnd`
+ * rather than raw rates, so each measure's own scale lives in `SpreadPanel`: the two rate bars project
+ * onto the plain 0–100% axis, and PTR projects onto a STATED, owner-movable domain (`PTR_AXIS`) because
+ * a pupils-per-teacher count has no natural 0–100 scale. The caption lists one gap per bar that
+ * rendered, derived — never a hard-coded "all three".
  */
 
-/** 0..1 → a percent of the track's width. The track's axis is a plain 0–100% visual scale. */
-function pct(ratio: number): string {
-  return `${(ratio * 100).toFixed(1)}%`;
+/** 0..1 → a percent of the track's width. Works for a 0–100% rate axis AND for a projected position. */
+function pct(fraction: number): string {
+  return `${(fraction * 100).toFixed(1)}%`;
+}
+
+/**
+ * THE PTR SPREAD-BAR AXIS — a STATED presentation domain, not a measurement (cf. the demo PTR bands in
+ * lib/etl/staffing.ts, which are "plausibility weights, not measurements"). A pupils-per-teacher count
+ * has no 0–100 axis to project onto the way a rate does, so the bar needs an explicit [lo, hi] window.
+ * [15, 40] spans the demo's seeded bands (KG 22–45, Primary 25–55, JHS 12–25, SHS 15–28) comfortably;
+ * values outside it clamp to the ends rather than overflowing the track. Owner/Kofi-movable.
+ */
+const PTR_AXIS = { lo: 15, hi: 40 } as const;
+
+/** A PTR value → its 0..1 position on `PTR_AXIS`, clamped so an out-of-window ratio sits at an end. */
+function projectPtr(value: number): number {
+  return Math.min(1, Math.max(0, (value - PTR_AXIS.lo) / (PTR_AXIS.hi - PTR_AXIS.lo)));
 }
 
 /** Gap in PERCENTAGE POINTS, derived — the mock's "18-point gap" is its own data, not a constant. */
@@ -40,19 +59,31 @@ function gapPoints(min: number, max: number): string {
   return ((max - min) * 100).toFixed(0);
 }
 
+/**
+ * One spread row. Takes TRACK POSITIONS (0..1), not raw figures, so a rate bar (0–100% axis) and the
+ * PTR bar (projected onto PTR_AXIS) share one component. `goodEnd` is the ONLY thing the inversion
+ * changes: "high" puts the green dot at the high/right end (rates), "low" at the low/left end (PTR).
+ */
 function SpreadBar({
   label,
-  min,
-  max,
-  mean,
-  decimals,
+  lowPos,
+  highPos,
+  meanPos,
+  goodEnd,
+  rangeText,
+  meanText,
 }: {
   label: string;
-  min: number;
-  max: number;
-  mean: number | null;
-  decimals: number;
+  lowPos: number;
+  highPos: number;
+  meanPos: number | null;
+  goodEnd: "high" | "low";
+  rangeText: string;
+  meanText: string | null;
 }) {
+  // The green (best) dot goes to whichever END this measure counts as good; terra (worst) to the other.
+  const greenPos = goodEnd === "high" ? highPos : lowPos;
+  const terraPos = goodEnd === "high" ? lowPos : highPos;
   return (
     <div className="flex items-center gap-3 border-b border-border-1 py-3 last:border-b-0">
       <span className="w-[140px] shrink-0 text-[11.5px] font-semibold text-navy">
@@ -63,33 +94,31 @@ function SpreadBar({
         <span
           aria-hidden
           className="absolute bottom-[5px] top-[5px] rounded-[4px] bg-gold-soft"
-          style={{ left: pct(min), right: pct(1 - max) }}
+          style={{ left: pct(lowPos), right: pct(1 - highPos) }}
         />
         {/* the WEIGHTED mean (the tier total's own rate) — never the unweighted mean of the children */}
-        {mean === null ? null : (
+        {meanPos === null ? null : (
           <span
             aria-hidden
             className="absolute inset-y-0 w-[2px] bg-navy"
-            style={{ left: pct(mean) }}
+            style={{ left: pct(meanPos) }}
           />
         )}
         <span
           aria-hidden
           className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-terra"
-          style={{ left: pct(min) }}
+          style={{ left: pct(terraPos) }}
         />
         <span
           aria-hidden
           className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-green"
-          style={{ left: pct(max) }}
+          style={{ left: pct(greenPos) }}
         />
       </span>
       <span className="w-[120px] shrink-0 text-right text-[10px] text-navy-3">
-        <b className="text-navy-2">
-          {formatRatioPercent(min, decimals)}% – {formatRatioPercent(max, decimals)}%
-        </b>
+        <b className="text-navy-2">{rangeText}</b>
         <br />
-        {mean === null ? "mean unavailable" : `mean ${formatRatioPercent(mean, decimals)}%`}
+        {meanText === null ? "mean unavailable" : meanText}
       </span>
     </div>
   );
@@ -104,6 +133,32 @@ export function SpreadPanel({
 }) {
   const wassce = spreadOf(breakdown, (row) => row.wassceRate);
   const coverage = spreadOf(breakdown, (row) => row.coverageRatio);
+  const ptr = spreadOf(breakdown, (row) => row.ptr);
+
+  /**
+   * One gap clause per bar that rendered, derived — the mock's "18-point" figures are its own data. The
+   * list is built from whichever spreads exist so "all three" is never a literal: WASSCE and coverage
+   * gaps are PERCENTAGE points (×100), PTR's is RATIO points (max − min directly — it is not a rate, so
+   * ×100 would invent a "810-point" gap). Kofi §4: PTR belongs in the shared equity framing, as the
+   * third disparity; the inversion (worst = highest) is carried by the bar's dots, not re-stated here.
+   */
+  const gapClauses = [
+    wassce === null ? null : `a ${gapPoints(wassce.min, wassce.max)}-point WASSCE gap`,
+    coverage === null ? null : `a ${gapPoints(coverage.min, coverage.max)}-point coverage gap`,
+    ptr === null
+      ? null
+      : `a ${(ptr.max - ptr.min).toFixed(1)}-point pupil-teacher-ratio gap`,
+  ].filter((clause): clause is string => clause !== null);
+
+  // "X is the disparity" / "X and Y are…" / "X, Y and Z are…" — grammatical for 1, 2 or 3 clauses.
+  const gapSentence =
+    gapClauses.length === 0
+      ? null
+      : `${
+          gapClauses.length === 1
+            ? gapClauses[0]
+            : `${gapClauses.slice(0, -1).join(", ")} and ${gapClauses[gapClauses.length - 1]}`
+        } ${gapClauses.length === 1 ? "is the disparity" : "are the disparities"} national policy exists to close.`;
 
   return (
     <Panel
@@ -114,7 +169,7 @@ export function SpreadPanel({
       }
       meta={`Best to worst ${chrome.childNounSingular}`}
     >
-      {wassce === null && coverage === null ? (
+      {wassce === null && coverage === null && ptr === null ? (
         // Lucy §6: an empty note, never zero-width bars. A spread needs at least two children to be one.
         <p className="text-xs italic text-navy-3">
           No spread to show yet — a range needs at least two {chrome.childNounPlural} with
@@ -125,27 +180,48 @@ export function SpreadPanel({
           {wassce === null ? null : (
             <SpreadBar
               label="WASSCE qualification"
-              min={wassce.min}
-              max={wassce.max}
-              mean={wassce.mean}
-              decimals={0}
+              lowPos={wassce.min}
+              highPos={wassce.max}
+              meanPos={wassce.mean}
+              goodEnd="high"
+              rangeText={`${formatRatioPercent(wassce.min, 0)}% – ${formatRatioPercent(wassce.max, 0)}%`}
+              meanText={wassce.mean === null ? null : `mean ${formatRatioPercent(wassce.mean, 0)}%`}
             />
           )}
           {coverage === null ? null : (
             <SpreadBar
               label="School coverage"
-              min={coverage.min}
-              max={coverage.max}
-              mean={coverage.mean}
-              decimals={1}
+              lowPos={coverage.min}
+              highPos={coverage.max}
+              meanPos={coverage.mean}
+              goodEnd="high"
+              rangeText={`${formatRatioPercent(coverage.min, 1)}% – ${formatRatioPercent(coverage.max, 1)}%`}
+              meanText={coverage.mean === null ? null : `mean ${formatRatioPercent(coverage.mean, 1)}%`}
             />
           )}
           {/*
-            The caption, Lucy's verbatim equity sentence with two edits she asked for: "all three" is
-            gone with the PTR bar, and the gap figures are COMPUTED rather than the mock's 18/33. The
-            mock's closing claim about which regions sit at the low end is dropped — it is a statement
-            about Ghana's geography that nothing in this read supports, and the page's rule is that every
-            figure and every claim on it is derived.
+            PTR, INVERTED (Lucy §3, Kofi §4): green dot at the LOW end (lower ratio = better-staffed), so
+            `goodEnd="low"`. Positions are projected onto the STATED `PTR_AXIS`, not the 0–100% rate axis —
+            a pupils-per-teacher count has no natural percentage scale. The range/mean text is ratio
+            points (formatRatio, no `%`), one decimal per Kofi's precision ruling.
+          */}
+          {ptr === null ? null : (
+            <SpreadBar
+              label="Pupil-teacher ratio"
+              lowPos={projectPtr(ptr.min)}
+              highPos={projectPtr(ptr.max)}
+              meanPos={ptr.mean === null ? null : projectPtr(ptr.mean)}
+              goodEnd="low"
+              rangeText={`${formatRatio(ptr.min, 1)} – ${formatRatio(ptr.max, 1)}`}
+              meanText={ptr.mean === null ? null : `mean ${formatRatio(ptr.mean, 1)}`}
+            />
+          )}
+          {/*
+            The caption, Lucy's verbatim equity sentence with the gap figures COMPUTED rather than the
+            mock's 18/33, and now listing whichever of the three bars rendered (never a hard-coded "all
+            three"). The mock's closing geography claim about which regions sit where is still dropped — it
+            is a statement about Ghana nothing in this read supports; the page's rule is that every figure
+            and every claim on it is derived.
           */}
           <p className="mt-3 text-[10.5px] text-navy-3">
             The spread is the national tier&apos;s most important read — not the mean, but
@@ -153,22 +229,8 @@ export function SpreadPanel({
             <b className="text-navy-2">
               distance between the best and worst {chrome.childNounSingular}
             </b>
-            .
-            {wassce === null
-              ? null
-              : ` A ${gapPoints(wassce.min, wassce.max)}-point WASSCE gap`}
-            {wassce !== null && coverage !== null ? " and" : null}
-            {coverage === null
-              ? null
-              : ` a ${gapPoints(coverage.min, coverage.max)}-point coverage gap`}
-            {wassce === null && coverage === null
-              ? null
-              : ` ${
-                  wassce !== null && coverage !== null
-                    ? "are the disparities"
-                    : "is the disparity"
-                } national policy exists to close.`}{" "}
-            Equity, not the average, is the national question.
+            .{gapSentence === null ? null : ` ${gapSentence}`} Equity, not the average, is
+            the national question.
           </p>
         </>
       )}
