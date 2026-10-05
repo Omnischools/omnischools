@@ -16,6 +16,12 @@ import type { ReactNode } from "react";
 const NAV = [
   { group: "Overview", items: [{ href: "/", label: "Dashboard" }] },
   {
+    group: "Analysis",
+    // Only the surfaces that exist get a link — no dead nav to a 404. The mock's other Analysis items
+    // (Academic performance, Enrolment vs population, Anomaly queue) are not built, so they are absent.
+    items: [{ href: "/comparison", label: "Comparison workspace" }],
+  },
+  {
     group: "Records & audit",
     items: [
       { href: "/compliance-records", label: "Compliance records" },

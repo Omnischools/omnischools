@@ -334,6 +334,91 @@ describe("a FORGED claim cannot widen scope", () => {
   });
 });
 
+/**
+ * THE COMPARISON WORKSPACE'S PICKER READ (increment I · Wells test #5, Kofi AC3/AC4).
+ *
+ * `lib/oversight/comparison-entities.ts` offers the officer the entities they may compare with ONE
+ * query: `select … from dim_jurisdiction where level = $childLevel` and NOTHING else on the ceiling —
+ * no `parent_id` filter. That is only safe if `ov_in_subtree()` is the boundary, so the property has
+ * to be asserted here, as `ov_app`, against the real policy: a district officer asking for schools
+ * gets their OWN schools, and the same shape aimed at any OTHER level returns ZERO ROWS.
+ *
+ * Why this test exists at all: the sibling tier is DEFERRED behind a disabled toggle, which means the
+ * only evidence that it is deferred for a REASON is that the query comes back empty. Pinned here, a
+ * later "fix" to an empty sibling table fails a test instead of widening a query.
+ */
+const PICKER_QUERY = (level: string) =>
+  `select dj.jurisdiction_id::text as id, dj.name as name, dj.school_type::text as school_type
+     from dim_jurisdiction dj
+    where dj.level = '${level}'::jurisdiction_level
+    order by dj.name asc`;
+
+async function pickerNames(tier: Tier, level: string): Promise<string[]> {
+  const rows = await asTier(tier, async (tx) => {
+    return (await tx.unsafe(PICKER_QUERY(level))) as unknown as { name: string }[];
+  });
+  return rows.map((r) => r.name);
+}
+
+describe("the comparison picker's entity read is bounded by ov_in_subtree, not by a parent_id filter", () => {
+  it("a DISTRICT officer asking for SCHOOLS gets their own schools and NOT the sibling district's", async () => {
+    const names = await pickerNames(DISTRICT, "SCHOOL");
+    expect(names).toContain("Asankrangwa SHS");
+    expect(names).toContain("Amenfiman SHS");
+    expect(names).toContain("Wassa Akropong JHS");
+    // The sibling district's SHS is the one a leak would surface — it is the same school_type as the
+    // officer's own, so a level-only filter without RLS would offer it as "like-for-like".
+    expect(names).not.toContain("Takoradi SHS");
+    const owner = await ownerCount(
+      "select count(*)::int as n from dim_jurisdiction where level = 'SCHOOL'",
+    );
+    expect(names.length).toBeLessThan(owner); // 8 of 9 — the boundary is observable, not vacuous
+  });
+
+  it("WELLS #5 — aimed at the SIBLING tier the read yields the officer's OWN node and no peer", async () => {
+    // The deferred sibling comparison, probed at the data layer: not "the toggle is disabled" (a UI
+    // fact) but "there is nothing to serve" (the RLS fact that makes the deferral honest).
+    //
+    // `ov_in_subtree()` admits the officer's own node, so this is ONE row — themselves — and never a
+    // peer. A sibling comparison is therefore not merely unimplemented, it is unservable: the only
+    // district a district officer can put in a district-vs-district table is their own. The ancestor
+    // tiers return nothing at all, because the subtree walk is DOWNWARD.
+    expect(await pickerNames(DISTRICT, "DISTRICT")).toEqual(["Wassa Amenfi West"]);
+    expect(await pickerNames(DISTRICT, "DISTRICT")).not.toContain("Sekondi-Takoradi Metro");
+    expect(await pickerNames(DISTRICT, "REGION")).toEqual([]);
+    expect(await pickerNames(DISTRICT, "NATIONAL")).toEqual([]);
+    // And not a single row of the parent region's subtree leaks in through any of them.
+    const anyOther = await count(
+      DISTRICT,
+      `select count(*)::int as n from dim_jurisdiction
+        where jurisdiction_id in ('${JUR.otherDistrict}'::uuid, '${JUR.region}'::uuid,
+                                  '${JUR.national}'::uuid, '${JUR.schoolOutsideSubtree}'::uuid)`,
+    );
+    expect(anyOther).toBe(0);
+  });
+
+  it("a REGIONAL officer asking for DISTRICTS gets both of their districts (in-subtree, servable)", async () => {
+    const names = await pickerNames(REGION, "DISTRICT");
+    expect(names).toEqual(["Sekondi-Takoradi Metro", "Wassa Amenfi West"]);
+    // …while the region's own tier yields only ITSELF (no sibling region to compare against) and the
+    // nation above it is out of reach entirely.
+    expect(await pickerNames(REGION, "REGION")).toEqual(["Western Region"]);
+    expect(await pickerNames(REGION, "NATIONAL")).toEqual([]);
+  });
+
+  it("a NATIONAL officer asking for REGIONS gets the region; the walk short-circuits, it does not widen", async () => {
+    expect(await pickerNames(NATIONAL, "REGION")).toEqual(["Western Region"]);
+  });
+
+  it("an UNSET jurisdiction GUC offers NOTHING to compare — the picker fails closed", async () => {
+    const blind = await pickerNames(
+      { label: "unset", officerId: OFFICER.districtId, jurisdictionId: null, level: "DISTRICT" },
+      "SCHOOL",
+    );
+    expect(blind).toEqual([]);
+  });
+});
+
 /** An owner-side count, used only to express "all of them" without hard-coding a fixture total. */
 async function ownerCount(query: string): Promise<number> {
   const owner = postgres(testDbConfig.superuserAnalyticsUrl, { max: 1, prepare: false });
