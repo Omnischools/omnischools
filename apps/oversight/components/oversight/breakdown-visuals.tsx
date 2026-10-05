@@ -142,23 +142,31 @@ export function SpreadPanel({
    * ×100 would invent a "810-point" gap). Kofi §4: PTR belongs in the shared equity framing, as the
    * third disparity; the inversion (worst = highest) is carried by the bar's dots, not re-stated here.
    */
+  // "an" before a figure whose spoken form opens on a vowel (8-, 11-, 18-, 80-…), else "a" — so a PTR
+  // gap of 8.1 or 18 reads "an 8.1-point", not "a 8.1-point".
+  const gapClause = (points: string, measure: string) =>
+    `${/^(8|11|18)/.test(points) ? "an" : "a"} ${points}-point ${measure} gap`;
   const gapClauses = [
-    wassce === null ? null : `a ${gapPoints(wassce.min, wassce.max)}-point WASSCE gap`,
-    coverage === null ? null : `a ${gapPoints(coverage.min, coverage.max)}-point coverage gap`,
-    ptr === null
-      ? null
-      : `a ${(ptr.max - ptr.min).toFixed(1)}-point pupil-teacher-ratio gap`,
+    wassce === null ? null : gapClause(gapPoints(wassce.min, wassce.max), "WASSCE"),
+    coverage === null ? null : gapClause(gapPoints(coverage.min, coverage.max), "coverage"),
+    ptr === null ? null : gapClause((ptr.max - ptr.min).toFixed(1), "pupil-teacher-ratio"),
   ].filter((clause): clause is string => clause !== null);
 
-  // "X is the disparity" / "X and Y are…" / "X, Y and Z are…" — grammatical for 1, 2 or 3 clauses.
-  const gapSentence =
+  // "X is the disparity" / "X and Y are…" / "X, Y and Z are…" — grammatical for 1, 2 or 3 clauses, and
+  // the first letter is capitalised because this is a new sentence after the "best and worst" clause's
+  // full stop (the derived form must not lose the leading capital the inline fragments had).
+  const gapList =
     gapClauses.length === 0
       ? null
-      : `${
-          gapClauses.length === 1
-            ? gapClauses[0]
-            : `${gapClauses.slice(0, -1).join(", ")} and ${gapClauses[gapClauses.length - 1]}`
-        } ${gapClauses.length === 1 ? "is the disparity" : "are the disparities"} national policy exists to close.`;
+      : gapClauses.length === 1
+        ? gapClauses[0]
+        : `${gapClauses.slice(0, -1).join(", ")} and ${gapClauses[gapClauses.length - 1]}`;
+  const gapSentence =
+    gapList === null
+      ? null
+      : `${gapList.charAt(0).toUpperCase()}${gapList.slice(1)} ${
+          gapClauses.length === 1 ? "is the disparity" : "are the disparities"
+        } national policy exists to close.`;
 
   return (
     <Panel

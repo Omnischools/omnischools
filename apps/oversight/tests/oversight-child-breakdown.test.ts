@@ -31,6 +31,7 @@ import {
   initialsOf,
 } from "@/components/oversight/breakdown-table";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
+import { SpreadPanel } from "@/components/oversight/breakdown-visuals";
 import {
   JUR,
   OFFICER,
@@ -1561,5 +1562,44 @@ describe("the coverage columns are PRESENT above the district tier", () => {
     );
     expect(textOf(withoutCoverage)).not.toContain("Schools (on / total)");
     expect(textOf(withoutCoverage)).not.toContain("Coverage");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// THE SPREAD CAPTION — a derived sentence, so it must still read like prose (capital lead, right article)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("the spread caption lists the gaps as a grammatical sentence", () => {
+  /**
+   * The caption was inline fragments in slice 3; PTR made it a derived `gapSentence`. The refactor must
+   * NOT lose the leading capital (it opens a new sentence after the "best and worst" full stop) and must
+   * pick "a"/"an" by the figure's spoken form — a PTR or WASSCE gap of 18 or 8 is "an", not "a".
+   */
+  const two = (): ChildBreakdown => ({
+    childLevel: "REGION",
+    hasCoverage: true,
+    unattributed: null,
+    // WASSCE 52%→70% = an 18-point gap; coverage 60%→90% = a 30-point gap; PTR 10→28 = an 18.0-point gap.
+    children: [
+      row({ childId: "a", name: "A", wassceRate: 0.7, coverageRatio: 0.9, ptr: 10, candidates: 100 }),
+      row({ childId: "b", name: "B", wassceRate: 0.52, coverageRatio: 0.6, ptr: 28, candidates: 100 }),
+    ],
+    total: row({ wassceRate: 0.61, coverageRatio: 0.75, ptr: 19 }),
+  });
+
+  it("opens the disparity sentence with a capital and uses 'an' before 18 / 8", () => {
+    const text = textOf(
+      renderToStaticMarkup(
+        createElement(SpreadPanel, { breakdown: two(), chrome: breakdownChrome("NATIONAL", null) }),
+      ),
+    );
+    // The lead clause is capitalised (WASSCE leads and 18 → "an" → "An"); the regression was a lowercase
+    // "a" sitting directly after the preceding sentence's full stop.
+    expect(text).toContain("An 18-point WASSCE gap");
+    expect(text).not.toMatch(/\.\s+a 18-point WASSCE gap/);
+    // Mid-sentence clauses keep their lower case and their own article.
+    expect(text).toContain("a 30-point coverage gap");
+    expect(text).toContain("an 18.0-point pupil-teacher-ratio gap");
+    expect(text).toContain("are the disparities national policy exists to close.");
   });
 });
