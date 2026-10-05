@@ -949,13 +949,46 @@ function renderNodes(nodes: ReactNode[]): string {
   return renderToStaticMarkup(createElement(Fragment, null, ...nodes));
 }
 
+/**
+ * Strip every HTML tag, replacing each with `replacement`. The removal is applied until the string
+ * stops changing, so a tag split by an earlier removal (e.g. `<<b>b>`) cannot survive one pass — this
+ * is text extraction over our own `renderToStaticMarkup` output, not a security sanitiser, but the
+ * fixpoint loop keeps it honest for any markup.
+ */
+function stripTags(markup: string, replacement: string): string {
+  let out = markup;
+  let prev: string;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]*>/g, replacement);
+  } while (out !== prev);
+  return out;
+}
+
+const RENDERED_ENTITIES = new Map<string, string>([
+  ["&#x27;", "'"],
+  ["&middot;", "·"],
+  ["&quot;", '"'],
+  ["&amp;", "&"],
+]);
+
+/**
+ * Decode the handful of entities `renderToStaticMarkup` emits, in ONE left-to-right pass. A single
+ * `replace` never re-scans the text it produced, so decoding `&amp;` to `&` cannot combine with the
+ * following characters into a second entity (`&amp;quot;` stays `&quot;`, it does not become `"`).
+ */
+function decodeEntities(s: string): string {
+  return s.replace(
+    /&#x27;|&middot;|&quot;|&amp;/g,
+    (entity) => RENDERED_ENTITIES.get(entity) ?? entity,
+  );
+}
+
 /** Markup with tags stripped, so a copy assertion reads like the sentence an officer sees. */
 function renderText(node: ReactNode): string {
-  return renderToStaticMarkup(createElement(Fragment, null, node))
-    .replace(/<[^>]+>/g, "")
-    .replace(/&#x27;/g, "'")
-    .replace(/&middot;/g, "·")
-    .replace(/&amp;/g, "&");
+  return decodeEntities(
+    stripTags(renderToStaticMarkup(createElement(Fragment, null, node)), ""),
+  );
 }
 
 const NATIONAL_CHROME = tierChrome("NATIONAL", "National · Ministry of Education");
@@ -1326,11 +1359,7 @@ async function renderPage(officer: unknown): Promise<string> {
 
 /** Entity-decoded text of a markup fragment — the sentence an officer actually reads. */
 function decode(fragment: string): string {
-  return fragment
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&#x27;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
+  return decodeEntities(stripTags(fragment, " "))
     .replace(/\s+/g, " ")
     .trim();
 }
