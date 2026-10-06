@@ -1,0 +1,358 @@
+import { RANK_CARD_MIN_CANDIDATES, type BreakdownRow } from "./breakdown";
+import type { Exam } from "./performance";
+
+/**
+ * THE COMPARISON WORKSPACE ENGINE — pure, no db, no JSX (increment I).
+ *
+ * The surface itself (app/(oversight)/comparison) reuses `getChildBreakdown` UNCHANGED for its data
+ * (COMPARISON-WORKSPACE-DATA-PLAN §1): the children it returns ARE the comparable entities one level
+ * below the officer, already RLS-bounded and already rolled up per child. What this module adds is the
+ * three decisions the comparison makes ON TOP of that row set, and nothing else:
+ *
+ *   1. THE BENCHMARK — the pinned "District/Region average" column. The LIKE-FOR-LIKE weighted roll-up
+ *      over ALL children of the compared type (every SHS in the district), never the selected subset.
+ *   2. BEST / WORST MARKING — per metric row, across the SELECTED REAL entities only (never the
+ *      benchmark), direction-aware, behind a denominator floor, ≥2 eligible, ties mark-all-or-none.
+ *   3. (left to the catalogue in the component) WHICH measure each row reads and how it formats.
+ *
+ * EVERYTHING HERE IS A FOLD OVER `BreakdownRow`s. It computes no SQL, holds no session, and reaches no
+ * `scope.*` field — the same discipline the breakdown table's home-row tint follows (presentation is a
+ * fact about ids already in the payload, not a second scoped read). So every property below is provable
+ * from a literal array of rows, which is how `tests/oversight-comparison.test.ts` proves them.
+ *
+ * ═══ WHY THE BENCHMARK IS OVER *ALL* LIKE-FOR-LIKE CHILDREN, NOT THE SELECTION ═══════════════════════
+ * A benchmark that moved as you tick a checkbox is not a reference line — deselecting a weak school would
+ * "improve the district average", which is a lie about the district (Kofi R3.2). And it must equal the
+ * figure the officer already sees on the district dashboard's own roll-up, or two surfaces disagree. So
+ * the benchmark population is fixed by the LEVEL, not by the selection. It is NOT `breakdown.total`
+ * either: that total is the whole subtree across ALL school levels (Wells §2A), so for a senior-high
+ * comparison its enrolment and PTR would blend in basic schools. The honest benchmark is the roll-up over
+ * the SHS subpopulation — computed here by summing the fact COMPONENTS already carried on each row
+ * (`candidates`/`qualified`, `staffEnrolment`/`teachers`), the identical Σ÷Σ-over-rows fold the breakdown
+ * module uses for its own reconciliation. No new query, no new DB object.
+ */
+
+/** Which end of a measure is "good" — decides the mark, and whether a row is marked at all. */
+export type MetricDirection = "higher-better" | "lower-better" | "none";
+
+/** The two superlative marks. `none`-direction and unresolved rows carry neither. */
+export type Mark = "best" | "worst";
+
+/** `Σnum ÷ Σden` over the population, pairing the two components per row. Null, never a laundered 0/0. */
+export function weightedBenchmark(
+  population: readonly BreakdownRow[],
+  num: (row: BreakdownRow) => number | null,
+  den: (row: BreakdownRow) => number | null,
+): number | null {
+  let sumNum = 0;
+  let sumDen = 0;
+  let any = false;
+  for (const row of population) {
+    const n = num(row);
+    const d = den(row);
+    // Both components must be present for the row to contribute: a half-filed row is not a measured
+    // zero on either side. (In practice they are filed together — they come off one fact arm.)
+    if (n === null || d === null) continue;
+    sumNum += n;
+    sumDen += d;
+    any = true;
+  }
+  if (!any || sumDen === 0) return null;
+  return sumNum / sumDen;
+}
+
+/**
+ * The MEAN PER FILER — `Σvalue ÷ n` over the rows that actually filed the measure (Kofi R3.4).
+ *
+ * `n` counts FILERS, not the whole population: a school that filed nothing is null-not-zero everywhere
+ * else on this surface, so it must not drag the mean down as if it enrolled zero pupils. Null when no
+ * child filed (0 filers), never 0.
+ */
+export function meanBenchmark(
+  population: readonly BreakdownRow[],
+  value: (row: BreakdownRow) => number | null,
+): number | null {
+  let sum = 0;
+  let filers = 0;
+  for (const row of population) {
+    const v = value(row);
+    if (v === null) continue;
+    sum += v;
+    filers += 1;
+  }
+  if (filers === 0) return null;
+  return sum / filers;
+}
+
+/**
+ * BEST / WORST MARKS aligned to `values`, honouring every Kofi §R4 rule in one place so no cell ever
+ * re-decides:
+ *   · a `none`-direction row is never marked (size/price carries no valence — enrolment, fees);
+ *   · only ELIGIBLE entities are candidates (the denominator floor, and the thin-coverage gate, are
+ *     folded into `eligible[]` by the caller — an entity below the WASSCE candidate floor, or whose
+ *     coverage is too thin to read a rate honestly, is listed with its value but cannot be crowned);
+ *   · a null value is never eligible (no mark on an absent cell);
+ *   · fewer than TWO eligible entities ⇒ NO marks at all (a one-entity row is a profile, not a ranking —
+ *     the `rankEnds < 2` precedent);
+ *   · a full tie (every eligible value equal, so max === min) ⇒ NO marks (there is no spread to mark);
+ *   · otherwise EVERY entity sharing the best extreme is marked `best`, every one sharing the worst
+ *     extreme `worst` — ties mark all, never an arbitrary one.
+ *
+ * `values` and `eligible` are aligned to the selected entity columns, in column order; the returned
+ * array is aligned the same way. The benchmark is NOT in these arrays — it is never ranked (R4.1).
+ */
+export function rankMarks(
+  values: readonly (number | null)[],
+  eligible: readonly boolean[],
+  direction: MetricDirection,
+): (Mark | null)[] {
+  const marks: (Mark | null)[] = values.map(() => null);
+  if (direction === "none") return marks;
+
+  const pool: number[] = [];
+  for (let i = 0; i < values.length; i += 1) {
+    const v = values[i];
+    if (v !== null && eligible[i]) pool.push(v);
+  }
+  if (pool.length < 2) return marks;
+
+  const max = Math.max(...pool);
+  const min = Math.min(...pool);
+  if (max === min) return marks; // no spread → nothing to mark
+
+  const bestValue = direction === "higher-better" ? max : min;
+  const worstValue = direction === "higher-better" ? min : max;
+
+  for (let i = 0; i < values.length; i += 1) {
+    const v = values[i];
+    if (v === null || !eligible[i]) continue;
+    if (v === bestValue) marks[i] = "best";
+    else if (v === worstValue) marks[i] = "worst";
+  }
+  return marks;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE METRIC CATALOGUE AND THE MODEL ASSEMBLY — still pure, still a fold over rows.
+ *
+ * The catalogue is DATA: one entry per row of the comparison, each naming the measure it reads off a
+ * `BreakdownRow`, how its benchmark is formed, and how it ranks. Keeping it as a table (not a switch at
+ * each cell) is what makes "enrolment is never ranked", "WASSCE needs 30 candidates", "PTR is lower-
+ * better" single facts rather than rules re-decided per cell. The component turns the model into JSX and
+ * owns FORMATTING only (pupils vs percent vs `:1`); no decision lives there.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** How a cell's number is written. The component maps this to a formatter; the engine stays string-free. */
+export type MetricKind = "pupils" | "count" | "rate" | "ratio";
+
+/** The benchmark column's derivation for a metric (Kofi R3.4). `none` ⇒ no benchmark cell (coverage). */
+export type BenchmarkSpec =
+  | { kind: "none" }
+  | { kind: "mean"; value: (row: BreakdownRow) => number | null }
+  | {
+      kind: "weighted";
+      num: (row: BreakdownRow) => number | null;
+      den: (row: BreakdownRow) => number | null;
+    };
+
+export interface ComparisonMetricSpec {
+  key: string;
+  section: string;
+  label: string;
+  subLabel: string;
+  kind: MetricKind;
+  direction: MetricDirection;
+  /** The value a cell shows, off one entity's row. Null ⇒ the muted `—`. */
+  valueOf: (row: BreakdownRow) => number | null;
+  benchmark: BenchmarkSpec;
+  /** The words on the rank dot. Defaults to highest/lowest (higher-better) or best/worst (lower-better). */
+  markLabel: { best: string; worst: string };
+  /**
+   * An extra per-entity gate ON TOP of non-null before an entity can be crowned — the WASSCE candidate
+   * floor (Kofi R4.3). Absent ⇒ any non-null, eligible entity may be marked.
+   */
+  floorOf?: (row: BreakdownRow) => boolean;
+  /** When true, a thin-coverage column is excluded from THIS row's marking (Kofi R4.7). */
+  coverageGated?: boolean;
+  /** Rate rows draw a proportional bar; counts and ratios do not. */
+  bar?: boolean;
+}
+
+/** One selected column: the entity's matched row (null ⇒ selected but filed no facts) + the coverage gate. */
+export interface ComparisonColumnInput {
+  id: string;
+  /** Null when the selected entity is absent from the fact-driven breakdown (render a named `—` column). */
+  row: BreakdownRow | null;
+  /** True only at district/region depth when this entity's coverage is too thin to read a rate honestly. */
+  coverageAmbiguous: boolean;
+}
+
+export interface ComparisonCell {
+  value: number | null;
+  mark: Mark | null;
+}
+
+export interface ComparisonMetricRow {
+  metric: ComparisonMetricSpec;
+  /** Aligned to the columns passed in, in order. */
+  cells: ComparisonCell[];
+  /** The pinned benchmark value, or null (absent cell, or `none`-kind benchmark). */
+  benchmark: number | null;
+}
+
+export interface ComparisonSection {
+  title: string;
+  rows: ComparisonMetricRow[];
+}
+
+export interface ComparisonModel {
+  sections: ComparisonSection[];
+}
+
+/**
+ * THE SLICE-1 CATALOGUE. Only measures already on `BreakdownRow` appear — reused, zero changes to the
+ * blessed roll-up (COMPARISON-WORKSPACE-BUILD-SCOPE). Girls' share, attendance, vacancies, fees and the
+ * 4-year trend are deliberately ABSENT rather than rendered as `—` rows claiming a measure exists.
+ *
+ * ENROLMENT IS NOT RANKED (`direction: "none"`): a bigger school is not a "better" school, the mock draws
+ * no rank dot on it, and "mock wins on presentation" settles it. The candidates row is the WASSCE ranking
+ * weight made visible (Kofi R4.3) and is likewise unranked.
+ */
+export function comparisonMetrics(args: {
+  /** Null when the compared level sits no national exam (KG/PRIMARY/COMBINED) — the performance section
+   * is then OMITTED, never rendered as `—`-filled rows claiming a measure that does not apply. */
+  exam: Exam | null;
+  hasCoverage: boolean;
+}): ComparisonMetricSpec[] {
+  const { exam, hasCoverage } = args;
+  const metrics: ComparisonMetricSpec[] = [
+    {
+      key: "enrolment",
+      section: "Enrolment",
+      label: "Total enrolment",
+      subLabel: "students on roll",
+      kind: "pupils",
+      direction: "none",
+      valueOf: (r) => r.enrolment,
+      benchmark: { kind: "mean", value: (r) => r.enrolment },
+      markLabel: { best: "highest", worst: "lowest" },
+    },
+  ];
+  if (exam !== null) {
+    metrics.push(
+      {
+        key: "qualification",
+        section: `Performance · ${exam}`,
+        label: `${exam} qualification`,
+        subLabel: "credit or above (A1–C6)",
+        kind: "rate",
+        direction: "higher-better",
+        valueOf: (r) => r.wassceRate,
+        benchmark: { kind: "weighted", num: (r) => r.qualified, den: (r) => r.candidates },
+        markLabel: { best: "highest", worst: "lowest" },
+        // The candidate floor governs the SUPERLATIVE only — a 7-candidate 100% is not "the strongest".
+        floorOf: (r) => r.candidates !== null && r.candidates >= RANK_CARD_MIN_CANDIDATES,
+        coverageGated: true,
+        bar: true,
+      },
+      {
+        key: "candidates",
+        section: `Performance · ${exam}`,
+        label: "Candidates",
+        subLabel: "cohort size · the ranking weight",
+        kind: "count",
+        direction: "none",
+        valueOf: (r) => r.candidates,
+        benchmark: { kind: "mean", value: (r) => r.candidates },
+        markLabel: { best: "highest", worst: "lowest" },
+      },
+    );
+  }
+  metrics.push(
+    {
+      key: "ptr",
+      section: "Staffing",
+      label: "Pupil-teacher ratio",
+      subLabel: "students per teacher · lower is better",
+      kind: "ratio",
+      direction: "lower-better",
+      valueOf: (r) => r.ptr,
+      benchmark: { kind: "weighted", num: (r) => r.staffEnrolment, den: (r) => r.teachers },
+      markLabel: { best: "best", worst: "worst" },
+    },
+  );
+  if (hasCoverage) {
+    metrics.push({
+      key: "coverage",
+      section: "Coverage",
+      label: "School coverage",
+      subLabel: "on Omnischools / EMIS register",
+      kind: "rate",
+      direction: "higher-better",
+      valueOf: (r) => r.coverageRatio,
+      // Coverage is a property of the officer's register, not an entity figure to average (Kofi R3.6).
+      benchmark: { kind: "none" },
+      markLabel: { best: "fullest", worst: "thinnest" },
+      bar: true,
+    });
+  }
+  return metrics;
+}
+
+/**
+ * ASSEMBLE THE RENDER MODEL. `benchmarkPopulation` is the LIKE-FOR-LIKE child set (all SHS in the
+ * district, fixed by level — never the selection); `columns` are the selected entities, in order.
+ *
+ * The benchmark is computed ONCE per metric over the population and never touches the selection, so
+ * deselecting a column cannot move it (Kofi R3.2 / AC11). Marks are computed over the columns only, with
+ * the benchmark excluded by construction (it is not in `columns`).
+ */
+export function buildComparison(args: {
+  metrics: readonly ComparisonMetricSpec[];
+  benchmarkPopulation: readonly BreakdownRow[];
+  columns: readonly ComparisonColumnInput[];
+}): ComparisonModel {
+  const { metrics, benchmarkPopulation, columns } = args;
+  const sections: ComparisonSection[] = [];
+
+  for (const metric of metrics) {
+    const cells: ComparisonCell[] = columns.map((col) => ({
+      value: col.row === null ? null : metric.valueOf(col.row),
+      mark: null,
+    }));
+
+    const eligible = columns.map((col, i) => {
+      if (col.row === null || cells[i]!.value === null) return false;
+      if (metric.floorOf && !metric.floorOf(col.row)) return false;
+      if (metric.coverageGated && col.coverageAmbiguous) return false;
+      return true;
+    });
+
+    const marks = rankMarks(
+      cells.map((c) => c.value),
+      eligible,
+      metric.direction,
+    );
+    marks.forEach((mark, i) => {
+      cells[i]!.mark = mark;
+    });
+
+    const benchmark =
+      metric.benchmark.kind === "none"
+        ? null
+        : metric.benchmark.kind === "mean"
+          ? meanBenchmark(benchmarkPopulation, metric.benchmark.value)
+          : weightedBenchmark(
+              benchmarkPopulation,
+              metric.benchmark.num,
+              metric.benchmark.den,
+            );
+
+    const section = sections.find((s) => s.title === metric.section);
+    const row: ComparisonMetricRow = { metric, cells, benchmark };
+    if (section) section.rows.push(row);
+    else sections.push({ title: metric.section, rows: [row] });
+  }
+
+  return { sections };
+}
