@@ -618,18 +618,18 @@ describe("per-child rates are candidate-weighted", () => {
   it("stored rates are structurally out of reach — none is in the allow-list", () => {
     const code = readCode("lib/oversight/breakdown.ts");
     expect(code).not.toMatch(/\bqualification_rate\b/);
-    // These stored rates live on fact tables this module never reads, so the column name must not
-    // appear at all.
-    for (const stored of ["attendance_rate", "plc_participation_rate"]) {
-      expect(code).not.toContain(stored);
-    }
-    // PTR is the exception that proves the rule: fact_staffing IS read here (aliased `fs`), for the
-    // PTR numerator/denominator — but its STORED per-school `ptr` column is NEVER selected. The
-    // roll-up is Σenrolment ÷ Σteachers, re-derived, never the stored rate. So the precise guard is
-    // "the stored ptr column is never selected under ANY alias", not "the substring ptr never appears"
-    // (the re-derived `row.ptr` field and the module's own prose legitimately contain it). Widened past
-    // the current `fs` alias so a future rename/re-alias cannot smuggle the stored rate back in (Dex N3).
+    // This stored rate lives on a fact table this module never reads (fact_plc_participation), so the
+    // column name must not appear at all.
+    expect(code).not.toContain("plc_participation_rate");
+    // PTR and ATTENDANCE are the exceptions that prove the rule: fact_staffing (aliased `fs`) and
+    // fact_attendance (aliased `fa`) ARE read here, for the PTR and attendance numerator/denominator —
+    // but their STORED per-school rate columns (`ptr`, `attendance_rate`) are NEVER selected. Each
+    // roll-up is Σnum ÷ Σden, re-derived, never the stored rate. So the precise guard is "the stored
+    // rate column is never selected under ANY alias", not "the substring never appears" (the re-derived
+    // `row.ptr` / `row.attendanceRate` fields and the module's own prose legitimately contain them).
+    // Widened past the current aliases so a future rename/re-alias cannot smuggle a stored rate back in.
     expect(code).not.toMatch(/\b(fs|st|fact_staffing)\.ptr\b/);
+    expect(code).not.toMatch(/\b(fa|fact_attendance)\.attendance_rate\b/);
   });
 
   it("no cohort means NO RATE — never a confident 0%", async () => {
@@ -1151,6 +1151,9 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     ptr: null,
     staffEnrolment: null,
     teachers: null,
+    presentDays: null,
+    enrolledDays: null,
+    attendanceRate: null,
     ...fields,
   };
 }

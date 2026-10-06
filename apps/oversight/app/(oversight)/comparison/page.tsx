@@ -13,17 +13,14 @@ import {
 import {
   buildComparison,
   comparisonMetrics,
+  MAX_ENTITIES,
   type ComparisonColumnInput,
 } from "@/lib/oversight/comparison";
 import { isOk, unavailable } from "@/lib/oversight/reading";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Provenance } from "@/components/oversight/primitives";
 import { COVERAGE_BANDS } from "@/components/oversight/breakdown-table";
-import {
-  ComparisonPicker,
-  MAX_ENTITIES,
-  entityMeta,
-} from "@/components/oversight/comparison-picker";
+import { ComparisonPicker, entityMeta } from "@/components/oversight/comparison-picker";
 import {
   ComparisonTable,
   type ComparisonColumnHeader,
@@ -83,17 +80,20 @@ function defaultSelection(entities: ComparisonEntity[], childLevel: ChildLevel):
   return pick.slice(0, DEFAULT_SELECTION).map((e) => e.jurisdictionId);
 }
 
-/** Parse the `e` param into an ordered, de-duplicated, in-bounds id list (only ids the officer may see). */
+/**
+ * Parse the `e` param into an ordered, de-duplicated list of ids the officer may see. It does NOT cap
+ * here: the MAX_ENTITIES cap is applied AFTER level-pinning (Dex cap-before-pin fix), so a hand-edited
+ * URL with off-level ids ahead of valid same-level ones can no longer spend cap slots on picks that
+ * `pinSelectionToLevel` is about to drop — which previously under-filled the comparison.
+ */
 function parseSelection(raw: string | undefined, valid: Set<string>): string[] {
   if (!raw) return [];
   const out: string[] = [];
   for (const id of raw.split(",")) {
     const trimmed = id.trim();
     // An id in neither read is dropped with no label and no echo — a uuid in a URL is not an existence
-    // signal (Wells trap C). Cap at MAX_ENTITIES.
-    if (trimmed && valid.has(trimmed) && !out.includes(trimmed) && out.length < MAX_ENTITIES) {
-      out.push(trimmed);
-    }
+    // signal (Wells trap C).
+    if (trimmed && valid.has(trimmed) && !out.includes(trimmed)) out.push(trimmed);
   }
   return out;
 }
@@ -146,11 +146,14 @@ export default async function ComparisonWorkspace({
     .filter((e): e is ComparisonEntity => e !== undefined);
 
   // The first valid pick pins the school level and off-level picks are dropped — on the URL path too,
-  // so `?e=<SHS>,<JHS>` cannot build a mixed-level comparison (Kofi R2.3). Pure + tested helper.
-  const { pinnedType, selected: selectedEntities } = pinSelectionToLevel(
+  // so `?e=<SHS>,<JHS>` cannot build a mixed-level comparison (Kofi R2.3). Pure + tested helper. The
+  // MAX_ENTITIES cap is applied HERE, after pinning, so off-level picks never consume cap slots ahead
+  // of valid same-level ones (Dex cap-before-pin fix).
+  const { pinnedType, selected: pinnedSelection } = pinSelectionToLevel(
     requestedEntities,
     childLevel,
   );
+  const selectedEntities = pinnedSelection.slice(0, MAX_ENTITIES);
   const effectiveIds = selectedEntities.map((e) => e.jurisdictionId);
 
   const exam = childLevel === "SCHOOL" ? examForSchoolType(pinnedType) : "WASSCE";
@@ -213,15 +216,20 @@ export default async function ComparisonWorkspace({
 
   const breakdown = breakdownReading.value;
 
-  // THE BENCHMARK POPULATION — the LIKE-FOR-LIKE child set, fixed by level, NEVER the selection. At
-  // SCHOOL depth it is the children whose school is the pinned type (all the district's SHS); above it,
-  // every child is already one type. Summed from the components on each row — the sanctioned Σ÷Σ fold,
-  // not `breakdown.total` (which blends all school levels).
+  // THE BENCHMARK POPULATION — the LIKE-FOR-LIKE child set, fixed by level, NEVER the selection. Above
+  // SCHOOL depth every child is already one type, so it is all of them. At SCHOOL depth it is the
+  // children whose school is the pinned type (all the district's SHS). When the depth is SCHOOL but NO
+  // pinned type could be resolved (every selected school's type is null), there is NO like-for-like key
+  // to average over, so the benchmark is SUPPRESSED (empty population → every benchmark cell "—")
+  // rather than blending across school levels, which R3.3 forbids (Dex M3). Summed from the components
+  // on each row — the sanctioned Σ÷Σ fold, not `breakdown.total` (which blends all school levels).
   const benchmarkPopulation: BreakdownRow[] =
-    childLevel === "SCHOOL" && pinnedType !== null
-      ? breakdown.children.filter(
-          (row) => row.childId !== null && byId.get(row.childId)?.schoolType === pinnedType,
-        )
+    childLevel === "SCHOOL"
+      ? pinnedType !== null
+        ? breakdown.children.filter(
+            (row) => row.childId !== null && byId.get(row.childId)?.schoolType === pinnedType,
+          )
+        : []
       : breakdown.children;
 
   const childById = new Map(
@@ -254,17 +262,14 @@ export default async function ComparisonWorkspace({
   const thinCoverage = selectedEntities.filter((_, i) => columns[i]?.coverageAmbiguous);
 
   const benchmarkLabel = tierAverageLabel(officer.level);
-  // Count the LIKE-FOR-LIKE POPULATION (all SHS in the subtree), not the filers — the benchmark names
-  // the group it averages over; the weighting handles non-filers the same null-not-zero way as every
-  // roll-up on the surface.
-  const likeForLikeCount =
-    childLevel === "SCHOOL" && pinnedType !== null
-      ? entities.filter((e) => e.schoolType === pinnedType).length
-      : entities.length;
-  const benchmarkMeta =
-    childLevel === "SCHOOL" && pinnedType !== null
-      ? `all ${likeForLikeCount} ${pinnedType}`
-      : `all ${likeForLikeCount} ${childNoun}`;
+  // The benchmark names the group it is computed over: `benchmarkPopulation` itself — the like-for-like
+  // children with a row in the roll-up — not the full registered list (Dex M1: the old count took
+  // `entities.filter`, which includes schools that filed nothing, so a weighted Σ÷Σ or mean-per-filer
+  // divisor could sit below the numeral the label asserted). Empty population ⇒ no benchmark column, so
+  // no meta is needed.
+  const benchmarkCount = benchmarkPopulation.length;
+  const benchmarkNoun = childLevel === "SCHOOL" && pinnedType !== null ? pinnedType : childNoun;
+  const benchmarkMeta = `${benchmarkCount} ${benchmarkNoun}`;
 
   const sittingYear = isOk(examCohort) ? sittingYearOf(examCohort.value.academicYear) : null;
 
@@ -298,9 +303,10 @@ export default async function ComparisonWorkspace({
                 Read <b className="font-semibold text-navy-2">across a row</b> to compare,{" "}
                 <b className="font-semibold text-navy-2">down a column</b> to profile one{" "}
                 {childLevel === "SCHOOL" ? "school" : childNoun.replace(/s$/, "")}. The best and
-                worst entity in each ranked row is marked; enrolment and cohort size carry no mark
-                because size is not a measure of quality. The benchmark column is the weighted average
-                over {benchmarkMeta} and is pinned, not ranked.
+                worst entity in each ranked row is marked; total enrolment and cohort size carry no
+                mark — size is not a measure of quality. The benchmark column is the like-for-like
+                average over {benchmarkMeta}{" "}
+                (rate rows weighted Σ÷Σ, count rows the mean per filer), pinned and never ranked.
               </>
             }
           />
@@ -327,7 +333,11 @@ export default async function ComparisonWorkspace({
             ],
             [
               "Benchmark",
-              `weighted average over ${benchmarkMeta} — moves with the data, not your selection`,
+              `like-for-like average over ${benchmarkMeta} — moves with the data, not your selection`,
+            ],
+            [
+              "Attendance",
+              "internal gradebook data · termly, shown only where schools use the gradebook",
             ],
             ...(exam && sittingYear
               ? ([[`${exam} sitting`, `${sittingYear} cohort · credit or above`]] as [

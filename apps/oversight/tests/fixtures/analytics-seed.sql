@@ -294,6 +294,17 @@ insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teachin
   ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000002', 41, 38,   410, 10.00, -3,   'OPERATIONAL_AGG', now()),
   ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000002', 18, null, 720, 40.00, null, 'OPERATIONAL_AGG', now());
 
+-- fact_attendance: one school STAGE-TOTAL row (class_form null) in EACH district, on the TERM period
+-- (…0001) — fact_attendance is a FLOW at TERM grain, so it hangs off the same term the enrolment rows
+-- above do, NOT the ANNUAL staffing period. The two are lopsided (24000 enrolled-days @ 92% vs 43200
+-- @ 87%) so a leak is identifiable BY VALUE and so the weighted Σpresent ÷ Σenrolled (59664 ÷ 67200 =
+-- 88.79%) differs visibly from the unweighted mean of the two rates (89.5%): the no-averaging roll-up
+-- rule is readable straight off the fixture. Both are far above the comparison engine's marking floor
+-- (ATT_MIN_ENROLLED_DAYS = 2000), so each is eligible to be crowned best/worst.
+insert into fact_attendance (jurisdiction_id, period_id, stage, class_form, enrolled_days, present_days, attendance_rate, source, as_of_date) values
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000001', 'JHS', null, 24000, 22080, 92.00, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000001', 'JHS', null, 43200, 37584, 87.00, 'OPERATIONAL_AGG', now());
+
 -- ref_gss_population: scoped on `district_id`, not `jurisdiction_id` — a different column for the
 -- same predicate, which is exactly the kind of difference a per-table policy gets wrong.
 insert into ref_gss_population (district_id, stage, population, source, as_of_date) values

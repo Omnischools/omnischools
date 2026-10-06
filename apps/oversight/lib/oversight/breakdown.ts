@@ -146,6 +146,21 @@ export interface BreakdownRow {
    */
   staffEnrolment: number | null;
   teachers: number | null;
+  /**
+   * The two SUMMABLE pupil-day counts the child's attendance rate is `ratio()`'d from — carried on the
+   * row like `candidates`/`qualified` behind `wassceRate`, so attendance reconciles through `sumOf` with
+   * no special fact-side pass. fact_attendance is a FLOW at TERM grain (lib/etl/attendance.ts): a
+   * pupil-day in term 1 and one in term 2 are two pupil-days, so these sum across schools exactly as the
+   * additive measures do. Null when the child filed no attendance row (never a "0 days" claim).
+   */
+  presentDays: number | null;
+  enrolledDays: number | null;
+  /**
+   * Σpresent_days ÷ Σenrolled_days over the child's schools — the WEIGHTED attendance rate, never
+   * avg(stored attendance_rate) (the stored rate column is deliberately never selected). HIGHER is
+   * better. Null when no attendance row was filed: 0/0 is not "nobody showed up".
+   */
+  attendanceRate: number | null;
   // NOTE: there is deliberately no `isHome` here, and no `scope.jurisdictionId` anywhere in this
   // module. Lucy's gold-tinted home row is a comparison between a child id and the officer's own node,
   // which is PRESENTATION — and keeping every `scope.*` field out of the read means the static guard
@@ -209,6 +224,10 @@ interface FactBucket {
   staffEnrolment: number | null;
   /** Σ fact_staffing.teachers_on_roll over the child — the PTR denominator. Null = none filed. */
   teachers: number | null;
+  /** Σ fact_attendance.present_days over the child. Null = no attendance row filed. */
+  presentDays: number | null;
+  /** Σ fact_attendance.enrolled_days over the child — the attendance denominator. Null = none filed. */
+  enrolledDays: number | null;
 }
 
 interface RegisterBucket {
@@ -269,7 +288,9 @@ export async function getChildBreakdown(
                  0::bigint                   as candidates,
                  0::bigint                   as qualified,
                  0::bigint                   as staff_enrolment,
-                 0::bigint                   as teachers
+                 0::bigint                   as teachers,
+                 0::bigint                   as present_days,
+                 0::bigint                   as enrolled_days
             from fact_enrolment fe
            where fe.period_id = ${termPeriodId}::uuid
              -- Both mandatory: the ALL row sits beside MALE/FEMALE (×3) and a null class_form IS the
@@ -282,6 +303,8 @@ export async function getChildBreakdown(
                  0::bigint,
                  fpe.candidates::bigint,
                  fpe.qualified::bigint,
+                 0::bigint,
+                 0::bigint,
                  0::bigint,
                  0::bigint
             from fact_performance_exam fpe
@@ -302,9 +325,30 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  fs.enrolment_total::bigint,
-                 fs.teachers_on_roll::bigint
+                 fs.teachers_on_roll::bigint,
+                 0::bigint,
+                 0::bigint
             from fact_staffing fs
            where fs.period_id = ${annualPeriodId}::uuid
+          union all
+          -- ATTENDANCE — the attendance-rate arm. fact_attendance is a FLOW at TERM grain and has NO sex
+          -- column (lib/etl/attendance.ts), so it pins the SAME termPeriodId as enrolment and carries no
+          -- sex filter. class_form IS NULL keeps only the per-stage totals (the per-form rows sit beside
+          -- them, ETL writes both); summing over stages is the school's total pupil-days. present_days and
+          -- enrolled_days are the summable numerator/denominator; the per-child rate is Σ÷Σ in TS below,
+          -- never avg(stored attendance_rate) (the stored rate column is deliberately never selected).
+          select fa.jurisdiction_id,
+                 'ATTENDANCE'::text,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 fa.present_days::bigint,
+                 fa.enrolled_days::bigint
+            from fact_attendance fa
+           where fa.period_id = ${termPeriodId}::uuid
+             and fa.class_form is null
         ),
         attributed as (
           select case ${childLevel}::jurisdiction_level
@@ -323,7 +367,9 @@ export async function getChildBreakdown(
                  f.candidates             as candidates,
                  f.qualified              as qualified,
                  f.staff_enrolment        as staff_enrolment,
-                 f.teachers               as teachers
+                 f.teachers               as teachers,
+                 f.present_days           as present_days,
+                 f.enrolled_days          as enrolled_days
             from facts f
             -- The fact's OWN node. INNER is correct here and only here: the fact row is visible, so its
             -- SCHOOL row is visible too (same predicate, same argument).
@@ -348,7 +394,10 @@ export async function getChildBreakdown(
                count(*) filter (where measure = 'EXAM')::int                     as exam_rows,
                sum(staff_enrolment) filter (where measure = 'STAFFING')::bigint  as staff_enrolment,
                sum(teachers) filter (where measure = 'STAFFING')::bigint         as teachers,
-               count(*) filter (where measure = 'STAFFING')::int                 as staffing_rows
+               count(*) filter (where measure = 'STAFFING')::int                 as staffing_rows,
+               sum(present_days) filter (where measure = 'ATTENDANCE')::bigint   as present_days,
+               sum(enrolled_days) filter (where measure = 'ATTENDANCE')::bigint  as enrolled_days,
+               count(*) filter (where measure = 'ATTENDANCE')::int               as attendance_rows
           from attributed
          group by grouping sets ((child_id, child_name), ())
       `);
@@ -360,6 +409,7 @@ export async function getChildBreakdown(
         const enrolmentRows = Number(row.enrolment_rows);
         const examRows = Number(row.exam_rows);
         const staffingRows = Number(row.staffing_rows);
+        const attendanceRows = Number(row.attendance_rows);
         const bucket: FactBucket = {
           childId: (row.child_id as string | null) ?? null,
           name: (row.child_name as string | null) ?? null,
@@ -370,6 +420,8 @@ export async function getChildBreakdown(
           qualified: examRows === 0 ? null : Number(row.qualified),
           staffEnrolment: staffingRows === 0 ? null : Number(row.staff_enrolment),
           teachers: staffingRows === 0 ? null : Number(row.teachers),
+          presentDays: attendanceRows === 0 ? null : Number(row.present_days),
+          enrolledDays: attendanceRows === 0 ? null : Number(row.enrolled_days),
         };
         if (Number(row.grp) === TOTAL_GROUPING) factTotal = bucket;
         else factBuckets.set(bucket.childId, bucket);
@@ -469,6 +521,14 @@ export async function getChildBreakdown(
           fact?.staffEnrolment != null && fact.teachers != null
             ? ratio(fact.staffEnrolment, fact.teachers)
             : null,
+        // Σpresent ÷ Σenrolled, per child — the weighted attendance rate, never avg(stored rate). Null
+        // when the child filed no attendance row (not a "0%" claim), consistent with every other measure.
+        presentDays: fact?.presentDays ?? null,
+        enrolledDays: fact?.enrolledDays ?? null,
+        attendanceRate:
+          fact?.presentDays != null && fact.enrolledDays != null
+            ? ratio(fact.presentDays, fact.enrolledDays)
+            : null,
       });
 
       const childIds = new Set<string>();
@@ -513,6 +573,8 @@ export async function getChildBreakdown(
         sumOf((r) => r.qualified) === (total.qualified ?? 0) &&
         sumOf((r) => r.staffEnrolment) === (total.staffEnrolment ?? 0) &&
         sumOf((r) => r.teachers) === (total.teachers ?? 0) &&
+        sumOf((r) => r.presentDays) === (total.presentDays ?? 0) &&
+        sumOf((r) => r.enrolledDays) === (total.enrolledDays ?? 0) &&
         (!hasCoverage ||
           (sumOf((r) => r.schoolsRegistered) === (total.schoolsRegistered ?? 0) &&
             sumOf((r) => r.schoolsReporting) === (total.schoolsReporting ?? 0)));
