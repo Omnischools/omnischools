@@ -709,6 +709,9 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     ptr: null,
     staffEnrolment: null,
     teachers: null,
+    presentDays: null,
+    enrolledDays: null,
+    attendanceRate: null,
     ...fields,
   };
 }

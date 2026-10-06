@@ -17,7 +17,8 @@ import {
 import type { ComparisonEntity, SchoolType } from "@/lib/oversight/comparison-entities";
 import { examForSchoolType, pinSelectionToLevel } from "@/lib/oversight/comparison-entities";
 import { ComparisonTable } from "@/components/oversight/comparison-table";
-import { ComparisonPicker, entityMeta, MAX_ENTITIES } from "@/components/oversight/comparison-picker";
+import { ComparisonPicker, entityMeta } from "@/components/oversight/comparison-picker";
+import { MAX_ENTITIES } from "@/lib/oversight/comparison";
 
 /**
  * INCREMENT I — THE COMPARISON WORKSPACE ENGINE (pure), against COMPARISON-WORKSPACE-DOMAIN-RULING.
@@ -47,6 +48,9 @@ function row(over: Partial<BreakdownRow> & { childId: string }): BreakdownRow {
     ptr: null,
     staffEnrolment: null,
     teachers: null,
+    presentDays: null,
+    enrolledDays: null,
+    attendanceRate: null,
     ...over,
   };
 }
@@ -169,12 +173,18 @@ describe("rankMarks — direction-aware, floored, ties, nulls", () => {
 describe("comparisonMetrics — the catalogue honours the ship/defer scope", () => {
   it("omits the performance section when the level sits no exam", () => {
     const keys = comparisonMetrics({ exam: null, hasCoverage: false }).map((m) => m.key);
-    expect(keys).toEqual(["enrolment", "ptr"]);
+    expect(keys).toEqual(["enrolment", "attendance", "ptr"]);
   });
 
   it("includes WASSCE qualification + candidates when an exam is pinned", () => {
     const keys = comparisonMetrics({ exam: "WASSCE", hasCoverage: false }).map((m) => m.key);
-    expect(keys).toEqual(["enrolment", "qualification", "candidates", "ptr"]);
+    expect(keys).toEqual([
+      "enrolment",
+      "qualification",
+      "candidates",
+      "attendance",
+      "ptr",
+    ]);
   });
 
   it("adds the coverage row only when the tier has coverage", () => {
@@ -470,11 +480,11 @@ describe("AC5/AC6 — like-for-level: the exam is pinned by level, the section o
 
   it("a PRIMARY/KG/COMBINED set renders NO performance row at all — not a `—`-filled one", () => {
     const metrics = comparisonMetrics({ exam: examForSchoolType("PRIMARY"), hasCoverage: false });
-    expect(metrics.map((m) => m.key)).toEqual(["enrolment", "ptr"]);
+    expect(metrics.map((m) => m.key)).toEqual(["enrolment", "attendance", "ptr"]);
     const a = row({ childId: "a", name: "Aboi Primary", enrolment: 300, staffEnrolment: 300, teachers: 10, ptr: 30 });
     const b = row({ childId: "b", name: "Beppo Primary", enrolment: 400, staffEnrolment: 400, teachers: 10, ptr: 40 });
     const model = buildComparison({ metrics, benchmarkPopulation: [a, b], columns: [col(a), col(b)] });
-    expect(model.sections.map((s) => s.title)).toEqual(["Enrolment", "Staffing"]);
+    expect(model.sections.map((s) => s.title)).toEqual(["Enrolment", "Attendance", "Staffing"]);
     const html = renderToStaticMarkup(
       createElement(ComparisonTable, {
         model,
@@ -768,12 +778,21 @@ describe("AC20/AC21 — the cap counts real entities only; deferred metrics are 
     expect(code).toContain("childLevelFor(scope.level)");
   });
 
-  it("the deferred measures are ABSENT, not rendered as empty rows claiming a measure", () => {
+  it("the still-deferred measures are ABSENT, not rendered as empty rows claiming a measure", () => {
     const keys = comparisonMetrics({ exam: "WASSCE", hasCoverage: true }).map((m) => m.key);
-    for (const deferred of ["girls", "attendance", "vacancies", "fees", "coreMaths", "trend", "population"]) {
+    // Attendance SHIPPED in the fast-follow; girls' share (blocked on the enrolment-period grain),
+    // vacancies, fees and the rest stay deferred.
+    for (const deferred of ["girls", "vacancies", "fees", "coreMaths", "trend", "population"]) {
       expect(keys.some((k) => k.toLowerCase().includes(deferred.toLowerCase()))).toBe(false);
     }
-    expect(keys).toEqual(["enrolment", "qualification", "candidates", "ptr", "coverage"]);
+    expect(keys).toEqual([
+      "enrolment",
+      "qualification",
+      "candidates",
+      "attendance",
+      "ptr",
+      "coverage",
+    ]);
   });
 });
 
@@ -880,7 +899,7 @@ describe("RED-fix 1 re-verified — the level pin holds on the awkward selection
     // The downstream consequence the page relies on: no exam pin ⇒ no performance section at all.
     expect(examForSchoolType(pinnedType)).toBeNull();
     expect(comparisonMetrics({ exam: examForSchoolType(pinnedType), hasCoverage: false }).map((m) => m.key))
-      .toEqual(["enrolment", "ptr"]);
+      .toEqual(["enrolment", "attendance", "ptr"]);
   });
 
   it("the pinned selection is what drives the exam — a mixed request can never reach a second exam", () => {
@@ -963,5 +982,90 @@ describe("RED-fix 2 re-verified — the flag is on the right column, and the cav
     expect(page).toContain("not ranked");
     // And the flag reaches the table header from the same column inputs, not a second computation.
     expect(page).toContain("coverageAmbiguous: columns[i]?.coverageAmbiguous ?? false");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * FAST-FOLLOW (increment I) — attendance (R9) SHIPS. Girls' share (R10) and fees (R11) are DEFERRED:
+ * girls' share is blocked on the unsettled enrolment-period grain (ETL ANNUAL vs readers TERM); fees is
+ * billed-not-collected distributional data with no pupil denominator. Every property here is a fold over
+ * literal rows; the attendance SQL arm is proven in the breakdown + RLS integration tests, not here.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe("attendance — weighted Σpresent÷Σenrolled, higher-better, floored (R9 / AC24–AC26)", () => {
+  it("benchmark is day-weighted, never the mean of stored rates (AC24/AC25)", () => {
+    const pop = [
+      row({ childId: "big", presentDays: 22080, enrolledDays: 24000 }), // 92.0%
+      row({ childId: "small", presentDays: 870, enrolledDays: 1000 }), // 87.0%
+    ];
+    const weighted = weightedBenchmark(pop, (r) => r.presentDays, (r) => r.enrolledDays);
+    expect(weighted).toBeCloseTo(22950 / 25000, 10); // 0.918 — pulled toward the big school
+    // The unweighted mean of the two rates is 0.895 — what avg(stored rate) would wrongly give.
+    expect(weighted).not.toBeCloseTo((0.92 + 0.87) / 2, 5);
+  });
+
+  it("ranks higher = best, lower = worst, but only above the enrolled-days floor (AC26)", () => {
+    const metrics = comparisonMetrics({ exam: null, hasCoverage: false });
+    const attendance = metrics.find((m) => m.key === "attendance");
+    expect(attendance?.direction).toBe("higher-better");
+    // A tiny-cohort 100%% school is below ATT_MIN_ENROLLED_DAYS and must not be crowned best.
+    const columns: ComparisonColumnInput[] = [
+      col(row({ childId: "tiny", attendanceRate: 1.0, enrolledDays: 500 })), // below floor
+      col(row({ childId: "a", attendanceRate: 0.9, enrolledDays: 30000 })),
+      col(row({ childId: "b", attendanceRate: 0.8, enrolledDays: 30000 })),
+    ];
+    const model = buildComparison({ metrics: [attendance!], benchmarkPopulation: [], columns });
+    const cells = model.sections[0]!.rows[0]!.cells;
+    expect(cells[0]!.mark).toBeNull(); // sub-floor: listed, not crowned
+    expect(cells[1]!.mark).toBe("best"); // 0.9 is the best ELIGIBLE
+    expect(cells[2]!.mark).toBe("worst"); // 0.8 the worst eligible
+  });
+
+  it("a school that filed no gradebook attendance is a null cell and is never marked (AC27)", () => {
+    const metrics = comparisonMetrics({ exam: null, hasCoverage: false });
+    const attendance = metrics.find((m) => m.key === "attendance")!;
+    const columns: ComparisonColumnInput[] = [
+      col(row({ childId: "filed", attendanceRate: 0.9, enrolledDays: 30000 })),
+      col(row({ childId: "none" })), // no attendance at all → null rate, null enrolledDays
+    ];
+    const model = buildComparison({ metrics: [attendance], benchmarkPopulation: [], columns });
+    const cells = model.sections[0]!.rows[0]!.cells;
+    expect(cells[1]!.value).toBeNull();
+    expect(cells[1]!.mark).toBeNull();
+    // <2 eligible once the null drops out → the lone eligible school is a profile, not crowned.
+    expect(cells[0]!.mark).toBeNull();
+  });
+});
+
+describe("the catalogue (comparisonMetrics) — attendance present, girls' share + fees absent (R9/R11)", () => {
+  it("includes enrolment, attendance, ptr — and the exam rows only with an exam", () => {
+    const withExam = comparisonMetrics({ exam: "WASSCE", hasCoverage: true }).map((m) => m.key);
+    expect(withExam).toEqual([
+      "enrolment",
+      "qualification",
+      "candidates",
+      "attendance",
+      "ptr",
+      "coverage",
+    ]);
+    const noExam = comparisonMetrics({ exam: null, hasCoverage: false }).map((m) => m.key);
+    expect(noExam).toEqual(["enrolment", "attendance", "ptr"]);
+  });
+
+  it("carries NO girls'-share or fees row in any configuration (both DEFERRED)", () => {
+    for (const exam of ["WASSCE", "BECE", null] as const) {
+      for (const hasCoverage of [true, false]) {
+        const keys = comparisonMetrics({ exam, hasCoverage }).map((m) => m.key);
+        expect(keys).not.toContain("fees");
+        expect(keys).not.toContain("girls-share");
+      }
+    }
+  });
+
+  it("only enrolment and candidates are unranked; attendance ranks (R9)", () => {
+    const metrics = comparisonMetrics({ exam: "WASSCE", hasCoverage: true });
+    const none = metrics.filter((m) => m.direction === "none").map((m) => m.key).sort();
+    expect(none).toEqual(["candidates", "enrolment"]);
+    expect(metrics.find((m) => m.key === "attendance")!.direction).toBe("higher-better");
   });
 });

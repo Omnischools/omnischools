@@ -134,7 +134,7 @@ function MetricRows({ row }: { row: ComparisonMetricRow }) {
                 <div className={cn("font-mono text-[14px] font-bold", CV_TEXT[tone])}>
                   {formatValue(metric.kind, cell.value)}
                 </div>
-                {cell.mark ? (
+                {cell.mark && metric.markLabel ? (
                   <RankDot mark={cell.mark} label={metric.markLabel[cell.mark]} />
                 ) : null}
                 {metric.bar ? <CvBar fraction={cell.value} tone={tone} /> : null}

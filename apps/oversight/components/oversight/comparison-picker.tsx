@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "./breakdown-table";
 import type { ChildLevel } from "@/lib/oversight/breakdown";
+import { MAX_ENTITIES } from "@/lib/oversight/comparison";
 import type { ComparisonEntity } from "@/lib/oversight/comparison-entities";
 
 /**
@@ -43,8 +44,6 @@ export function entityMeta(entity: ComparisonEntity): string | null {
 function hrefFor(basePath: string, ids: string[]): string {
   return ids.length === 0 ? basePath : `${basePath}?e=${ids.join(",")}`;
 }
-
-export const MAX_ENTITIES = 8;
 
 export function ComparisonPicker({
   basePath,
@@ -100,6 +99,11 @@ export function ComparisonPicker({
                 )}
               >
                 {opt.label}
+                {/* The title attribute is sighted-only; name the reason for a screen reader too, so the
+                    "visible, labelled, not theirs" affordance (Kofi R1.2) is not sight-dependent (Dex N1). */}
+                {!active ? (
+                  <span className="sr-only"> (not available at your jurisdiction level)</span>
+                ) : null}
               </span>
             );
           })}

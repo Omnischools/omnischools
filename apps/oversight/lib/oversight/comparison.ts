@@ -2,6 +2,22 @@ import { RANK_CARD_MIN_CANDIDATES, type BreakdownRow } from "./breakdown";
 import type { Exam } from "./performance";
 
 /**
+ * THE ENTITY CAP (Kofi R6.1) — a domain rule, so it lives in the engine beside the other R-rules, not
+ * in the picker component (Dex M2). The pinned benchmark does not count toward it (R6.2).
+ */
+export const MAX_ENTITIES = 8;
+
+/**
+ * THE ATTENDANCE MARKING FLOOR (Kofi R9.4) — owner-movable, like RANK_CARD_MIN_CANDIDATES=30 for
+ * WASSCE, and materially larger because `enrolled_days = pupils × school-days`: one term of a small
+ * cohort is already in the thousands. It governs the SUPERLATIVE only — a school below the floor is
+ * LISTED with its rate and its enrolled-days visible, but is not crowned best/worst (its rate rests on
+ * too little marking to rank honestly). 2,000 ≈ a ~35-pupil cohort across a single term; the exact
+ * integer is an owner/ops call (escalated), not a data fact.
+ */
+export const ATT_MIN_ENROLLED_DAYS = 2000;
+
+/**
  * THE COMPARISON WORKSPACE ENGINE — pure, no db, no JSX (increment I).
  *
  * The surface itself (app/(oversight)/comparison) reuses `getChildBreakdown` UNCHANGED for its data
@@ -142,7 +158,7 @@ export function rankMarks(
  * owns FORMATTING only (pupils vs percent vs `:1`); no decision lives there.
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** How a cell's number is written. The component maps this to a formatter; the engine stays string-free. */
+/** How a cell's number is written. The component maps this to a formatter; the engine decides no format. */
 export type MetricKind = "pupils" | "count" | "rate" | "ratio";
 
 /** The benchmark column's derivation for a metric (Kofi R3.4). `none` ⇒ no benchmark cell (coverage). */
@@ -165,8 +181,11 @@ export interface ComparisonMetricSpec {
   /** The value a cell shows, off one entity's row. Null ⇒ the muted `—`. */
   valueOf: (row: BreakdownRow) => number | null;
   benchmark: BenchmarkSpec;
-  /** The words on the rank dot. Defaults to highest/lowest (higher-better) or best/worst (lower-better). */
-  markLabel: { best: string; worst: string };
+  /**
+   * The words on the rank dot. Present ONLY on a ranked (direction ≠ "none") metric — a `none`-direction
+   * row is never marked, so it carries no label (Dex N1: no dead config inviting "does this rank?").
+   */
+  markLabel?: { best: string; worst: string };
   /**
    * An extra per-entity gate ON TOP of non-null before an entity can be crowned — the WASSCE candidate
    * floor (Kofi R4.3). Absent ⇒ any non-null, eligible entity may be marked.
@@ -210,13 +229,16 @@ export interface ComparisonModel {
 }
 
 /**
- * THE SLICE-1 CATALOGUE. Only measures already on `BreakdownRow` appear — reused, zero changes to the
- * blessed roll-up (COMPARISON-WORKSPACE-BUILD-SCOPE). Girls' share, attendance, vacancies, fees and the
- * 4-year trend are deliberately ABSENT rather than rendered as `—` rows claiming a measure exists.
+ * THE CATALOGUE. Every measure reads off `BreakdownRow` — the fast-follow added the attendance components
+ * to that row (one additive UNION arm; COMPARISON-FASTFOLLOW-DATA-PLAN). Teacher vacancies and the 4-year
+ * trend stay ABSENT rather than rendered as `—` rows claiming a measure exists; GIRLS' SHARE and FEES are
+ * DEFERRED — girls' share reads the same enrolment fact whose period grain is unsettled (ETL ANNUAL vs
+ * readers TERM), and fees is billed-not-collected distributional data with no pupil denominator (Kofi R11)
+ * that cannot be honestly ranked or benchmarked on this surface.
  *
- * ENROLMENT IS NOT RANKED (`direction: "none"`): a bigger school is not a "better" school, the mock draws
- * no rank dot on it, and "mock wins on presentation" settles it. The candidates row is the WASSCE ranking
- * weight made visible (Kofi R4.3) and is likewise unranked.
+ * ENROLMENT IS NOT RANKED (`direction: "none"`): a bigger school is not a "better" school — shown with
+ * value and benchmark, never crowned good/bad, the mock's green/red overridden. The candidates row is the
+ * WASSCE ranking weight made visible (R4.3), likewise unranked. Attendance (R9) IS ranked, higher-better.
  */
 export function comparisonMetrics(args: {
   /** Null when the compared level sits no national exam (KG/PRIMARY/COMBINED) — the performance section
@@ -235,7 +257,6 @@ export function comparisonMetrics(args: {
       direction: "none",
       valueOf: (r) => r.enrolment,
       benchmark: { kind: "mean", value: (r) => r.enrolment },
-      markLabel: { best: "highest", worst: "lowest" },
     },
   ];
   if (exam !== null) {
@@ -264,10 +285,29 @@ export function comparisonMetrics(args: {
         direction: "none",
         valueOf: (r) => r.candidates,
         benchmark: { kind: "mean", value: (r) => r.candidates },
-        markLabel: { best: "highest", worst: "lowest" },
       },
     );
   }
+  metrics.push({
+    // ATTENDANCE — HIGHER-is-better (Kofi R9), ranked green/red. The weighted Σpresent ÷ Σenrolled, over
+    // the like-for-like population for the benchmark. A school is crowned only above ATT_MIN_ENROLLED_DAYS
+    // (R9.4) — a near-empty or part-term gradebook roll-out is listed with its rate but not ranked. The
+    // sub-label carries the gradebook/internal-data provenance (R9.5a); a school not on the gradebook
+    // files nothing → "—", never 0%, and is unranked (R9.5b). `coverageGated` keeps a thin-EMIS-coverage
+    // district/region from being crowned worst (R9.5c / AC28); at school depth coverage is never thin.
+    key: "attendance",
+    section: "Attendance",
+    label: "Attendance rate",
+    subLabel: "present ÷ enrolled days · gradebook schools only",
+    kind: "rate",
+    direction: "higher-better",
+    valueOf: (r) => r.attendanceRate,
+    benchmark: { kind: "weighted", num: (r) => r.presentDays, den: (r) => r.enrolledDays },
+    markLabel: { best: "highest", worst: "lowest" },
+    floorOf: (r) => r.enrolledDays !== null && r.enrolledDays >= ATT_MIN_ENROLLED_DAYS,
+    coverageGated: true,
+    bar: true,
+  });
   metrics.push(
     {
       key: "ptr",
