@@ -149,13 +149,14 @@ beforeAll(async () => {
     values
       -- 'JHS' throughout: dim_stage carries exactly that one stage in the shared fixture, and the
       -- stage is not what this file is about.
-      (${TINY_SCHOOL}::uuid,            ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'ALL',    ${F.tinyEnrolment},        'OPERATIONAL_AGG', now()),
-      (${OTHER_REGION_SCHOOL}::uuid,    ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'ALL',    ${F.otherRegionEnrolment}, 'OPERATIONAL_AGG', now()),
-      (${MISPARENTED_SCHOOL}::uuid,     ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'ALL',    ${F.misparentedEnrolment}, 'OPERATIONAL_AGG', now()),
-      -- the inflation decoys, on the SAME school, period and stage total as the clean row
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'MALE',   200, 'OPERATIONAL_AGG', now()),
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'FEMALE', 210, 'OPERATIONAL_AGG', now()),
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', 'Form 2', 'ALL',    150, 'OPERATIONAL_AGG', now())
+      (${TINY_SCHOOL}::uuid,            ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null,     'ALL',    ${F.tinyEnrolment},        'OPERATIONAL_AGG', now()),
+      (${OTHER_REGION_SCHOOL}::uuid,    ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null,     'ALL',    ${F.otherRegionEnrolment}, 'OPERATIONAL_AGG', now()),
+      (${MISPARENTED_SCHOOL}::uuid,     ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null,     'ALL',    ${F.misparentedEnrolment}, 'OPERATIONAL_AGG', now()),
+      -- the class_form inflation decoy, on the SAME school, ANNUAL period and stage total as the clean
+      -- row. The MALE/FEMALE triple-count decoy is NOT here: the shared seed owns the sex split on this
+      -- school (190/220 on the ANNUAL period), and two writers of one grain key would duplicate it —
+      -- fact_enrolment has no grain UNIQUE (enrolment-grain ruling §2.6).
+      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', 'Form 2', 'ALL',    150, 'OPERATIONAL_AGG', now())
   `;
 
   await owner`
@@ -193,14 +194,18 @@ afterAll(async () => {
     delete from fact_performance_exam
      where period_id in (${PERIOD_ID_EXAM_COHORT}::uuid, ${OLDER_COHORT}::uuid)
   `;
+  // ⚠ Scope by class_form, NOT by `sex <> 'ALL'`. The shared seed now owns the MALE/FEMALE split on the
+  // ANNUAL period for schoolPublicConsented, so a `sex <> 'ALL'` delete would eat fixture data. The three
+  // named schools are wholly test-owned, so all their rows go; on the shared school only the per-form
+  // decoy (class_form is not null) is this file's.
   await owner`
     delete from fact_enrolment
-     where period_id = ${PERIOD_ID_TERM}::uuid
+     where period_id = ${PERIOD_ID_ANNUAL}::uuid
        and (jurisdiction_id in (
               ${TINY_SCHOOL}::uuid, ${OTHER_REGION_SCHOOL}::uuid, ${MISPARENTED_SCHOOL}::uuid
             )
             or (jurisdiction_id = ${JUR.schoolPublicConsented}::uuid
-                and (class_form is not null or sex <> 'ALL')))
+                and class_form is not null))
   `;
   await owner`delete from dim_period where period_id = ${OLDER_COHORT}::uuid`;
   await owner`
@@ -336,7 +341,7 @@ describe("the LEFT-vs-INNER trap: a sub-national officer's breakdown is NOT empt
           join      dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
           left join dim_jurisdiction d on d.jurisdiction_id = s.parent_id        and d.level = 'DISTRICT'
           left join dim_jurisdiction r on r.jurisdiction_id = d.parent_id        and r.level = 'REGION'
-         where fe.period_id = ${PERIOD_ID_TERM}::uuid and fe.sex = 'ALL' and fe.class_form is null
+         where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.sex = 'ALL' and fe.class_form is null
       `) as unknown as { n: number }[];
       const inner = (await tx`
         select count(*)::int as n
@@ -344,7 +349,7 @@ describe("the LEFT-vs-INNER trap: a sub-national officer's breakdown is NOT empt
           join dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
           join dim_jurisdiction d on d.jurisdiction_id = s.parent_id        and d.level = 'DISTRICT'
           join dim_jurisdiction r on r.jurisdiction_id = d.parent_id        and r.level = 'REGION'
-         where fe.period_id = ${PERIOD_ID_TERM}::uuid and fe.sex = 'ALL' and fe.class_form is null
+         where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.sex = 'ALL' and fe.class_form is null
       `) as unknown as { n: number }[];
       return { left: Number(left[0]!.n), inner: Number(inner[0]!.n) };
     });
@@ -360,7 +365,7 @@ describe("the LEFT-vs-INNER trap: a sub-national officer's breakdown is NOT empt
           join dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
           join dim_jurisdiction d on d.jurisdiction_id = s.parent_id        and d.level = 'DISTRICT'
           join dim_jurisdiction r on r.jurisdiction_id = d.parent_id        and r.level = 'REGION'
-         where fe.period_id = ${PERIOD_ID_TERM}::uuid and fe.sex = 'ALL' and fe.class_form is null
+         where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.sex = 'ALL' and fe.class_form is null
       `) as unknown as { n: number }[];
       return Number(rows[0]!.n);
     });
@@ -413,7 +418,7 @@ describe("the level pin sends a mis-parented school to the unattributed bucket",
           join      dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
           -- NO level pin on the hop:
           left join dim_jurisdiction d on d.jurisdiction_id = s.parent_id
-         where fe.period_id = ${PERIOD_ID_TERM}::uuid and fe.sex = 'ALL' and fe.class_form is null
+         where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.sex = 'ALL' and fe.class_form is null
          group by d.name
       `) as unknown as { name: string | null; headcount: number }[];
     });
@@ -487,6 +492,57 @@ describe("Σchildren = the total row, at every tier", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
+// (a2) GIRLS' SHARE — the FEMALE arm sums off the SAME ANNUAL period, and the share is the weighted ratio
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("the girls'-share arm reads FEMALE off the same ANNUAL period as enrolment", () => {
+  it("per child it is Σfemale ÷ Σenrolment, from the seed's ANNUAL sex split", async () => {
+    // The seed carries the MALE/FEMALE split on the ANNUAL period: …0011 is 220/410, …0018 is 320/720.
+    const b = await readBreakdown(regionScope);
+    const wassa = named(b, "Wassa Amenfi West");
+    const sekondi = named(b, "Sekondi-Takoradi Metro");
+    expect(wassa.femaleEnrolment).toBe(220);
+    expect(wassa.enrolment).toBe(410);
+    expect(wassa.girlsShare).toBeCloseTo(220 / 410, 10);
+    expect(sekondi.femaleEnrolment).toBe(320);
+    expect(sekondi.girlsShare).toBeCloseTo(320 / 720, 10);
+  });
+
+  it("the total's share is the WEIGHTED Σfemale÷Σenrolment, never the mean of the children's", async () => {
+    const b = await readBreakdown(regionScope);
+    // The total row comes from the same GROUPING SETS scan, so it is the real Σ÷Σ.
+    expect(b.total.girlsShare).toBeCloseTo(
+      (b.total.femaleEnrolment ?? 0) / (b.total.enrolment ?? 1),
+      10,
+    );
+    // …and it is NOT the unweighted mean of the districts' own shares.
+    const shares = b.children
+      .map((r) => r.girlsShare)
+      .filter((v): v is number => v !== null);
+    const mean = shares.reduce((a, v) => a + v, 0) / shares.length;
+    expect(b.total.girlsShare).not.toBeCloseTo(mean, 4);
+  });
+
+  it("femaleEnrolment reconciles Σchildren + unattributed = total, like every additive measure", async () => {
+    const b = await readBreakdown(regionScope);
+    const summed = allRows(b).reduce((acc, r) => acc + (r.femaleEnrolment ?? 0), 0);
+    expect(summed).toBe(b.total.femaleEnrolment);
+    // The mis-parented school filed no FEMALE row, so the bucket's femaleEnrolment is a null, not a 0.
+    expect(b.unattributed!.femaleEnrolment).toBeNull();
+    expect(b.unattributed!.girlsShare).toBeNull();
+  });
+
+  it("the share is NOT clamped — a school whose FEMALE row is absent reads a null share, not 0", async () => {
+    // TINY_SCHOOL filed only an ALL row (no FEMALE), so its district has enrolment but a null numerator.
+    const b = await readBreakdown(regionScope);
+    const tiny = named(b, TINY_DISTRICT_NAME);
+    expect(tiny.enrolment).toBe(F.tinyEnrolment);
+    expect(tiny.femaleEnrolment).toBeNull();
+    expect(tiny.girlsShare).toBeNull();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
 // (b) THE TOTAL ROW IS THE SLICE-1 KPI READ, FOR THE SAME SCOPE AND THE SAME PERIOD
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -498,7 +554,7 @@ describe("the total row equals the KPI strip above it", () => {
   ] as const) {
     it(`${name}: enrolment, WASSCE and coverage all agree with the slice-1 reads`, async () => {
       const b = await readBreakdown(scope);
-      const enrolment = okValue(await getEnrolmentTotal(scope, PERIOD_ID_TERM));
+      const enrolment = okValue(await getEnrolmentTotal(scope, PERIOD_ID_ANNUAL));
       const wassce = okValue(
         await getExamQualification(scope, "WASSCE", PERIOD_ID_EXAM_COHORT),
       );
@@ -653,9 +709,10 @@ describe("each mandatory filter is load-bearing per child, not only in the total
       return (await tx`
         select sex::text as sex, class_form from fact_enrolment
          where jurisdiction_id = ${JUR.schoolPublicConsented}::uuid
-           and period_id = ${PERIOD_ID_TERM}::uuid
+           and period_id = ${PERIOD_ID_ANNUAL}::uuid
       `) as unknown as { sex: string; class_form: string | null }[];
     });
+    // 2 non-ALL rows (the seed's MALE 190 / FEMALE 220 split) and 1 per-form row (this file's decoy).
     expect(rows.filter((r) => r.sex !== "ALL")).toHaveLength(2);
     expect(rows.filter((r) => r.class_form !== null)).toHaveLength(1);
   });
@@ -667,7 +724,7 @@ describe("each mandatory filter is load-bearing per child, not only in the total
         select sum(fe.headcount)::int as headcount
           from fact_enrolment fe
           join dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
-         where fe.period_id = ${PERIOD_ID_TERM}::uuid and fe.class_form is null
+         where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.class_form is null
            and s.parent_id = ${JUR.district}::uuid
       `) as unknown as { headcount: number }[];
       const exam = (await tx`
@@ -683,7 +740,7 @@ describe("each mandatory filter is load-bearing per child, not only in the total
       };
     });
     const wassa = named(b, "Wassa Amenfi West");
-    expect(inflated.enrolment).toBe(F.wassaEnrolment + 200 + 210);
+    expect(inflated.enrolment).toBe(F.wassaEnrolment + 190 + 220);
     expect(inflated.enrolment).toBeGreaterThan(wassa.enrolment!);
     // ⚠ The candidate count is 3× the cohort while the RATE still comes out right (the factor cancels),
     // which is what makes this the dangerous one: it would silently satisfy the rank-card floor.
@@ -698,7 +755,7 @@ describe("each mandatory filter is load-bearing per child, not only in the total
         select sum(fe.headcount)::int as headcount
           from fact_enrolment fe
           join dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
-         where fe.period_id = ${PERIOD_ID_TERM}::uuid and fe.sex = 'ALL'
+         where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.sex = 'ALL'
            and s.parent_id = ${JUR.district}::uuid
       `) as unknown as { headcount: number }[];
       return Number(rows[0]!.headcount);
@@ -724,6 +781,21 @@ describe("each mandatory filter is load-bearing per child, not only in the total
     // One period parameter per measure, bound once, applied to every child in the same scan.
     expect(code).toMatch(/termPeriodId/);
     expect(code).toMatch(/examPeriodId/);
+    expect(code).toMatch(/annualPeriodId/);
+  });
+
+  it("the stocks bind the SAME annual parameter and attendance alone binds the term one", () => {
+    // The enrolment-grain regression guard (enrolment-grain ruling §2.6/§3): the enrolment, girls'-share
+    // and staffing arms are ANNUAL stocks pinned to the ONE annualPeriodId, and attendance is the only arm
+    // on termPeriodId. The one place the enrolment grain is stated is this binding — so count it, cheaply
+    // and durably, in the `facts` CTE. enrolment + ENROLMENT_FEMALE + staffing = 3 annual bindings;
+    // attendance = 1 term binding. Both enrolment arms binding the SAME parameter is what keeps the
+    // girls'-share numerator and denominator from ever being pinned to different periods.
+    const code = readCode("lib/oversight/breakdown.ts");
+    const factsCte = code.slice(code.indexOf("facts as ("), code.indexOf("attributed as ("));
+    const count = (needle: string) => factsCte.split(needle).length - 1;
+    expect(count("${annualPeriodId}::uuid")).toBe(3);
+    expect(count("${termPeriodId}::uuid")).toBe(1);
   });
 });
 
@@ -1154,6 +1226,8 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     presentDays: null,
     enrolledDays: null,
     attendanceRate: null,
+    femaleEnrolment: null,
+    girlsShare: null,
     ...fields,
   };
 }

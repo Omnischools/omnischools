@@ -145,20 +145,22 @@ export default async function OversightHome() {
   const [latestRun, termPeriod, annualPeriod, coverage, wassceCohort] = await Promise.all([
     getLatestSuccessfulEtlRun(scope),
     // period_type is NAMED. `is_current` alone matches the TERM *and* the ANNUAL row of the same
-    // academic year (db/schema/dim.ts), and enrolment hangs off the TERM one.
+    // academic year (db/schema/dim.ts). The TERM row is now resolved for attendance only (and for the
+    // banner's human-readable term label).
     getCurrentPeriod(scope, "TERM"),
-    // PTR hangs off the ANNUAL row, not the TERM one: fact_staffing is annual-grain (a stock, not a
-    // per-term flow), so it is pinned separately. See lib/oversight/ptr.ts.
+    // The ANNUAL row is the grain of fact_enrolment, fact_staffing and fact_infrastructure — all three
+    // are stocks and hang off this one row. See lib/oversight/enrolment.ts and lib/oversight/ptr.ts.
     getCurrentPeriod(scope, "ANNUAL"),
     getSchoolCoverage(scope),
     getLatestExamCohortPeriod(scope, "WASSCE"),
   ]);
 
-  // Period-dependent reads. Pinning exactly one period_id is what keeps enrolment from summing two
+  // Period-dependent reads. Enrolment and PTR pin the ANNUAL row (stocks), attendance the TERM row (a
+  // flow), WASSCE its own sitting — one period_id each, which is what keeps enrolment from summing two
   // terms of the same children and WASSCE from summing two sittings of different ones.
   const [enrolment, ptr, wassce, breakdown] = await Promise.all([
-    isOk(termPeriod)
-      ? getEnrolmentTotal(scope, termPeriod.value.periodId)
+    isOk(annualPeriod)
+      ? getEnrolmentTotal(scope, annualPeriod.value.periodId)
       : unavailable<EnrolmentTotal>(),
     isOk(annualPeriod)
       ? getPupilTeacherRatio(scope, annualPeriod.value.periodId)
@@ -178,9 +180,11 @@ export default async function OversightHome() {
     getChildBreakdown(scope, {
       // A DISPLAY DEPTH, not a ceiling: RLS has already bounded the visible rows before it is applied.
       childLevel: childLevelFor(officer.level),
+      // The TERM period for the attendance column (a flow), resolved once here (never per child).
       termPeriodId: isOk(termPeriod) ? termPeriod.value.periodId : null,
       examPeriodId: isOk(wassceCohort) ? wassceCohort.value.periodId : null,
-      // The ANNUAL period for the PTR column, resolved once here like the other two (never per child).
+      // The ANNUAL period for the enrolment and PTR columns (stocks on one dim_period row), resolved
+      // once here like the other two (never per child).
       annualPeriodId: isOk(annualPeriod) ? annualPeriod.value.periodId : null,
       exam: "WASSCE",
     }),
@@ -295,16 +299,18 @@ export default async function OversightHome() {
               Data reflects the{" "}
               <b className="text-navy">
                 {isOk(termPeriod)
-                  ? `${termPeriod.value.academicYear} academic year${
-                      termPeriod.value.term === null
-                        ? ""
-                        : `, Term ${termPeriod.value.term}`
-                    }`
+                  ? `${termPeriod.value.academicYear} academic year`
                   : "current academic period"}
               </b>
-              . Enrolment, attendance and fee figures synced from schools&apos;
-              operational records <b className="text-navy">{formatAsOf(latestRun)} GMT</b>
-              .
+              . Enrolment and staffing are year-to-date totals on roll
+              {isOk(termPeriod) && termPeriod.value.term !== null ? (
+                <>
+                  ; attendance and fee figures are{" "}
+                  <b className="text-navy">Term {termPeriod.value.term}</b>
+                </>
+              ) : null}
+              . Synced from schools&apos; operational records{" "}
+              <b className="text-navy">{formatAsOf(latestRun)} GMT</b>.
               {sittingYear !== null ? (
                 <>
                   {" "}
@@ -428,13 +434,11 @@ export default async function OversightHome() {
           jurisdictionName={officer.jurisdictionName}
           homeId={officer.jurisdictionId}
           breakdown={breakdown}
-          termLabel={
-            isOk(termPeriod)
-              ? `${termPeriod.value.academicYear}${
-                  termPeriod.value.term === null ? "" : ` Term ${termPeriod.value.term}`
-                }`
-              : null
-          }
+          /* The academic year only, never a term: every measure in this table (enrolment, PTR, WASSCE,
+             coverage) is an annual stock or a sitting — none is termly — so a "Term N" vintage would
+             over-claim. Attendance, the one term-grain measure, lives on the comparison workspace, which
+             names its own term there. */
+          termLabel={isOk(termPeriod) ? termPeriod.value.academicYear : null}
           /* Wells trap 4: the table must STATE the sitting it ranks on, because the resolver is
              tier-sensitive and two officers can honestly be looking at two different sittings. */
           sittingLabel={sittingYear === null ? null : `${sittingYear} WASSCE`}

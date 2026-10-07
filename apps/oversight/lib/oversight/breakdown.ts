@@ -117,10 +117,19 @@ export interface BreakdownRow {
    * label — never a SIBLING's name.
    */
   name: string | null;
-  /** Σ headcount, `sex='ALL'`, `class_form is null`, one TERM period. Null = no return filed. */
+  /** Σ headcount, `sex='ALL'`, `class_form is null`, one ANNUAL period. Null = no return filed. */
   enrolment: number | null;
-  /** Schools that FILED enrolment for the pinned term — not "schools that exist" (see coverage.ts). */
+  /** Schools that FILED enrolment for the pinned academic year — not "schools that exist" (see coverage.ts). */
   schoolsFiling: number | null;
+  /**
+   * Σ headcount, sex='FEMALE', class_form is null, on the SAME ANNUAL period as `enrolment` — the
+   * girls'-share numerator, carried on the row like candidates/qualified behind wassceRate so the share
+   * reconciles through `sumOf` with no special fact-side pass. Null = no enrolment row filed; an all-boys
+   * school files a real 0 (the ETL writes FEMALE wherever it writes ALL).
+   */
+  femaleEnrolment: number | null;
+  /** ΣfemaleEnrolment ÷ Σenrolment, 0..1. Null when either side is absent — never a 0/0, never clamped. */
+  girlsShare: number | null;
   /** Σ candidates for the pinned sitting — the ranking WEIGHT, deliberately visible. */
   candidates: number | null;
   qualified: number | null;
@@ -228,6 +237,8 @@ interface FactBucket {
   presentDays: number | null;
   /** Σ fact_attendance.enrolled_days over the child — the attendance denominator. Null = none filed. */
   enrolledDays: number | null;
+  /** Σ fact_enrolment.headcount, sex='FEMALE', class_form is null. Null = no enrolment row filed. */
+  femaleEnrolment: number | null;
 }
 
 interface RegisterBucket {
@@ -241,14 +252,16 @@ export async function getChildBreakdown(
   scope: JurisdictionScope,
   args: {
     childLevel: ChildLevel;
-    /** The ONE TERM period the enrolment column is of. Null ⇒ that column is simply absent. */
+    /** The ONE TERM period the ATTENDANCE column is of (a flow). Null ⇒ that column is simply absent. */
     termPeriodId: string | null;
     /** The ONE sitting the WASSCE columns are of. Null ⇒ those columns are simply absent. */
     examPeriodId: string | null;
     /**
-     * The ONE ANNUAL period the PTR column is of. Null ⇒ the PTR column is simply absent.
-     * It is the ANNUAL row, not the TERM one: `fact_staffing` is annual-grain (a stock, not a
-     * per-term flow), so it hangs off a different period than enrolment — see lib/oversight/ptr.ts.
+     * The ONE ANNUAL period the ENROLMENT, GIRLS'-SHARE and PTR columns are of. Null ⇒ those columns are
+     * absent. All three are STOCKS and hang off the SAME `dim_period` ANNUAL row the ETL writes against —
+     * enrolment and staffing by construction share it (`fact_staffing.enrolment_total` is enrolment's own
+     * headcount roll, lib/etl/staffing.ts), which is why one id drives all three and never two that could
+     * silently describe different years. See lib/oversight/enrolment.ts and lib/oversight/ptr.ts.
      */
     annualPeriodId: string | null;
     exam: Exam;
@@ -290,9 +303,13 @@ export async function getChildBreakdown(
                  0::bigint                   as staff_enrolment,
                  0::bigint                   as teachers,
                  0::bigint                   as present_days,
-                 0::bigint                   as enrolled_days
+                 0::bigint                   as enrolled_days,
+                 0::bigint                   as female_headcount
             from fact_enrolment fe
-           where fe.period_id = ${termPeriodId}::uuid
+           -- ANNUAL, not TERM: enrolment is a STOCK (headcount on roll), the SAME dim_period row
+           -- fact_staffing and fact_infrastructure hang off, and the only period the ETL ever writes
+           -- enrolment against (lib/etl/enrolment.ts). A TERM pin matches zero rows and blanks the column.
+           where fe.period_id = ${annualPeriodId}::uuid
              -- Both mandatory: the ALL row sits beside MALE/FEMALE (×3) and a null class_form IS the
              -- stage total, with the per-form rows beside it (×2). See lib/oversight/enrolment.ts.
              and fe.sex = 'ALL'::ov_sex
@@ -306,6 +323,7 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  0::bigint,
+                 0::bigint,
                  0::bigint
             from fact_performance_exam fpe
            where fpe.period_id = ${examPeriodId}::uuid
@@ -316,7 +334,8 @@ export async function getChildBreakdown(
              and fpe.sex = 'ALL'::ov_sex
           union all
           -- STAFFING — the PTR arm. fact_staffing is ANNUAL grain and has NO sex column, so it pins the
-          -- ANNUAL period and carries no sex filter. enrolment_total and teachers_on_roll are summed as
+          -- SAME ANNUAL period as enrolment (one dim_period row; fs.enrolment_total IS enrolment's own
+          -- headcount roll, lib/etl/staffing.ts) and carries no sex filter. enrolment_total and teachers_on_roll are summed as
           -- the PTR numerator/denominator; the per-child ratio is Σ÷Σ in TS below, never avg(stored ptr)
           -- (the stored ptr column is deliberately never selected). See lib/oversight/ptr.ts.
           select fs.jurisdiction_id,
@@ -327,13 +346,15 @@ export async function getChildBreakdown(
                  fs.enrolment_total::bigint,
                  fs.teachers_on_roll::bigint,
                  0::bigint,
+                 0::bigint,
                  0::bigint
             from fact_staffing fs
            where fs.period_id = ${annualPeriodId}::uuid
           union all
           -- ATTENDANCE — the attendance-rate arm. fact_attendance is a FLOW at TERM grain and has NO sex
-          -- column (lib/etl/attendance.ts), so it pins the SAME termPeriodId as enrolment and carries no
-          -- sex filter. class_form IS NULL keeps only the per-stage totals (the per-form rows sit beside
+          -- column (lib/etl/attendance.ts), so it is the ONE arm on termPeriodId (enrolment, staffing and
+          -- the female arm are all ANNUAL stocks). It carries no sex filter. class_form IS NULL keeps only
+          -- the per-stage totals (the per-form rows sit beside
           -- them, ETL writes both); summing over stages is the school's total pupil-days. present_days and
           -- enrolled_days are the summable numerator/denominator; the per-child rate is Σ÷Σ in TS below,
           -- never avg(stored attendance_rate) (the stored rate column is deliberately never selected).
@@ -345,10 +366,35 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  fa.present_days::bigint,
-                 fa.enrolled_days::bigint
+                 fa.enrolled_days::bigint,
+                 0::bigint
             from fact_attendance fa
            where fa.period_id = ${termPeriodId}::uuid
              and fa.class_form is null
+          union all
+          -- ENROLMENT_FEMALE -- the girls-share NUMERATOR. Same table, same period parameter and the same
+          -- two mandatory filters as the ENROLMENT arm above, with sex = FEMALE instead of ALL. The period
+          -- parameter is deliberately the IDENTICAL binding, not a copy of the same value: numerator and
+          -- denominator of a share can then never be pinned to different periods, and the one place the
+          -- enrolment grain is stated moves both arms at once. Both filters stay mandatory for the reasons
+          -- the ENROLMENT arm states: the FEMALE row sits beside MALE and ALL, and a null class_form IS the
+          -- stage total with the per-form rows beside it. Dropping either multiplies the numerator and can
+          -- push the share above 1. The ETL writes FEMALE wherever it writes ALL, with ALL = MALE + FEMALE
+          -- asserted strictly per school, so an all-boys school files a real zero here and never an absence.
+          select fe.jurisdiction_id,
+                 'ENROLMENT_FEMALE'::text,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 fe.headcount::bigint
+            from fact_enrolment fe
+           where fe.period_id = ${annualPeriodId}::uuid
+             and fe.sex = 'FEMALE'::ov_sex
+             and fe.class_form is null
         ),
         attributed as (
           select case ${childLevel}::jurisdiction_level
@@ -369,7 +415,8 @@ export async function getChildBreakdown(
                  f.staff_enrolment        as staff_enrolment,
                  f.teachers               as teachers,
                  f.present_days           as present_days,
-                 f.enrolled_days          as enrolled_days
+                 f.enrolled_days          as enrolled_days,
+                 f.female_headcount       as female_headcount
             from facts f
             -- The fact's OWN node. INNER is correct here and only here: the fact row is visible, so its
             -- SCHOOL row is visible too (same predicate, same argument).
@@ -397,7 +444,9 @@ export async function getChildBreakdown(
                count(*) filter (where measure = 'STAFFING')::int                 as staffing_rows,
                sum(present_days) filter (where measure = 'ATTENDANCE')::bigint   as present_days,
                sum(enrolled_days) filter (where measure = 'ATTENDANCE')::bigint  as enrolled_days,
-               count(*) filter (where measure = 'ATTENDANCE')::int               as attendance_rows
+               count(*) filter (where measure = 'ATTENDANCE')::int               as attendance_rows,
+               sum(female_headcount) filter (where measure = 'ENROLMENT_FEMALE')::bigint as female_enrolment,
+               count(*)              filter (where measure = 'ENROLMENT_FEMALE')::int    as female_rows
           from attributed
          group by grouping sets ((child_id, child_name), ())
       `);
@@ -410,6 +459,7 @@ export async function getChildBreakdown(
         const examRows = Number(row.exam_rows);
         const staffingRows = Number(row.staffing_rows);
         const attendanceRows = Number(row.attendance_rows);
+        const femaleRows = Number(row.female_rows);
         const bucket: FactBucket = {
           childId: (row.child_id as string | null) ?? null,
           name: (row.child_name as string | null) ?? null,
@@ -422,6 +472,7 @@ export async function getChildBreakdown(
           teachers: staffingRows === 0 ? null : Number(row.teachers),
           presentDays: attendanceRows === 0 ? null : Number(row.present_days),
           enrolledDays: attendanceRows === 0 ? null : Number(row.enrolled_days),
+          femaleEnrolment: femaleRows === 0 ? null : Number(row.female_enrolment),
         };
         if (Number(row.grp) === TOTAL_GROUPING) factTotal = bucket;
         else factBuckets.set(bucket.childId, bucket);
@@ -503,6 +554,14 @@ export async function getChildBreakdown(
         name: fact?.name ?? register?.name ?? null,
         enrolment: fact?.enrolment ?? null,
         schoolsFiling: fact?.schoolsFiling ?? null,
+        // Σfemale ÷ Σenrolment, per child — the girls' share, carried alongside its numerator so it
+        // reconciles through `sumOf` like every additive measure. Null when no enrolment row was filed
+        // (never a 0/0); NOT clamped — a share above 1 would mean a lost filter, and hiding it hides that.
+        femaleEnrolment: fact?.femaleEnrolment ?? null,
+        girlsShare:
+          fact?.femaleEnrolment != null && fact.enrolment != null
+            ? ratio(fact.femaleEnrolment, fact.enrolment)
+            : null,
         candidates: fact?.candidates ?? null,
         qualified: fact?.qualified ?? null,
         wassceRate:
@@ -569,6 +628,7 @@ export async function getChildBreakdown(
       // identical `sumOf` form, no second fact-side pass.
       const reconciles =
         sumOf((r) => r.enrolment) === (total.enrolment ?? 0) &&
+        sumOf((r) => r.femaleEnrolment) === (total.femaleEnrolment ?? 0) &&
         sumOf((r) => r.candidates) === (total.candidates ?? 0) &&
         sumOf((r) => r.qualified) === (total.qualified ?? 0) &&
         sumOf((r) => r.staffEnrolment) === (total.staffEnrolment ?? 0) &&

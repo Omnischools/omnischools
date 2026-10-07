@@ -133,7 +133,14 @@ describe("dim_jurisdiction — the spine is scoped on its own id", () => {
 describe("fact_* — scoped through jurisdiction_id", () => {
   it("the district officer sees their school's enrolment row only", async () => {
     const rows = await asTier(DISTRICT, async (tx) => {
-      return (await tx`select headcount from fact_enrolment order by headcount`) as unknown as {
+      // The two mandatory enrolment filters (sex='ALL', class_form is null) keep this probe about RLS
+      // ISOLATION — its actual subject — rather than about fixture cardinality: the shared seed now
+      // carries the MALE/FEMALE split beside the ALL stage total, so a raw `headcount` read would return
+      // [190, 220, 410]. The stage total is the one figure, and it is 410.
+      return (await tx`
+        select headcount from fact_enrolment
+         where sex = 'ALL' and class_form is null
+         order by headcount`) as unknown as {
         headcount: number;
       }[];
     });
@@ -143,9 +150,11 @@ describe("fact_* — scoped through jurisdiction_id", () => {
   });
 
   it("the regional officer sees both, the national officer sees both", async () => {
-    expect(await count(REGION, "select count(*)::int as n from fact_enrolment")).toBe(2);
+    // Raw, UNFILTERED count, deliberately: this assertion's job is "no row of any shape leaks", so it
+    // must not narrow by sex/class_form. 6 = 2 schools × (ALL + MALE + FEMALE) on the ANNUAL period.
+    expect(await count(REGION, "select count(*)::int as n from fact_enrolment")).toBe(6);
     expect(await count(NATIONAL, "select count(*)::int as n from fact_enrolment")).toBe(
-      2,
+      6,
     );
   });
 
@@ -327,7 +336,8 @@ describe("a FORGED claim cannot widen scope", () => {
       },
       "select count(*)::int as n from fact_enrolment",
     );
-    expect(leaked).toBe(2);
+    // 6 = 2 schools × (ALL + MALE + FEMALE) on the ANNUAL period — the whole unfiltered table.
+    expect(leaked).toBe(6);
     // ⇒ A raw SQL channel holding the app credential is unfiltered. The boundary that matters is
     // therefore "nothing but withJurisdiction writes these GUCs, and its input is unforgeable",
     // which tests/scope-brand.test.ts and tests/officer-session-mint.test.ts hold in place.

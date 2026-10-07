@@ -277,14 +277,35 @@ insert into dim_stage (stage, official_age_low, official_age_high, display_order
   ('JHS', 12, 14, 3)
 on conflict (stage) do nothing;
 
--- fact_enrolment: one school row in EACH district. Headcounts differ so a leak is identifiable by
--- value, not only by count.
+-- fact_enrolment: one school row-set in EACH district, on the ANNUAL period (…0002) — fact_enrolment is
+-- a STOCK at ANNUAL grain (lib/etl/enrolment.ts), the SAME dim_period row fact_staffing and
+-- fact_infrastructure hang off, and the same row the ETL writes against. It is NOT the TERM period: no
+-- ETL path ever writes enrolment there, so a fixture on TERM would mask a reader that pinned the wrong
+-- one (it did, until the enrolment-grain ruling).
+--
+-- Each school carries the stage total for ALL *and* its MALE/FEMALE split, which is exactly what the ETL
+-- writes (MALE, FEMALE and ALL for every key including the class_form-NULL totals) with ALL = MALE +
+-- FEMALE asserted STRICTLY per school before the write. The split is here rather than in a test file
+-- because girls' share reads it and because two writers of one grain key would duplicate it —
+-- fact_enrolment has NO grain UNIQUE, so a duplicate inserts happily and doubles every roll-up above it.
+--
+-- The headcounts differ by district so a leak is identifiable BY VALUE; and the two girls' shares are
+-- deliberately lopsided (220/410 = 53.66% vs 320/720 = 44.44%) so the weighted national share
+-- (540/1130 = 47.79%) differs visibly from the unweighted mean of the two (49.05%): the no-averaging
+-- roll-up rule is readable straight off the fixture, exactly as it is for attendance and PTR.
 insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date) values
-  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 410, 'OPERATIONAL_AGG', now()),
-  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000001', 'JHS', null, 'ALL', 720, 'OPERATIONAL_AGG', now());
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000002', 'JHS', null, 'ALL',    410, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000002', 'JHS', null, 'MALE',   190, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000011', '20000000-0000-4000-8000-000000000002', 'JHS', null, 'FEMALE', 220, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000002', 'JHS', null, 'ALL',    720, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000002', 'JHS', null, 'MALE',   400, 'OPERATIONAL_AGG', now()),
+  ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000002', 'JHS', null, 'FEMALE', 320, 'OPERATIONAL_AGG', now());
 
--- fact_staffing: one school row in EACH district, at the ANNUAL period (the staffing grain), so the
--- tier matrix exercises the policy against a NON-EMPTY table — a policy test over an empty table
+-- fact_staffing: one school row in EACH district, on the SAME ANNUAL period (…0002) as the enrolment
+-- rows above — staffing and enrolment are both stocks on the one dim_period ANNUAL row, by construction
+-- (lib/etl/staffing.ts), so enrolment_total 410 sits beside enrolment's own ALL headcount of 410 on the
+-- same period: that identity is a feature of the fixture, not a coincidence. The table is also non-empty
+-- so the tier matrix exercises the policy against real rows — a policy test over an empty table
 -- proves nothing. The pairs are deliberately lopsided (41 teachers for 410 pupils vs 18 for 720) so a
 -- leak is identifiable BY VALUE and so Σenrolment ÷ Σteachers (10.00 vs 40.00) differs visibly from
 -- avg(ptr): the roll-up rule is readable straight off the fixture. The second row is PRIVATE-shaped —
@@ -295,8 +316,9 @@ insert into fact_staffing (jurisdiction_id, period_id, teachers_on_roll, teachin
   ('10000000-0000-4000-8000-000000000018', '20000000-0000-4000-8000-000000000002', 18, null, 720, 40.00, null, 'OPERATIONAL_AGG', now());
 
 -- fact_attendance: one school STAGE-TOTAL row (class_form null) in EACH district, on the TERM period
--- (…0001) — fact_attendance is a FLOW at TERM grain, so it hangs off the same term the enrolment rows
--- above do, NOT the ANNUAL staffing period. The two are lopsided (24000 enrolled-days @ 92% vs 43200
+-- (…0001) — fact_attendance is a FLOW at TERM grain, so it is the one fact here that hangs off the TERM
+-- row, NOT the ANNUAL period the enrolment and staffing rows above share. The two are lopsided (24000
+-- enrolled-days @ 92% vs 43200
 -- @ 87%) so a leak is identifiable BY VALUE and so the weighted Σpresent ÷ Σenrolled (59664 ÷ 67200 =
 -- 88.79%) differs visibly from the unweighted mean of the two rates (89.5%): the no-averaging roll-up
 -- rule is readable straight off the fixture. Both are far above the comparison engine's marking floor

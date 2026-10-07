@@ -231,14 +231,16 @@ export interface ComparisonModel {
 /**
  * THE CATALOGUE. Every measure reads off `BreakdownRow` — the fast-follow added the attendance components
  * to that row (one additive UNION arm; COMPARISON-FASTFOLLOW-DATA-PLAN). Teacher vacancies and the 4-year
- * trend stay ABSENT rather than rendered as `—` rows claiming a measure exists; GIRLS' SHARE and FEES are
- * DEFERRED — girls' share reads the same enrolment fact whose period grain is unsettled (ETL ANNUAL vs
- * readers TERM), and fees is billed-not-collected distributional data with no pupil denominator (Kofi R11)
- * that cannot be honestly ranked or benchmarked on this surface.
+ * trend stay ABSENT rather than rendered as `—` rows claiming a measure exists; FEES is DEFERRED — it is
+ * billed-not-collected distributional data with no pupil denominator (Kofi R11) that cannot be honestly
+ * ranked or benchmarked on this surface. GIRLS' SHARE is now BUILT: the enrolment grain is settled as
+ * ANNUAL (enrolment-grain ruling), and the share reads femaleEnrolment ÷ enrolment off the same ANNUAL
+ * fact as a real Σ÷Σ benchmark.
  *
  * ENROLMENT IS NOT RANKED (`direction: "none"`): a bigger school is not a "better" school — shown with
  * value and benchmark, never crowned good/bad, the mock's green/red overridden. The candidates row is the
- * WASSCE ranking weight made visible (R4.3), likewise unranked. Attendance (R9) IS ranked, higher-better.
+ * WASSCE ranking weight made visible (R4.3), likewise unranked. GIRLS' SHARE is unranked too — a PARITY
+ * measure, where neither more nor fewer girls is "better". Attendance (R9) IS ranked, higher-better.
  */
 export function comparisonMetrics(args: {
   /** Null when the compared level sits no national exam (KG/PRIMARY/COMBINED) — the performance section
@@ -257,6 +259,22 @@ export function comparisonMetrics(args: {
       direction: "none",
       valueOf: (r) => r.enrolment,
       benchmark: { kind: "mean", value: (r) => r.enrolment },
+    },
+    {
+      key: "girlsShare",
+      section: "Enrolment",
+      label: "Girls' share",
+      subLabel: "female ÷ total on roll",
+      kind: "rate",
+      // PARITY, NOT A MAXIMUM. `higher-better` would crown a 71%-female school over a 50/50 one, which is
+      // not a finding; `lower-better` is worse. A parity-distance direction is a new ranking primitive and
+      // is NOT in this change. So the row is shown with value and benchmark and is NEVER crowned — the same
+      // posture `enrolment` and `candidates` already take.
+      direction: "none",
+      valueOf: (r) => r.girlsShare,
+      // The REAL Σfemale ÷ Σtotal over the like-for-like population — never the mean of per-entity shares.
+      benchmark: { kind: "weighted", num: (r) => r.femaleEnrolment, den: (r) => r.enrolment },
+      bar: true,
     },
   ];
   if (exam !== null) {
