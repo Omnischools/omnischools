@@ -540,6 +540,77 @@ describe("the girls'-share arm reads FEMALE off the same ANNUAL period as enrolm
     expect(tiny.femaleEnrolment).toBeNull();
     expect(tiny.girlsShare).toBeNull();
   });
+
+  it("class_form IS NULL is load-bearing on the FEMALE arm too — a per-form girls' row does NOT inflate", async () => {
+    // The sex filter's load-bearingness on this arm is proved by the seed's MALE row (190 would land in
+    // the numerator without it). The class_form filter had no FEMALE-shaped decoy anywhere in the suite,
+    // so dropping it from the FEMALE arm alone changed no figure — the filter was correct but unproven.
+    // Plant the missing shape: a per-form FEMALE row beside the stage total, on the same school, period
+    // and stage, which is exactly what the ETL writes beside the class_form-NULL total.
+    await owner`
+      insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date)
+      values (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', 'Form 2', 'FEMALE', 70, 'OPERATIONAL_AGG', now())
+    `;
+    try {
+      const b = await readBreakdown(regionScope);
+      const wassa = named(b, "Wassa Amenfi West");
+      // The filtered figure is untouched by the per-form row.
+      expect(wassa.femaleEnrolment).toBe(220);
+      expect(wassa.girlsShare).toBeCloseTo(220 / 410, 10);
+      // …and the decoy is really there, so the assertion above is the filter doing work: the same sum
+      // without `class_form is null` reads 290 and the share would be a false 70.7%.
+      const inflated = await asOfficer(regionScope, async (tx) => {
+        const rows = (await tx`
+          select sum(fe.headcount)::int as headcount
+            from fact_enrolment fe
+            join dim_jurisdiction s on s.jurisdiction_id = fe.jurisdiction_id and s.level = 'SCHOOL'
+           where fe.period_id = ${PERIOD_ID_ANNUAL}::uuid and fe.sex = 'FEMALE'
+             and s.parent_id = ${JUR.district}::uuid
+        `) as unknown as { headcount: number }[];
+        return Number(rows[0]!.headcount);
+      });
+      expect(inflated).toBe(220 + 70);
+      expect(inflated).toBeGreaterThan(wassa.femaleEnrolment!);
+    } finally {
+      await owner`
+        delete from fact_enrolment
+         where period_id = ${PERIOD_ID_ANNUAL}::uuid
+           and jurisdiction_id = ${JUR.schoolPublicConsented}::uuid
+           and sex = 'FEMALE' and class_form = 'Form 2'
+      `;
+    }
+  });
+
+  it("a share ABOVE 1 SURFACES rather than being clamped — the only symptom of a lost filter", async () => {
+    // The ruling's reason for forbidding a clamp: girlsShare > 1 means a duplicate grain row or a
+    // dropped filter, and `Math.min(1, …)` would hide the only evidence of it. Force the broken state
+    // (FEMALE > ALL, which the ETL asserts can never happen) and assert the read REPORTS it.
+    await owner`
+      insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date)
+      values (${TINY_SCHOOL}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null, 'FEMALE', ${F.tinyEnrolment + 10}, 'OPERATIONAL_AGG', now())
+    `;
+    try {
+      const tiny = named(await readBreakdown(regionScope), TINY_DISTRICT_NAME);
+      expect(tiny.enrolment).toBe(F.tinyEnrolment);
+      expect(tiny.femaleEnrolment).toBe(F.tinyEnrolment + 10);
+      expect(tiny.girlsShare).toBeGreaterThan(1);
+      expect(tiny.girlsShare).toBeCloseTo((F.tinyEnrolment + 10) / F.tinyEnrolment, 10);
+    } finally {
+      await owner`
+        delete from fact_enrolment
+         where period_id = ${PERIOD_ID_ANNUAL}::uuid
+           and jurisdiction_id = ${TINY_SCHOOL}::uuid and sex = 'FEMALE'
+      `;
+    }
+  });
+
+  it("femaleEnrolment is ANDed INTO `reconciles`, not computed and dropped", () => {
+    // The same static guard the PTR components carry (oversight-ptr.test.ts): the conjunct can be
+    // deleted without moving any figure, so the source is where it has to be asserted.
+    const code = readCode("lib/oversight/breakdown.ts");
+    const guard = code.slice(code.indexOf("const reconciles ="));
+    expect(guard.slice(0, 600)).toContain("sumOf((r) => r.femaleEnrolment)");
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
