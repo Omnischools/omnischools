@@ -859,13 +859,16 @@ describe("each mandatory filter is load-bearing per child, not only in the total
     // The enrolment-grain regression guard (enrolment-grain ruling §2.6/§3): the enrolment, girls'-share
     // and staffing arms are ANNUAL stocks pinned to the ONE annualPeriodId, and attendance is the only arm
     // on termPeriodId. The one place the enrolment grain is stated is this binding — so count it, cheaply
-    // and durably, in the `facts` CTE. enrolment + ENROLMENT_FEMALE + staffing = 3 annual bindings;
+    // and durably, in the `facts` CTE. enrolment + ENROLMENT_FEMALE + staffing + ESTABLISHMENT = 4 annual bindings;
     // attendance = 1 term binding. Both enrolment arms binding the SAME parameter is what keeps the
-    // girls'-share numerator and denominator from ever being pinned to different periods.
+    // girls'-share numerator and denominator from ever being pinned to different periods. The
+    // ESTABLISHMENT arm (increment J — teacher vacancies) is a FOURTH annual binding: it reads the same
+    // fact_staffing rows on the same ANNUAL period, filtered to the PUBLIC ones that carry a GES
+    // establishment, so the vacancy figures can never describe a different year from the PTR beside them.
     const code = readCode("lib/oversight/breakdown.ts");
     const factsCte = code.slice(code.indexOf("facts as ("), code.indexOf("attributed as ("));
     const count = (needle: string) => factsCte.split(needle).length - 1;
-    expect(count("${annualPeriodId}::uuid")).toBe(3);
+    expect(count("${annualPeriodId}::uuid")).toBe(4);
     expect(count("${termPeriodId}::uuid")).toBe(1);
   });
 });
@@ -1299,6 +1302,12 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     attendanceRate: null,
     femaleEnrolment: null,
     girlsShare: null,
+    postsEstablished: null,
+    vacancyShortage: null,
+    vacancySurplus: null,
+    vacancyNet: null,
+    vacancyRate: null,
+    schoolsWithEstablishment: null,
     ...fields,
   };
 }

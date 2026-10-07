@@ -2,12 +2,14 @@ import { cn } from "@/lib/utils";
 import {
   rankEnds,
   spreadOf,
+  teacherEstablishmentOf,
   type BreakdownRow,
   type ChildBreakdown,
 } from "@/lib/oversight/breakdown";
+import { isOk, type Reading } from "@/lib/oversight/reading";
 import { Panel } from "./primitives";
-import { formatRatio, formatRatioPercent } from "./kpi-card";
-import type { BreakdownChrome } from "./tier-chrome";
+import { formatCount, formatRatio, formatRatioPercent } from "./kpi-card";
+import { pluralNoun, type BreakdownChrome } from "./tier-chrome";
 
 /**
  * THE SPREAD PANEL AND THE RANK STRIP (increment I slice 3, Lucy's breakdown map §4.4 / §4.5).
@@ -78,6 +80,7 @@ function SpreadBar({
   goodEnd,
   rangeText,
   meanText,
+  endTones,
 }: {
   label: string;
   lowPos: number;
@@ -86,10 +89,22 @@ function SpreadBar({
   goodEnd: "high" | "low";
   rangeText: string;
   meanText: string | null;
+  /**
+   * OVERRIDE THE TWO END DOTS' TONES — for a measure whose axis has no "good" end.
+   *
+   * Omitted (every rate bar, and PTR) ⇒ green on the `goodEnd` side, terra on the other, unchanged.
+   * The VACANCY-RATE bar passes it because its axis CROSSES ZERO: the low end is surplus (teachers over
+   * establishment), which is an allocation inefficiency and NOT a good outcome, so a green dot there
+   * would read "too many teachers here while the north is short" as success (Kofi V6/V8). It gets the
+   * neutral navy instead, with terra kept for the shortage end, which IS the adverse state.
+   */
+  endTones?: { low: string; high: string };
 }) {
   // The green (best) dot goes to whichever END this measure counts as good; terra (worst) to the other.
-  const greenPos = goodEnd === "high" ? highPos : lowPos;
-  const terraPos = goodEnd === "high" ? lowPos : highPos;
+  // The dots are positioned by END (low/high) and TONED by valence, which is what lets a measure with
+  // no good end (the vacancy rate) override the tones without a second pair of dots.
+  const lowTone = endTones?.low ?? (goodEnd === "low" ? "bg-green" : "bg-terra");
+  const highTone = endTones?.high ?? (goodEnd === "high" ? "bg-green" : "bg-terra");
   return (
     <div className="flex items-center gap-3 border-b border-border-1 py-3 last:border-b-0">
       <span className="w-[140px] shrink-0 text-[11.5px] font-semibold text-navy">
@@ -110,15 +125,26 @@ function SpreadBar({
             style={{ left: pct(meanPos) }}
           />
         )}
+        {/*
+          The two END dots, positioned by end and toned by valence. Without `endTones` the mapping is
+          exactly the historical one — green on the `goodEnd` side, terra on the other — written as
+          low/high so a measure with no good end can override the tones without a second pair of dots.
+        */}
         <span
           aria-hidden
-          className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-terra"
-          style={{ left: pct(terraPos) }}
+          className={cn(
+            "absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface",
+            lowTone,
+          )}
+          style={{ left: pct(lowPos) }}
         />
         <span
           aria-hidden
-          className="absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-green"
-          style={{ left: pct(greenPos) }}
+          className={cn(
+            "absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface",
+            highTone,
+          )}
+          style={{ left: pct(highPos) }}
         />
       </span>
       <span className="w-[120px] shrink-0 text-right text-[10px] text-navy-3">
@@ -251,6 +277,262 @@ export function SpreadPanel({
             the national question.
           </p>
         </>
+      )}
+    </Panel>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE TEACHER-ESTABLISHMENT PANEL (increment J — VACANCY-SURFACING-RULING V8)
+ *
+ * ═══ WHY THIS IS A PANEL AND NOT A FIFTH KPI CARD ════════════════════════════════════════════════
+ * Kofi V7: the KPI strip has four settled cards on `md:grid-cols-2 xl:grid-cols-4`, and a fifth
+ * single-number vacancy card would be both a broken grid and the exact trap this panel exists to avoid.
+ * A tier's `Σ vacancies` nets the rural-north SHORTAGE against the urban-south SURPLUS (the gradient
+ * `establishmentFactor` in lib/etl/staffing.ts bakes in) and can print "roughly balanced" over a country
+ * that is nothing of the kind. A LONE NET IS BANNED above single-school grain (V1), so the primary
+ * presentation is the TWO-SIDED DECOMPOSITION — shortage and surplus as two separate magnitudes — with
+ * the net subordinate to them and explicitly labelled "net" (V2).
+ *
+ * ═══ THE DENOMINATOR IS NARROWER THAN EVERY OTHER FIGURE ON THE PAGE ═════════════════════════════
+ * GES sets an establishment for PUBLIC schools only, so every sum here is over
+ * `teaching_posts_established IS NOT NULL` (V4, AC-17) and the panel STATES that count verbatim (V5).
+ * The PTR card above sums teachers over ALL schools, public and private; these two populations are
+ * different and the caption says so, or a reader folds them into one.
+ *
+ * ═══ IT IS DERIVED, NOT RE-READ ══════════════════════════════════════════════════════════════════
+ * Every figure comes off `breakdown.total` and `breakdown.children` — the one staffing scan — so the
+ * panel, the table's total-row cell and the comparison benchmark cannot disagree (V11). Fail-soft on its
+ * own two-state reading: an unreadable or all-private tier renders an absence note and leaves the rest
+ * of the page standing.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * VACANCY_AXIS — STATED presentation domain for the vacancy-RATE spread (owner/Kofi-movable, exactly as
+ * `PTR_AXIS` above; Lucy §3D asked for it by name).
+ *
+ * The plotted measure is the SIGNED vacancy rate Σvacancies ÷ Σestablished, so ZERO — "at
+ * establishment" — sits at mid-track and the axis is symmetric about it: surplus to the left, shortage
+ * to the right. ±0.40 CONTAINS the whole seeded single-school range: `establishmentFactor` draws the
+ * establishment multiplier from [1 − 0.15, 1 + 0.20] of the roll, so a school's rate
+ * (1 − teachers/established) lies within about [−0.18, +0.17], and a per-child Σ÷Σ is tighter still.
+ * The headroom is deliberate: this is load-bearing for honesty, because the caption quotes the TRUE
+ * (max − min) spread, so any value that clamped to a rail would make the bar UNDER-DRAW the stated
+ * figure. `projectVacancyRate` therefore returns NULL rather than clamping, and the panel then omits the
+ * bar WITH A VISIBLE NOTE — fail loud, never a silently shortened bar. Widen the axis before plotting
+ * any real/future value outside [lo, hi].
+ */
+export const VACANCY_AXIS = { lo: -0.4, hi: 0.4 } as const;
+
+/** A vacancy rate → its 0..1 track position, or NULL when it falls outside the stated axis. */
+function projectVacancyRate(value: number): number | null {
+  if (value < VACANCY_AXIS.lo || value > VACANCY_AXIS.hi) return null;
+  return (value - VACANCY_AXIS.lo) / (VACANCY_AXIS.hi - VACANCY_AXIS.lo);
+}
+
+/**
+ * THE SIGN/LABEL CONVENTION, IN ONE PLACE (Kofi V6) — never a bare signed integer.
+ *
+ * Positive is a SHORTAGE ("posts unfilled"), the adverse state, in terra. Negative is a SURPLUS
+ * ("teachers over establishment"), in NEUTRAL NAVY and deliberately NOT green: over-establishment is an
+ * allocation inefficiency, not a success, and a green tone would read "too many teachers here while the
+ * north is short" as a good outcome. Exactly 0, with a real public denominator, is "at establishment".
+ */
+function vacancyWords(net: number): { text: string; tone: string } {
+  if (net > 0) {
+    return { text: `${formatCount(net)} posts unfilled`, tone: "text-terra" };
+  }
+  if (net < 0) {
+    return {
+      text: `${formatCount(Math.abs(net))} teachers over establishment`,
+      tone: "text-navy",
+    };
+  }
+  return { text: "at establishment", tone: "text-navy" };
+}
+
+/** One of the two GROSS magnitudes — a number and a word, never a number alone. */
+function Magnitude({
+  label,
+  value,
+  word,
+  tone,
+  bg,
+}: {
+  label: string;
+  value: number;
+  word: string;
+  tone: string;
+  bg: string;
+}) {
+  return (
+    <div className={cn("flex-1 rounded-[11px] border border-border-1 px-4 py-[14px]", bg)}>
+      <div className="mb-[6px] text-[9px] font-bold uppercase tracking-[0.11em] text-navy-3">
+        {label}
+      </div>
+      <div className={cn("font-mono text-[22px] font-bold leading-none", tone)}>
+        {formatCount(value)}
+      </div>
+      <div className={cn("mt-1 text-[11px] font-semibold", tone)}>{word}</div>
+    </div>
+  );
+}
+
+export function TeacherEstablishmentPanel({
+  breakdown,
+  chrome,
+  /** The officer's OWN tier noun, for the absence sentence ("No GES establishment in this region"). */
+  tierNoun,
+}: {
+  breakdown: Reading<ChildBreakdown>;
+  chrome: BreakdownChrome;
+  tierNoun: string;
+}) {
+  const title = (
+    <>
+      Teacher <em className="accent-italic">establishment</em>
+    </>
+  );
+  const absence = (note: string) => (
+    <Panel title={title} meta="GES-authorised posts">
+      <p className="text-xs italic text-navy-3">{note}</p>
+    </Panel>
+  );
+
+  // FAIL-SOFT #1: the roll-up itself could not be read. The panel says so and the page stands.
+  if (!isOk(breakdown)) {
+    return absence(
+      "Teacher establishment could not be read. The headline figures above are unaffected.",
+    );
+  }
+  const establishment = teacherEstablishmentOf(breakdown.value);
+  // FAIL-SOFT #2 — and the one that is a RULING, not a failure (Kofi V12): a tier with no
+  // public-establishment school is genuinely UNAVAILABLE. It is NOT "0 posts unfilled / fully staffed",
+  // which is what a `coalesce(sum(…), 0)` anywhere upstream would have printed here.
+  if (establishment === null) {
+    return absence(
+      `No GES establishment in this ${tierNoun} — private and mission schools carry none, so there is no authorised-post figure to state.`,
+    );
+  }
+
+  const { shortage, surplus, net, schoolsWithEstablishment, postsEstablished } = establishment;
+  const netWords = vacancyWords(net);
+
+  /**
+   * THE DISPERSION VIEW (V3) — the equity signal, because it is the one thing a net cannot cancel.
+   *
+   * `spreadOf` gives min/max across the children and the WEIGHTED mean, which is the tier total's OWN
+   * vacancy rate (never the unweighted mean of child rates). It renders only with ≥2 children carrying a
+   * rate — its own empty guard — so there are no zero-width bars.
+   */
+  const spread = spreadOf(breakdown.value, (row) => row.vacancyRate);
+  const lowPos = spread === null ? null : projectVacancyRate(spread.min);
+  const highPos = spread === null ? null : projectVacancyRate(spread.max);
+  // FAIL LOUD, never a silently clamped bar: if either extreme lies outside the STATED axis the bar is
+  // withheld and the reason is printed, because the caption below quotes the true (max − min) spread.
+  const spreadClamped = spread !== null && (lowPos === null || highPos === null);
+  const spreadPoints = spread === null ? null : ((spread.max - spread.min) * 100).toFixed(1);
+
+  return (
+    <Panel title={title} meta="GES-authorised posts">
+      {/*
+        THE TWO GROSS MAGNITUDES, SIDE BY SIDE AND NEVER NETTED (V1). Shortage in terra — the adverse
+        state. Surplus in NEUTRAL NAVY, not green (V6): a surplus is a maldistribution, not a success.
+      */}
+      <div className="flex flex-col gap-[10px] sm:flex-row">
+        <Magnitude
+          label="Shortage · posts unfilled"
+          value={shortage}
+          word="posts unfilled against establishment"
+          tone="text-terra"
+          bg="bg-terra-bg"
+        />
+        <Magnitude
+          label="Surplus · over establishment"
+          value={surplus}
+          word="teachers over establishment"
+          tone="text-navy"
+          bg="bg-bg"
+        />
+      </div>
+
+      {/*
+        THE PUBLIC-ONLY DENOMINATOR, STATED VERBATIM (V5). It is NARROWER than the PTR card's school
+        count, which sums teachers over public AND private schools — so the exclusion is named here
+        rather than left for the reader to assume the two populations are one.
+      */}
+      <p className="mt-3 text-[10.5px] text-navy-3">
+        Across{" "}
+        <b className="text-navy-2">
+          {formatCount(schoolsWithEstablishment)} public{" "}
+          {pluralNoun(schoolsWithEstablishment, "school")}
+        </b>{" "}
+        with a GES establishment — private and mission schools are excluded; GES sets no
+        establishment for them. {formatCount(postsEstablished)} authorised{" "}
+        {pluralNoun(postsEstablished, "post")} in total.
+      </p>
+
+      {/*
+        THE NET, SUBORDINATE AND LABELLED (V2) — smaller than the two magnitudes above it, which is the
+        whole point: it may be read only beside them. A true net-zero with real magnitudes on both sides
+        is a REAL balance and says so (V13); it is not the unavailable state, which never reaches here.
+      */}
+      <p className="mt-2 text-[11.5px] text-navy-2">
+        <span className="text-[9px] font-bold uppercase tracking-[0.11em] text-navy-3">
+          Net
+        </span>{" "}
+        <b className={cn("font-mono font-bold", netWords.tone)}>{netWords.text}</b>
+        {net === 0 && shortage > 0 && surplus > 0 ? (
+          <>
+            {" "}
+            — balanced: {formatCount(shortage)} posts unfilled offset by{" "}
+            {formatCount(surplus)} over establishment, in different places
+          </>
+        ) : null}
+      </p>
+
+      {/*
+        THE VACANCY-RATE SPREAD (V3). The axis crosses zero, so the bar's ends are labelled "surplus ↔
+        shortage" rather than good/bad, and the dots are toned navy (surplus end) and terra (shortage
+        end) instead of green/terra — see `SpreadBar`'s `endTones`.
+      */}
+      {spread === null || spreadClamped ? null : (
+        <div className="mt-4 border-t border-border-1 pt-1">
+          <SpreadBar
+            label="Vacancy rate"
+            lowPos={lowPos!}
+            highPos={highPos!}
+            meanPos={spread.mean === null ? null : projectVacancyRate(spread.mean)}
+            goodEnd="low"
+            endTones={{ low: "bg-navy", high: "bg-terra" }}
+            rangeText={`${formatRatioPercent(spread.min, 1)}% – ${formatRatioPercent(spread.max, 1)}%`}
+            meanText={
+              spread.mean === null ? null : `mean ${formatRatioPercent(spread.mean, 1)}%`
+            }
+          />
+        </div>
+      )}
+      {spreadClamped ? (
+        <p className="mt-4 border-t border-border-1 pt-3 text-[10.5px] italic text-navy-3">
+          The vacancy-rate spread is not drawn: a {chrome.childNounSingular}&apos;s rate
+          falls outside the stated axis ({formatRatioPercent(VACANCY_AXIS.lo, 0)}% to{" "}
+          {formatRatioPercent(VACANCY_AXIS.hi, 0)}%), and a bar that clamped it would
+          under-draw the real spread. Widen VACANCY_AXIS.
+        </p>
+      ) : null}
+      {spread === null || spreadClamped || spreadPoints === null ? null : (
+        /*
+          The dispersion clause states ONLY the spread magnitude. It names NO geography (V3, mirroring
+          the PTR caption's §10.3(b) constraint): the read supports a dispersion number, not a
+          geographic cause. "Surplus ↔ shortage" names the ENDS of the axis, which is the bar's own
+          scale and not a claim about where either end is.
+        */
+        <p className="mt-1 text-[10.5px] text-navy-3">
+          A <b className="text-navy-2">{spreadPoints}-point spread</b> in vacancy rate
+          across the {chrome.childNounPlural} that carry one — left is surplus (teachers
+          over establishment), right is shortage (posts unfilled), and the marker is the
+          weighted tier-wide rate, not the midpoint of the band.
+        </p>
       )}
     </Panel>
   );

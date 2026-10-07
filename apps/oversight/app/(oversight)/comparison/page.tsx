@@ -339,6 +339,13 @@ export default async function ComparisonWorkspace({
               "Attendance",
               "internal gradebook data · termly, shown only where schools use the gradebook",
             ],
+            [
+              // The vacancy row's honest denominator, made legible (Lucy §2; the read rule it states is
+              // lib/etl/staffing.ts's). Signed, and public-only: GES sets no establishment for private
+              // or mission schools, so they are a named `—` in both the cell and the benchmark.
+              "Vacancies",
+              "signed net vs GES establishment · + unfilled / − over · GES-establishment schools only (private and mission excluded)",
+            ],
             ...(exam && sittingYear
               ? ([[`${exam} sitting`, `${sittingYear} cohort · credit or above`]] as [
                   string,

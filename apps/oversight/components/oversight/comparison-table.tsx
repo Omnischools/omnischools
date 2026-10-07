@@ -59,7 +59,33 @@ function formatValue(kind: MetricKind, value: number): string {
       return `${formatRatioPercent(value, 0)}%`;
     case "ratio":
       return `${formatRatio(value, 1)}:1`;
+    /**
+     * A SIGNED count always carries a WORD (VACANCY-SURFACING-RULING V6): a bare "−3" in a vacancy cell
+     * is unreadable to the MoE/GES officer the surface is for, and "3" with no sign is a lie by omission.
+     * Positive = posts unfilled (shortage); negative = teachers over establishment (surplus), written
+     * unsigned beside the word so it does not read as a double negative; a real 0 is "balanced".
+     */
+    case "signedCount":
+      return value > 0
+        ? `+${formatCount(value)} unfilled`
+        : value < 0
+          ? `${formatCount(Math.abs(value))} over`
+          : "balanced";
   }
+}
+
+/**
+ * THE VALUE'S TONE. Normally the RELATIVE mark (see the file note) — this table's colour channel means
+ * rank, not an absolute band.
+ *
+ * `signedCount` is the one exception, and it is a ruling: the SIGN carries a valence of its own (terra for
+ * a shortage, the adverse state; neutral navy for a surplus, which is a maldistribution and must never be
+ * tinted green as if it were good — V6). Such a row is unranked by construction, so there is no mark for
+ * this to override.
+ */
+function valueTone(kind: MetricKind, value: number, tone: MarkTone): string {
+  if (kind === "signedCount") return value > 0 ? "text-terra" : "text-navy";
+  return CV_TEXT[tone];
 }
 
 /** The muted `—`: a measure not filed. Never a fabricated 0. */
@@ -131,7 +157,12 @@ function MetricRows({ row }: { row: ComparisonMetricRow }) {
               <Absent />
             ) : (
               <>
-                <div className={cn("font-mono text-[14px] font-bold", CV_TEXT[tone])}>
+                <div
+                  className={cn(
+                    "font-mono text-[14px] font-bold",
+                    valueTone(metric.kind, cell.value, tone),
+                  )}
+                >
                   {formatValue(metric.kind, cell.value)}
                 </div>
                 {cell.mark && metric.markLabel ? (
@@ -149,8 +180,11 @@ function MetricRows({ row }: { row: ComparisonMetricRow }) {
           <Absent />
         ) : (
           <>
+            {/* `benchmarkKind` where the benchmark is a different UNIT from the cells — the vacancy
+                row's cells are signed counts of posts while its benchmark is the weighted vacancy RATE
+                (Kofi V10). Every other metric leaves it unset and formats both the same way. */}
             <div className="font-mono text-[14px] font-bold text-navy">
-              {formatValue(metric.kind, benchmark)}
+              {formatValue(metric.benchmarkKind ?? metric.kind, benchmark)}
             </div>
             {metric.bar ? <CvBar fraction={benchmark} tone="none" /> : null}
           </>

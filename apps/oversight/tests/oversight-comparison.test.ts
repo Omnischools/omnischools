@@ -53,6 +53,12 @@ function row(over: Partial<BreakdownRow> & { childId: string }): BreakdownRow {
     attendanceRate: null,
     femaleEnrolment: null,
     girlsShare: null,
+    postsEstablished: null,
+    vacancyShortage: null,
+    vacancySurplus: null,
+    vacancyNet: null,
+    vacancyRate: null,
+    schoolsWithEstablishment: null,
     ...over,
   };
 }
@@ -175,7 +181,13 @@ describe("rankMarks — direction-aware, floored, ties, nulls", () => {
 describe("comparisonMetrics — the catalogue honours the ship/defer scope", () => {
   it("omits the performance section when the level sits no exam", () => {
     const keys = comparisonMetrics({ exam: null, hasCoverage: false }).map((m) => m.key);
-    expect(keys).toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
+    expect(keys).toEqual([
+      "enrolment",
+      "girlsShare",
+      "attendance",
+      "ptr",
+      "teacherVacancies",
+    ]);
   });
 
   it("includes WASSCE qualification + candidates when an exam is pinned", () => {
@@ -187,6 +199,7 @@ describe("comparisonMetrics — the catalogue honours the ship/defer scope", () 
       "candidates",
       "attendance",
       "ptr",
+      "teacherVacancies",
     ]);
   });
 
@@ -483,7 +496,13 @@ describe("AC5/AC6 — like-for-level: the exam is pinned by level, the section o
 
   it("a PRIMARY/KG/COMBINED set renders NO performance row at all — not a `—`-filled one", () => {
     const metrics = comparisonMetrics({ exam: examForSchoolType("PRIMARY"), hasCoverage: false });
-    expect(metrics.map((m) => m.key)).toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
+    expect(metrics.map((m) => m.key)).toEqual([
+      "enrolment",
+      "girlsShare",
+      "attendance",
+      "ptr",
+      "teacherVacancies",
+    ]);
     const a = row({ childId: "a", name: "Aboi Primary", enrolment: 300, staffEnrolment: 300, teachers: 10, ptr: 30 });
     const b = row({ childId: "b", name: "Beppo Primary", enrolment: 400, staffEnrolment: 400, teachers: 10, ptr: 40 });
     const model = buildComparison({ metrics, benchmarkPopulation: [a, b], columns: [col(a), col(b)] });
@@ -783,9 +802,9 @@ describe("AC20/AC21 — the cap counts real entities only; deferred metrics are 
 
   it("the still-deferred measures are ABSENT, not rendered as empty rows claiming a measure", () => {
     const keys = comparisonMetrics({ exam: "WASSCE", hasCoverage: true }).map((m) => m.key);
-    // Attendance and girls' share are now BUILT (the latter once the enrolment grain was settled as
-    // ANNUAL); vacancies, fees and the rest stay deferred.
-    for (const deferred of ["vacancies", "fees", "coreMaths", "trend", "population"]) {
+    // Attendance, girls' share and TEACHER VACANCIES are now BUILT (vacancies in increment J, as an
+    // UNRANKED signed-net row against a weighted vacancy-rate benchmark); fees and the rest stay deferred.
+    for (const deferred of ["fees", "coreMaths", "trend", "population"]) {
       expect(keys.some((k) => k.toLowerCase().includes(deferred.toLowerCase()))).toBe(false);
     }
     expect(keys).toEqual([
@@ -795,6 +814,7 @@ describe("AC20/AC21 — the cap counts real entities only; deferred metrics are 
       "candidates",
       "attendance",
       "ptr",
+      "teacherVacancies",
       "coverage",
     ]);
   });
@@ -903,7 +923,7 @@ describe("RED-fix 1 re-verified — the level pin holds on the awkward selection
     // The downstream consequence the page relies on: no exam pin ⇒ no performance section at all.
     expect(examForSchoolType(pinnedType)).toBeNull();
     expect(comparisonMetrics({ exam: examForSchoolType(pinnedType), hasCoverage: false }).map((m) => m.key))
-      .toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
+      .toEqual(["enrolment", "girlsShare", "attendance", "ptr", "teacherVacancies"]);
   });
 
   it("the pinned selection is what drives the exam — a mixed request can never reach a second exam", () => {
@@ -1052,10 +1072,17 @@ describe("the catalogue (comparisonMetrics) — attendance + girls' share presen
       "candidates",
       "attendance",
       "ptr",
+      "teacherVacancies",
       "coverage",
     ]);
     const noExam = comparisonMetrics({ exam: null, hasCoverage: false }).map((m) => m.key);
-    expect(noExam).toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
+    expect(noExam).toEqual([
+      "enrolment",
+      "girlsShare",
+      "attendance",
+      "ptr",
+      "teacherVacancies",
+    ]);
   });
 
   it("carries a girls'-share row in every configuration, and NO fees row (fees DEFERRED)", () => {
@@ -1071,8 +1098,15 @@ describe("the catalogue (comparisonMetrics) — attendance + girls' share presen
   it("enrolment, girls' share and candidates are unranked; attendance ranks (R9)", () => {
     const metrics = comparisonMetrics({ exam: "WASSCE", hasCoverage: true });
     const none = metrics.filter((m) => m.direction === "none").map((m) => m.key).sort();
-    // Girls' share is PARITY, not a maximum, so it joins enrolment and candidates as unranked.
-    expect(none).toEqual(["candidates", "enrolment", "girlsShare"]);
+    // Girls' share is PARITY, not a maximum, so it joins enrolment and candidates as unranked — and so
+    // does TEACHER VACANCIES, where both signs are adverse in different ways (a shortage understaffs, a
+    // surplus misallocates), so neither end can be crowned (VACANCY-SURFACING-RULING V10).
+    expect(none).toEqual([
+      "candidates",
+      "enrolment",
+      "girlsShare",
+      "teacherVacancies",
+    ]);
     expect(metrics.find((m) => m.key === "attendance")!.direction).toBe("higher-better");
   });
 });
