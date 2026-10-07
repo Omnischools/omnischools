@@ -492,6 +492,57 @@ describe("Σchildren = the total row, at every tier", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
+// (a2) GIRLS' SHARE — the FEMALE arm sums off the SAME ANNUAL period, and the share is the weighted ratio
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("the girls'-share arm reads FEMALE off the same ANNUAL period as enrolment", () => {
+  it("per child it is Σfemale ÷ Σenrolment, from the seed's ANNUAL sex split", async () => {
+    // The seed carries the MALE/FEMALE split on the ANNUAL period: …0011 is 220/410, …0018 is 320/720.
+    const b = await readBreakdown(regionScope);
+    const wassa = named(b, "Wassa Amenfi West");
+    const sekondi = named(b, "Sekondi-Takoradi Metro");
+    expect(wassa.femaleEnrolment).toBe(220);
+    expect(wassa.enrolment).toBe(410);
+    expect(wassa.girlsShare).toBeCloseTo(220 / 410, 10);
+    expect(sekondi.femaleEnrolment).toBe(320);
+    expect(sekondi.girlsShare).toBeCloseTo(320 / 720, 10);
+  });
+
+  it("the total's share is the WEIGHTED Σfemale÷Σenrolment, never the mean of the children's", async () => {
+    const b = await readBreakdown(regionScope);
+    // The total row comes from the same GROUPING SETS scan, so it is the real Σ÷Σ.
+    expect(b.total.girlsShare).toBeCloseTo(
+      (b.total.femaleEnrolment ?? 0) / (b.total.enrolment ?? 1),
+      10,
+    );
+    // …and it is NOT the unweighted mean of the districts' own shares.
+    const shares = b.children
+      .map((r) => r.girlsShare)
+      .filter((v): v is number => v !== null);
+    const mean = shares.reduce((a, v) => a + v, 0) / shares.length;
+    expect(b.total.girlsShare).not.toBeCloseTo(mean, 4);
+  });
+
+  it("femaleEnrolment reconciles Σchildren + unattributed = total, like every additive measure", async () => {
+    const b = await readBreakdown(regionScope);
+    const summed = allRows(b).reduce((acc, r) => acc + (r.femaleEnrolment ?? 0), 0);
+    expect(summed).toBe(b.total.femaleEnrolment);
+    // The mis-parented school filed no FEMALE row, so the bucket's femaleEnrolment is a null, not a 0.
+    expect(b.unattributed!.femaleEnrolment).toBeNull();
+    expect(b.unattributed!.girlsShare).toBeNull();
+  });
+
+  it("the share is NOT clamped — a school whose FEMALE row is absent reads a null share, not 0", async () => {
+    // TINY_SCHOOL filed only an ALL row (no FEMALE), so its district has enrolment but a null numerator.
+    const b = await readBreakdown(regionScope);
+    const tiny = named(b, TINY_DISTRICT_NAME);
+    expect(tiny.enrolment).toBe(F.tinyEnrolment);
+    expect(tiny.femaleEnrolment).toBeNull();
+    expect(tiny.girlsShare).toBeNull();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
 // (b) THE TOTAL ROW IS THE SLICE-1 KPI READ, FOR THE SAME SCOPE AND THE SAME PERIOD
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -734,14 +785,16 @@ describe("each mandatory filter is load-bearing per child, not only in the total
   });
 
   it("the stocks bind the SAME annual parameter and attendance alone binds the term one", () => {
-    // The enrolment-grain regression guard (enrolment-grain ruling §2.6/§3): enrolment and staffing are
-    // ANNUAL stocks pinned to the ONE annualPeriodId, attendance is the only arm on termPeriodId. The one
-    // place the enrolment grain is stated is this binding — so count it, cheaply and durably, in the
-    // `facts` CTE. enrolment + staffing = 2 annual bindings; attendance = 1 term binding.
+    // The enrolment-grain regression guard (enrolment-grain ruling §2.6/§3): the enrolment, girls'-share
+    // and staffing arms are ANNUAL stocks pinned to the ONE annualPeriodId, and attendance is the only arm
+    // on termPeriodId. The one place the enrolment grain is stated is this binding — so count it, cheaply
+    // and durably, in the `facts` CTE. enrolment + ENROLMENT_FEMALE + staffing = 3 annual bindings;
+    // attendance = 1 term binding. Both enrolment arms binding the SAME parameter is what keeps the
+    // girls'-share numerator and denominator from ever being pinned to different periods.
     const code = readCode("lib/oversight/breakdown.ts");
     const factsCte = code.slice(code.indexOf("facts as ("), code.indexOf("attributed as ("));
     const count = (needle: string) => factsCte.split(needle).length - 1;
-    expect(count("${annualPeriodId}::uuid")).toBe(2);
+    expect(count("${annualPeriodId}::uuid")).toBe(3);
     expect(count("${termPeriodId}::uuid")).toBe(1);
   });
 });
@@ -1173,6 +1226,8 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     presentDays: null,
     enrolledDays: null,
     attendanceRate: null,
+    femaleEnrolment: null,
+    girlsShare: null,
     ...fields,
   };
 }

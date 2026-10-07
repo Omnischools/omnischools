@@ -51,6 +51,8 @@ function row(over: Partial<BreakdownRow> & { childId: string }): BreakdownRow {
     presentDays: null,
     enrolledDays: null,
     attendanceRate: null,
+    femaleEnrolment: null,
+    girlsShare: null,
     ...over,
   };
 }
@@ -173,13 +175,14 @@ describe("rankMarks — direction-aware, floored, ties, nulls", () => {
 describe("comparisonMetrics — the catalogue honours the ship/defer scope", () => {
   it("omits the performance section when the level sits no exam", () => {
     const keys = comparisonMetrics({ exam: null, hasCoverage: false }).map((m) => m.key);
-    expect(keys).toEqual(["enrolment", "attendance", "ptr"]);
+    expect(keys).toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
   });
 
   it("includes WASSCE qualification + candidates when an exam is pinned", () => {
     const keys = comparisonMetrics({ exam: "WASSCE", hasCoverage: false }).map((m) => m.key);
     expect(keys).toEqual([
       "enrolment",
+      "girlsShare",
       "qualification",
       "candidates",
       "attendance",
@@ -480,7 +483,7 @@ describe("AC5/AC6 — like-for-level: the exam is pinned by level, the section o
 
   it("a PRIMARY/KG/COMBINED set renders NO performance row at all — not a `—`-filled one", () => {
     const metrics = comparisonMetrics({ exam: examForSchoolType("PRIMARY"), hasCoverage: false });
-    expect(metrics.map((m) => m.key)).toEqual(["enrolment", "attendance", "ptr"]);
+    expect(metrics.map((m) => m.key)).toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
     const a = row({ childId: "a", name: "Aboi Primary", enrolment: 300, staffEnrolment: 300, teachers: 10, ptr: 30 });
     const b = row({ childId: "b", name: "Beppo Primary", enrolment: 400, staffEnrolment: 400, teachers: 10, ptr: 40 });
     const model = buildComparison({ metrics, benchmarkPopulation: [a, b], columns: [col(a), col(b)] });
@@ -780,13 +783,14 @@ describe("AC20/AC21 — the cap counts real entities only; deferred metrics are 
 
   it("the still-deferred measures are ABSENT, not rendered as empty rows claiming a measure", () => {
     const keys = comparisonMetrics({ exam: "WASSCE", hasCoverage: true }).map((m) => m.key);
-    // Attendance SHIPPED in the fast-follow; girls' share (blocked on the enrolment-period grain),
-    // vacancies, fees and the rest stay deferred.
-    for (const deferred of ["girls", "vacancies", "fees", "coreMaths", "trend", "population"]) {
+    // Attendance and girls' share are now BUILT (the latter once the enrolment grain was settled as
+    // ANNUAL); vacancies, fees and the rest stay deferred.
+    for (const deferred of ["vacancies", "fees", "coreMaths", "trend", "population"]) {
       expect(keys.some((k) => k.toLowerCase().includes(deferred.toLowerCase()))).toBe(false);
     }
     expect(keys).toEqual([
       "enrolment",
+      "girlsShare",
       "qualification",
       "candidates",
       "attendance",
@@ -899,7 +903,7 @@ describe("RED-fix 1 re-verified — the level pin holds on the awkward selection
     // The downstream consequence the page relies on: no exam pin ⇒ no performance section at all.
     expect(examForSchoolType(pinnedType)).toBeNull();
     expect(comparisonMetrics({ exam: examForSchoolType(pinnedType), hasCoverage: false }).map((m) => m.key))
-      .toEqual(["enrolment", "attendance", "ptr"]);
+      .toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
   });
 
   it("the pinned selection is what drives the exam — a mixed request can never reach a second exam", () => {
@@ -986,10 +990,11 @@ describe("RED-fix 2 re-verified — the flag is on the right column, and the cav
 });
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════
- * FAST-FOLLOW (increment I) — attendance (R9) SHIPS. Girls' share (R10) and fees (R11) are DEFERRED:
- * girls' share is blocked on the unsettled enrolment-period grain (ETL ANNUAL vs readers TERM); fees is
+ * FAST-FOLLOW (increment I) — attendance (R9) and girls' share (R10) SHIP. Fees (R11) stays DEFERRED:
+ * girls' share unblocked once the enrolment grain was settled as ANNUAL (enrolment-grain ruling); fees is
  * billed-not-collected distributional data with no pupil denominator. Every property here is a fold over
- * literal rows; the attendance SQL arm is proven in the breakdown + RLS integration tests, not here.
+ * literal rows; the attendance and girls'-share SQL arms are proven in the breakdown + RLS integration
+ * tests, not here.
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 describe("attendance — weighted Σpresent÷Σenrolled, higher-better, floored (R9 / AC24–AC26)", () => {
@@ -1037,11 +1042,12 @@ describe("attendance — weighted Σpresent÷Σenrolled, higher-better, floored 
   });
 });
 
-describe("the catalogue (comparisonMetrics) — attendance present, girls' share + fees absent (R9/R11)", () => {
-  it("includes enrolment, attendance, ptr — and the exam rows only with an exam", () => {
+describe("the catalogue (comparisonMetrics) — attendance + girls' share present, fees absent (R9/R10/R11)", () => {
+  it("includes enrolment, girls' share, attendance, ptr — and the exam rows only with an exam", () => {
     const withExam = comparisonMetrics({ exam: "WASSCE", hasCoverage: true }).map((m) => m.key);
     expect(withExam).toEqual([
       "enrolment",
+      "girlsShare",
       "qualification",
       "candidates",
       "attendance",
@@ -1049,23 +1055,65 @@ describe("the catalogue (comparisonMetrics) — attendance present, girls' share
       "coverage",
     ]);
     const noExam = comparisonMetrics({ exam: null, hasCoverage: false }).map((m) => m.key);
-    expect(noExam).toEqual(["enrolment", "attendance", "ptr"]);
+    expect(noExam).toEqual(["enrolment", "girlsShare", "attendance", "ptr"]);
   });
 
-  it("carries NO girls'-share or fees row in any configuration (both DEFERRED)", () => {
+  it("carries a girls'-share row in every configuration, and NO fees row (fees DEFERRED)", () => {
     for (const exam of ["WASSCE", "BECE", null] as const) {
       for (const hasCoverage of [true, false]) {
         const keys = comparisonMetrics({ exam, hasCoverage }).map((m) => m.key);
+        expect(keys).toContain("girlsShare");
         expect(keys).not.toContain("fees");
-        expect(keys).not.toContain("girls-share");
       }
     }
   });
 
-  it("only enrolment and candidates are unranked; attendance ranks (R9)", () => {
+  it("enrolment, girls' share and candidates are unranked; attendance ranks (R9)", () => {
     const metrics = comparisonMetrics({ exam: "WASSCE", hasCoverage: true });
     const none = metrics.filter((m) => m.direction === "none").map((m) => m.key).sort();
-    expect(none).toEqual(["candidates", "enrolment"]);
+    // Girls' share is PARITY, not a maximum, so it joins enrolment and candidates as unranked.
+    expect(none).toEqual(["candidates", "enrolment", "girlsShare"]);
     expect(metrics.find((m) => m.key === "attendance")!.direction).toBe("higher-better");
+  });
+});
+
+describe("girls' share — weighted Σfemale÷Σtotal, PARITY (unranked), null-honest (R10)", () => {
+  // The spec's own accessors, read off the catalogue so a swap to kind:"mean" or a wrong accessor fails
+  // here rather than silently shipping the unweighted mean.
+  const girls = () =>
+    comparisonMetrics({ exam: null, hasCoverage: false }).find((m) => m.key === "girlsShare")!;
+
+  it("valueOf reads the row's girlsShare, and the benchmark is the weighted Σfemale÷Σtotal (AC)", () => {
+    const g = girls();
+    // valueOf points at the precomputed share (computed in the breakdown merge — proven against the DB in
+    // oversight-child-breakdown): assert it reads that field and not, say, a re-derivation of its own.
+    expect(g.valueOf(row({ childId: "wassa", girlsShare: 220 / 410 }))).toBe(220 / 410);
+    expect(g.valueOf(row({ childId: "none" }))).toBeNull(); // no enrolment → null, never a 0/0
+    // The BENCHMARK is the real Σfemale ÷ Σtotal over the like-for-like population, on the two numerator/
+    // denominator accessors — 540/1130 = 47.79% for the two fixture-shaped districts.
+    expect(g.benchmark.kind).toBe("weighted");
+    const wassa = row({ childId: "wassa", enrolment: 410, femaleEnrolment: 220 });
+    const sekondi = row({ childId: "sekondi", enrolment: 720, femaleEnrolment: 320 });
+    const bench = weightedBenchmark([wassa, sekondi], (r) => r.femaleEnrolment, (r) => r.enrolment);
+    expect(bench).toBeCloseTo(540 / 1130, 10);
+    // …and it is NOT the unweighted mean of the two shares (49.05%) — the no-averaging rule.
+    expect(bench).not.toBeCloseTo((220 / 410 + 320 / 720) / 2, 5);
+  });
+
+  it("is PARITY: direction 'none', so it is never crowned and carries no mark label", () => {
+    const g = girls();
+    expect(g.direction).toBe("none");
+    expect(g.markLabel).toBeUndefined();
+    // Assembled over two columns, neither is marked — more girls is not "better".
+    const model = buildComparison({
+      metrics: [g],
+      benchmarkPopulation: [],
+      columns: [
+        col(row({ childId: "a", enrolment: 400, femaleEnrolment: 280, girlsShare: 0.7 })),
+        col(row({ childId: "b", enrolment: 400, femaleEnrolment: 200, girlsShare: 0.5 })),
+      ],
+    });
+    const cells = model.sections[0]!.rows[0]!.cells;
+    expect(cells.map((c) => c.mark)).toEqual([null, null]);
   });
 });
