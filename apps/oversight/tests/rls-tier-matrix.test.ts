@@ -149,6 +149,22 @@ describe("fact_* — scoped through jurisdiction_id", () => {
     expect(rows.map((r) => r.headcount)).toEqual([410]);
   });
 
+  it("…and NO row of any SHAPE leaks to the district officer — the sexed rows are scoped too", async () => {
+    // The filtered probe above proves the ALL stage total is isolated, but it would also pass if the
+    // other district's MALE/FEMALE rows were visible. The girls'-share numerator is read off exactly
+    // those rows (sex='FEMALE'), so assert the UNFILTERED shape as well: 3 = this district's one school
+    // × (ALL 410 + MALE 190 + FEMALE 220), and not the 6 that exist in the table.
+    expect(await count(DISTRICT, "select count(*)::int as n from fact_enrolment")).toBe(3);
+    const female = await asTier(DISTRICT, async (tx) => {
+      return (await tx`
+        select headcount from fact_enrolment
+         where sex = 'FEMALE' and class_form is null
+         order by headcount`) as unknown as { headcount: number }[];
+    });
+    // 220 is the in-district school's girls; 320 is the Sekondi one and must be absent BY VALUE.
+    expect(female.map((r) => r.headcount)).toEqual([220]);
+  });
+
   it("the regional officer sees both, the national officer sees both", async () => {
     // Raw, UNFILTERED count, deliberately: this assertion's job is "no row of any shape leaks", so it
     // must not narrow by sex/class_form. 6 = 2 schools × (ALL + MALE + FEMALE) on the ANNUAL period.

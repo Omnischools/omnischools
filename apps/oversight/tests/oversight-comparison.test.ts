@@ -1098,6 +1098,22 @@ describe("girls' share — weighted Σfemale÷Σtotal, PARITY (unranked), null-h
     expect(bench).toBeCloseTo(540 / 1130, 10);
     // …and it is NOT the unweighted mean of the two shares (49.05%) — the no-averaging rule.
     expect(bench).not.toBeCloseTo((220 / 410 + 320 / 720) / 2, 5);
+    // ⚠ The three lines above use THIS test's own accessors, so they prove `weightedBenchmark` and the
+    // arithmetic but NOT that the catalogue points it at the right two fields: num/den could both be
+    // `enrolment` (a flat 1.0) and they would still pass. Drive the SPEC's own accessors, through the
+    // real assembly path, and pin the figure — this is the assertion that fails on a wrong accessor.
+    if (g.benchmark.kind !== "weighted") throw new Error("unreachable: asserted above");
+    expect(weightedBenchmark([wassa, sekondi], g.benchmark.num, g.benchmark.den)).toBeCloseTo(
+      540 / 1130,
+      10,
+    );
+    const model = buildComparison({
+      metrics: [g],
+      benchmarkPopulation: [wassa, sekondi],
+      columns: [col(wassa), col(sekondi)],
+    });
+    expect(model.sections[0]!.rows[0]!.benchmark).toBeCloseTo(540 / 1130, 10);
+    expect(model.sections[0]!.rows[0]!.benchmark).not.toBeCloseTo((220 / 410 + 320 / 720) / 2, 5);
   });
 
   it("is PARITY: direction 'none', so it is never crowned and carries no mark label", () => {
