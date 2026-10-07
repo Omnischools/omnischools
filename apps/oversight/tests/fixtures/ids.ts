@@ -25,10 +25,14 @@ export const JUR = {
   schoolUnmappedOperational: "10000000-0000-4000-8000-000000000019",
 } as const;
 
-// The TERM period is the legacy grain fact_infrastructure NO LONGER uses (see migration 0005); it
-// survives in the seed so the regression guard can plant a stale orphan beside the ANNUAL row.
+// The TERM period is fact_attendance's grain — attendance is a FLOW measured per term (lib/etl/
+// attendance.ts), the one fact on this period. For every STOCK (enrolment, staffing, infrastructure) it
+// is the WRONG period and no ETL path writes them there, so a reader test uses it as the wrong-period
+// decoy that must resolve to `unavailable`. (It is also the legacy grain fact_infrastructure used before
+// the 0005 re-grain.)
 export const PERIOD_ID_TERM = "20000000-0000-4000-8000-000000000001";
-// The ANNUAL period is the grain every fact_infrastructure row now hangs off.
+// The ANNUAL period is the grain of the stocks: fact_infrastructure, fact_enrolment and fact_staffing
+// all hang off this one dim_period row (the same row the ETL writes against).
 export const PERIOD_ID_ANNUAL = "20000000-0000-4000-8000-000000000002";
 // The EXAM_COHORT period is the SITTING grain fact_performance_exam hangs off (task H14): `term IS
 // NULL`, academic_year "(N-1)/N" for sitting year N, and the SAME academic_year as the ANNUAL row above

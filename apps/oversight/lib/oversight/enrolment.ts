@@ -21,9 +21,13 @@ import { ok, unavailable, type Reading } from "./reading";
  * each one is load-bearing by re-running the query without it.
  * ════════════════════════════════════════════════════════════════════════════════════════════════
  *
- * EXACTLY ONE PERIOD, passed in, never resolved here: enrolment is a FLOW measured per term, and two
- * terms of the same year count the same children twice. The caller pins the TERM period through
- * `getCurrentPeriod(scope, "TERM")` (lib/oversight/period.ts).
+ * EXACTLY ONE PERIOD, passed in, never resolved here: enrolment is a STOCK at ANNUAL grain
+ * (lib/etl/enrolment.ts) — the headcount ON ROLL, summed spatially across schools and NEVER across
+ * periods (two terms of the same year would count the same children twice, which is why the ETL files
+ * one row per academic year, not one per term). The caller pins the ANNUAL period through
+ * `getCurrentPeriod(scope, "ANNUAL")` (lib/oversight/period.ts), which is the SAME `dim_period` row the
+ * ETL wrote against — and the row `fact_staffing` hangs off too, which is why the PTR numerator and this
+ * figure are the same headcount roll (lib/etl/staffing.ts).
  *
  * NO SUBTREE `WHERE` CLAUSE. RLS has already restricted the visible rows to the officer's subtree
  * (`ov_in_subtree(jurisdiction_id)` on every fact table, db/sql/policies.sql), so Σ over what is
@@ -42,7 +46,7 @@ export interface EnrolmentTotal {
   /**
    * Distinct SCHOOL jurisdictions that contributed a row — the "Across N reporting schools" sub-line.
    * Counted here rather than taken from the register's coverage numerator because this is the honest
-   * denominator for THIS figure: schools that actually filed enrolment for the pinned term.
+   * denominator for THIS figure: schools that actually filed enrolment for the pinned academic year.
    */
   schoolsCounted: number;
 }

@@ -23,7 +23,13 @@ import {
   sourceLine,
   tierChrome,
 } from "@/components/oversight/tier-chrome";
-import { JUR, OFFICER, PERIOD_ID_EXAM_COHORT, PERIOD_ID_TERM } from "./fixtures/ids";
+import {
+  JUR,
+  OFFICER,
+  PERIOD_ID_ANNUAL,
+  PERIOD_ID_EXAM_COHORT,
+  PERIOD_ID_TERM,
+} from "./fixtures/ids";
 import {
   adminAnalytics,
   districtOfficer,
@@ -78,17 +84,18 @@ let owner: postgres.Sql;
 beforeAll(async () => {
   owner = adminAnalytics();
 
-  // ── enrolment decoys, all on the SAME school and the SAME pinned TERM period ──────────────────
-  // MALE/FEMALE beside the ALL row (the triple-count shape) and two per-form rows beside the stage
-  // total (the double-count shape). The in-district school already carries ALL/null = 410.
+  // ── enrolment decoys, all on the SAME school and the SAME pinned ANNUAL period ─────────────────
+  // Two per-form rows beside the stage total (the double-count shape). The MALE/FEMALE triple-count
+  // shape is NOT planted here: the shared seed now owns the sex split on the ANNUAL period (190/220 on
+  // this school) because girls' share reads it and because two writers of one grain key would duplicate
+  // it — fact_enrolment has no grain UNIQUE (see the enrolment-grain ruling §2.6). The in-district
+  // school already carries ALL/null = 410 and its MALE/FEMALE split from the seed.
   await owner`
     insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date)
     values
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'MALE',   200, 'OPERATIONAL_AGG', now()),
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null,     'FEMALE', 210, 'OPERATIONAL_AGG', now()),
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', 'Form 2', 'ALL',    150, 'OPERATIONAL_AGG', now()),
-      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', 'Form 3', 'ALL',    160, 'OPERATIONAL_AGG', now()),
-      (${JUR.schoolOutsideSubtree}::uuid,  ${PERIOD_ID_TERM}::uuid, 'JHS', 'Form 2', 'ALL',     90, 'OPERATIONAL_AGG', now())
+      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', 'Form 2', 'ALL', 150, 'OPERATIONAL_AGG', now()),
+      (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', 'Form 3', 'ALL', 160, 'OPERATIONAL_AGG', now()),
+      (${JUR.schoolOutsideSubtree}::uuid,  ${PERIOD_ID_ANNUAL}::uuid, 'JHS', 'Form 2', 'ALL',  90, 'OPERATIONAL_AGG', now())
   `;
 
   // ── a second, OLDER sitting cohort, so "the latest sitting" is a choice and not the only option ──
@@ -138,11 +145,14 @@ afterAll(async () => {
     delete from fact_performance_exam
      where period_id in (${PERIOD_ID_EXAM_COHORT}::uuid, ${OLDER_EXAM_COHORT}::uuid)
   `;
+  // ⚠ Scope by class_form, NOT by `sex <> 'ALL'`. The shared seed now owns the MALE/FEMALE split on
+  // the ANNUAL period, so a `sex <> 'ALL'` delete would eat fixture data — the exact failure the note
+  // above warns about. This file only ever planted per-form (class_form is not null) rows here.
   await owner`
     delete from fact_enrolment
-     where period_id = ${PERIOD_ID_TERM}::uuid
+     where period_id = ${PERIOD_ID_ANNUAL}::uuid
        and jurisdiction_id in (${JUR.schoolPublicConsented}::uuid, ${JUR.schoolOutsideSubtree}::uuid)
-       and (class_form is not null or sex <> 'ALL')
+       and class_form is not null
   `;
   await owner`delete from dim_period where period_id = ${OLDER_EXAM_COHORT}::uuid`;
   await owner`delete from ref_emis_school_register where emis_school_id in (${TEST_REGISTER_IN}, ${TEST_REGISTER_OUT})`;
@@ -213,14 +223,38 @@ describe("getCurrentPeriod pins period_type — is_current alone is ambiguous", 
     expect(annual.periodId).not.toBe(PERIOD_ID_TERM);
   });
 
-  it("the enrolment total is computed on the TERM period the pin resolved, not the ANNUAL one", async () => {
+  it("the enrolment total is computed on the ANNUAL period the pin resolved, not the TERM one", async () => {
     const term = okValue(await getCurrentPeriod(districtScope, "TERM"));
     const annual = okValue(await getCurrentPeriod(districtScope, "ANNUAL"));
     const onTerm = await getEnrolmentTotal(districtScope, term.periodId);
     const onAnnual = await getEnrolmentTotal(districtScope, annual.periodId);
-    expect(okValue(onTerm).total).toBe(410);
-    // No enrolment hangs off the ANNUAL cut: that is "no measurement", NOT a measured zero.
-    expect(onAnnual.status).toBe("unavailable");
+    expect(okValue(onAnnual).total).toBe(410);
+    // No enrolment hangs off the TERM cut: enrolment is a STOCK at ANNUAL grain and no ETL path ever
+    // writes it against a TERM period, so this is "no measurement", NOT a measured zero.
+    expect(onTerm.status).toBe("unavailable");
+  });
+
+  it("the ANNUAL pin is load-bearing: a stray TERM-period row does NOT leak into the annual read", async () => {
+    // Prove the pin the way the TERM pin used to be proved — by planting the wrong-period shape and
+    // showing the right read ignores it. Kept OUT of the shared beforeAll so the `onTerm unavailable`
+    // assertion above stays true; planted and removed here so the two never share a fixture (§5.3).
+    await owner`
+      insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date)
+      values (${JUR.schoolPublicConsented}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null, 'ALL', 999, 'OPERATIONAL_AGG', now())
+    `;
+    try {
+      // The annual figure is unchanged: the 999 sits on the TERM period the annual pin never reads.
+      expect(okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_ANNUAL)).total).toBe(410);
+      // And the decoy really is there — the TERM read now sees it, so the pin above is what excludes it.
+      expect(okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_TERM)).total).toBe(999);
+    } finally {
+      await owner`
+        delete from fact_enrolment
+         where period_id = ${PERIOD_ID_TERM}::uuid
+           and jurisdiction_id = ${JUR.schoolPublicConsented}::uuid
+           and headcount = 999
+      `;
+    }
   });
 });
 
@@ -270,10 +304,11 @@ describe("getEnrolmentTotal — sex = 'ALL' and class_form IS NULL are both load
       return (await tx`
         select sex::text as sex, class_form, headcount from fact_enrolment
          where jurisdiction_id = ${JUR.schoolPublicConsented}::uuid
-           and period_id = ${PERIOD_ID_TERM}::uuid
+           and period_id = ${PERIOD_ID_ANNUAL}::uuid
          order by headcount
       `) as unknown as { sex: string; class_form: string | null; headcount: number }[];
-      // ⇒ ALL/null 410, MALE/null 200, FEMALE/null 210, ALL/'Form 2' 150, ALL/'Form 3' 160
+      // ⇒ MALE/null 190, FEMALE/null 220, ALL/'Form 2' 150, ALL/'Form 3' 160, ALL/null 410
+      // (MALE/FEMALE are seed-owned; the two per-form rows are this file's decoys.)
     });
     expect(rows).toHaveLength(4 + 1);
     expect(rows.filter((r) => r.sex !== "ALL")).toHaveLength(2);
@@ -281,7 +316,7 @@ describe("getEnrolmentTotal — sex = 'ALL' and class_form IS NULL are both load
   });
 
   it("the total is the stage total alone", async () => {
-    const total = okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_TERM));
+    const total = okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_ANNUAL));
     expect(total.total).toBe(410);
     expect(total.schoolsCounted).toBe(1);
   });
@@ -290,11 +325,11 @@ describe("getEnrolmentTotal — sex = 'ALL' and class_form IS NULL are both load
     const inflated = await asOfficer(districtScope, async (tx) => {
       const rows = (await tx`
         select coalesce(sum(headcount), 0)::int as n from fact_enrolment
-         where period_id = ${PERIOD_ID_TERM}::uuid and class_form is null
+         where period_id = ${PERIOD_ID_ANNUAL}::uuid and class_form is null
       `) as unknown as { n: number }[];
       return Number(rows[0]!.n);
     });
-    expect(inflated).toBe(410 + 200 + 210);
+    expect(inflated).toBe(410 + 190 + 220);
     expect(inflated).toBeGreaterThan(410);
   });
 
@@ -302,7 +337,7 @@ describe("getEnrolmentTotal — sex = 'ALL' and class_form IS NULL are both load
     const inflated = await asOfficer(districtScope, async (tx) => {
       const rows = (await tx`
         select coalesce(sum(headcount), 0)::int as n from fact_enrolment
-         where period_id = ${PERIOD_ID_TERM}::uuid and sex = 'ALL'
+         where period_id = ${PERIOD_ID_ANNUAL}::uuid and sex = 'ALL'
       `) as unknown as { n: number }[];
       return Number(rows[0]!.n);
     });
@@ -314,11 +349,11 @@ describe("getEnrolmentTotal — sex = 'ALL' and class_form IS NULL are both load
     const inflated = await asOfficer(districtScope, async (tx) => {
       const rows = (await tx`
         select coalesce(sum(headcount), 0)::int as n from fact_enrolment
-         where period_id = ${PERIOD_ID_TERM}::uuid
+         where period_id = ${PERIOD_ID_ANNUAL}::uuid
       `) as unknown as { n: number }[];
       return Number(rows[0]!.n);
     });
-    expect(inflated).toBe(410 + 200 + 210 + 150 + 160);
+    expect(inflated).toBe(410 + 190 + 220 + 150 + 160);
   });
 });
 
@@ -673,9 +708,9 @@ describe("getSchoolCoverage divides by the EMIS register", () => {
 
 describe("the tier matrix, measured through the KPI reads themselves", () => {
   it("enrolment: district ⊂ region = national, and the national total is every visible row", async () => {
-    const district = okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_TERM));
-    const region = okValue(await getEnrolmentTotal(regionScope, PERIOD_ID_TERM));
-    const national = okValue(await getEnrolmentTotal(nationalScope, PERIOD_ID_TERM));
+    const district = okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_ANNUAL));
+    const region = okValue(await getEnrolmentTotal(regionScope, PERIOD_ID_ANNUAL));
+    const national = okValue(await getEnrolmentTotal(nationalScope, PERIOD_ID_ANNUAL));
     // 410 in Wassa Amenfi West; 720 in Sekondi-Takoradi. The VALUES are asserted, not just the
     // ordering: a leak that returned the wrong district's row would still satisfy a `<` assertion.
     expect(district.total).toBe(410);
@@ -687,10 +722,10 @@ describe("the tier matrix, measured through the KPI reads themselves", () => {
   });
 
   it("the national Σ IS the whole table — no subtree WHERE is needed or wanted", async () => {
-    const national = okValue(await getEnrolmentTotal(nationalScope, PERIOD_ID_TERM));
+    const national = okValue(await getEnrolmentTotal(nationalScope, PERIOD_ID_ANNUAL));
     const ownerRows = (await owner`
       select coalesce(sum(headcount), 0)::int as n from fact_enrolment
-       where period_id = ${PERIOD_ID_TERM}::uuid and sex = 'ALL' and class_form is null
+       where period_id = ${PERIOD_ID_ANNUAL}::uuid and sex = 'ALL' and class_form is null
     `) as unknown as { n: number }[];
     // Owner = RLS-exempt. Equal means `ov_is_national()` short-circuited the predicate rather than
     // the app having filtered anything itself.
@@ -724,7 +759,7 @@ describe("the tier matrix, measured through the KPI reads themselves", () => {
   });
 
   it("the out-of-district school's rows are absent from the district figures entirely", async () => {
-    const district = okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_TERM));
+    const district = okValue(await getEnrolmentTotal(districtScope, PERIOD_ID_ANNUAL));
     // 720 is Takoradi SHS's headcount; 90 is its per-form decoy. Neither may appear in any sum.
     expect(district.total).not.toBe(410 + 720);
     expect(district.total).not.toBe(410 + 90);
@@ -767,7 +802,7 @@ describe("fail-soft, and the fallback lives in the lib", () => {
       const readings = await Promise.all([
         period.getCurrentPeriod(districtScope, "TERM"),
         period.getLatestExamCohortPeriod(districtScope, "WASSCE"),
-        enrolment.getEnrolmentTotal(districtScope, PERIOD_ID_TERM),
+        enrolment.getEnrolmentTotal(districtScope, PERIOD_ID_ANNUAL),
         coverage.getSchoolCoverage(districtScope),
         performance.getExamQualification(districtScope, "WASSCE", PERIOD_ID_EXAM_COHORT),
       ]);

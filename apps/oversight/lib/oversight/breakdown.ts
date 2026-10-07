@@ -117,9 +117,9 @@ export interface BreakdownRow {
    * label — never a SIBLING's name.
    */
   name: string | null;
-  /** Σ headcount, `sex='ALL'`, `class_form is null`, one TERM period. Null = no return filed. */
+  /** Σ headcount, `sex='ALL'`, `class_form is null`, one ANNUAL period. Null = no return filed. */
   enrolment: number | null;
-  /** Schools that FILED enrolment for the pinned term — not "schools that exist" (see coverage.ts). */
+  /** Schools that FILED enrolment for the pinned academic year — not "schools that exist" (see coverage.ts). */
   schoolsFiling: number | null;
   /** Σ candidates for the pinned sitting — the ranking WEIGHT, deliberately visible. */
   candidates: number | null;
@@ -241,14 +241,16 @@ export async function getChildBreakdown(
   scope: JurisdictionScope,
   args: {
     childLevel: ChildLevel;
-    /** The ONE TERM period the enrolment column is of. Null ⇒ that column is simply absent. */
+    /** The ONE TERM period the ATTENDANCE column is of (a flow). Null ⇒ that column is simply absent. */
     termPeriodId: string | null;
     /** The ONE sitting the WASSCE columns are of. Null ⇒ those columns are simply absent. */
     examPeriodId: string | null;
     /**
-     * The ONE ANNUAL period the PTR column is of. Null ⇒ the PTR column is simply absent.
-     * It is the ANNUAL row, not the TERM one: `fact_staffing` is annual-grain (a stock, not a
-     * per-term flow), so it hangs off a different period than enrolment — see lib/oversight/ptr.ts.
+     * The ONE ANNUAL period the ENROLMENT, GIRLS'-SHARE and PTR columns are of. Null ⇒ those columns are
+     * absent. All three are STOCKS and hang off the SAME `dim_period` ANNUAL row the ETL writes against —
+     * enrolment and staffing by construction share it (`fact_staffing.enrolment_total` is enrolment's own
+     * headcount roll, lib/etl/staffing.ts), which is why one id drives all three and never two that could
+     * silently describe different years. See lib/oversight/enrolment.ts and lib/oversight/ptr.ts.
      */
     annualPeriodId: string | null;
     exam: Exam;
@@ -292,7 +294,10 @@ export async function getChildBreakdown(
                  0::bigint                   as present_days,
                  0::bigint                   as enrolled_days
             from fact_enrolment fe
-           where fe.period_id = ${termPeriodId}::uuid
+           -- ANNUAL, not TERM: enrolment is a STOCK (headcount on roll), the SAME dim_period row
+           -- fact_staffing and fact_infrastructure hang off, and the only period the ETL ever writes
+           -- enrolment against (lib/etl/enrolment.ts). A TERM pin matches zero rows and blanks the column.
+           where fe.period_id = ${annualPeriodId}::uuid
              -- Both mandatory: the ALL row sits beside MALE/FEMALE (×3) and a null class_form IS the
              -- stage total, with the per-form rows beside it (×2). See lib/oversight/enrolment.ts.
              and fe.sex = 'ALL'::ov_sex
@@ -316,7 +321,8 @@ export async function getChildBreakdown(
              and fpe.sex = 'ALL'::ov_sex
           union all
           -- STAFFING — the PTR arm. fact_staffing is ANNUAL grain and has NO sex column, so it pins the
-          -- ANNUAL period and carries no sex filter. enrolment_total and teachers_on_roll are summed as
+          -- SAME ANNUAL period as enrolment (one dim_period row; fs.enrolment_total IS enrolment's own
+          -- headcount roll, lib/etl/staffing.ts) and carries no sex filter. enrolment_total and teachers_on_roll are summed as
           -- the PTR numerator/denominator; the per-child ratio is Σ÷Σ in TS below, never avg(stored ptr)
           -- (the stored ptr column is deliberately never selected). See lib/oversight/ptr.ts.
           select fs.jurisdiction_id,
@@ -332,8 +338,9 @@ export async function getChildBreakdown(
            where fs.period_id = ${annualPeriodId}::uuid
           union all
           -- ATTENDANCE — the attendance-rate arm. fact_attendance is a FLOW at TERM grain and has NO sex
-          -- column (lib/etl/attendance.ts), so it pins the SAME termPeriodId as enrolment and carries no
-          -- sex filter. class_form IS NULL keeps only the per-stage totals (the per-form rows sit beside
+          -- column (lib/etl/attendance.ts), so it is the ONE arm on termPeriodId (enrolment, staffing and
+          -- the female arm are all ANNUAL stocks). It carries no sex filter. class_form IS NULL keeps only
+          -- the per-stage totals (the per-form rows sit beside
           -- them, ETL writes both); summing over stages is the school's total pupil-days. present_days and
           -- enrolled_days are the summable numerator/denominator; the per-child rate is Σ÷Σ in TS below,
           -- never avg(stored attendance_rate) (the stored rate column is deliberately never selected).

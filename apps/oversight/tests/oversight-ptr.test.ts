@@ -343,38 +343,51 @@ describe("PTR keys on the ANNUAL period, and nothing else", () => {
     expect(annual.periodId).not.toBe(term.periodId);
   });
 
-  it("the TERM period yields NO PTR — not a wrong one, and not a zero", async () => {
-    // fact_staffing has no TERM row, so the read must report ABSENCE rather than coalesce(…,0).
+  it("the TERM period yields neither PTR nor enrolment — both are ANNUAL stocks", async () => {
+    // fact_staffing has no TERM row, so PTR must report ABSENCE rather than coalesce(…,0).
     expect(await getPupilTeacherRatio(nationalScope, PERIOD_ID_TERM)).toEqual({
       status: "unavailable",
     });
-    // …and the enrolment card, which legitimately keys on TERM, is entirely unaffected.
-    const enrolment = okValue(await getEnrolmentTotal(nationalScope, PERIOD_ID_TERM));
-    expect(enrolment.total).toBeGreaterThan(0);
+    // …and enrolment, which is ALSO an ANNUAL stock (no ETL path writes it on a TERM period), empties on
+    // the TERM cut exactly the same way, while the ANNUAL read stands.
+    expect((await getEnrolmentTotal(nationalScope, PERIOD_ID_TERM)).status).toBe("unavailable");
+    expect(okValue(await getEnrolmentTotal(nationalScope, PERIOD_ID_ANNUAL)).total).toBeGreaterThan(0);
   });
 
-  it("the breakdown's PTR column empties on the TERM period while enrolment stands", async () => {
+  it("the breakdown's PTR AND enrolment columns empty on the TERM period, while attendance stands", async () => {
     const b = await readBreakdown(regionScope, { annualPeriodId: PERIOD_ID_TERM });
-    for (const row of [...allRows(b), b.total]) expect(row.ptr).toBeNull();
-    // The enrolment column, which legitimately IS the TERM period, is untouched — so this proves the
-    // pin rather than merely that the whole read collapsed.
-    expect(b.total.enrolment).toBeGreaterThan(0);
-    expect(b.children.every((r) => r.enrolment !== null)).toBe(true);
+    // Both stocks read `annualPeriodId`, so pointing it at TERM empties them together.
+    for (const row of [...allRows(b), b.total]) {
+      expect(row.ptr).toBeNull();
+      expect(row.enrolment).toBeNull();
+    }
+    // The attendance column, which legitimately IS the TERM period (it reads termPeriodId, a different
+    // parameter), is untouched — so this proves the pin rather than merely that the whole read collapsed.
+    expect(b.total.presentDays).not.toBeNull();
   });
 
-  it("a NULL annual period is the same honest absence, not a crash", async () => {
+  it("a NULL annual period empties both stocks — the same honest absence, not a crash", async () => {
     const b = await readBreakdown(regionScope, { annualPeriodId: null });
-    for (const row of [...allRows(b), b.total]) expect(row.ptr).toBeNull();
-    expect(b.total.enrolment).toBeGreaterThan(0);
+    for (const row of [...allRows(b), b.total]) {
+      expect(row.ptr).toBeNull();
+      expect(row.enrolment).toBeNull();
+    }
+    // Attendance is on the other parameter and still stands.
+    expect(b.total.presentDays).not.toBeNull();
   });
 
-  it("the page resolves ANNUAL separately and does not reuse termPeriod for PTR", () => {
+  it("the page resolves ANNUAL separately and pins enrolment AND PTR to it, never termPeriod", () => {
     const code = readCode("app/(oversight)/page.tsx");
     expect(code).toMatch(/getCurrentPeriod\(scope,\s*"ANNUAL"\)/);
     expect(code).toMatch(/getPupilTeacherRatio\(scope,\s*annualPeriod\.value\.periodId\)/);
     // The defect this forbids: PTR handed the TERM id.
     expect(code).not.toMatch(/getPupilTeacherRatio\(scope,\s*termPeriod/);
     expect(code).toMatch(/annualPeriodId:\s*isOk\(annualPeriod\)/);
+    // The enrolment-grain regression guard (enrolment-grain ruling §2.6): enrolment pins the ANNUAL
+    // period, and the TERM id must never come back as its argument. This is the single highest-value
+    // new assertion of the grain flip.
+    expect(code).toMatch(/getEnrolmentTotal\(scope,\s*annualPeriod\.value\.periodId\)/);
+    expect(code).not.toMatch(/getEnrolmentTotal\(scope,\s*termPeriod/);
   });
 });
 
@@ -565,7 +578,7 @@ describe("absence is absence — never a fabricated 0 and never an Infinity", ()
     `;
     await owner`
       insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date)
-      values (${SCHOOL}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null, 'ALL', 95, 'OPERATIONAL_AGG', now())
+      values (${SCHOOL}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null, 'ALL', 95, 'OPERATIONAL_AGG', now())
     `;
     try {
       const b = await readBreakdown(districtScope);

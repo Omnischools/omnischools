@@ -88,8 +88,8 @@ beforeAll(async () => {
   await owner`
     insert into fact_enrolment (jurisdiction_id, period_id, stage, class_form, sex, headcount, source, as_of_date)
     values
-      (${JUR.schoolPublicNoConsent}::uuid, ${PERIOD_ID_TERM}::uuid, 'JHS', null, 'ALL', 333, 'OPERATIONAL_AGG', now()),
-      (${MISPARENTED_SCHOOL}::uuid,        ${PERIOD_ID_TERM}::uuid, 'JHS', null, 'ALL', 44,  'OPERATIONAL_AGG', now())
+      (${JUR.schoolPublicNoConsent}::uuid, ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null, 'ALL', 333, 'OPERATIONAL_AGG', now()),
+      (${MISPARENTED_SCHOOL}::uuid,        ${PERIOD_ID_ANNUAL}::uuid, 'JHS', null, 'ALL', 44,  'OPERATIONAL_AGG', now())
   `;
 });
 
@@ -102,7 +102,7 @@ afterAll(async () => {
   `;
   await owner`
     delete from fact_enrolment
-     where period_id = ${PERIOD_ID_TERM}::uuid
+     where period_id = ${PERIOD_ID_ANNUAL}::uuid
        and jurisdiction_id in (${JUR.schoolPublicNoConsent}::uuid, ${MISPARENTED_SCHOOL}::uuid)
   `;
   await owner`delete from dim_jurisdiction where jurisdiction_id = ${MISPARENTED_SCHOOL}::uuid`;
@@ -171,11 +171,16 @@ describe("P5 — `class_form is null` keeps stage totals only, and the TERM peri
     expect(b.total.attendanceRate).toBeNull();
   });
 
-  it("the attendance arm pins the SAME period as enrolment (both TERM) — proven by swapping it", async () => {
-    // Pointing termPeriodId at the ANNUAL period makes ONLY the annual decoy visible: the arm reads
-    // whatever that one parameter names, i.e. it is not secretly reading a second period.
-    const b = await readBreakdown(nationalScope, { termPeriodId: PERIOD_ID_ANNUAL });
-    expect(b.total.presentDays).toBe(888888);
+  it("the attendance arm reads termPeriodId and nothing else — enrolment does not move with it", async () => {
+    // Enrolment is now an ANNUAL stock on the OTHER parameter (annualPeriodId), so the old "both pin the
+    // same TERM period" claim is false. Prove the two arms are on different parameters: pointing
+    // termPeriodId at the ANNUAL period makes ONLY the annual attendance decoy visible (the arm reads
+    // whatever that one parameter names), while enrolment — on annualPeriodId — is completely unmoved.
+    const base = await readBreakdown(nationalScope);
+    const swapped = await readBreakdown(nationalScope, { termPeriodId: PERIOD_ID_ANNUAL });
+    expect(swapped.total.presentDays).toBe(888888);
+    expect(base.total.enrolment).toBeGreaterThan(0);
+    expect(swapped.total.enrolment).toBe(base.total.enrolment);
   });
 });
 
