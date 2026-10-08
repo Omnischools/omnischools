@@ -32,7 +32,9 @@ import {
  * mean of school rates weights a 40-teacher school the same as a 400-teacher one (C12/C13 ban (a),
  * AC-13). Counts are summed; rates and the mean are divided ONCE, here, after the sums. The one
  * exception is the per-school comparison behind "N of Y schools met their own PLC target", which is a
- * per-ROW predicate (never an aggregate) and is evaluated in SQL on the row that owns both numbers.
+ * per-ROW predicate (never an aggregate) and is evaluated in SQL on the row that owns both numbers —
+ * on the PLC-EARNED mean (`plc_earned_points_total ÷ cpd_points_teacher_count`), because the target
+ * it is compared against is PLC-only and the stored `cpd_points_mean` is not.
  *
  * ═══ THE DENOMINATORS ARE NOT INTERCHANGEABLE (C12/C14, AC-14) ═══════════════════════════════════
  *   cpd_points_mean      = Σcpd_points_total            ÷ Σcpd_points_teacher_count
@@ -64,6 +66,16 @@ import {
  * is ABSENT ("we cannot see it"); a populated 0 is REAL_ZERO ("we measured none"). There is no
  * `coalesce(<ntc column>, 0)` anywhere in this file, and there must never be: a NULL threshold
  * coalesced to 0 reports every school in the country as 0% CPD-compliant.
+ *
+ * ⚠ ONE COLUMN IS OUTSIDE THAT GATE, AND OUTSIDE THE CHIP — `plc_earned_points_total`. It holds the
+ * GENUINELY OBSERVED PLC-earned points, read out of the operational PLC aggregate and NEVER out of the
+ * NTC stand-in (db/schema/fact.ts, "THE ONE COLUMN OUTSIDE THE SOURCING GATE"). So it is a REAL
+ * MEASUREMENT IN EVERY DATA STATE — including the demo one, where every NTC figure beside it is a
+ * stand-in — and it is built with `plcValue`, never `ntcValue`, so it can never carry a DEMO chip.
+ * A summed 0 here is REAL_ZERO ("nobody earned any PLC points"): PLC points always have a feed, so 0
+ * asserts something true, which is the exact opposite of the NTC columns' situation. It is what makes
+ * "of which PLC-earned" (C8) and "N of Y schools met their own PLC target" (B4) publishable in every
+ * state instead of withheld whenever the NTC categories are populated.
  *
  * ═══ THE DEMO/LIVE/ABSENT SWITCH IS RESOLVED ONCE (C5, AC-6) ═════════════════════════════════════
  * `ntcProvenance` is resolved here, once, and propagated to every NTC-derived figure; the surface only
@@ -152,13 +164,13 @@ export interface TeacherCpdPanel {
   /** Σcpd_points_total — the all-category total in the demo, the PLC-only subtotal otherwise (C8). */
   pointsTotal: StatusValue;
   /**
-   * C8's un-chipped "of which PLC-earned" subset.
+   * C8's un-chipped "of which PLC-earned" subset — Σ`plc_earned_points_total`, its OWN column.
    *
-   * ⚠ FORK: in the DEMO state this is NOT derivable from the fact table. The merged ETL folds the
-   * observed PLC floor INTO `cpd_points_mandatory_total` (mandatory = PLC floor + NCPD topup) and no
-   * column carries the floor on its own, so the honest answer is ABSENT rather than a number this
-   * reader would have to invent. In the live-no-feed state `cpd_points_total` IS the PLC-only
-   * subtotal (the ETL's documented fallback), so the subset is that figure and is MEASURED.
+   * ⚠ REAL IN EVERY STATE, SO NEVER CHIPPED. The column is sourced only from the operational PLC
+   * aggregate, never from the NTC stand-in, so it is a genuine measurement in the demo state exactly
+   * as in the live-no-feed one, and it is built with `plcValue` rather than `ntcValue` so a DEMO
+   * status is unreachable. It is also OUTSIDE the NULL-never-0 sourcing gate: a summed 0 is
+   * REAL_ZERO ("nobody earned any PLC points"), because PLC points always have a feed.
    */
   plcEarnedPoints: StatusValue;
   mandatory: StatusValue;
@@ -178,7 +190,11 @@ export interface TeacherCpdPanel {
   ntcCpdTarget: number | null;
   /** The schools' own PLC target, stated only when the subtree agrees on one value. Never summed. */
   annualPlcTarget: number | null;
-  /** "N of Y schools met their own PLC target" — a COUNT (C12/C16), never a summed target. */
+  /**
+   * "N of Y schools met their own PLC target" — a COUNT (C12/C16), never a summed target. Both N
+   * and Y are counted on ONE basis, the PLC-EARNED mean against the school's own PLC-only target, so
+   * the figure is honest in every data state. ABSENT only when Y is 0 (no configured target here).
+   */
   plcTargetMet: { status: CpdStatus; count?: number; schools: number };
 
   // ── shared framing ────────────────────────────────────────────────────────────────────────────
@@ -324,6 +340,13 @@ export async function getTeacherCpd(
                count(fpp.teacher_headcount)::int                        as headcount_rows,
                sum(fpp.cpd_points_total)::numeric                       as points_total,
                count(fpp.cpd_points_total)::int                         as points_total_rows,
+               -- THE OBSERVED PLC-EARNED POINTS — summed EXACTLY as cpd_points_total is, because it is
+               -- the same kind of column: sexed and ADDITIVE (MALE + FEMALE = ALL, and it rolls up the
+               -- jurisdiction tree). Nothing about it is re-derived here. It is ANNUAL-cut only and
+               -- sourced ONLY from the operational PLC aggregate — never from the NTC stand-in — so it
+               -- is a REAL measurement in BOTH data states and is NOT under the NTC sourcing gate.
+               sum(fpp.plc_earned_points_total)::numeric                as plc_earned_total,
+               count(fpp.plc_earned_points_total)::int                  as plc_earned_total_rows,
                sum(fpp.cpd_points_teacher_count)::bigint                as points_teachers,
                sum(fpp.cpd_points_mandatory_total)::numeric             as mandatory,
                count(fpp.cpd_points_mandatory_total)::int               as mandatory_rows,
@@ -348,14 +371,30 @@ export async function getTeacherCpd(
                max(fpp.annual_plc_target)::numeric                      as plc_target,
                -- "N of Y schools met their own PLC target" — a PER-ROW predicate on the row that owns
                -- both numbers (never an aggregate comparison, never a summed target).
+               --
+               -- ⚠ THE BASIS IS THE PLC-EARNED MEAN, NOT THE ALL-CATEGORY MEAN. annual_plc_target is
+               -- a PLC-ONLY target, so comparing it against cpd_points_mean -- which is the
+               -- ALL-CATEGORY mean the moment the NTC categories are populated -- would credit a
+               -- school for Specialised and Recommended points its PLC target never covered (the C13
+               -- substitution). plc_earned_points_total / cpd_points_teacher_count carries the
+               -- identical PLC-only basis in BOTH data states, which is the whole reason the column is
+               -- stored. In the categories-absent state the two are numerically the same figure
+               -- (there, plc_earned_points_total = cpd_points_total by ETL invariant).
+               --
+               -- Y (the denominator) and N (the numerator) are filtered on ONE basis, so N ≤ Y always:
+               -- the guard is the quotient itself being non-null, which drops both a school with no
+               -- configured target and one with no points-earning teachers to divide by.
                count(*) filter (
                  where fpp.annual_plc_target is not null
-                   and fpp.cpd_points_mean is not null
+                   and fpp.plc_earned_points_total
+                         / nullif(fpp.cpd_points_teacher_count, 0) is not null
                )::int                                                   as plc_target_schools,
                count(*) filter (
                  where fpp.annual_plc_target is not null
-                   and fpp.cpd_points_mean is not null
-                   and fpp.cpd_points_mean >= fpp.annual_plc_target
+                   and fpp.plc_earned_points_total
+                         / nullif(fpp.cpd_points_teacher_count, 0) is not null
+                   and fpp.plc_earned_points_total
+                         / nullif(fpp.cpd_points_teacher_count, 0) >= fpp.annual_plc_target
                )::int                                                   as plc_target_met,
                -- C5(ii) THE DEMO SIGNATURE: an OPERATIONAL_AGG row whose NTC columns are non-null.
                count(*) filter (
@@ -593,19 +632,25 @@ export async function getTeacherCpd(
         Math.abs(mandatorySum + specialisedSum + recommendedSum - pointsTotalSum) < 0.01;
 
       /**
-       * ⚠ THE C8 CONDITION IS "ARE THE CATEGORIES POPULATED", NOT "IS THE STAMP DEMO" (Dex B1).
+       * ⚠ THERE IS NO LONGER A "CATEGORIES POPULATED" BRANCH IN THIS READER, AND THAT IS THE POINT.
        *
-       * Two figures below are honest ONLY while `cpd_points_total` is the PLC-ONLY subtotal — i.e.
-       * while the NTC categories are ABSENT, which is exactly the state the schema's sourcing gate
-       * produces. The moment the categories ARE populated, the total is the ALL-CATEGORY figure and
-       * neither can be stated — and that is true of a real LIVE feed exactly as it is of the demo
-       * stand-in. Branching on `ntcProvenance === "DEMO"` would bucket LIVE with the no-feed state and
-       * publish a false, un-chipped figure the day the real feed lands, which would also falsify this
-       * slice's own C5/AC-6 claim that flipping to LIVE changes nothing else on the surface. So the
-       * branch is on the DISCRIMINATED CATEGORY STATUS the reader already computed, never on the stamp.
+       * Both `plcEarnedPoints` (C8) and `plcTargetMet` (B4) used to be withheld whenever the NTC
+       * categories were populated: the only PLC-earned figure the fact table carried was
+       * `cpd_points_total`, which becomes the ALL-CATEGORY total in that state, and the per-school
+       * comparison was `cpd_points_mean >= annual_plc_target` — an all-category mean against a
+       * PLC-only target, exactly the substitution C13 forbids.
+       *
+       * `plc_earned_points_total` (migration 0006) removes the fork rather than papering over it.
+       * It is the OBSERVED PLC-earned points, read out of the operational PLC aggregate and NEVER
+       * out of the NTC stand-in, so it carries the identical PLC-only basis in EVERY data state —
+       * demo, live-no-feed and a real NTC feed alike. Both figures are therefore published
+       * unconditionally and UN-CHIPPED, and neither has a state in which it must be withheld. The
+       * "are the categories populated" condition survives only on the SURFACE, where three captions
+       * describe what `cpd_points_total` CONTAINS (components/oversight/cpd-visuals.tsx).
+       *
+       * The category statuses themselves still feed `categoriesReconcile` above, and nothing here
+       * branches on `ntcProvenance` to decide a figure — the stamp decides the chip and nothing else.
        */
-      const categoriesAbsent =
-        specialised.status === "ABSENT" && recommended.status === "ABSENT";
 
       // The two target SCALARS: stated only when the subtree agrees on one value. NEVER summed.
       const singleTarget = (valuesKey: string, valueKey: string): number | null => {
@@ -616,20 +661,20 @@ export async function getTeacherCpd(
       /**
        * B4 — "N of Y schools met their own PLC target", a COUNT.
        *
-       * ⚠ FORK: withheld (ABSENT) WHENEVER THE CATEGORIES ARE POPULATED — demo or live alike. The
-       * per-school comparison available in the fact table is `cpd_points_mean >= annual_plc_target`,
-       * and once the categories are populated `cpd_points_mean` is the ALL-CATEGORY mean (C8) while
-       * `annual_plc_target` is a PLC-ONLY target — the schema is explicit that the two are not
-       * comparable ("8 PLC points is not 8/20ths of compliance"). Publishing the count anyway would be
-       * exactly the substitution C13 forbids, and that reasoning holds identically under a real NTC
-       * feed. Only in the categories-absent state are the total/mean the PLC-only subtotal, and only
-       * there is the count honest. (The figure returns for good when the ETL exposes the PLC-earned
-       * points as their own column — see `plcEarnedPoints`.)
+       * PUBLISHED IN EVERY DATA STATE. Both the numerator and the denominator are counted in SQL on
+       * the PLC-EARNED MEAN (`plc_earned_points_total ÷ cpd_points_teacher_count`) against the
+       * school's own `annual_plc_target`, per ROW, so the comparison is PLC-only on both sides —
+       * demo, live-no-feed and a real NTC feed alike. The all-category mean never enters it, so
+       * there is no state in which the count has to be withheld for honesty.
+       *
+       * The ONE absence left is a genuine one: `plcTargetSchools === 0` means no school in the
+       * subtree has a configured PLC target (or none has a teacher who earned any points to divide
+       * by), which is "we cannot see it" and must never render as "0 of 0 schools met".
        */
       const plcTargetSchools = count(annualAll?.plc_target_schools);
       const plcTargetMetCount = count(annualAll?.plc_target_met);
       const plcTargetMet: TeacherCpdPanel["plcTargetMet"] =
-        !categoriesAbsent || plcTargetSchools === 0
+        plcTargetSchools === 0
           ? { status: "ABSENT", schools: plcTargetSchools }
           : {
               status: plcTargetMetCount === 0 ? "REAL_ZERO" : "MEASURED",
@@ -646,15 +691,18 @@ export async function getTeacherCpd(
         pointsMean,
         pointsTotal: ntcValue(pointsTotalSum, pointsTotalRows, ntcProvenance),
         /**
-         * C8's real subset. Published ONLY while the categories are absent, because only then is
-         * `cpd_points_total` the PLC-only subtotal (see `categoriesAbsent` above). With the categories
-         * populated — demo stand-in or real NTC feed — the total is the all-category figure and the
-         * PLC floor is not separable from it, so the honest answer is ABSENT rather than the total
-         * relabelled as "PLC-earned".
+         * C8's real subset, read STRAIGHT off its own column — Σ`plc_earned_points_total`, never a
+         * relabelled total and never re-derived. `plcValue` (not `ntcValue`) is the constructor, so
+         * the figure can never carry a DEMO chip: it is sourced only from the operational PLC
+         * aggregate, so it is a real measurement even on a row whose NTC categories are populated,
+         * and chipping it would report a measurement as fabricated. For the same reason a summed 0
+         * is REAL_ZERO ("nobody earned any PLC points"), not the sourcing gate's ABSENT — PLC points
+         * always have a feed. ABSENT here means only that no row carried the column at all.
          */
-        plcEarnedPoints: categoriesAbsent
-          ? plcValue(pointsTotalSum, pointsTotalRows)
-          : { status: "ABSENT" },
+        plcEarnedPoints: plcValue(
+          annualAll ? num(annualAll.plc_earned_total) : null,
+          count(annualAll?.plc_earned_total_rows),
+        ),
         mandatory,
         specialised,
         recommended,
