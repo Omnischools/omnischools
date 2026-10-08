@@ -104,8 +104,9 @@ import { stampProvenance, type Provenance } from "./run";
  *   NTC SOURCE PRESENT (demo):  mandatory + specialised + recommended = cpd_points_total, and
  *                               cpd_points_total / _mean / _teacher_count are the ALL-CATEGORY
  *                               figures. The genuinely observed PLC points remain available as a
- *                               labelled subset — `plc_earned_points_total`, written on every ANNUAL
- *                               row in BOTH states (the reader surfaces "of which PLC-earned: X").
+ *                               labelled subset — `plc_earned_points_total` and its own denominator
+ *                               `plc_earned_teacher_count`, written on every ANNUAL row in BOTH
+ *                               states (the reader surfaces "of which PLC-earned: X").
  *   NTC SOURCE ABSENT (live):   specialised / recommended / their teacher counts /
  *                               teachers_meeting_cpd_threshold / ntc_cpd_target stay **NULL — never
  *                               0** (the ⚠ SOURCING GATE), and `cpd_points_total` falls back to the
@@ -113,27 +114,35 @@ import { stampProvenance, type Provenance } from "./run";
  * ONE CODE PATH, TWO DATA STATES. The transform NEVER invents an NTC figure: with no source there is
  * nothing to write, and that is the whole of C1.
  *
- * ── ⚠ `plc_earned_points_total` — THE FLOOR, CARRIED OUT WHOLE (C8) ─────────────────────────────
+ * ── ⚠ THE PLC-EARNED PAIR — THE FLOOR AND ITS OWN DENOMINATOR, CARRIED OUT WHOLE (C8) ───────────
+ *       plc_earned_points_total  = the OBSERVED PLC points  (`plcPts`)
+ *       plc_earned_teacher_count = the OBSERVED PLC earners  (`plcTch`)
  * The Mandatory split above FOLDS the observed PLC points into `cpd_points_mandatory_total` with no
- * seam, so once the categories are populated the one CPD figure this product genuinely measures is
- * unrecoverable from the row. `plc_earned_points_total` is that seam: THE SAME `plcPts` the split is
- * built from, written to its own column on every ANNUAL row, in BOTH data states.
- *   · It is sourced from `lib/etl/plc-source.ts` (the operational `plc_cpd_ledger` aggregate) and
- *     NEVER from `lib/etl/ntc-cpd-source.ts` / `demo_ntc_source`. So it is a REAL measurement even on
- *     a demo-stamped row, and must not be chipped as demo by any reader.
- *   · It is NOT under the ⚠ SOURCING GATE. A school whose teachers earned nothing stores a MEASURED
- *     `0.00`; the gate's NULL-never-0 rule applies to columns with no feed at all, and PLC points
- *     always have one. NULL on an ANNUAL row is an ETL defect, and `assertPlcInvariants` says so.
- *   · It is ADDITIVE — summed from the sex split and re-derived nowhere.
- * ⚠ AND IT IS THE BASIS FOR "N of Y schools met their own PLC TARGET". `annual_plc_target` is a
+ * seam, and `cpd_points_teacher_count` WIDENS to the any-CPD population at the same moment, so once
+ * the categories are populated NEITHER half of the one CPD figure this product genuinely measures is
+ * recoverable from the row. These two columns are that seam: THE SAME `plcPts` and `plcTch` the
+ * split is built from, written to their own columns on every ANNUAL row, in BOTH data states.
+ *   · Both are sourced from `lib/etl/plc-source.ts` (the operational `plc_cpd_ledger` aggregate) and
+ *     NEVER from `lib/etl/ntc-cpd-source.ts` / `demo_ntc_source`. So they are REAL measurements even
+ *     on a demo-stamped row, and must not be chipped as demo by any reader.
+ *   · Neither is under the ⚠ SOURCING GATE. A school whose teachers earned nothing stores a MEASURED
+ *     `0.00` / `0`; the gate's NULL-never-0 rule applies to columns with no feed at all, and PLC
+ *     points always have one. NULL on an ANNUAL row is an ETL defect, and `assertPlcInvariants`
+ *     says so (claims 10 and 11).
+ *   · Both are ADDITIVE — summed from the sex split and re-derived nowhere.
+ * ⚠ AND THEY ARE THE BASIS FOR "N of Y schools met their own PLC TARGET". `annual_plc_target` is a
  * PLC-ONLY target, so the per-school predicate it is compared against must use the PLC-earned mean
- * `plc_earned_points_total ÷ cpd_points_teacher_count`, NOT `cpd_points_mean` — which is the
- * ALL-CATEGORY mean the moment the categories are populated, and would credit a school for
- * Specialised and Recommended points its PLC target never covered. In the categories-ABSENT state
- * the two are numerically identical (there `cpd_points_total` IS the PLC subtotal), which is why the
- * all-category basis went unnoticed; this column makes the one honest basis available in both
- * states. That comparison is a READ-SIDE aggregate (`lib/oversight/cpd.ts`), not a stored column —
- * there is no `plc_target_met` on this fact and nothing here computes one.
+ *     plc_earned_points_total ÷ plc_earned_teacher_count  >=  annual_plc_target
+ * — NOT `cpd_points_mean`, which is the ALL-CATEGORY mean the moment the categories are populated
+ * and would credit a school for Specialised and Recommended points its PLC target never covered, and
+ * NOT `plc_earned_points_total ÷ cpd_points_teacher_count` either: a PLC-only numerator over an
+ * any-CPD denominator spreads the points over teachers who earned none, understates the mean, and
+ * can report a school as MISSING a target it met. BOTH sides of the division must be PLC-only or the
+ * figure moves on whether an NTC feed exists. In the categories-ABSENT state all three coincide
+ * (there `cpd_points_total` IS the PLC subtotal and the two teacher counts are the same people),
+ * which is why the all-category basis went unnoticed; these columns make the one honest basis
+ * available in both states. That comparison is a READ-SIDE aggregate (`lib/oversight/cpd.ts`), not a
+ * stored column — there is no `plc_target_met` on this fact and nothing here computes one.
  *
  * ── `source = OPERATIONAL_AGG` ON EVERY ROW (C4), AND `as_of_date` IS NEVER `now()` ─────────────
  * No new `ov_source` member is minted by this slice (the reasoning is in `lib/etl/ntc-cpd-source.ts`:
@@ -211,6 +220,15 @@ export interface FactPlcParticipationRow {
    * ≤ cpd_points_mandatory_total when they are populated.
    */
   plcEarnedPointsTotal: string | null;
+  /**
+   * THE PLC-EARNED MEAN'S OWN DENOMINATOR — teachers who earned PLC points. ⚠ NOT
+   * `cpdPointsTeacherCount`, which counts ANY-category earners and would spread PLC points over
+   * teachers who earned none, in the demo state only. Same discipline as the points beside it:
+   * never NTC-sourced, outside the NULL-never-0 gate (a measured 0 is legitimate), ALWAYS populated
+   * on an ANNUAL row, NULL on a TERM row, additive. Invariant: ≤ cpdPointsTeacherCount always, and
+   * = it when the categories are absent.
+   */
+  plcEarnedTeacherCount: number | null;
   source: Provenance["source"];
   asOfDate: string;
   etlRunId: string;
@@ -580,6 +598,11 @@ interface AnnualSexFigures {
    * and a real 0 is a measurement.
    */
   plcEarned: number;
+  /**
+   * THE PLC EARNERS — `plcEarned`'s own denominator, and never `teacherCount`. Identical to
+   * `teacherCount` when the gate is closed; a subset of it when it is open. ⚠ Never NULL.
+   */
+  plcEarnedTeachers: number;
   specialised: number | null;
   recommended: number | null;
   mandatoryTeachers: number;
@@ -723,7 +746,7 @@ export function buildSchoolPlcRows(
             ? plcRateOf(s.attendanceEvents, s.attendanceExpected)
             : null,
         teachersInPlc: s.teachersInPlc,
-        // The ANNUAL cut's columns are NULL on a TERM row. All eighteen of them, explicitly.
+        // The ANNUAL cut's columns are NULL on a TERM row. All nineteen of them, explicitly.
         cpdPointsTotal: null,
         cpdPointsTeacherCount: null,
         cpdPointsMean: null,
@@ -737,8 +760,9 @@ export function buildSchoolPlcRows(
         cpdSpecialisedTeacherCount: null,
         cpdRecommendedTeacherCount: null,
         // ⚠ NULL HERE, AND ONLY HERE. The PLC-earned points are an ANNUAL figure (the CPD ledger is
-        // settled per year); 0.00 on a TERM row would read as a measured term total of nothing.
+        // settled per year); 0.00 / 0 on a TERM row would read as a measured term figure of nothing.
         plcEarnedPointsTotal: null,
+        plcEarnedTeacherCount: null,
         ...provenance,
       });
     }
@@ -858,6 +882,7 @@ export function buildSchoolPlcRows(
         // also exactly plcPointsOf.ALL, because splitBySex apportions the whole; summing it here
         // rather than reading the ALL figure is what makes claim 3 able to catch a drift.)
         plcEarned: male.plcEarned + female.plcEarned,
+        plcEarnedTeachers: male.plcEarnedTeachers + female.plcEarnedTeachers,
         specialised:
           male.specialised === null || female.specialised === null
             ? null
@@ -894,6 +919,8 @@ export function buildSchoolPlcRows(
         // THE SAME observed figure, carried in its own column. Here it coincides with `total` and
         // `mandatory`; that coincidence is the categories-ABSENT invariant, not a duplication.
         plcEarned: plcPts,
+        // Likewise coincides with `teacherCount` here — the only CPD earners ARE the PLC earners.
+        plcEarnedTeachers: plcTch,
         specialised: null,
         recommended: null,
         mandatoryTeachers: plcTch,
@@ -924,6 +951,11 @@ export function buildSchoolPlcRows(
       // Mandatory split was built from — never recomputed from another source, and never the
       // NTC stand-in.
       plcEarned: plcPts,
+      // ⚠ THE SAME SEAM ON THE DENOMINATOR. `teacherCount` above has just WIDENED to the any-CPD
+      // population (max of the three overlapping category counts), so the PLC earners are no longer
+      // recoverable from it either. `plcTch` is the operational `count(distinct user_id)` and is a
+      // SUBSET of `teacherCount` by construction — `mandatoryTeachers` is floored at it.
+      plcEarnedTeachers: plcTch,
       specialised: n.specialised,
       recommended: n.recommended,
       mandatoryTeachers,
@@ -971,6 +1003,7 @@ export function buildSchoolPlcRows(
       // ⚠ WRITTEN IN BOTH DATA STATES, UNCONDITIONALLY — it is the observed PLC figure, not an NTC
       // one, so no gate applies and a real 0.00 is written as 0.00.
       plcEarnedPointsTotal: pointsOf(a.plcEarned),
+      plcEarnedTeacherCount: a.plcEarnedTeachers,
       ...annualProvenance,
     });
   }
@@ -993,7 +1026,12 @@ export function buildSchoolPlcRows(
     ntcCountsClamped: clamped.n,
     femaleSharePerMille: shares.headPerMille,
   };
-  assertPlcInvariants(result, { emisSchoolId, plcPointsOf, annualPeriodId: target.annualPeriodId });
+  assertPlcInvariants(result, {
+    emisSchoolId,
+    plcPointsOf,
+    plcTeachersOf,
+    annualPeriodId: target.annualPeriodId,
+  });
   return result;
 }
 
@@ -1051,7 +1089,7 @@ function splitTermSexed(
 /**
  * THE ARITHMETIC SELF-CHECK, per school, before anything is written.
  *
- * Ten claims, every one of them something a reader will rely on and none of them expressible as a
+ * Eleven claims, every one of them something a reader will rely on and none of them expressible as a
  * table CHECK (each spans several rows, or restates a formula the schema states in prose):
  *   1. every grain key (period_id, sex) appears EXACTLY ONCE, and each period carries all three sexes;
  *   2. the SEX-INVARIANT columns are REPEATED IDENTICALLY across the three sex rows — the check that
@@ -1077,7 +1115,13 @@ function splitTermSexed(
  *      checked against, `= cpd_points_total` when the categories are ABSENT and
  *      `<= cpd_points_mandatory_total` when they are POPULATED. This is the claim that keeps "of
  *      which PLC-earned" a real measurement in both data states rather than a slice of the NTC
- *      stand-in: if the build ever sourced it from the demo seam, it would stop equalling the floor.
+ *      stand-in: if the build ever sourced it from the demo seam, it would stop equalling the floor;
+ *  11. ⚠ THE PLC-EARNED MEAN'S OWN DENOMINATOR: `plc_earned_teacher_count` is the OBSERVED PLC-earner
+ *      count on every ANNUAL row (never NULL there, NULL on every TERM row),
+ *      `<= cpd_points_teacher_count` ALWAYS — PLC earners are a SUBSET of any-CPD earners — and
+ *      `= cpd_points_teacher_count` when the categories are ABSENT. Claim 10 without this one is a
+ *      PLC-only numerator over an any-CPD denominator, which is not a PLC mean and is wrong only in
+ *      the demo state — i.e. a figure that moves on whether a feed exists.
  * A failure here is a defect in `buildSchoolPlcRows`, not in the data, so it names the school and the
  * row.
  */
@@ -1085,8 +1129,10 @@ export function assertPlcInvariants(
   result: SchoolPlcResult,
   context: {
     emisSchoolId: string;
-    /** The genuinely observed PLC points per sex — the floor claim 6 is checked against. */
+    /** The genuinely observed PLC points per sex — the floor claims 6, 7 and 10 are checked against. */
     plcPointsOf: Record<OvSex, number>;
+    /** The genuinely observed PLC EARNERS per sex — the mean's own denominator, for claim 11. */
+    plcTeachersOf: Record<OvSex, number>;
     annualPeriodId: string;
   },
 ): void {
@@ -1182,41 +1228,6 @@ export function assertPlcInvariants(
           `ANNUAL row ${row.sex}: with no NTC source, cpd_points_total must fall back to the ` +
             `PLC-only subtotal ${pointsOf(floor)}, got ${row.cpdPointsTotal}.`,
         );
-      // CLAIM 10 — THE PLC-EARNED SEAM. Checked against the SAME `floor` claims 6 and 7 use, which
-      // is the point: one observed figure, three places it has to agree with.
-      if (row.plcEarnedPointsTotal === null)
-        fail(
-          `ANNUAL row ${row.sex} leaves plc_earned_points_total NULL. It is NOT under the ` +
-            "NULL-never-0 sourcing gate — PLC points always have an operational feed, so a school " +
-            "whose teachers earned nothing stores a MEASURED 0.00. NULL on an ANNUAL row is an ETL " +
-            "defect, and it would make 'of which PLC-earned' unreadable for this school.",
-        );
-      const plcEarned = hundredthsOf(row.plcEarnedPointsTotal, "plc_earned_points_total", fail);
-      if (plcEarned !== floor)
-        fail(
-          `ANNUAL row ${row.sex} stores plc_earned_points_total ${row.plcEarnedPointsTotal} but ` +
-            `the GENUINELY OBSERVED PLC points are ${pointsOf(floor)}. This column carries the ` +
-            "operational PLC aggregate and NOTHING ELSE — any other value means the build has " +
-            "started sourcing it from the NTC stand-in, which would report fabricated points as " +
-            "measured.",
-        );
-      // The two stated invariants, by data state. They are implied by `plcEarned === floor` plus
-      // claims 6 and 7, and asserted anyway: they are what the reader is written against, so they
-      // are checked in the terms the reader uses rather than left to a chain of three claims.
-      if (row.cpdPointsSpecialisedTotal !== null && row.cpdPointsRecommendedTotal !== null) {
-        if (plcEarned > mandatory)
-          fail(
-            `ANNUAL row ${row.sex}: plc_earned_points_total ${row.plcEarnedPointsTotal} exceeds ` +
-              `cpd_points_mandatory_total ${row.cpdPointsMandatoryTotal}. With the categories ` +
-              "populated the PLC floor is one PART of NTC's Mandatory class (the other being the " +
-              "NCPD half), so it can never be the larger of the two.",
-          );
-      } else if (plcEarned !== total)
-        fail(
-          `ANNUAL row ${row.sex}: with the categories ABSENT, plc_earned_points_total must EQUAL ` +
-            "cpd_points_total (there, the total IS the PLC-only subtotal) — got " +
-            `${row.plcEarnedPointsTotal} vs ${row.cpdPointsTotal}.`,
-        );
       // CLAIM 8 — the schema's own single-row invariant.
       if (
         row.teachersMeetingCpdThreshold !== null &&
@@ -1259,11 +1270,88 @@ export function assertPlcInvariants(
               "raise `numeric field overflow` with no school named.",
           );
       }
+      // CLAIM 10 — THE PLC-EARNED SEAM (the points). Checked against the SAME `floor` claims 6 and 7
+      // use, which is the point: one observed figure, three places it has to agree with.
+      if (row.plcEarnedPointsTotal === null)
+        fail(
+          `ANNUAL row ${row.sex} leaves plc_earned_points_total NULL. It is NOT under the ` +
+            "NULL-never-0 sourcing gate — PLC points always have an operational feed, so a school " +
+            "whose teachers earned nothing stores a MEASURED 0.00. NULL on an ANNUAL row is an ETL " +
+            "defect, and it would make 'of which PLC-earned' unreadable for this school.",
+        );
+      const plcEarned = hundredthsOf(row.plcEarnedPointsTotal, "plc_earned_points_total", fail);
+      if (plcEarned !== floor)
+        fail(
+          `ANNUAL row ${row.sex} stores plc_earned_points_total ${row.plcEarnedPointsTotal} but ` +
+            `the GENUINELY OBSERVED PLC points are ${pointsOf(floor)}. This column carries the ` +
+            "operational PLC aggregate and NOTHING ELSE — any other value means the build has " +
+            "started sourcing it from the NTC stand-in, which would report fabricated points as " +
+            "measured.",
+        );
+      // The two stated invariants, by data state. They are implied by `plcEarned === floor` plus
+      // claims 6 and 7, and asserted anyway: they are what the reader is written against, so they
+      // are checked in the terms the reader uses rather than left to a chain of three claims.
+      if (row.cpdPointsSpecialisedTotal !== null && row.cpdPointsRecommendedTotal !== null) {
+        if (plcEarned > mandatory)
+          fail(
+            `ANNUAL row ${row.sex}: plc_earned_points_total ${row.plcEarnedPointsTotal} exceeds ` +
+              `cpd_points_mandatory_total ${row.cpdPointsMandatoryTotal}. With the categories ` +
+              "populated the PLC floor is one PART of NTC's Mandatory class (the other being the " +
+              "NCPD half), so it can never be the larger of the two.",
+          );
+      } else if (plcEarned !== total)
+        fail(
+          `ANNUAL row ${row.sex}: with the categories ABSENT, plc_earned_points_total must EQUAL ` +
+            "cpd_points_total (there, the total IS the PLC-only subtotal) — got " +
+            `${row.plcEarnedPointsTotal} vs ${row.cpdPointsTotal}.`,
+        );
+      // CLAIM 11 — THE PLC-EARNED MEAN'S OWN DENOMINATOR. The numerator being PLC-only is HALF the
+      // basis; a PLC-only numerator over an any-CPD denominator is not a PLC mean at all.
+      const plcEarners = row.plcEarnedTeacherCount;
+      if (plcEarners === null || !Number.isInteger(plcEarners) || plcEarners < 0)
+        fail(
+          `ANNUAL row ${row.sex} has plc_earned_teacher_count ${String(plcEarners)}. Like the ` +
+            "points beside it, it is OUTSIDE the NULL-never-0 gate: a school where nobody earned a " +
+            "PLC point stores a MEASURED 0, and a NULL on an ANNUAL row is an ETL defect that makes " +
+            "the PLC-earned mean — and therefore 'met their own PLC target' — unreadable.",
+        );
+      if (plcEarners !== context.plcTeachersOf[row.sex])
+        fail(
+          `ANNUAL row ${row.sex} stores plc_earned_teacher_count ${String(plcEarners)} but the ` +
+            `OBSERVED PLC earners are ${String(context.plcTeachersOf[row.sex])}. Like the points, ` +
+            "this column carries the operational PLC aggregate and NOTHING ELSE — the NTC " +
+            "stand-in's per-category teacher counts are a different population and must never " +
+            "reach it.",
+        );
+      // ⚠ THE SUBSET CLAIM, ALWAYS — and the one that makes the denominator provably the tighter of
+      // the two. Whoever earned a PLC point earned a CPD point, so the PLC earners are a subset of
+      // `cpd_points_teacher_count`; a count above it would mean the mean's denominator had been
+      // computed over a population the all-category denominator does not contain.
+      if (plcEarners! > count!)
+        fail(
+          `ANNUAL row ${row.sex} has plc_earned_teacher_count ${String(plcEarners)} against a ` +
+            `cpd_points_teacher_count of ${String(count)}. PLC earners are a SUBSET of any-CPD ` +
+            "earners — every PLC point is a CPD point — so this is arithmetically impossible.",
+        );
+      // ... and with the categories ABSENT the two are the SAME PEOPLE, because the only CPD points
+      // anybody can have earned ARE PLC points. This is the equality that makes the reader's switch
+      // from cpd_points_teacher_count to this column a NO-OP in the live-today state.
+      if (
+        row.cpdPointsSpecialisedTotal === null &&
+        row.cpdPointsRecommendedTotal === null &&
+        plcEarners !== count
+      )
+        fail(
+          `ANNUAL row ${row.sex}: with the categories ABSENT, plc_earned_teacher_count must EQUAL ` +
+            `cpd_points_teacher_count (the only CPD points there ARE PLC points) — got ` +
+            `${String(plcEarners)} vs ${String(count)}.`,
+        );
     } else {
       if (
         row.cpdPointsTotal !== null ||
         row.teachersMeetingCpdThreshold !== null ||
-        row.plcEarnedPointsTotal !== null
+        row.plcEarnedPointsTotal !== null ||
+        row.plcEarnedTeacherCount !== null
       )
         fail(`TERM row ${row.sex} carries ANNUAL-cut columns; the two cuts are different period_ids.`);
       const events = row.attendanceEvents;
@@ -1334,6 +1422,7 @@ export function assertPlcInvariants(
         "teachers_meeting_cpd_threshold",
         (r: FactPlcParticipationRow) => r.teachersMeetingCpdThreshold,
       ],
+      ["plc_earned_teacher_count", (r: FactPlcParticipationRow) => r.plcEarnedTeacherCount],
       ["cpd_mandatory_teacher_count", (r: FactPlcParticipationRow) => r.cpdMandatoryTeacherCount],
       [
         "cpd_specialised_teacher_count",
@@ -1498,6 +1587,7 @@ export async function writePlcFactsTx(
         cpd_specialised_teacher_count: r.cpdSpecialisedTeacherCount,
         cpd_recommended_teacher_count: r.cpdRecommendedTeacherCount,
         plc_earned_points_total: r.plcEarnedPointsTotal,
+        plc_earned_teacher_count: r.plcEarnedTeacherCount,
         source: r.source,
         as_of_date: r.asOfDate,
         etl_run_id: r.etlRunId,

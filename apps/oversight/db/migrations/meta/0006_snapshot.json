@@ -1,5 +1,5 @@
 {
-  "id": "51d7acca-68b1-4d8f-ba42-2b0dfc7e1191",
+  "id": "adbd6252-2fb0-4f56-bb32-9351b6b192e9",
   "prevId": "7a1c9e42-5b30-4d8e-9f62-0c84b1d7e5a9",
   "version": "7",
   "dialect": "postgresql",
@@ -2385,6 +2385,12 @@
         "plc_earned_points_total": {
           "name": "plc_earned_points_total",
           "type": "numeric(7, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plc_earned_teacher_count": {
+          "name": "plc_earned_teacher_count",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
