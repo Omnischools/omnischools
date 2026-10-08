@@ -884,13 +884,25 @@ export function teacherEstablishmentOf(
   ) {
     return null;
   }
-  const net = t.vacancyShortage - t.vacancySurplus;
+  /**
+   * THE NET AND THE RATE ARE READ OFF THE TOTAL ROW, NOT RECOMPUTED (Kofi V11, structurally — Dex N8).
+   *
+   * `vacancyNet` and `vacancyRate` are already derived once, for every row including the `()` total,
+   * where the row is built above. Re-deriving them here (`shortage − surplus`, `ratio(net, posts)`)
+   * made V11 — "the panel, the table's total-row cell and the comparison benchmark are one set of
+   * figures" — a property that happened to hold because two expressions matched, rather than one that
+   * cannot fail. Now there is ONE derivation with two readers.
+   *
+   * The non-null assertions are discharged by the gate above: `vacancyNet` is non-null exactly when
+   * `vacancyShortage` and `vacancySurplus` are, which the five-way check has just established.
+   * `vacancyRate` stays NULLABLE — it is null on a zero establishment sum, which is the honest 0/0.
+   */
   return {
     postsEstablished: t.postsEstablished,
     shortage: t.vacancyShortage,
     surplus: t.vacancySurplus,
-    net,
-    vacancyRate: ratio(net, t.postsEstablished),
+    net: t.vacancyNet!,
+    vacancyRate: t.vacancyRate,
     schoolsWithEstablishment: t.schoolsWithEstablishment,
   };
 }
@@ -905,7 +917,13 @@ export interface Spread {
   mean: number | null;
 }
 
-/** min/max/weighted-mean of one 0..1 measure across the children. Null when there is no spread. */
+/**
+ * min/max/weighted-mean of ONE measure across the children. Null when there is no spread.
+ *
+ * The measure is not necessarily a 0..1 proportion: `ptr` is a ratio on its own scale, and `vacancyRate`
+ * is a SIGNED rate that crosses zero (hence `VACANCY_AXIS`, which is symmetric about it). Each caller
+ * states its own axis; this fold only compares numbers.
+ */
 export function spreadOf(
   breakdown: ChildBreakdown,
   pick: (row: BreakdownRow) => number | null,

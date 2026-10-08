@@ -158,8 +158,21 @@ export function rankMarks(
  * owns FORMATTING only (pupils vs percent vs `:1`); no decision lives there.
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** How a cell's number is written. The component maps this to a formatter; the engine decides no format. */
-export type MetricKind = "pupils" | "count" | "rate" | "ratio" | "signedCount";
+/**
+ * How a cell's number is written. The component maps this to a formatter; the engine decides no format.
+ *
+ * `rate` is UNSIGNED — a plain "84%" under a header that names the measure. A measure whose rate can go
+ * NEGATIVE needs `signedRate` instead, which carries a WORD for the same reason `signedCount` does: a
+ * bare "−6%" in a vacancy column is unreadable, and under a "District average" header it misreads as
+ * "6% below average" rather than "6% over establishment".
+ */
+export type MetricKind =
+  | "pupils"
+  | "count"
+  | "rate"
+  | "ratio"
+  | "signedCount"
+  | "signedRate";
 
 /** The benchmark column's derivation for a metric (Kofi R3.4). `none` ⇒ no benchmark cell (coverage). */
 export type BenchmarkSpec =
@@ -183,7 +196,8 @@ export interface ComparisonMetricSpec {
    * Absent ⇒ the benchmark is written like the cells, which is true of every metric but one. Teacher
    * vacancies is the exception by ruling: its cells are signed COUNTS while its benchmark is the weighted
    * vacancy RATE (Σvacancies ÷ Σestablished, V10) — two different units in one row, so the row has to be
-   * able to say so rather than format a rate as if it were a count of posts.
+   * able to say so rather than format a rate as if it were a count of posts. That benchmark is `signedRate`
+   * and not `rate`: it crosses zero, and a signed figure carries a WORD here exactly as a signed count does.
    */
   benchmarkKind?: MetricKind;
   direction: MetricDirection;
@@ -373,7 +387,9 @@ export function comparisonMetrics(args: {
        * `weightedBenchmark` skips any row where either component is null, and establishment/vacancies are
        * NULL together for every private/mission entity (STAFFING-PTR-DOMAIN-RULING §4). So a private
        * school is a named `—` cell AND contributes nothing to the reference line (V10, AC-15). It is a
-       * RATE while the cells are counts, which is why it carries its own `benchmarkKind`.
+       * RATE while the cells are counts, which is why it carries its own `benchmarkKind` — and a SIGNED
+       * one (`signedRate`), so the reference cell reads "6% short" / "6% over" and never a bare "−6%"
+       * that, under the "District average" header, would misread as "6% below average".
        */
       key: "teacherVacancies",
       section: "Staffing",
@@ -388,7 +404,7 @@ export function comparisonMetrics(args: {
         num: (r) => r.vacancyNet,
         den: (r) => r.postsEstablished,
       },
-      benchmarkKind: "rate",
+      benchmarkKind: "signedRate",
     },
   );
   if (hasCoverage) {

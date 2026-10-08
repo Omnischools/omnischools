@@ -8,6 +8,7 @@ import type {
 } from "@/lib/oversight/comparison";
 import { initialsOf } from "./breakdown-table";
 import { formatCount, formatPupilCount, formatRatio, formatRatioPercent } from "./kpi-card";
+import { vacancyTone } from "./vacancy-tone";
 
 /**
  * THE COMPARISON TABLE (increment I — comparison workspace, Lucy's map §2).
@@ -55,6 +56,10 @@ function formatValue(kind: MetricKind, value: number): string {
       return formatPupilCount(value);
     case "count":
       return formatCount(value);
+    // UNSIGNED by contract: every `rate` metric here (qualification, attendance, coverage, girls'
+    // share) is a 0..1 proportion. A measure that can go negative takes `signedRate` below — this arm
+    // is deliberately NOT taught to handle a sign, so a new signed measure cannot quietly inherit the
+    // bare-percentage rendering this file's `signedCount` rule exists to forbid.
     case "rate":
       return `${formatRatioPercent(value, 0)}%`;
     case "ratio":
@@ -71,6 +76,21 @@ function formatValue(kind: MetricKind, value: number): string {
         : value < 0
           ? `${formatCount(Math.abs(value))} over`
           : "balanced";
+    /**
+     * A SIGNED RATE OBEYS THE SAME RULE AS A SIGNED COUNT — the vacancy row's benchmark (Kofi V6/V10).
+     *
+     * This is the one cell on the surface where a percentage crosses zero, and it sits under the
+     * "District average" header: "−6%" there reads as "6% below average", which is the opposite of what
+     * it means. So the word carries the sign and the magnitude is written UNSIGNED beside it, exactly as
+     * `signedCount` does — "6% short" (posts unfilled against establishment), "6% over" (teachers over
+     * establishment), and a true zero is "at establishment", the panel's own wording for a real balance.
+     */
+    case "signedRate":
+      return value > 0
+        ? `${formatRatioPercent(value, 0)}% short`
+        : value < 0
+          ? `${formatRatioPercent(Math.abs(value), 0)}% over`
+          : "at establishment";
   }
 }
 
@@ -78,13 +98,13 @@ function formatValue(kind: MetricKind, value: number): string {
  * THE VALUE'S TONE. Normally the RELATIVE mark (see the file note) — this table's colour channel means
  * rank, not an absolute band.
  *
- * `signedCount` is the one exception, and it is a ruling: the SIGN carries a valence of its own (terra for
- * a shortage, the adverse state; neutral navy for a surplus, which is a maldistribution and must never be
- * tinted green as if it were good — V6). Such a row is unranked by construction, so there is no mark for
+ * `signedCount` is the one exception, and it is a ruling: the SIGN carries a valence of its own, and that
+ * mapping is `vacancyTone()` — the ONE home for it, shared with the establishment panel and the breakdown
+ * table, never re-decided here (Dex N6). Such a row is unranked by construction, so there is no mark for
  * this to override.
  */
 function valueTone(kind: MetricKind, value: number, tone: MarkTone): string {
-  if (kind === "signedCount") return value > 0 ? "text-terra" : "text-navy";
+  if (kind === "signedCount") return vacancyTone(value);
   return CV_TEXT[tone];
 }
 
@@ -182,7 +202,9 @@ function MetricRows({ row }: { row: ComparisonMetricRow }) {
           <>
             {/* `benchmarkKind` where the benchmark is a different UNIT from the cells — the vacancy
                 row's cells are signed counts of posts while its benchmark is the weighted vacancy RATE
-                (Kofi V10). Every other metric leaves it unset and formats both the same way. */}
+                (Kofi V10), itself SIGNED and therefore worded ("6% short" / "6% over"), never a bare
+                percentage under this header. Every other metric leaves it unset and formats both the
+                same way. */}
             <div className="font-mono text-[14px] font-bold text-navy">
               {formatValue(metric.benchmarkKind ?? metric.kind, benchmark)}
             </div>

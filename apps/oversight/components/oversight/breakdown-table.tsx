@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import type { BreakdownRow, ChildBreakdown } from "@/lib/oversight/breakdown";
 import { formatCount, formatPupilCount, formatRatio, formatRatioPercent } from "./kpi-card";
 import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome";
+import { vacancyTone } from "./vacancy-tone";
 
 /**
  * THE CHILD BREAKDOWN TABLE (increment I slice 3, Lucy's breakdown map §4.1).
@@ -108,7 +109,7 @@ export function initialsOf(name: string): string {
  * establishment for the child's schools at all (Kofi V9/V12) — a different fact, which the affordance
  * must state rather than flatten into "No return filed".
  */
-function Absent({ title = "No return filed" }: { title?: string } = {}) {
+function Absent({ title = "No return filed" }: { title?: string }) {
   return (
     <span className="text-navy-3" title={title}>
       —
@@ -269,7 +270,9 @@ export function BreakdownTable({
         className={cn(
           "font-mono text-[11px]",
           bold && "font-bold",
-          net > 0 ? "text-terra" : "text-navy",
+          // The tone is `vacancyTone()`'s call, not this cell's — one home for the never-green rule,
+          // shared with the establishment panel and the comparison row (Dex N6).
+          vacancyTone(net),
         )}
         title={title}
       >

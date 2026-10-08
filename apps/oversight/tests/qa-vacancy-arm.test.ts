@@ -5,7 +5,7 @@ import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import postgres from "postgres";
 import { scopeFor, type JurisdictionScope } from "@/lib/db/rls";
-import { isOk, ok, type Reading } from "@/lib/oversight/reading";
+import { isOk, type Reading } from "@/lib/oversight/reading";
 import {
   childLevelFor,
   getChildBreakdown,
@@ -189,7 +189,8 @@ async function independentSum(
 
 const CHROME = breakdownChrome("REGION", "Western Region");
 
-function panelText(breakdown: Reading<ChildBreakdown>, tierNoun = "region"): string {
+/** The panel takes a RESOLVED breakdown — the unread case is BreakdownSection's (Dex N1). */
+function panelText(breakdown: ChildBreakdown, tierNoun = "region"): string {
   return textOf(
     renderToStaticMarkup(
       createElement(TeacherEstablishmentPanel, { breakdown, chrome: CHROME, tierNoun }),
@@ -404,7 +405,7 @@ describe("every tier's figures equal an independent Σ over what RLS lets that o
       expect(district.postsEstablished).toBe(SEED.posts);
       const names = (await readBreakdown(districtScope)).children.map((r) => r.name);
       expect(names).not.toContain(SIBLING.name);
-      expect(panelText(ok(await readBreakdown(districtScope)), "district")).not.toContain(
+      expect(panelText(await readBreakdown(districtScope), "district")).not.toContain(
         "17",
       );
     });
@@ -483,7 +484,7 @@ describe("a MISSION school is excluded exactly as a PRIVATE one is (ACs 1, 3)", 
   });
 
   it("the panel's exclusion sentence names BOTH ownerships it excludes", async () => {
-    const text = panelText(ok(await readBreakdown(regionScope)));
+    const text = panelText(await readBreakdown(regionScope));
     expect(text).toContain("private and mission schools are excluded");
     expect(text).toContain("GES sets no establishment for them");
   });
@@ -515,7 +516,7 @@ describe("the national tier shows two magnitudes, not one cancelled net (ACs 4, 
         Math.abs(national.net),
       );
       // The two magnitudes are rendered as SEPARATE figures, each with its own word.
-      const text = panelText(ok(await readBreakdown(nationalScope)), "country");
+      const text = panelText(await readBreakdown(nationalScope), "country");
       expect(text).toMatch(
         /Shortage[\s\S]*12[\s\S]*posts unfilled against establishment/,
       );
@@ -526,7 +527,7 @@ describe("the national tier shows two magnitudes, not one cancelled net (ACs 4, 
 
   it("the panel never renders the net without both magnitudes above it (AC-4)", async () => {
     await withSchools([SHORT], async () => {
-      const text = panelText(ok(await readBreakdown(nationalScope)), "country");
+      const text = panelText(await readBreakdown(nationalScope), "country");
       const netAt = text.indexOf("Net ");
       expect(netAt).toBeGreaterThan(-1);
       // Both gross magnitudes precede the net on the surface — the net cannot be read alone.
@@ -746,7 +747,7 @@ describe("what a reader actually SEES agrees across the two surfaces, and the si
       const b = await readBreakdown(regionScope);
       const est = teacherEstablishmentOf(b)!;
 
-      const panel = panelText(ok(b));
+      const panel = panelText(b);
       const totalRow =
         /bg-gold-bg([\s\S]*?)<\/tr>/.exec(tableMarkup(b))?.[1] ?? "";
       expect(totalRow, "no total row in the rendered table").not.toBe("");
@@ -800,7 +801,7 @@ describe("what a reader actually SEES agrees across the two surfaces, and the si
       // AC-11 over the WHOLE panel too: no green anywhere on the establishment surface.
       const panelMarkup = renderToStaticMarkup(
         createElement(TeacherEstablishmentPanel, {
-          breakdown: ok(b),
+          breakdown: b,
           chrome: CHROME,
           tierNoun: "region",
         }),
@@ -816,7 +817,7 @@ describe("what a reader actually SEES agrees across the two surfaces, and the si
       const second = await readBreakdown(regionScope);
       expect(teacherEstablishmentOf(second)).toEqual(teacherEstablishmentOf(first));
       // The SURFACE, not only the read: a `now()` or a locale-sensitive formatter would diverge here.
-      expect(panelText(ok(second))).toBe(panelText(ok(first)));
+      expect(panelText(second)).toBe(panelText(first));
       expect(tableMarkup(second)).toBe(tableMarkup(first));
     });
   });
@@ -853,7 +854,7 @@ describe("an all-MISSION tier is unavailable, and prints no figure whatsoever (A
         expect(b.total.vacancyNet).not.toBe(0);
         expect(teacherEstablishmentOf(b)).toBeNull();
 
-        const text = panelText(ok(b), "district");
+        const text = panelText(b, "district");
         expect(text).toContain("No GES establishment in this district");
         expect(text).toContain("private and mission schools carry none");
         // THE STRONGEST FORM OF "UNAVAILABLE, NEVER 0": the note states no digit at all, so there is

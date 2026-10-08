@@ -343,8 +343,13 @@ export default async function ComparisonWorkspace({
               // The vacancy row's honest denominator, made legible (Lucy §2; the read rule it states is
               // lib/etl/staffing.ts's). Signed, and public-only: GES sets no establishment for private
               // or mission schools, so they are a named `—` in both the cell and the benchmark.
+              //
+              // The line names the WORDS the cells actually render, not a `+ / −` sign convention they
+              // never show (Dex N7): every vacancy figure on this surface is worded by ruling (V6), so a
+              // ledger line teaching the reader to decode a sign would document a rendering that does not
+              // exist. The benchmark cell is a RATE and worded the same way, which is also stated.
               "Vacancies",
-              "signed net vs GES establishment · + unfilled / − over · GES-establishment schools only (private and mission excluded)",
+              "signed net vs GES establishment · posts unfilled / over establishment · benchmark is the weighted vacancy rate, worded the same way · GES-establishment schools only (private and mission excluded)",
             ],
             ...(exam && sittingYear
               ? ([[`${exam} sitting`, `${sittingYear} cohort · credit or above`]] as [
