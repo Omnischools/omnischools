@@ -20,8 +20,10 @@ import {
   type ExamQualification,
 } from "@/lib/oversight/performance";
 import { childLevelFor, getChildBreakdown } from "@/lib/oversight/breakdown";
+import { getSchoolFees, type SchoolFeesPanel } from "@/lib/oversight/fees";
 import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
+import { FeesSection } from "@/components/oversight/fees-section";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Provenance } from "@/components/oversight/primitives";
 import { PeriodBanner } from "@/components/oversight/period-banner";
@@ -142,23 +144,25 @@ export default async function OversightHome() {
   const chrome = tierChrome(officer.level, officer.jurisdictionName);
 
   // Independent reads, in parallel: each is separately fail-soft, so one failure degrades one card.
-  const [latestRun, termPeriod, annualPeriod, coverage, wassceCohort] = await Promise.all([
-    getLatestSuccessfulEtlRun(scope),
-    // period_type is NAMED. `is_current` alone matches the TERM *and* the ANNUAL row of the same
-    // academic year (db/schema/dim.ts). The TERM row is now resolved for attendance only (and for the
-    // banner's human-readable term label).
-    getCurrentPeriod(scope, "TERM"),
-    // The ANNUAL row is the grain of fact_enrolment, fact_staffing and fact_infrastructure — all three
-    // are stocks and hang off this one row. See lib/oversight/enrolment.ts and lib/oversight/ptr.ts.
-    getCurrentPeriod(scope, "ANNUAL"),
-    getSchoolCoverage(scope),
-    getLatestExamCohortPeriod(scope, "WASSCE"),
-  ]);
+  const [latestRun, termPeriod, annualPeriod, coverage, wassceCohort] = await Promise.all(
+    [
+      getLatestSuccessfulEtlRun(scope),
+      // period_type is NAMED. `is_current` alone matches the TERM *and* the ANNUAL row of the same
+      // academic year (db/schema/dim.ts). The TERM row is now resolved for attendance only (and for the
+      // banner's human-readable term label).
+      getCurrentPeriod(scope, "TERM"),
+      // The ANNUAL row is the grain of fact_enrolment, fact_staffing and fact_infrastructure — all three
+      // are stocks and hang off this one row. See lib/oversight/enrolment.ts and lib/oversight/ptr.ts.
+      getCurrentPeriod(scope, "ANNUAL"),
+      getSchoolCoverage(scope),
+      getLatestExamCohortPeriod(scope, "WASSCE"),
+    ],
+  );
 
   // Period-dependent reads. Enrolment and PTR pin the ANNUAL row (stocks), attendance the TERM row (a
   // flow), WASSCE its own sitting — one period_id each, which is what keeps enrolment from summing two
   // terms of the same children and WASSCE from summing two sittings of different ones.
-  const [enrolment, ptr, wassce, breakdown] = await Promise.all([
+  const [enrolment, ptr, wassce, breakdown, fees] = await Promise.all([
     isOk(annualPeriod)
       ? getEnrolmentTotal(scope, annualPeriod.value.periodId)
       : unavailable<EnrolmentTotal>(),
@@ -188,6 +192,15 @@ export default async function OversightHome() {
       annualPeriodId: isOk(annualPeriod) ? annualPeriod.value.periodId : null,
       exam: "WASSCE",
     }),
+    /**
+     * INCREMENT K — the school-fees panel. fact_fees is TERM-grain (a per-term billing distribution),
+     * so this is pinned to the TERM period, NOT the ANNUAL one the enrolment/PTR cards use. The reader
+     * is DISTRICT-tier-only and returns `unavailable` above it (fees are non-additive — no district
+     * average exists); `FeesSection` renders the honest drill-down note there. Separately fail-soft.
+     */
+    isOk(termPeriod)
+      ? getSchoolFees(scope, termPeriod.value.periodId)
+      : unavailable<SchoolFeesPanel>(),
   ]);
 
   const hasRun = latestRun !== null;
@@ -225,7 +238,9 @@ export default async function OversightHome() {
   // thresholds). Gate on the ONE-DECIMAL DISPLAYED value, so the chip can never disagree with the number
   // on the card: "within" only at/below the tightest norm (25, within every level ceiling); "above"
   // only beyond the loosest (35, above every ceiling); between the two the blend cannot say, so NO chip.
-  const ptrVerdict = shown(ptr) ? ptrNormVerdict(Number(formatRatio(ptr.value.ratio, 1))) : null;
+  const ptrVerdict = shown(ptr)
+    ? ptrNormVerdict(Number(formatRatio(ptr.value.ratio, 1)))
+    : null;
   const sittingYear = isOk(wassceCohort)
     ? sittingYearOf(wassceCohort.value.academicYear)
     : null;
@@ -445,6 +460,26 @@ export default async function OversightHome() {
         />
 
         {/*
+          INCREMENT K — the School fees panel, a sibling of the breakdown section below the KPI strip.
+          It follows the breakdown (not before it) because the breakdown's total row must sit adjacent
+          to the KPI strip for the reconciliation read; fees carry NO roll-up to reconcile. DISTRICT
+          tier shows real per-school figures; REGION/NATIONAL show the honest drill-down note (fees do
+          not roll up, so there is no regional/national average). Its own Reading, its own fail-soft.
+
+          The vintage is the TERM, stated distinctly from the annual strip: fact_fees is a per-term
+          billing distribution (never summed across terms into a year).
+        */}
+        <FeesSection
+          level={officer.level}
+          reading={fees}
+          termLabel={
+            isOk(termPeriod) && termPeriod.value.term !== null
+              ? `Term ${termPeriod.value.term}`
+              : null
+          }
+        />
+
+        {/*
           Lucy §3.4. Five items against the primitive's `sm:grid-cols-3`, so the last two wrap — which
           §3.4 rules acceptable. The Coverage line is COMPUTED, including the "not yet on Omnischools"
           gap: it is the surface's core discipline, not decoration, so it must be the real number. The
@@ -503,6 +538,26 @@ export default async function OversightHome() {
                   [
                     "Establishment",
                     "Teaching posts established are the GES-authorised establishment (a demo-derived figure, or the loaded ref_ges_teacher_establishment vintage where present), not a measured headcount; private and mission schools carry no establishment. Vacancies are signed: positive = posts unfilled (shortage), negative = teachers over establishment (surplus).",
+                  ],
+                ] as [string, string][])
+              : []),
+            /*
+              ⚠ THE FEES CAVEAT (ruling F21), rendered at DISTRICT tier whenever the fees panel can
+              render — gated on the same `fees` reading the panel is derived from, so the ledger never
+              explains a figure the page is not showing. Five things a reader would otherwise get wrong:
+              billed-not-collected, the billed-students (not enrolled) denominator, the TERM grain, the
+              source, and — the load-bearing one — that fees do NOT roll up, so no district/regional/
+              national fee average exists.
+            */
+            ...(officer.level === "DISTRICT" && isOk(fees)
+              ? ([
+                  [
+                    "Fees",
+                    `Fee figures are amounts billed (charged), not collected, taken from schools' operational billing records${
+                      isOk(termPeriod) && termPeriod.value.term !== null
+                        ? ` for Term ${termPeriod.value.term}`
+                        : ""
+                    }. Each figure is a mean and median over the students billed for that category — "what this costs here", not "what an average pupil pays". Figures are per school: fees do not roll up, so there is no district, regional or national fee average.`,
                   ],
                 ] as [string, string][])
               : []),

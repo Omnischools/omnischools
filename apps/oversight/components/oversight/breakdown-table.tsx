@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { BreakdownRow, ChildBreakdown } from "@/lib/oversight/breakdown";
-import { formatCount, formatPupilCount, formatRatio, formatRatioPercent } from "./kpi-card";
+import {
+  formatCount,
+  formatPupilCount,
+  formatRatio,
+  formatRatioPercent,
+} from "./kpi-card";
 import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome";
 import { vacancyTone } from "./vacancy-tone";
+import { Absent } from "./primitives";
 
 /**
  * THE CHILD BREAKDOWN TABLE (increment I slice 3, Lucy's breakdown map §4.1).
@@ -101,22 +107,6 @@ export function initialsOf(name: string): string {
   return letters.length > 0 ? letters.join("") : "—";
 }
 
-/**
- * The muted `—`: a cell with no measure. Never a fabricated 0, never a confident green.
- *
- * `title` is overridable because the ABSENCES are not all the same absence: for most columns the cell is
- * empty because no return was filed, but for the Vacancies column it is empty because GES sets no
- * establishment for the child's schools at all (Kofi V9/V12) — a different fact, which the affordance
- * must state rather than flatten into "No return filed".
- */
-function Absent({ title = "No return filed" }: { title?: string }) {
-  return (
-    <span className="text-navy-3" title={title}>
-      —
-    </span>
-  );
-}
-
 /** `.num` — JetBrains Mono, bold, centred. Every numeric cell in the mock. */
 function Num({ children, bold }: { children: ReactNode; bold?: boolean }) {
   return (
@@ -146,7 +136,8 @@ function QualPill({ rate }: { rate: number }) {
   );
 }
 
-const TH = "border-b border-border-2 bg-bg px-3 py-2 text-[9px] font-bold uppercase tracking-[0.12em] text-navy-3";
+const TH =
+  "border-b border-border-2 bg-bg px-3 py-2 text-[9px] font-bold uppercase tracking-[0.12em] text-navy-3";
 const TD = "border-b border-border-1 px-3 py-[9px] align-middle";
 
 /**
@@ -415,7 +406,11 @@ export function BreakdownTable({
                 ) : null}
                 <td className={cn(TD, "text-center")}>{enrolmentCell(row)}</td>
                 <td className={cn(TD, "text-center")}>
-                  {row.wassceRate === null ? <Absent /> : <QualPill rate={row.wassceRate} />}
+                  {row.wassceRate === null ? (
+                    <Absent />
+                  ) : (
+                    <QualPill rate={row.wassceRate} />
+                  )}
                 </td>
                 <td className={cn(TD, "text-center")}>{ptrCell(row)}</td>
                 <td className={cn(TD, "text-center")}>{vacancyCell(row)}</td>
@@ -439,7 +434,8 @@ export function BreakdownTable({
                       : ` — ${pluralise(unattributed.schoolsFiling, "school")}`}
                   </span>
                   <span className="mt-0.5 block text-[10px] text-navy-3">
-                    not placed under any {chrome.childNounSingular} in the jurisdiction spine
+                    not placed under any {chrome.childNounSingular} in the jurisdiction
+                    spine
                   </span>
                 </td>
                 {hasCoverage ? (
@@ -489,7 +485,11 @@ export function BreakdownTable({
               ) : null}
               <td className={cn(TD, "text-center")}>{enrolmentCell(total)}</td>
               <td className={cn(TD, "text-center")}>
-                {total.wassceRate === null ? <Absent /> : <QualPill rate={total.wassceRate} />}
+                {total.wassceRate === null ? (
+                  <Absent />
+                ) : (
+                  <QualPill rate={total.wassceRate} />
+                )}
               </td>
               <td className={cn(TD, "text-center")}>{ptrCell(total, true)}</td>
               <td className={cn(TD, "text-center")}>{vacancyCell(total, true)}</td>
