@@ -33,11 +33,13 @@ import {
  * AC-13). Counts are summed; rates and the mean are divided ONCE, here, after the sums. The one
  * exception is the per-school comparison behind "N of Y schools met their own PLC target", which is a
  * per-ROW predicate (never an aggregate) and is evaluated in SQL on the row that owns both numbers —
- * on the PLC-EARNED mean (`plc_earned_points_total ÷ cpd_points_teacher_count`), because the target
- * it is compared against is PLC-only and the stored `cpd_points_mean` is not.
+ * on the PLC-EARNED mean (`plc_earned_points_total ÷ plc_earned_teacher_count`), because the target
+ * it is compared against is PLC-only and BOTH halves of that mean must therefore be PLC-only too;
+ * the stored `cpd_points_mean` (and its `cpd_points_teacher_count` denominator) are all-category.
  *
  * ═══ THE DENOMINATORS ARE NOT INTERCHANGEABLE (C12/C14, AC-14) ═══════════════════════════════════
  *   cpd_points_mean      = Σcpd_points_total            ÷ Σcpd_points_teacher_count
+ *   PLC-earned mean      = Σplc_earned_points_total     ÷ Σplc_earned_teacher_count   (B4 only)
  *   PLC coverage         = Σteachers_in_plc             ÷ Σteacher_headcount
  *   participation rate   = Σattendance_events           ÷ Σattendance_expected
  *   session coverage     = Σsessions_held               ÷ Σsessions_expected
@@ -67,13 +69,15 @@ import {
  * `coalesce(<ntc column>, 0)` anywhere in this file, and there must never be: a NULL threshold
  * coalesced to 0 reports every school in the country as 0% CPD-compliant.
  *
- * ⚠ ONE COLUMN IS OUTSIDE THAT GATE, AND OUTSIDE THE CHIP — `plc_earned_points_total`. It holds the
- * GENUINELY OBSERVED PLC-earned points, read out of the operational PLC aggregate and NEVER out of the
- * NTC stand-in (db/schema/fact.ts, "THE ONE COLUMN OUTSIDE THE SOURCING GATE"). So it is a REAL
- * MEASUREMENT IN EVERY DATA STATE — including the demo one, where every NTC figure beside it is a
- * stand-in — and it is built with `plcValue`, never `ntcValue`, so it can never carry a DEMO chip.
- * A summed 0 here is REAL_ZERO ("nobody earned any PLC points"): PLC points always have a feed, so 0
- * asserts something true, which is the exact opposite of the NTC columns' situation. It is what makes
+ * ⚠ TWO COLUMNS ARE OUTSIDE THAT GATE, AND OUTSIDE THE CHIP — `plc_earned_points_total` and its
+ * denominator `plc_earned_teacher_count`. They hold the GENUINELY OBSERVED PLC-earned points and the
+ * count of teachers who earned them, read out of the operational PLC aggregate and NEVER out of the
+ * NTC stand-in (db/schema/fact.ts, "THE TWO COLUMNS OUTSIDE THE SOURCING GATE"). So each is a REAL
+ * MEASUREMENT IN EVERY DATA STATE — including the demo one, where every NTC figure beside them is a
+ * stand-in — and the points figure is built with `plcValue`, never `ntcValue`, so it can never carry a
+ * DEMO chip. A summed 0 here is REAL_ZERO ("nobody earned any PLC points"): PLC points always have a
+ * feed, so 0 asserts something true, which is the exact opposite of the NTC columns' situation. It is
+ * what makes
  * "of which PLC-earned" (C8) and "N of Y schools met their own PLC target" (B4) publishable in every
  * state instead of withheld whenever the NTC categories are populated.
  *
