@@ -441,9 +441,10 @@ export default async function OversightHome() {
         <TeacherEstablishmentPanel
           breakdown={breakdown}
           chrome={breakdownChrome(officer.level, officer.jurisdictionName)}
-          /* The officer's OWN tier, for the absence sentence. "country" at national, because "No GES
-             establishment in this national" is not a sentence. */
-          tierNoun={officer.level === "NATIONAL" ? "country" : chrome.tierAdjective.toLowerCase()}
+          /* The officer's OWN tier as a NOUN, for the absence sentence ("No GES establishment in this
+             {tierNoun}"). From tierChrome so every tier reads a real noun — "country" at national,
+             "region"/"district"/"school" below — never the adjective ("regional" is not a noun). */
+          tierNoun={chrome.tierNoun}
         />
 
         {/*
