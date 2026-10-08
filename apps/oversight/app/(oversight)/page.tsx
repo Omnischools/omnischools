@@ -21,8 +21,13 @@ import {
 } from "@/lib/oversight/performance";
 import { childLevelFor, getChildBreakdown } from "@/lib/oversight/breakdown";
 import { getSchoolFees, type SchoolFeesPanel } from "@/lib/oversight/fees";
+import { getTeacherCpd, type TeacherCpdPanel } from "@/lib/oversight/cpd";
 import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
+import { CpdSection } from "@/components/oversight/cpd-section";
+// The panel's own points formatter, so the ledger's stated threshold and the panel's "(20 pts)" can
+// never disagree after a policy change (one formatter, two surfaces).
+import { formatPoints } from "@/components/oversight/cpd-visuals";
 import { FeesSection } from "@/components/oversight/fees-section";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Chip, Provenance } from "@/components/oversight/primitives";
@@ -162,7 +167,7 @@ export default async function OversightHome() {
   // Period-dependent reads. Enrolment and PTR pin the ANNUAL row (stocks), attendance the TERM row (a
   // flow), WASSCE its own sitting — one period_id each, which is what keeps enrolment from summing two
   // terms of the same children and WASSCE from summing two sittings of different ones.
-  const [enrolment, ptr, wassce, breakdown, fees] = await Promise.all([
+  const [enrolment, ptr, wassce, breakdown, fees, cpd] = await Promise.all([
     isOk(annualPeriod)
       ? getEnrolmentTotal(scope, annualPeriod.value.periodId)
       : unavailable<EnrolmentTotal>(),
@@ -201,6 +206,21 @@ export default async function OversightHome() {
     isOk(termPeriod)
       ? getSchoolFees(scope, termPeriod.value.periodId)
       : unavailable<SchoolFeesPanel>(),
+    /**
+     * INCREMENT L — the Teacher CPD & PLC panel. `fact_plc_participation` carries TWO period cuts on
+     * TWO DIFFERENT period_ids, so the reader takes BOTH: the TERM row (the same one the fees panel and
+     * the attendance column pin) for PLC participation, and the ANNUAL row (the same one enrolment and
+     * PTR pin) for CPD points and national compliance. Handing it one id twice would read a cut whose
+     * columns are all NULL. Tier-polymorphic (no gate — CPD rolls up honestly at every tier) and
+     * separately fail-soft, like fees.
+     */
+    isOk(annualPeriod)
+      ? getTeacherCpd(
+          scope,
+          isOk(termPeriod) ? termPeriod.value.periodId : null,
+          annualPeriod.value.periodId,
+        )
+      : unavailable<TeacherCpdPanel>(),
   ]);
 
   const hasRun = latestRun !== null;
@@ -455,6 +475,29 @@ export default async function OversightHome() {
         />
 
         {/*
+          INCREMENT L — the Teacher CPD & PLC panel (C16), a sibling of the breakdown section below the
+          KPI strip and mounted EXACTLY ONCE, here. It is deliberately OUTSIDE `BreakdownSection`: the
+          panel is not derived from the roll-up, so a breakdown-reconciliation failure (its amber
+          banner) must not take CPD down with it, and an unreadable CPD read must leave everything else
+          standing (AC-20). That is the `FeesSection` precedent, and the surface map sanctions it as
+          equivalent to the in-BreakdownSection mount.
+
+          NO tier gate: unlike fees, CPD/PLC rolls up honestly at every tier (Σnum ÷ Σden), so the panel
+          renders at NATIONAL, REGION and DISTRICT alike. The two vintages are passed separately because
+          they genuinely differ — PLC participation is TERM-grain, CPD points ANNUAL.
+        */}
+        <CpdSection
+          reading={cpd}
+          tierNoun={chrome.tierNoun}
+          termLabel={
+            isOk(termPeriod) && termPeriod.value.term !== null
+              ? `Term ${termPeriod.value.term}`
+              : null
+          }
+          annualLabel={isOk(annualPeriod) ? annualPeriod.value.academicYear : null}
+        />
+
+        {/*
           INCREMENT K — the School fees panel, a sibling of the breakdown section below the KPI strip.
           It follows the breakdown (not before it) because the breakdown's total row must sit adjacent
           to the KPI strip for the reconciliation read; fees carry NO roll-up to reconcile. DISTRICT
@@ -553,6 +596,41 @@ export default async function OversightHome() {
                         ? ` for Term ${termPeriod.value.term}`
                         : ""
                     }. Each figure is a mean and median over the students billed for that category — "what this costs here", not "what an average pupil pays". Figures are per school: fees do not roll up, so there is no district, regional or national fee average.`,
+                  ],
+                ] as [string, string][])
+              : []),
+            /*
+              ⚠ THE TWO CPD/PLC CAVEATS (Kofi C20 / AC-22), rendered whenever the CPD panel can render —
+              gated on the same `cpd` reading the panel is derived from, so the ledger never explains a
+              figure the page is not showing and never omits the caveat for one it is.
+
+              The PLC line is unconditional: it states the TERM vintage and the re-derivation rule. The
+              CPD/NTC line SWITCHES on the one `ntcProvenance` the reader resolved — the demo disclosure
+              while the figures are illustrative, the sourcing-gate statement when there is no feed, and
+              the measured-source provenance once the real NTC feed lands (at which point every per-figure
+              DEMO chip vanishes with no other dashboard change).
+            */
+            ...(isOk(cpd)
+              ? ([
+                  [
+                    "PLC participation",
+                    `PLC participation is aggregated from schools' own Professional Learning Community registers${
+                      isOk(termPeriod) && termPeriod.value.term !== null
+                        ? ` for Term ${termPeriod.value.term}`
+                        : ""
+                    }: sessions held against the cadence each school set, attendance, and teachers taking part. Coverage and rates are re-derived from summed counts — never an average of school rates — so a region's figure is its schools' pooled total.`,
+                  ],
+                  [
+                    "CPD points (NTC)",
+                    cpd.value.ntcProvenance === "DEMO"
+                      ? `CPD points by NTC category and the count of teachers meeting the national CPD requirement${
+                          cpd.value.ntcCpdTarget === null
+                            ? ""
+                            : ` (${formatPoints(cpd.value.ntcCpdTarget)} points)`
+                        } are ILLUSTRATIVE DEMO figures, shown to preview the full CPD dashboard. They are NOT measured: the live NTC CPD feed is not yet connected. Only PLC-earned points are observed today; Specialised, Recommended and the non-PLC half of Mandatory are synthetic. Every such figure is marked DEMO.`
+                      : cpd.value.ntcProvenance === "ABSENT"
+                        ? "CPD points by NTC category and national compliance are not yet sourced — the live NTC CPD feed is not connected. Those figures are shown as absent, never as a zero."
+                        : "CPD points and national compliance are sourced from the NTC CPD extract.",
                   ],
                 ] as [string, string][])
               : []),

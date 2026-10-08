@@ -1,7 +1,9 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 -- `demo_source` — THE OPERATIONAL STAND-IN FOR THE INCREMENT-H DEMO.
 --
--- WHAT THIS IS. Ten tables standing in for the real operational schema in apps/web
+-- WHAT THIS IS. Sixteen tables standing in for the real operational schema in apps/web
+-- (plus ONE SEPARATE SCHEMA, `demo_ntc_source`, at the foot of this file — a stand-in for a THIRD
+-- PARTY'S system rather than for Omnischools' own, which is why it is not a table in here)
 -- (`db/schema/facilities-snapshot.ts`, `db/schema/periods.ts`, `db/schema/students.ts`,
 -- `db/schema/terminal-results.ts`, `db/schema/attendance.ts`, `db/schema/fees.ts` and the
 -- `pta_dues_charge` bridge of `db/schema/pta.ts`). The demo generator writes
@@ -59,6 +61,15 @@
 --                           money denormalisations, and all of `pta_dues_charge` except the line-item
 --                           bridge — `rate_snapshot` included, so the double-count is unwritable. Each is
 --                           argued at the tables' own header at the foot of this file.
+--     plc_* (six tables) — ⚠ THE TIGHTEST ALLOW-LIST IN THIS FILE, because every attendee is a
+--                           NAMED MEMBER OF STAFF: `plc.facilitator_user_id`, `plc.name`,
+--                           `plc_session.topic` / `agenda_json` / `opened_by_user_id`,
+--                           `plc_session_attendance.note` / `minutes_late` / `recorded_by_user_id`,
+--                           the whole of `plc_term_focus` and the whole of `plc_session_reflection`
+--                           (its q1/q2/q3 ARE a teacher's own written reflection; the ETL reads the
+--                           frozen POINTS, never the prose). `user_id` IS carried on the three tables
+--                           whose UNIQUE needs it, and the reader only ever `count(distinct …)`-es it.
+--                           Each is argued at the tables' own header at the foot of this file.
 --     terminal_exam_result — `note` (free text) and `captured_by` (a user id) — the SAME posture as
 --                           `students`, for the same reason, plus `captured_at` which the ETL does not
 --                           read (the cohort's vintage is the sitting's `ends_on`). See the table's own
@@ -545,3 +556,310 @@ create table demo_source.pta_dues_charge (
 create index demo_source_invoice_school_idx on demo_source.invoice (school_id, period_id);
 create index demo_source_invoice_line_item_invoice_idx
   on demo_source.invoice_line_item (school_id, invoice_id);
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- TEACHER CPD / PLC (increment L, the CPD/PLC slice) — `plc_programme` + `plc` + `plc_membership`
+-- + `plc_session` + `plc_session_attendance` + `plc_cpd_ledger`, the source of
+-- `fact_plc_participation`'s PLC-OPERATIONAL columns (Kofi's CPD-SURFACING-RULING C3).
+--
+-- ⚠ THIS IS THE `students` / `invoice` POSTURE TAKEN TO ITS LIMIT: the stand-in carries ONLY the
+-- columns `lib/etl/plc-source.ts` actually reads, so the allow-list is STRUCTURAL — a reader that
+-- reached for a denied column would FAIL here rather than quietly succeed. The denials, each for its
+-- own reason and none of them a style preference:
+--   plc_programme          REAL columns (apps/web/db/schema/plc.ts:68): id, school_id, session_day,
+--                          session_start, session_length_min, weeks_per_semester,
+--                          pts_per_attended_session, pts_per_reflection, reflection_window_hours,
+--                          annual_plc_target, configured_at, updated_at.
+--                          HERE: id, school_id, weeks_per_semester, annual_plc_target. AND NOTHING ELSE.
+--                            · `weeks_per_semester` IS the cadence the TERM cut's `sessions_expected`
+--                              is computed from — the school's OWN declared expectation, never a
+--                              constant this ETL picks.
+--                            · `annual_plc_target` is copied BY NAME onto the fact row (the schema's
+--                              lineage-without-a-lookup rule), so it must keep its operational name.
+--                            · the two `pts_per_*` scalars are NOT read: the ledger carries the
+--                              FROZEN award (`attended_pts` / `reflection_pts`), and re-deriving
+--                              points from today's configured rate would silently re-price last
+--                              year's CPD the moment a school edited its programme.
+--                            · `session_day` / `session_start` / `session_length_min` /
+--                              `reflection_window_hours` are a TIMETABLE, not a measure.
+--   plc                    REAL columns: id, school_id, type, name, facilitator_user_id,
+--                          override_frequency, override_session_day, archived_at, created_at,
+--                          updated_at.
+--                          HERE: id, school_id, override_frequency, archived_at.
+--                            · ⚠ `facilitator_user_id` IS DENIED. It is a NAMED MEMBER OF STAFF, and
+--                              "who runs the PLC at this school" must not become queryable outside
+--                              the gated §6 named-record path. `fact_plc_participation` says in as
+--                              many words: NO teacher-identifiable columns.
+--                            · `name` is free text a school typed onto a group ("Ama's maths circle")
+--                              and analytics has no column for it.
+--                            · `type` is deliberately unread: mandatoriness DERIVES from it in
+--                              apps/web's lib/plc, and `fact_plc_participation` has no PLC-type
+--                              breakdown — adding one would be a grain this slice was not asked for.
+--                            · `override_frequency` IS read, because WEEKLY vs BIWEEKLY changes how
+--                              many sessions the cadence CALLED FOR, which is the denominator of the
+--                              session-coverage rate. NULL = inherit the programme = weekly.
+--                            · `archived_at` IS read: active = archived_at IS NULL, and a PLC is soft-
+--                              archived rather than deleted, so an archived group must not keep
+--                              inflating `schools_running_plc_count` for ever.
+--   plc_membership         REAL columns: id, school_id, plc_id, user_id, joined_at, left_at,
+--                          created_at. HERE: id, school_id, plc_id, user_id, left_at.
+--                            · ⚠ `user_id` IS PRESENT AND THE ETL NEVER SELECTS IT. The table's GRAIN
+--                              is one row per (school × PLC × member), and `uniq_plc_membership` is
+--                              what makes `count(distinct user_id)` a count of TEACHERS rather than
+--                              of membership rows — a teacher in two PLCs is one teacher in a PLC.
+--                              It is here for that reason ONLY: the reader AGGREGATES it and never
+--                              projects it, and `tests/etl-plc.test.ts` asserts that every mention of
+--                              the column in the reader sits inside a `count(distinct …)`. This is the
+--                              `attendance_record.student_id` posture, tightened.
+--                            · `joined_at` is unread: membership is an OPEN ROW, so "active" is
+--                              `left_at IS NULL` and the join date buys nothing.
+--   plc_session            REAL columns: id, school_id, plc_id, academic_period_id, session_date,
+--                          topic, agenda_json, opened_by_user_id, created_at, updated_at.
+--                          HERE: id, school_id, plc_id, session_date.
+--                            · ⚠ `topic` and `agenda_json` are FREE TEXT a facilitator authored about
+--                              a staff development session. Nothing bounds what free text contains and
+--                              there is no destination for it; `opened_by_user_id` is a named teacher.
+--                            · `academic_period_id` is OMITTED ON PURPOSE, and the omission is a
+--                              ruling: a session is assigned to the declared TERM whose
+--                              [starts_on, ends_on] window CONTAINS its civil `session_date`, exactly
+--                              as an attendance mark is (`lib/etl/attendance-source.ts`). Joining the
+--                              operational period instead would reintroduce the Q3 problem —
+--                              `period_number` means a term on BASIC and a SEMESTER on SENIOR — and
+--                              would file an SHS school's Friday PLC under half a year.
+--   plc_session_attendance REAL columns: id, school_id, session_id, user_id, status, minutes_late,
+--                          note, recorded_by_user_id, created_at.
+--                          HERE: id, school_id, session_id, user_id, status.
+--                            · ⚠ PRESENT-BY-DEFAULT (apps/web R383): A ROW EXISTS ONLY FOR A MEMBER WHO
+--                              WAS NOT PRESENT. So `attendance_events` is NOT count(*) of this table —
+--                              it is (members × sessions held) MINUS the rows here whose status is not
+--                              present-ish. That inversion is the single easiest thing to get backwards
+--                              in this arm, and it is why `status` is carried verbatim with the
+--                              operational five-member enum: LATE == PRESENT for CPD (R383), and
+--                              EXCUSED / MEDICAL / ABSENT each earn nothing.
+--                            · `note` is free text explaining why a named teacher missed a session —
+--                              the `attendance_record.note` argument, about a member of staff.
+--                            · `minutes_late` is unread (Late IS present for CPD, so the minutes
+--                              change no published figure) and `recorded_by_user_id` is identity.
+--   plc_cpd_ledger         REAL columns: id, school_id, session_id, user_id, attended_pts,
+--                          reflection_pts, settled_at, created_at.
+--                          HERE: everything except `created_at` (the DB write time, for audit; the
+--                          DOMAIN instant is `settled_at`, which IS the annual row's vintage).
+--                            · `attended_pts` + `reflection_pts` ARE the whole observable CPD universe
+--                              today — there is NO category column anywhere in this module, which is
+--                              the fact the schema's ⚠ SOURCING GATE is built on and the reason
+--                              `demo_ntc_source` below has to exist at all.
+--   plc_term_focus         NO STAND-IN. Free text per (PLC × period) with no analytics destination.
+--   plc_session_reflection NO STAND-IN, and this one is worth stating: its ANSWERS (q1/q2/q3) are a
+--                          teacher's own written reflection. The reflection's CPD CONSEQUENCE is
+--                          already frozen in `plc_cpd_ledger.reflection_pts`, so the ETL reads the
+--                          POINTS and never the prose. A stand-in for the table would be a column
+--                          nobody may read.
+--
+-- NOTHING HERE HAND-SEEDS A FACT ROW. `fact_plc_participation` is only ever written by
+-- `lib/etl/plc.ts`, exactly as `fact_infrastructure` is only ever written by the census transform.
+create table demo_source.plc_programme (
+  id                uuid primary key default gen_random_uuid(),
+  -- Singleton per school (the real table's single-column UNIQUE FK → ref_school). A MISSING row is
+  -- LEGAL AND MEANINGFUL: apps/web coalesces it to frozen defaults, and here it means the school never
+  -- configured a PLC programme — so `annual_plc_target` is NULL on its fact row, never 0.
+  school_id         uuid not null unique,
+  weeks_per_semester integer not null default 12,
+  -- numeric(5,2) exactly as upstream (default 8) — the SCHOOL'S OWN PLC-only target, deliberately NOT
+  -- the statutory 20. Copied onto the fact row under the SAME name.
+  annual_plc_target numeric(5,2) not null default 8,
+  constraint demo_plc_programme_weeks_positive check (weeks_per_semester > 0),
+  constraint demo_plc_programme_annual_plc_target_nonneg check (annual_plc_target >= 0)
+);
+
+create table demo_source.plc (
+  id        uuid primary key default gen_random_uuid(),
+  school_id uuid not null,
+  -- NULL = inherit the programme cadence (weekly). The real 2-value CHECK is kept so the demo cannot
+  -- generate a frequency the `sessions_expected` rule has no answer for.
+  override_frequency text,
+  -- SOFT archive: active = archived_at IS NULL. A PLC is never hard-deleted upstream.
+  archived_at timestamptz,
+  -- The real `plc_tenant_uk` — the composite-FK target of the membership and session tables below.
+  constraint plc_tenant_uk unique (school_id, id),
+  constraint plc_override_frequency_valid
+    check (override_frequency in ('WEEKLY', 'BIWEEKLY'))
+);
+
+create table demo_source.plc_membership (
+  id        uuid primary key default gen_random_uuid(),
+  school_id uuid not null,
+  plc_id    uuid not null,
+  -- The STAFF member. NULLABLE exactly as upstream (single-column SET NULL → ref_user). Never
+  -- selected by the ETL — only ever `count(distinct …)`-ed. See the header.
+  user_id   uuid,
+  left_at   timestamptz, -- null = ACTIVE member (the open-row idiom)
+  -- The real `uniq_plc_membership`. LOAD-BEARING: one row per (school × PLC × member) is what makes
+  -- a distinct count of members a count of TEACHERS IN A PLC.
+  constraint uniq_plc_membership unique (school_id, plc_id, user_id),
+  constraint plc_membership_plc_fk
+    foreign key (school_id, plc_id)
+    references demo_source.plc (school_id, id) on delete cascade
+);
+
+create table demo_source.plc_session (
+  id           uuid primary key default gen_random_uuid(),
+  school_id    uuid not null,
+  plc_id       uuid not null,
+  -- The CIVIL date of the session. "Held" = this row exists (the real table's manual-open rule), so
+  -- `sessions_held` is a count of these rows and needs no status column — there is none upstream.
+  session_date date not null,
+  -- The real `plc_session_tenant_uk` — the composite-FK target of the two child tables below.
+  constraint plc_session_tenant_uk unique (school_id, id),
+  -- The real `uniq_plc_session`: one session per (PLC × date). LOAD-BEARING — it is what makes
+  -- `count(*)` a count of SESSIONS rather than of register edits.
+  constraint uniq_plc_session unique (school_id, plc_id, session_date),
+  constraint plc_session_plc_fk
+    foreign key (school_id, plc_id)
+    references demo_source.plc (school_id, id) on delete cascade
+);
+
+-- The operational five-member enum, in the operational member ORDER (apps/web/db/schema/_enums.ts).
+-- REUSED by the PLC register upstream (R383 — no new enum), which is why the demo reuses the one
+-- created for `attendance_record` above rather than minting a second copy with the same name.
+create table demo_source.plc_session_attendance (
+  id         uuid primary key default gen_random_uuid(),
+  school_id  uuid not null,
+  session_id uuid not null,
+  -- The STAFF member who was NOT present (present-by-default: mark-present DELETES the row). Never
+  -- selected by the ETL. Here because `uniq_plc_session_attendance` is load-bearing.
+  user_id    uuid,
+  status     demo_source.attendance_status not null,
+  -- The real `uniq_plc_session_attendance`: ≤1 event per (session × member), which is what guarantees
+  -- the non-present deduction cannot exceed the roll and the participation rate cannot go negative.
+  constraint uniq_plc_session_attendance unique (school_id, session_id, user_id),
+  constraint plc_session_attendance_session_fk
+    foreign key (school_id, session_id)
+    references demo_source.plc_session (school_id, id) on delete cascade
+);
+
+create table demo_source.plc_cpd_ledger (
+  id             uuid primary key default gen_random_uuid(),
+  school_id      uuid not null,
+  session_id     uuid not null,
+  -- The awarded STAFF member. Never selected; only `count(distinct …)`-ed, which is what makes
+  -- `cpd_points_teacher_count` a count of teachers who earned ANY points (the MEAN's denominator —
+  -- and emphatically NOT the coverage denominator, which is teacher_headcount).
+  user_id        uuid,
+  -- ⚠ THE TWO ARMS, AND THERE IS NO THIRD. There is NO category column here, in this stand-in or
+  -- upstream: the NTC Specialised / Recommended classes and the NCPD half of Mandatory are earned
+  -- OUTSIDE this product. That absence IS the schema's sourcing gate, and `demo_ntc_source` below is
+  -- the separate, swappable place the demo's NTC figures come from instead.
+  attended_pts   numeric(5,2) not null,
+  reflection_pts numeric(5,2) not null,
+  -- The deterministic award instant (the session write-lock). It is the ANNUAL row's `as_of_date`
+  -- vintage, which is why it is carried and `created_at` (the DB write time) is not.
+  settled_at     timestamptz not null,
+  -- The real `uniq_plc_cpd_ledger`: one frozen award per (school × session × member) — the ledger-layer
+  -- anti-double-count key, so a sum of points cannot double a teacher's session.
+  constraint uniq_plc_cpd_ledger unique (school_id, session_id, user_id),
+  constraint plc_cpd_ledger_attended_pts_nonneg check (attended_pts >= 0),
+  constraint plc_cpd_ledger_reflection_pts_nonneg check (reflection_pts >= 0),
+  constraint plc_cpd_ledger_session_fk
+    foreign key (school_id, session_id)
+    references demo_source.plc_session (school_id, id) on delete cascade
+);
+
+-- The ETL's PLC reads are per school, then windowed on the term's civil dates — exactly these.
+create index demo_source_plc_school_idx on demo_source.plc (school_id);
+create index demo_source_plc_session_school_date_idx
+  on demo_source.plc_session (school_id, session_date);
+create index demo_source_plc_cpd_ledger_session_idx
+  on demo_source.plc_cpd_ledger (school_id, session_id);
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════════
+-- `demo_ntc_source` — THE DEMO NTC CPD STAND-IN (Kofi's CPD-SURFACING-RULING C1/C2).
+--
+-- ⚠ A SEPARATE SCHEMA, NOT A TABLE IN `demo_source`, AND THAT IS THE WHOLE POINT. `demo_source`
+-- stands in for OMNISCHOOLS' OWN operational Postgres; this stands in for a THIRD PARTY'S system —
+-- the NTC CPD portal — which Omnischools does not own, does not write to, and today cannot read at
+-- all. Keeping them apart is what makes the two sourcing states mechanically distinct:
+--
+--     SCHEMA PRESENT  → `lib/etl/ntc-cpd-source.ts` returns rows, and the fact builder POPULATES
+--                       cpd_points_specialised_total, cpd_points_recommended_total, their two teacher
+--                       counts, teachers_meeting_cpd_threshold and ntc_cpd_target FROM THEM.
+--     SCHEMA ABSENT   → the reader returns NOTHING, and those columns stay NULL — NEVER 0. One code
+--                       path, two data states (C1).
+--
+-- ⚠ THE FACT BUILDER NEVER INVENTS AN NTC FIGURE. The demo does not relax the schema's ⚠ SOURCING
+-- GATE by letting the transform synthesise numbers; it relaxes it by giving the transform A SOURCE TO
+-- READ FROM. Writing 0 instead of NULL would report every school in Ghana as 0% CPD-compliant —
+-- false, actionable, and the worst available failure mode for a regulator's dashboard.
+--
+-- ⚠ THE REAL FEED REPLACES WHAT IS BEHIND THE SEAM AND NOTHING ELSE. `readNtcCpdSummaries` takes the
+-- schema name as a parameter exactly as `lib/etl/source.ts` does, so pointing it at
+-- `schemaName = "public"` on a genuine NTC-portal/extract connection changes the CALL SITE and not the
+-- fact builder, not `getTeacherCpd`, and not one dashboard. That claim only holds because the column
+-- NAMES below are the ones a real NTC extract uses rather than the analytics column names — the
+-- "omit, never rename" rule of the `demo_source` header, applied to somebody else's vocabulary.
+--
+-- KEYED BY `emis_school_id`, NOT BY AN OMNISCHOOLS TENANT UUID, and that is a correctness
+-- requirement rather than a convenience: NTC has never heard of `ref_school.id`. An external extract
+-- keyed by the national school code is the `ref_waec_results_extract` posture (db/schema/ref.ts), and
+-- it is the only key the real feed could plausibly arrive on.
+--
+-- ⚠ WHAT IS *NOT* HERE, deliberately: no teacher row, no licence number, no name, no per-teacher
+-- points. A real NTC extract plausibly COULD be per teacher; analytics has no destination for that
+-- and `fact_plc_participation` says so in as many words ("no user ids, no names, no per-teacher
+-- rows"). The stand-in is therefore pre-aggregated to (school × academic year × teacher sex), which
+-- is the coarsest shape that can still feed the sexed fact columns — so even a future real feed is
+-- aggregated BEFORE it reaches this seam, not after.
+--
+-- ⚠ GRANT-ABSENCE POSTURE, as in `demo_source`: no GRANT is issued on this schema at all, so only the
+-- analytics owner (the ETL's own credential) can read it. And, like `demo_source`, it is NOT `public`:
+-- the §6 prod-paste-0006 re-run rule is triggered by a new object in the analytics `public` schema,
+-- and a demo-only schema created by a script that never runs against prod adds none.
+drop schema if exists demo_ntc_source cascade;
+create schema demo_ntc_source;
+
+-- ONE ROW PER (school × academic year × teacher sex).
+--
+-- ⚠ SEX IS A GRAIN KEY HERE AND CARRIES ONLY MALE AND FEMALE — there is NO 'ALL' row, by design. 'ALL'
+-- is SYNTHESISED by the fact builder as MALE + FEMALE, exactly as the operational `demo_source.sex`
+-- enum has no 'ALL' member for pupils. That is what makes `MALE + FEMALE = ALL` true BY CONSTRUCTION
+-- on every NTC-sourced column rather than true by agreement between two generated numbers.
+create table demo_ntc_source.ntc_cpd_summary (
+  -- The GES/EMIS school code — the only key an external extract could arrive on. TEXT, not a uuid.
+  emis_school_id             text not null,
+  -- "2025/26". The same academic-year string the rest of the warehouse speaks.
+  academic_year              text not null,
+  teacher_sex                text not null,
+  -- The two point classes earned ENTIRELY OUTSIDE this product. These are the columns the schema's
+  -- sourcing gate holds NULL until a feed exists; here, they come FROM a feed-shaped source.
+  specialised_points         numeric(9,2) not null,
+  recommended_points         numeric(9,2) not null,
+  -- ⚠ THE NCPD HALF OF MANDATORY, AND ONLY THAT HALF. NTC's Mandatory class is fed by two streams —
+  -- school-based/PLC provision and National-Centre-for-PD provision — and Omnischools observes ONLY
+  -- the PLC stream (`plc_cpd_ledger`). So this column is the TOPUP, not the total: the builder adds it
+  -- TO the genuinely observed PLC points (C7), which is what makes
+  -- `cpd_points_mandatory_total >= the observed PLC points` hold by construction and what lets a real
+  -- NTC feed only ever ADD to the PLC floor rather than contradict it.
+  ncpd_points                numeric(9,2) not null,
+  -- Per-category COVERAGE numerators — teachers with ≥1 point in that class. They OVERLAP by
+  -- construction (one teacher can earn in two classes), so they are never summed to each other.
+  mandatory_teachers         integer not null,
+  specialised_teachers       integer not null,
+  recommended_teachers       integer not null,
+  -- The statutory compliance count GES asks for: teachers who reached `cpd_target_points` ACROSS ALL
+  -- CPD. Measured against the national total, NEVER against a school's own PLC target.
+  teachers_meeting_threshold integer not null,
+  -- The NATIONAL STATUTORY TOTAL for this year (nominally 20). Carried PER ROW rather than hard-coded
+  -- because it is a POLICY VARIABLE: if NTC moves it, last year's rows must keep last year's number.
+  cpd_target_points          numeric(5,2) not null,
+  constraint uniq_ntc_cpd_summary unique (emis_school_id, academic_year, teacher_sex),
+  -- No 'ALL': see the table header. The builder synthesises it.
+  constraint ntc_cpd_summary_teacher_sex_valid check (teacher_sex in ('MALE', 'FEMALE')),
+  constraint ntc_cpd_summary_points_nonneg
+    check (specialised_points >= 0 and recommended_points >= 0 and ncpd_points >= 0),
+  constraint ntc_cpd_summary_counts_nonneg
+    check (mandatory_teachers >= 0 and specialised_teachers >= 0 and recommended_teachers >= 0
+           and teachers_meeting_threshold >= 0),
+  constraint ntc_cpd_summary_target_positive check (cpd_target_points > 0)
+);
+
+create index demo_ntc_source_ntc_cpd_summary_year_idx
+  on demo_ntc_source.ntc_cpd_summary (academic_year, emis_school_id);

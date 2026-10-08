@@ -61,6 +61,27 @@ import {
   readFeeLineGroups,
   type FeeLineGroupRow,
 } from "./fees-source";
+import {
+  buildSchoolPlcRows,
+  // The CPD points totals are carried as exact integer HUNDREDTHS and formatted ONCE, by the arm's own
+  // helper, so a report figure and a stored figure cannot disagree by a float rounding.
+  pointsOf as plcPointsOf,
+  writePlcFactsTx,
+  type PlcTermInput,
+  type PlcWriteBatch,
+} from "./plc";
+import {
+  readPlcAnnualPoints,
+  readPlcGroups,
+  readPlcProgrammes,
+  readPlcSchoolMemberCounts,
+  readPlcSessionAggregates,
+  type PlcAnnualPointsRow,
+  type PlcGroupRow,
+  type PlcProgrammeRow,
+  type PlcSessionAggregateRow,
+} from "./plc-source";
+import { readNtcCpdSummaries, type NtcCpdSourceResult } from "./ntc-cpd-source";
 import type { OvFeeCategory } from "./fee-category";
 import { loadEmisRegister, parseEmisExtract, type RegisterRow } from "./register";
 import { readLatestFacilitiesSnapshots } from "./source";
@@ -108,6 +129,35 @@ import {
  *
  * ANY step throwing closes the run FAILED with `error_text` and leaves the prior data in place. The
  * only per-school-tolerant step is 5, and its tolerance is the stated `SchoolFailurePolicy`.
+ *
+ * ⚠ SEVEN FACTS, ONE RUN (increment L, the CPD/PLC slice). `fact_plc_participation` is the SEVENTH
+ * ARM, and it is the first arm that writes at **TWO PERIOD CUTS IN ONE PASS** — a TERM participation
+ * row set and an ANNUAL CPD row set, on different `period_id`s. It sits INSIDE the ANNUAL period loop,
+ * immediately AFTER the staffing arm, under the SAME current-academic-year guard, and it consumes the
+ * staffing arm's own in-memory rows. Everything structural about it follows from that and from Kofi's
+ * `CPD-SURFACING-RULING.md`:
+ *   · `teacher_headcount` IS PINNED STRUCTURALLY TO `fact_staffing.teachers_on_roll`, on BOTH cuts —
+ *     the schema's ETL CONTRACT, and the second-order version of the pin staffing itself takes on
+ *     enrolment. PLC coverage and the CPD-target rate therefore divide the SAME roll that PTR and the
+ *     vacancy figures divide, rather than counting a quietly different set of people. A THIRD source
+ *     read for a teacher count would have turned the pin back into a reconciliation problem.
+ *   · IT CANNOT RUN FOR A YEAR THE STAFFING ARM SKIPPED — its denominator would not exist. On a
+ *     non-current year it is a clean no-op: zero rows, EMPTY delete scope, nothing added to
+ *     `attempted`, so that year keeps whatever it had. THE TERM ROWS USE THE SAME YEAR'S ROLL as the
+ *     annual row, so the two sub-panels of the CPD surface cannot disagree about the staff count.
+ *   · A SCHOOL WHOSE RECONCILED ROLL IS 0 PRODUCES NO STAFFING ROW AND THEREFORE NO PLC ROWS, and is
+ *     out of the delete scope. A headcount of 0 is not a denominator.
+ *   · ⚠ A SCHOOL THAT RUNS NO PLC *IS* COMPUTED AND DOES WRITE ROWS, with
+ *     `schools_running_plc_count = 0`. That is the opposite of the "no source row → not computed"
+ *     rule every other arm follows, and it is forced by the metric: the count is the NUMERATOR of
+ *     "N of Y schools run a PLC" and the Y is the number of ROWS, so suppressing PLC-less schools
+ *     would make every tier report 100% coverage.
+ *   · ⚠ THE NTC HALF OF THE ANNUAL ROW COMES FROM A SEPARATE, SWAPPABLE SOURCE (`ntcSourceSchema` →
+ *     `lib/etl/ntc-cpd-source.ts`), and when that source is ABSENT the category / threshold columns
+ *     stay NULL — never 0. The fact builder invents nothing. ONE CODE PATH, TWO DATA STATES.
+ *   · IT IS REPORTED UNDER `PeriodOutcome.plc`, with its TERM cut as a LIST inside that outcome —
+ *     the attendance arm's `terms` shape nested under the staffing arm's `PeriodOutcome` slot,
+ *     because the arm genuinely has both grains and one verdict.
  *
  * ⚠ SIX FACTS, ONE RUN (increment I, the staffing/PTR slice). `fact_staffing` is the SIXTH ARM, and it
  * is the FIRST ARM WITH NO SOURCE READ OF ITS OWN. It sits INSIDE the ANNUAL period loop, immediately
@@ -227,6 +277,31 @@ export interface EtlRunOptions {
   periods: PeriodSpec[];
   /** `"demo_source"` for the demo; `"public"` on an `oversight_etl` operational connection. */
   sourceSchema: string;
+  /**
+   * THE NTC CPD SEAM (increment L, Kofi's C2) — where `fact_plc_participation`'s NTC columns come
+   * from. A SEPARATE option from `sourceSchema`, because it names a THIRD PARTY'S system rather than
+   * Omnischools' own operational Postgres, and the two swap independently.
+   *
+   *   omitted / `"demo_ntc_source"`  the demo stand-in (`db/seed/demo/demo-source-schema.sql`).
+   *   `"public"`                     a live NTC-portal / authoritative-extract connection.
+   *   any schema with no
+   *   `ntc_cpd_summary` table        ⚠ THE SOURCING GATE STAYS CLOSED: the reader returns nothing
+   *                                  (it asks the catalog, it does not throw), and the category /
+   *                                  threshold columns stay **NULL — never 0**. This is the state the
+   *                                  real product is in today, and it is a NORMAL run, not a failure.
+   *
+   * Nothing else in the pipeline, the fact builder or any dashboard changes when the real feed lands.
+   */
+  ntcSourceSchema?: string;
+  /**
+   * THE NTC SOURCE'S CONNECTION — defaults to the analytics `sql` this run writes through, which is
+   * the demo/loader shape (the stand-in, or a real extract an FDW/loader has materialised under
+   * `ntcSourceSchema` in the analytics DB). Pass a DISTINCT handle to read the NTC categories straight
+   * off a separate NTC-portal connection instead: the seam is then connection-swappable as well as
+   * schema-swappable, and still nothing downstream of `readNtcCpdSummaries` changes. The read is a
+   * plain SELECT, so a second connection is safe and never joins the analytics write transaction.
+   */
+  ntcSql?: postgres.Sql;
   policy?: SchoolFailurePolicy;
   nationalName?: string;
   /**
@@ -395,6 +470,102 @@ export interface StaffingOutcome {
   failures: SchoolFailure[];
 }
 
+/**
+ * What the PLC/CPD arm produced for one TERM of the academic year. One entry per declared term.
+ *
+ * ⚠ NO RATE IS REPORTED HERE, ONLY ITS TWO INPUTS, and that is the C12 roll-up rule made physical: a
+ * national participation rate is Σ attendance_events ÷ Σ attendance_expected, computed at the point of
+ * display from the two summable counts. A `participationRate` field on this outcome would be an
+ * invitation for the next reader to average the schools' stored rates instead, which weights a
+ * 4-teacher school equally with a 60-teacher one.
+ *
+ * ⚠ THE COUNTS ARE `sex = 'ALL'` TOTALS. The sexed split lives in the fact rows, where it belongs; a
+ * pooled report figure that mixed the ALL row with the split would be exactly 2× the truth.
+ */
+export interface PlcTermOutcome {
+  academicYear: string;
+  /** 1 | 2 | 3 — the TERM cut is always numbered. */
+  term: number;
+  /** ALWAYS "TERM". Stated so a reader never re-derives it from `term`. */
+  periodType: "TERM";
+  periodId: string;
+  startsOn: string;
+  endsOn: string;
+  deleted: number;
+  inserted: number;
+  /** ⚠ SEX-INVARIANT: Σ over schools of a per-school count, read at sex='ALL'. Never the split sum. */
+  schoolsRunningPlc: number;
+  sessionsHeld: number;
+  /** Σ over the schools that HAVE a configured cadence. Its own denominator, stated not implied. */
+  sessionsExpected: number;
+  /** Schools whose `sessions_expected` is NULL (no programme row) — `sessionsExpected`'s exclusions. */
+  schoolsWithoutCadence: number;
+  attendanceEvents: number;
+  attendanceExpected: number;
+  teachersInPlc: number;
+  /** Σ `teacher_headcount` — the PINNED roll, identical to the staffing arm's `teachersOnRoll`. */
+  teacherHeadcount: number;
+  /** Sessions belonging to an ARCHIVED PLC. In NO fact column, and never silently dropped. */
+  orphanSessions: number;
+}
+
+/**
+ * What the PLC/CPD arm produced at the ANNUAL cut, as the run reports it.
+ *
+ * ⚠ THE TWO PROVENANCE HALVES ARE REPORTED APART AND ARE NEVER POOLED INTO ONE "CPD POINTS" FIGURE.
+ * `plcPoints` is GENUINELY OBSERVED (the operational ledger); `cpdPointsTotal` is the all-category
+ * figure, which in the demo state is NTC-stand-in-augmented. A single pooled number would make the
+ * synthetic half indistinguishable from the measured half in the one artefact an operator reads at
+ * 3am — which is the exact misread the ruling's per-figure DEMO marking exists to prevent.
+ */
+export interface PlcAnnualOutcome {
+  periodId: string;
+  /** ALWAYS "ANNUAL". */
+  periodType: "ANNUAL";
+  deleted: number;
+  inserted: number;
+  schoolsRunningPlc: number;
+  teacherHeadcount: number;
+  /** Σ the OBSERVED PLC-earned points, as a numeric(_,2) GHS-style string. Real shape, demo volume. */
+  plcPoints: string;
+  /** Σ `cpd_points_total`: all-category in the demo state, the PLC-only subtotal when NTC is absent. */
+  cpdPointsTotal: string;
+  /** Σ `teachers_meeting_cpd_threshold` over the schools where it is NOT NULL. NULL if nowhere. */
+  teachersMeetingCpdThreshold: number | null;
+  /** That sum's own denominator: the schools whose NTC columns were populated FROM the seam. */
+  ntcSourcedSchools: number;
+}
+
+/**
+ * What the SEVENTH arm produced for one academic year. See `PeriodOutcome.plc`.
+ *
+ * ALL ZEROES AND EMPTY LISTS on a NON-CURRENT academic year: the arm did not run there, by design (it
+ * has no pinned roll outside the year the staffing arm ran for). Zero `schoolsComputed` is therefore
+ * also an empty delete scope — at BOTH cuts — so that year keeps exactly what it had.
+ */
+export interface PlcOutcome {
+  /** Schools that produced ROWS — the DELETE SCOPE at every one of this arm's periods. */
+  schoolsComputed: number;
+  /** THE NTC SOURCING STATE, resolved ONCE for the run and reported in one place (ruling C5). */
+  ntcProvenance: "DEMO" | "ABSENT";
+  annual: PlcAnnualOutcome;
+  /** The TERM cut — one entry per declared term of this academic year. */
+  terms: PlcTermOutcome[];
+  /**
+   * Computed schools that run NO active PLC. NOT a failure and NOT an exclusion: they are computed and
+   * DO write rows, with `schools_running_plc_count = 0`, because that count's denominator is the row
+   * count. Listed so "N of Y" is checkable against the report.
+   */
+  noPlc: string[];
+  /**
+   * NTC-sourced teacher counts that had to be CLAMPED to this warehouse's own roll — NTC counts
+   * against its own roll of licensed teachers, which is not the roll derived here. Reported rather
+   * than absorbed, so a systematic mismatch between the two rolls is visible. See `clampToRoll`.
+   */
+  ntcCountsClamped: number;
+  failures: SchoolFailure[];
+}
+
 export interface PeriodOutcome {
   academicYear: string;
   /** ALWAYS null: the grain is the academic YEAR, and `term = null` is what makes a period ANNUAL. */
@@ -424,6 +595,11 @@ export interface PeriodOutcome {
   enrolment: EnrolmentOutcome;
   /** The SIXTH arm, at the SAME ANNUAL period and pinned to `enrolment`. See `StaffingOutcome`. */
   staffing: StaffingOutcome;
+  /**
+   * The SEVENTH arm, pinned to `staffing` — at the SAME ANNUAL period AND at this year's TERM
+   * periods, which is why its outcome carries a `terms` list of its own. See `PlcOutcome`.
+   */
+  plc: PlcOutcome;
 }
 
 /**
@@ -567,6 +743,45 @@ export interface EtlRunReport {
   };
 }
 
+/**
+ * EVERY DECLARED TERM MUST CARRY ITS CIVIL DATES. Refused ONCE, for the whole run, before any arm
+ * reads a row.
+ *
+ * ⚠ WHY THIS IS A SHARED PRECONDITION AND NOT THREE PER-ARM GUARDS. The window is not optional for
+ * ANY term-grained fact: `fact_attendance` assigns a mark by its `date`, `fact_fees` an invoice by
+ * its `issued_at`, and `fact_plc_participation`'s TERM cut a session by its `session_date`. An
+ * undated TERM spec therefore produces an EMPTY term AND an empty delete scope in every one of them
+ * — a published term left stale under a SUCCESS banner, which is the failure mode this ETL exists to
+ * make impossible.
+ *
+ * Each arm used to refuse it separately, with its own message. That was three live refusals for one
+ * defect, and WHICH of them a 3am reader saw depended on the order the arms happen to run in — so
+ * adding the seventh arm (PLC, which runs before attendance) silently changed the message the
+ * attendance arm had always produced. The requirement belongs to the RUN, so it is checked once, in
+ * one place, with one message that names the requirement rather than whichever table noticed it.
+ *
+ * Pure and DB-free on purpose: it is a statement about `options`, so it can run before step 3 and
+ * cannot be satisfied or broken by anything in the database.
+ */
+function assertTermWindowsDeclared(periods: PeriodSpec[]): void {
+  for (const spec of periods) {
+    // EXAM_COHORT rows have `term IS NULL` AND no window by design (a sitting is a date, not a
+    // span), and an ANNUAL spec's window is DERIVED from its terms — so only numbered TERM specs are
+    // subject to this.
+    if (spec.term === null || spec.periodType === "EXAM_COHORT") continue;
+    if (spec.startsOn && spec.endsOn) continue;
+    throw new Error(
+      `the ${spec.academicYear} term ${String(spec.term)} declares ` +
+        `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
+        ", so no TERM-grained fact has a window to aggregate over. Teacher attendance, fees and PLC " +
+        "participation each assign a record to the term CONTAINING ITS OWN CIVIL DATE (a mark's " +
+        "`date`, an invoice's `issued_at`, a PLC session's `session_date`), so an undated term would " +
+        "publish nothing, leave whatever it published last time stale, and still close SUCCESS. " +
+        "Declare the term's dates in `options.periods`.",
+    );
+  }
+}
+
 export async function runOversightEtl(
   sql: postgres.Sql,
   options: EtlRunOptions,
@@ -603,6 +818,10 @@ export async function runOversightEtl(
     // `fact_enrolment.stage` is a FK to it. Asserted HERE so an unseeded database fails in step 2 with
     // the fix in the message, rather than hundreds of rows into step 5c with a constraint name.
     await assertStagesSeeded(sql);
+    // ⚠ ONE PRECONDITION FOR EVERY TERM-GRAINED ARM, CHECKED BEFORE ANY OF THEM READS ANYTHING.
+    // See `assertTermWindowsDeclared`. Three arms used to refuse an undated term separately, which
+    // made WHICH refusal a reader saw an accident of arm ordering.
+    assertTermWindowsDeclared(options.periods);
 
     // ── step 3 · reference delta: the EMIS register ──────────────────────────────────────────────
     await loadEmisRegister(sql, registerRows, (row) => {
@@ -640,6 +859,13 @@ export async function runOversightEtl(
       staffingRows: FactStaffingRow[];
       staffingScope: string[];
       staffing: StaffingOutcome;
+      /**
+       * The PLC arm's write batches — ONE PER PERIOD, because this arm spans two cuts: the year's
+       * ANNUAL period and each of its declared TERM periods, each with its OWN (identical) delete
+       * scope. Held unwritten until the verdict, like every other arm's rows.
+       */
+      plcBatches: PlcWriteBatch[];
+      plc: PlcOutcome;
     }
     const schoolTypeOf = new Map(registerRows.map((r) => [r.emisSchoolId, r.schoolType]));
     // The staffing arm's gradient drivers and its ownership rule come from the REGISTER, which is the
@@ -730,6 +956,166 @@ export async function runOversightEtl(
       sql,
       inclusion.schools.map((s) => s.emisSchoolId),
     );
+
+    // ── the PLC/CPD arm's SOURCE READS — HOISTED, and for ONE year only ──────────────────────────
+    //
+    // The arm runs for the CURRENT ACADEMIC YEAR ONLY, because `teacher_headcount` is PINNED to the
+    // staffing arm's `teachers_on_roll` and the staffing arm only runs there (which in turn is because
+    // the roster carries no period — see the enrolment note above). So the reads are issued ONCE,
+    // against that year's windows, rather than per year inside the loop.
+    //
+    // FOUR READS, SPLIT BY WHAT THEY DEPEND ON (see `lib/etl/plc-source.ts`):
+    //   programmes / groups / member counts   window-INDEPENDENT — a cadence is a configuration and
+    //                                         membership is an open row with no period. Read once for
+    //                                         the whole country.
+    //   session aggregates                    WINDOWED, once PER DECLARED TERM — the TERM cut.
+    //   annual points                         WINDOWED on the academic year — the ANNUAL cut.
+    // And one more, through a DIFFERENT SEAM entirely: the NTC extract (`ntcSourceSchema`), which is a
+    // third party's system and is read once for the year. Its ABSENCE is a normal outcome.
+    //
+    // NO current annual spec SKIPS THE ARM CLEANLY (zero rows, zero delete scope, nothing attempted),
+    // exactly as it skips the enrolment and staffing arms.
+    /** ONE declared term of the current year, with every school's session aggregates for it. */
+    interface PendingPlcTerm {
+      spec: PeriodSpec;
+      periodId: string;
+      term: number;
+      startsOn: string;
+      endsOn: string;
+      /** operational school id → that school's per-PLC aggregates in this window. */
+      sessions: Map<string, PlcSessionAggregateRow[]>;
+    }
+    interface PlcArm {
+      spec: PeriodSpec;
+      /** The ANNUAL period's own close — the `as_of_date` fallback for a school that earned nothing. */
+      annualEndsOn: string;
+      programmes: Map<string, PlcProgrammeRow>;
+      groups: Map<string, PlcGroupRow[]>;
+      members: Map<string, number>;
+      points: Map<string, PlcAnnualPointsRow>;
+      terms: PendingPlcTerm[];
+      ntc: NtcCpdSourceResult;
+    }
+    const plcSpec = enrolmentSpec;
+    let plcArm: PlcArm | null = null;
+    if (plcSpec) {
+      // BOTH dates are required, for the attendance arm's reason applied to a different source: the
+      // ANNUAL points read is a civil-date WINDOW over `plc_session.session_date` (never the
+      // operational `academic_period_id` — the Q3 problem), so a year with no window would claim no
+      // session, publish an empty CPD cut and leave it stale under a SUCCESS banner.
+      //
+      // ⚠ THIS IS THE **YEAR'S** WINDOW, NOT A TERM'S, so it is NOT the shared term precondition
+      // (`assertTermWindowsDeclared`, step 2) restated: the ANNUAL spec's window is DERIVED from the
+      // year's declared terms, which means the precondition makes this unreachable TODAY and would
+      // stop making it unreachable the moment an ANNUAL spec could be declared directly. It is the
+      // ANNUAL cut's own statement about its own grain, and it names a YEAR rather than a term.
+      if (!plcSpec.startsOn || !plcSpec.endsOn)
+        throw new Error(
+          `the current academic year ${plcSpec.academicYear} declares ` +
+            `${plcSpec.startsOn ? "no ends_on" : plcSpec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
+            ", so fact_plc_participation has no window to aggregate the PLC ledger over. A PLC " +
+            "session belongs to the TERM containing its civil `session_date`, so declare the terms' " +
+            "dates in `options.periods`.",
+        );
+      const operationalIds = inclusion.schools.map((s) => s.operationalSchoolId);
+      const plcQuery = { schemaName: options.sourceSchema, operationalSchoolIds: operationalIds };
+      const programmes = await readPlcProgrammes(sql, plcQuery);
+      const groups = await readPlcGroups(sql, plcQuery);
+      const members = await readPlcSchoolMemberCounts(sql, plcQuery);
+      const points = await readPlcAnnualPoints(sql, {
+        ...plcQuery,
+        startsOn: plcSpec.startsOn,
+        endsOn: plcSpec.endsOn,
+      });
+      const groupsBySchool = new Map<string, PlcGroupRow[]>();
+      for (const group of groups) {
+        const held = groupsBySchool.get(group.schoolId);
+        if (held) held.push(group);
+        else groupsBySchool.set(group.schoolId, [group]);
+      }
+      // THE TERM CUT — one windowed read per declared term OF THIS YEAR. A term of another year is not
+      // read at all: its rows would need that year's roll, which does not exist.
+      const plcTerms: PendingPlcTerm[] = [];
+      for (const spec of options.periods) {
+        if (spec.term === null || spec.periodType === "EXAM_COHORT") continue;
+        if (spec.academicYear !== plcSpec.academicYear) continue;
+        const termPeriodId = periodIndex.get(periodKey(spec.academicYear, spec.term));
+        if (!termPeriodId)
+          throw new Error(
+            `dim_period has no TERM row for ${spec.academicYear} term ${String(spec.term)} after ` +
+              "the refresh.",
+          );
+        // THE WINDOW IS NOT OPTIONAL HERE EITHER — a PLC session belongs to the term containing its
+        // civil `session_date`, so an undated term would hold no sessions and expect none. It is
+        // guaranteed present by `assertTermWindowsDeclared` (step 2), which refuses an undated term
+        // ONCE for the whole run rather than letting each arm produce its own refusal.
+        const termStartsOn: string = spec.startsOn!;
+        const termEndsOn: string = spec.endsOn!;
+        const sessions = await readPlcSessionAggregates(sql, {
+          ...plcQuery,
+          startsOn: termStartsOn,
+          endsOn: termEndsOn,
+        });
+        const bySchool = new Map<string, PlcSessionAggregateRow[]>();
+        for (const row of sessions) {
+          const held = bySchool.get(row.schoolId);
+          if (held) held.push(row);
+          else bySchool.set(row.schoolId, [row]);
+        }
+        plcTerms.push({
+          spec,
+          periodId: termPeriodId,
+          term: spec.term,
+          startsOn: termStartsOn,
+          endsOn: termEndsOn,
+          sessions: bySchool,
+        });
+      }
+      // ⚠ THE NTC SEAM. Read through `lib/etl/ntc-cpd-source.ts`, keyed by EMIS code (NTC has never
+      // heard of an Omnischools tenant uuid), and ABSENT is a NORMAL result rather than an error —
+      // which is what keeps "the NTC feed is not connected" from taking six other arms down nightly.
+      const ntc = await readNtcCpdSummaries(options.ntcSql ?? sql, {
+        schemaName: options.ntcSourceSchema ?? "demo_ntc_source",
+        academicYear: plcSpec.academicYear,
+        emisSchoolIds: inclusion.schools.map((s) => s.emisSchoolId),
+      });
+      plcArm = {
+        spec: plcSpec,
+        annualEndsOn: plcSpec.endsOn,
+        programmes: new Map(programmes.map((p) => [p.schoolId, p])),
+        groups: groupsBySchool,
+        members: new Map(members.map((m) => [m.schoolId, m.distinctMembers])),
+        points: new Map(points.map((p) => [p.schoolId, p])),
+        terms: plcTerms,
+        ntc,
+      };
+    }
+    /** EMIS id → operational tenant uuid. The PLC arm's inputs are keyed operationally; its PIN is not. */
+    const operationalByEmis = new Map(
+      inclusion.schools.map((s) => [s.emisSchoolId, s.operationalSchoolId]),
+    );
+
+    /** The arm did not run for this year. Zero everything — and an EMPTY delete scope at BOTH cuts. */
+    const noPlcOutcome = (annualPeriodId: string): PlcOutcome => ({
+      schoolsComputed: 0,
+      ntcProvenance: "ABSENT",
+      annual: {
+        periodId: annualPeriodId,
+        periodType: "ANNUAL",
+        deleted: 0,
+        inserted: 0,
+        schoolsRunningPlc: 0,
+        teacherHeadcount: 0,
+        plcPoints: "0.00",
+        cpdPointsTotal: "0.00",
+        teachersMeetingCpdThreshold: null,
+        ntcSourcedSchools: 0,
+      },
+      terms: [],
+      noPlc: [],
+      ntcCountsClamped: 0,
+      failures: [],
+    });
 
     /** The arm did not run for this year. Zero everything — and an EMPTY delete scope. */
     const noStaffing = (): StaffingOutcome => ({
@@ -847,6 +1233,13 @@ export async function runOversightEtl(
           staffingRows: [],
           staffingScope: [],
           staffing: noStaffing(),
+          // THE SEVENTH ARM IS SKIPPED HERE TOO, AND IT HAS LESS CHOICE THAN ANY ARM BEFORE IT: its
+          // `teacher_headcount` IS the staffing arm's `teachers_on_roll`, so a year with no staffing
+          // rows has no denominator for PLC coverage OR for the CPD-target rate — and the schema
+          // calls an ANNUAL row with a NULL headcount an ETL defect rather than a valid row. Zero
+          // rows, EMPTY delete scope at both cuts, nothing attempted: that year keeps whatever it had.
+          plcBatches: [],
+          plc: noPlcOutcome(periodId),
         });
         continue;
       }
@@ -995,6 +1388,152 @@ export async function runOversightEtl(
         failures: staffingCompute.failures,
       };
 
+      // ── the PLC/CPD arm, PINNED to the staffing rows just computed ─────────────────────────────
+      //
+      // Its input is `staffingWithRow` — the staffing arm's own per-school results — so
+      // `teacher_headcount` is `teachers_on_roll` BY IDENTITY rather than by reconciliation, on BOTH
+      // cuts. A school with NO staffing row (reconciled roll 0, or a failed staffing compute) is
+      // absent from this arm too and keeps its prior PLC rows.
+      //
+      // ⚠ `attempted` GROWS A SEVENTH TIME, by schools three earlier arms have already counted. The
+      // dilution of the single pooled 1% failure policy is by now substantial and is deliberately
+      // left unchanged: one run, one verdict is the shipped contract, and per-arm budgets are a Kofi
+      // decision with their own acceptance criteria. This is the fifth consecutive slice to record the
+      // same note, which is itself the argument for ruling it rather than re-noting it.
+      const plcItems = plcArm === null ? [] : staffingWithRow;
+      attempted += plcItems.length;
+      const plcCompute = computePerSchool<
+        (typeof plcItems)[number],
+        ReturnType<typeof buildSchoolPlcRows>
+      >(
+        plcItems,
+        (item) => ({
+          emisSchoolId: item.emisSchoolId,
+          jurisdictionId: item.jurisdictionId,
+        }),
+        (item) => {
+          const arm = plcArm!;
+          const operationalId = operationalByEmis.get(item.emisSchoolId);
+          if (!operationalId)
+            throw new Error(
+              `${item.emisSchoolId} has no operational_school_id, so its PLC source rows cannot be ` +
+                "keyed — the inclusion set requires one, so this cannot happen without a defect in " +
+                "`buildInclusionSet`.",
+            );
+          const terms: PlcTermInput[] = arm.terms.map((t) => ({
+            periodId: t.periodId,
+            term: t.term,
+            startsOn: t.startsOn,
+            endsOn: t.endsOn,
+            sessions: t.sessions.get(operationalId) ?? [],
+          }));
+          return buildSchoolPlcRows(
+            {
+              programme: arm.programmes.get(operationalId) ?? null,
+              groups: arm.groups.get(operationalId) ?? [],
+              distinctMembers: arm.members.get(operationalId) ?? 0,
+              annualPoints: arm.points.get(operationalId) ?? null,
+              // ⚠ THE SOURCING GATE, PER SCHOOL. `undefined` → null → every NTC column NULL on this
+              // school's rows while a covered neighbour's are populated. An extract that omits a
+              // school is not asserting that its teachers earned nothing.
+              ntc: arm.ntc.bySchool.get(item.emisSchoolId) ?? null,
+            },
+            {
+              jurisdictionId: item.jurisdictionId,
+              emisSchoolId: item.emisSchoolId,
+              etlRunId: runId,
+              academicYear: spec.academicYear,
+              annualPeriodId: periodId,
+              annualEndsOn: arm.annualEndsOn,
+              // THE PIN. Not adjustable, and not re-derived from a second source.
+              teachersOnRoll: item.row!.teachersOnRoll,
+              terms,
+            },
+          );
+        },
+      );
+      allFailures.push(...plcCompute.failures);
+
+      const plcScope = plcCompute.computed.map((c) => c.jurisdictionId);
+      // ONE BATCH PER PERIOD — the ANNUAL cut and each TERM cut are different `period_id`s, so each
+      // gets its own bounded delete over the SAME scope.
+      const plcBatches: PlcWriteBatch[] = [
+        {
+          periodId,
+          jurisdictionIds: plcScope,
+          rows: plcCompute.computed.flatMap((c) =>
+            c.rows.filter((r) => r.periodId === periodId),
+          ),
+        },
+        ...(plcArm?.terms ?? []).map((t) => ({
+          periodId: t.periodId,
+          jurisdictionIds: plcScope,
+          rows: plcCompute.computed.flatMap((c) =>
+            c.rows.filter((r) => r.periodId === t.periodId),
+          ),
+        })),
+      ];
+      // Every reported figure is Σ over the `sex = 'ALL'` rows, stated here once: mixing the ALL row
+      // with the split would be exactly 2× on every additive column and the derived rates would still
+      // read correctly, which is what makes that mistake invisible.
+      const plcAll = plcCompute.computed;
+      const plcOutcome: PlcOutcome = {
+        schoolsComputed: plcAll.length,
+        // ⚠ ONE SOURCE OF TRUTH FOR THE DEMO/LIVE SWITCH (ruling C5), resolved from the seam's own
+        // `sourcePresent` rather than re-derived from whether any figure happens to be non-null.
+        ntcProvenance: plcArm?.ntc.sourcePresent ? "DEMO" : "ABSENT",
+        annual: {
+          periodId,
+          periodType: "ANNUAL",
+          deleted: 0,
+          inserted: 0,
+          schoolsRunningPlc: plcAll.filter((c) => c.runsPlc).length,
+          teacherHeadcount: plcAll.reduce((t, c) => t + c.annual.teacherHeadcount, 0),
+          plcPoints: plcPointsOf(
+            plcAll.reduce((t, c) => t + c.annual.plcPointsHundredths, 0),
+          ),
+          cpdPointsTotal: plcPointsOf(
+            plcAll.reduce((t, c) => t + c.annual.cpdPointsTotalHundredths, 0),
+          ),
+          // Σ over the schools where it is NOT NULL, and NULL — not 0 — when it is null everywhere.
+          // Coalescing an unsourced threshold into a national 0 is the precise failure the sourcing
+          // gate exists to prevent, and the run report is not exempt from it.
+          teachersMeetingCpdThreshold: plcAll.some(
+            (c) => c.annual.teachersMeetingCpdThreshold !== null,
+          )
+            ? plcAll.reduce((t, c) => t + (c.annual.teachersMeetingCpdThreshold ?? 0), 0)
+            : null,
+          ntcSourcedSchools: plcAll.filter((c) => c.annual.ntcSourced).length,
+        },
+        terms: (plcArm?.terms ?? []).map((t) => {
+          const summaries = plcAll
+            .map((c) => c.terms.find((s) => s.periodId === t.periodId))
+            .filter((s): s is NonNullable<typeof s> => s !== undefined);
+          return {
+            academicYear: t.spec.academicYear,
+            term: t.term,
+            periodType: "TERM" as const,
+            periodId: t.periodId,
+            startsOn: t.startsOn,
+            endsOn: t.endsOn,
+            deleted: 0,
+            inserted: 0,
+            schoolsRunningPlc: plcAll.filter((c) => c.runsPlc).length,
+            sessionsHeld: summaries.reduce((x, s) => x + s.sessionsHeld, 0),
+            sessionsExpected: summaries.reduce((x, s) => x + (s.sessionsExpected ?? 0), 0),
+            schoolsWithoutCadence: summaries.filter((s) => s.sessionsExpected === null).length,
+            attendanceEvents: summaries.reduce((x, s) => x + s.attendanceEvents, 0),
+            attendanceExpected: summaries.reduce((x, s) => x + s.attendanceExpected, 0),
+            teachersInPlc: summaries.reduce((x, s) => x + s.teachersInPlc, 0),
+            teacherHeadcount: summaries.reduce((x, s) => x + s.teacherHeadcount, 0),
+            orphanSessions: summaries.reduce((x, s) => x + s.orphanSessions, 0),
+          };
+        }),
+        noPlc: plcAll.filter((c) => !c.runsPlc).map((c) => c.emisSchoolId),
+        ntcCountsClamped: plcAll.reduce((t, c) => t + c.ntcCountsClamped, 0),
+        failures: plcCompute.failures,
+      };
+
       pending.push({
         spec,
         periodId,
@@ -1008,6 +1547,8 @@ export async function runOversightEtl(
         staffingRows,
         staffingScope,
         staffing,
+        plcBatches,
+        plc: plcOutcome,
       });
     }
 
@@ -1212,22 +1753,17 @@ export async function runOversightEtl(
             `dim_period has no TERM row for ${spec.academicYear} term ${String(spec.term)} after the ` +
               "refresh.",
           );
-        // THE WINDOW IS NOT OPTIONAL. A term with no dates cannot claim a single mark — every mark is
-        // assigned by its civil date — so a dates-less TERM spec would silently produce an EMPTY term and
-        // an empty delete scope, i.e. a published term left stale under a SUCCESS banner. Refuse it here,
-        // naming the fix, exactly as the enrolment arm refuses a vintage-less current year.
-        if (!spec.startsOn || !spec.endsOn)
-          throw new Error(
-            `the ${spec.academicYear} term ${String(spec.term)} declares ` +
-              `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
-              ", so fact_attendance has no window to aggregate over. Attendance is a FLOW measured over a " +
-              "term's civil dates (a mark belongs to the term containing its `date`), so declare the " +
-              "term's dates in `options.periods` — an undated term would publish nothing and look fine.",
-          );
-
-        // Bound into locals so the narrowing above survives into the per-school closure below.
-        const startsOn: string = spec.startsOn;
-        const endsOn: string = spec.endsOn;
+        // THE WINDOW IS NOT OPTIONAL. A term with no dates cannot claim a single mark — attendance is a
+        // FLOW measured over a term's civil dates, and a mark belongs to the term containing its `date` —
+        // so a dates-less TERM spec would silently produce an EMPTY term and an empty delete scope, i.e. a
+        // published term left stale under a SUCCESS banner. That is refused for the WHOLE RUN by
+        // `assertTermWindowsDeclared` (step 2), which is why there is no refusal of its own here: three
+        // arms share this requirement, and three competing messages made the one a reader saw depend on
+        // the order the arms run in.
+        //
+        // Bound into locals so the guaranteed-present window survives into the per-school closure below.
+        const startsOn: string = spec.startsOn!;
+        const endsOn: string = spec.endsOn!;
         // `termSpecs` already filtered `term !== null`; an array filter does not narrow the element type.
         const term: number = spec.term!;
 
@@ -1362,17 +1898,10 @@ export async function runOversightEtl(
         // invoice belongs to is resolved from its operational period's own `starts_on` falling inside this
         // window (never from `period_number` — see the header), so a dates-less TERM spec would claim NO
         // invoice, produce an EMPTY term and an empty delete scope, and leave a published term stale under
-        // a SUCCESS banner.
-        if (!spec.startsOn || !spec.endsOn)
-          throw new Error(
-            `the ${spec.academicYear} term ${String(spec.term)} declares ` +
-              `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
-              ", so fact_fees has no window to assign invoices to. An invoice is filed against the " +
-              "declared TERM containing its operational period's `starts_on`, so declare the term's " +
-              "dates in `options.periods` — an undated term would publish nothing and look fine.",
-          );
-        const startsOn: string = spec.startsOn;
-        const endsOn: string = spec.endsOn;
+        // a SUCCESS banner. Refused for the whole run by `assertTermWindowsDeclared` (step 2) — one
+        // requirement, one refusal, rather than one per term-grained arm.
+        const startsOn: string = spec.startsOn!;
+        const endsOn: string = spec.endsOn!;
         const term: number = spec.term!;
 
         const { groups } = await readFeeLineGroups(sql, {
@@ -1614,7 +2143,18 @@ export async function runOversightEtl(
                 rows: p.staffingRows,
               })),
             );
-            return { infra, enrol, exams, attendance, fees, staffing };
+            // THE SEVENTH ARM, at the SAME ANNUAL period as `enrol`/`staffing` AND at this year's TERM
+            // periods — one batch per period, each with its own bounded delete over the same scope.
+            // ⚠ IT MUST WRITE *AFTER* `staffing` IN THIS TRANSACTION, and not for ordering's sake:
+            // `fact_plc_participation.teacher_headcount` IS `fact_staffing.teachers_on_roll`, so a
+            // night that committed one and rolled back the other would publish a CPD-compliance rate
+            // dividing a staff count the PTR panel does not show. One transaction makes that
+            // unreachable; writing them adjacently makes the dependency legible.
+            const plc = await writePlcFactsTx(
+              tx as unknown as postgres.TransactionSql,
+              pending.flatMap((p) => p.plcBatches),
+            );
+            return { infra, enrol, exams, attendance, fees, staffing, plc };
           })) as unknown as {
             infra: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
@@ -1639,6 +2179,9 @@ export async function runOversightEtl(
             staffing: {
               perPeriod: { periodId: string; deleted: number; inserted: number }[];
             };
+            plc: {
+              perPeriod: { periodId: string; deleted: number; inserted: number }[];
+            };
           })
         : {
             infra: { perPeriod: [] },
@@ -1647,6 +2190,7 @@ export async function runOversightEtl(
             attendance: { perPeriod: [] },
             fees: { perPeriod: [] },
             staffing: { perPeriod: [] },
+            plc: { perPeriod: [] },
           };
     const writtenByPeriod = new Map(written.infra.perPeriod.map((p) => [p.periodId, p]));
     const enrolledByPeriod = new Map(written.enrol.perPeriod.map((p) => [p.periodId, p]));
@@ -1658,6 +2202,9 @@ export async function runOversightEtl(
     const staffingByPeriod = new Map(
       written.staffing.perPeriod.map((p) => [p.periodId, p]),
     );
+    // PER PERIOD rather than per arm-run: this arm wrote at the ANNUAL period AND at each TERM period,
+    // so its outcome's `annual` and each entry of its `terms` take their own counts from this map.
+    const plcByPeriod = new Map(written.plc.perPeriod.map((p) => [p.periodId, p]));
 
     const outcomes: PeriodOutcome[] = pending.map((p) => ({
       academicYear: p.spec.academicYear,
@@ -1678,6 +2225,19 @@ export async function runOversightEtl(
         ...p.staffing,
         deleted: staffingByPeriod.get(p.periodId)?.deleted ?? 0,
         inserted: staffingByPeriod.get(p.periodId)?.inserted ?? 0,
+      },
+      plc: {
+        ...p.plc,
+        annual: {
+          ...p.plc.annual,
+          deleted: plcByPeriod.get(p.periodId)?.deleted ?? 0,
+          inserted: plcByPeriod.get(p.periodId)?.inserted ?? 0,
+        },
+        terms: p.plc.terms.map((t) => ({
+          ...t,
+          deleted: plcByPeriod.get(t.periodId)?.deleted ?? 0,
+          inserted: plcByPeriod.get(t.periodId)?.inserted ?? 0,
+        })),
       },
     }));
 

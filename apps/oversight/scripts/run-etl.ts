@@ -12,8 +12,13 @@ import {
 
 /**
  * THE ETL ENTRY POINT for the fact slices — `fact_infrastructure`, `fact_enrolment`,
- * `fact_performance_exam`, `fact_attendance`, `fact_fees` AND `fact_staffing`, which are ONE run, one
- * verdict and one transaction (see `lib/etl/pipeline.ts`). The sixth arm files at the SAME ANNUAL period
+ * `fact_performance_exam`, `fact_attendance`, `fact_fees`, `fact_staffing` AND
+ * `fact_plc_participation`, which are ONE run, one verdict and one transaction (see
+ * `lib/etl/pipeline.ts`). The SEVENTH arm is the only one that writes at TWO period cuts — a TERM
+ * participation row set and an ANNUAL CPD row set — so it prints TWO kinds of line, and its ANNUAL
+ * line distinguishes the GENUINELY OBSERVED PLC points from the ILLUSTRATIVE DEMO NTC figures beside
+ * them. Its `teacher_headcount` is PINNED to the sixth arm's `teachers_on_roll`, so it runs for the
+ * current academic year only and prints under the same year. The sixth arm files at the SAME ANNUAL period
  * as the first two and has no source of its own: its `enrolment_total` IS the enrolment arm's published
  * roll, so its line below is printed under the same academic year and prints Σ÷Σ rather than any average
  * of the stored per-school `ptr`. The third arm files at its own EXAM_COHORT periods, one per
@@ -41,21 +46,34 @@ import {
  * not exist yet and is the reason the demo path exists at all.
  *
  *   usage: tsx scripts/run-etl.ts [--extract <file.json>] [--source-schema <name>]
+ *                                [--ntc-schema <name>]
  */
 
 interface Args {
   extract: string;
   sourceSchema: string;
+  /**
+   * THE NTC CPD SEAM (increment L). `demo_ntc_source` is the stand-in; `public` would be a live
+   * NTC-portal/extract connection; ANY name whose schema has no `ntc_cpd_summary` table leaves the
+   * SOURCING GATE CLOSED — the category/threshold columns stay NULL (never 0) and the run is still a
+   * normal, successful run. That last case is how an operator previews the LIVE-no-feed state.
+   */
+  ntcSchema: string;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { extract: DEMO_EMIS_EXTRACT_PATH, sourceSchema: "demo_source" };
+  const args: Args = {
+    extract: DEMO_EMIS_EXTRACT_PATH,
+    sourceSchema: "demo_source",
+    ntcSchema: "demo_ntc_source",
+  };
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i];
     const value = argv[i + 1];
     if (!value) throw new Error(`Missing value for ${flag}`);
     if (flag === "--extract") args.extract = value;
     else if (flag === "--source-schema") args.sourceSchema = value;
+    else if (flag === "--ntc-schema") args.ntcSchema = value;
     else throw new Error(`Unknown flag ${flag}`);
   }
   return args;
@@ -87,6 +105,7 @@ async function main(): Promise<void> {
         endsOn: c.endsOn,
       })),
       sourceSchema: args.sourceSchema,
+      ntcSourceSchema: args.ntcSchema,
     });
 
     const { coverage } = report;
@@ -202,6 +221,93 @@ async function main(): Promise<void> {
             `that have an establishment — the other ${st.schoolsComputed - st.postsEstablishedSchools} ` +
             `(PRIVATE/MISSION) are NULL, not 0, and are excluded from both sums`,
         );
+      // ── THE SEVENTH FACT TABLE, at the SAME ANNUAL period AND at this year's TERM periods ───────
+      // ⚠ TWO LINES, BECAUSE THE ARM HAS TWO CUTS AND TWO PROVENANCES, and collapsing them would be
+      // the exact misread Kofi's per-figure DEMO marking exists to prevent. The PLC figures are
+      // real-shape operational aggregates; the NTC category/threshold figures are ILLUSTRATIVE DEMO
+      // data from a stand-in, and this operator line says so in as many words — an operator reading
+      // the log at 3am must not have to know which columns came from where.
+      // Every rate printed here is re-derived from that cut's own summed counts (Σnum ÷ Σden over the
+      // sex='ALL' rows), NEVER averaged from the stored per-school rates.
+      const plc = p.plc;
+      for (const t of plc.terms) {
+        const sessionCoverage =
+          t.sessionsExpected > 0
+            ? `${attendanceRateOf(t.sessionsHeld, t.sessionsExpected)}%`
+            : "n/a — no configured cadence";
+        const participation =
+          t.attendanceExpected > 0
+            ? `${attendanceRateOf(t.attendanceEvents, t.attendanceExpected)}%`
+            : "n/a — no session held";
+        const coverage =
+          t.teacherHeadcount > 0
+            ? `${attendanceRateOf(t.teachersInPlc, t.teacherHeadcount)}%`
+            : "n/a — no teachers on roll";
+        console.log(
+          `  ${t.academicYear} TERM ${t.term} (${t.startsOn}…${t.endsOn}) · PLC participation → ` +
+            `fact_plc_participation ${t.inserted} inserted (${t.deleted} replaced) · ` +
+            `${t.schoolsRunningPlc}/${plc.schoolsComputed} school(s) run a PLC (sex=ALL only — ` +
+            `summing that count under the MALE/FEMALE split returns exactly 2×) · sessions ` +
+            `${t.sessionsHeld}/${t.sessionsExpected} (${sessionCoverage}) · attendance ` +
+            `${t.attendanceEvents}/${t.attendanceExpected} (${participation}) · ${t.teachersInPlc} ` +
+            `of ${t.teacherHeadcount} teacher(s) in a PLC (${coverage}, headcount PINNED to ` +
+            `fact_staffing.teachers_on_roll)` +
+            (t.schoolsWithoutCadence > 0
+              ? ` · ${t.schoolsWithoutCadence} school(s) have NO configured cadence, so their ` +
+                `sessions_expected is NULL (never 0) and they are out of that denominator`
+              : "") +
+            (t.orphanSessions > 0
+              ? ` · ${t.orphanSessions} session(s) belong to an ARCHIVED PLC and reach no fact column`
+              : ""),
+        );
+      }
+      const an = plc.annual;
+      if (plc.schoolsComputed > 0) {
+        const thresholdRate =
+          an.teachersMeetingCpdThreshold !== null && an.teacherHeadcount > 0
+            ? `${attendanceRateOf(an.teachersMeetingCpdThreshold, an.teacherHeadcount)}%`
+            : null;
+        console.log(
+          `  ${p.academicYear} ANNUAL · CPD points → fact_plc_participation ${an.inserted} inserted ` +
+            `(${an.deleted} replaced) across ${plc.schoolsComputed} school(s) · ` +
+            `${an.plcPoints} pt(s) GENUINELY OBSERVED from the PLC ledger · cpd_points_total ` +
+            `${an.cpdPointsTotal} · NTC source: ${plc.ntcProvenance}`,
+        );
+        // ⚠ THE SOURCING GATE, PRINTED. A NULL threshold is NOT 0% compliance, and the difference is
+        // the single most consequential distinction on this surface: writing 0 would report every
+        // school in Ghana as non-compliant, which is false and actionable.
+        if (plc.ntcProvenance === "ABSENT")
+          console.log(
+            `    ⚠ NO NTC CPD SOURCE: cpd_points_specialised_total, cpd_points_recommended_total, ` +
+              `their teacher counts, teachers_meeting_cpd_threshold and ntc_cpd_target are NULL — ` +
+              `NEVER 0 — and cpd_points_total is the PLC-ONLY subtotal. cpd_points_mandatory_total ` +
+              `is populated as a STATED PLC-only partial. Zero is a measurement; NULL is the truth.`,
+          );
+        else
+          console.log(
+            `    ⚠ DEMO NTC DATA (${an.ntcSourcedSchools}/${plc.schoolsComputed} school(s) covered): ` +
+              `${thresholdRate === null ? "no" : String(an.teachersMeetingCpdThreshold)} teacher(s) ` +
+              `of ${an.teacherHeadcount} met the national CPD requirement` +
+              `${thresholdRate === null ? "" : ` (${thresholdRate})`} — ILLUSTRATIVE, NOT MEASURED. ` +
+              `The live NTC CPD feed is not connected; these figures come from the demo stand-in ` +
+              `through the swappable seam, and Mandatory is the OBSERVED PLC floor + an NCPD topup. ` +
+              `The ${an.ntcSourcedSchools === plc.schoolsComputed ? "" : "un"}covered schools' NTC ` +
+              `columns are NULL, never 0`,
+          );
+        if (plc.noPlc.length > 0)
+          console.log(
+            `    ⓘ ${plc.noPlc.length} school(s) run NO PLC and DO get rows, with ` +
+              `schools_running_plc_count = 0 (e.g. ${plc.noPlc[0]!}) — the count is the numerator of ` +
+              `"N of Y schools", and the Y is the row count, so suppressing them would report 100%`,
+          );
+        if (plc.ntcCountsClamped > 0)
+          console.log(
+            `    ⚠ ${plc.ntcCountsClamped} NTC-sourced teacher count(s) exceeded this warehouse's own ` +
+              `roll and were CLAMPED to it — NTC counts against its own roll of licensed teachers, ` +
+              `and every coverage rate here divides by teacher_headcount, so an unclamped figure ` +
+              `would publish compliance above 100%`,
+          );
+      }
     }
     // ── THE THIRD ARM, at its OWN EXAM_COHORT periods (one line per SITTING, never per year) ───────
     // The counts are printed PER EXAM on purpose: a BECE candidate and a WASSCE candidate are different
