@@ -25,6 +25,9 @@ import { getTeacherCpd, type TeacherCpdPanel } from "@/lib/oversight/cpd";
 import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
 import { CpdSection } from "@/components/oversight/cpd-section";
+// The panel's own points formatter, so the ledger's stated threshold and the panel's "(20 pts)" can
+// never disagree after a policy change (one formatter, two surfaces).
+import { formatPoints } from "@/components/oversight/cpd-visuals";
 import { FeesSection } from "@/components/oversight/fees-section";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Provenance } from "@/components/oversight/primitives";
@@ -628,7 +631,7 @@ export default async function OversightHome() {
                       ? `CPD points by NTC category and the count of teachers meeting the national CPD requirement${
                           cpd.value.ntcCpdTarget === null
                             ? ""
-                            : ` (${cpd.value.ntcCpdTarget} points)`
+                            : ` (${formatPoints(cpd.value.ntcCpdTarget)} points)`
                         } are ILLUSTRATIVE DEMO figures, shown to preview the full CPD dashboard. They are NOT measured: the live NTC CPD feed is not yet connected. Only PLC-earned points are observed today; Specialised, Recommended and the non-PLC half of Mandatory are synthetic. Every such figure is marked DEMO.`
                       : cpd.value.ntcProvenance === "ABSENT"
                         ? "CPD points by NTC category and national compliance are not yet sourced — the live NTC CPD feed is not connected. Those figures are shown as absent, never as a zero."

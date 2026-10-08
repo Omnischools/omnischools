@@ -773,6 +773,59 @@ describe("the sourcing gate is never laundered into a zero (AC-10/11)", () => {
     expect(markup).toContain("cover 2 of 3 schools");
   });
 
+  it("the two C8-conditional figures key off the CATEGORIES, not the DEMO stamp (Dex B1)", async () => {
+    // With the categories POPULATED, `cpd_points_total` is the all-category figure, so neither the
+    // PLC-earned subset nor "N of Y schools met their own PLC target" can be stated — and that is
+    // true of a real LIVE feed exactly as it is of the demo stand-in.
+    const demoState = await demo();
+    expect(demoState.specialised.status).not.toBe("ABSENT");
+    expect(demoState.plcEarnedPoints.status).toBe("ABSENT");
+    expect(demoState.plcEarnedPoints.value).toBeUndefined();
+    expect(demoState.plcTargetMet.status).toBe("ABSENT");
+    expect(demoState.plcTargetMet.count).toBeUndefined();
+    // …and with the categories ABSENT (the sourcing-gate state) both ARE stated.
+    const noFeed = okValue(
+      await getTeacherCpd(districtScope, PERIOD_NOFEED_TERM, PERIOD_NOFEED_ANNUAL),
+    );
+    expect(noFeed.plcEarnedPoints.status).toBe("MEASURED");
+    expect(noFeed.plcTargetMet.status).not.toBe("ABSENT");
+    expect(noFeed.plcTargetMet.count).toBe(1); // only the 400-teacher school's mean clears 8 PLC pts
+    // THE PIN: the branch is on the discriminated category status, never on the provenance value — so
+    // a LIVE feed (unreachable from the database until `ov_source` gains NTC_CPD_EXTRACT) cannot be
+    // bucketed with the no-feed state and publish a false, un-chipped figure.
+    const code = readCode("lib/oversight/cpd.ts");
+    expect(code).toMatch(
+      /const categoriesAbsent =\s*specialised\.status === "ABSENT" && recommended\.status === "ABSENT"/,
+    );
+    expect(code).toMatch(/plcEarnedPoints: categoriesAbsent/);
+    expect(code).toMatch(/!categoriesAbsent \|\| plcTargetSchools === 0/);
+    expect(code).not.toMatch(/ntcProvenance === "DEMO"/);
+  });
+
+  it("under LIVE with the categories populated the captions state the measured NCPD half", async () => {
+    const live = panelMarkup(await demo(), "LIVE");
+    // The LIVE arm of the Mandatory caption — never the no-feed "PLC-only partial" wording, and never
+    // the demo "illustrative" wording.
+    expect(live).toContain("includes both the school-based PLC provision and the NCPD half");
+    expect(live).not.toContain("a PLC-only partial");
+    expect(live).not.toContain("is illustrative");
+    // The two C8-conditional figures stay withheld, with the provenance-neutral reasons…
+    expect(live).toContain(
+      "Not stateable while CPD points include the NTC category totals",
+    );
+    expect(live).toContain("not recorded apart from the NTC category totals");
+    // …and NEITHER withheld figure blames the demo stand-in under a live feed.
+    expect(live).not.toContain("demo NTC top-up");
+    // …and no chip and no demo prose survive the flip.
+    expect(live).not.toContain(">DEMO<");
+    expect(live).not.toContain("illustrative demo data");
+    // The categories-absent world still gets its own honest wording.
+    const noFeed = okValue(
+      await getTeacherCpd(districtScope, PERIOD_NOFEED_TERM, PERIOD_NOFEED_ANNUAL),
+    );
+    expect(panelMarkup(noFeed)).toContain("a PLC-only partial");
+  });
+
   it("the reader coalesces no NTC column, anywhere (AC-11, static)", () => {
     const code = readCode("lib/oversight/cpd.ts");
     expect(code).not.toMatch(/coalesce/i);

@@ -293,6 +293,15 @@ export interface EtlRunOptions {
    * Nothing else in the pipeline, the fact builder or any dashboard changes when the real feed lands.
    */
   ntcSourceSchema?: string;
+  /**
+   * THE NTC SOURCE'S CONNECTION — defaults to the analytics `sql` this run writes through, which is
+   * the demo/loader shape (the stand-in, or a real extract an FDW/loader has materialised under
+   * `ntcSourceSchema` in the analytics DB). Pass a DISTINCT handle to read the NTC categories straight
+   * off a separate NTC-portal connection instead: the seam is then connection-swappable as well as
+   * schema-swappable, and still nothing downstream of `readNtcCpdSummaries` changes. The read is a
+   * plain SELECT, so a second connection is safe and never joins the analytics write transaction.
+   */
+  ntcSql?: postgres.Sql;
   policy?: SchoolFailurePolicy;
   nationalName?: string;
   /**
@@ -1065,7 +1074,7 @@ export async function runOversightEtl(
       // ⚠ THE NTC SEAM. Read through `lib/etl/ntc-cpd-source.ts`, keyed by EMIS code (NTC has never
       // heard of an Omnischools tenant uuid), and ABSENT is a NORMAL result rather than an error —
       // which is what keeps "the NTC feed is not connected" from taking six other arms down nightly.
-      const ntc = await readNtcCpdSummaries(sql, {
+      const ntc = await readNtcCpdSummaries(options.ntcSql ?? sql, {
         schemaName: options.ntcSourceSchema ?? "demo_ntc_source",
         academicYear: plcSpec.academicYear,
         emisSchoolIds: inclusion.schools.map((s) => s.emisSchoolId),

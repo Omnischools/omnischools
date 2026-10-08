@@ -90,24 +90,22 @@ export function renderCpdStatus(
   );
 }
 
-/** The component form, for a figure that sits on its own line. */
-export function CpdCell(props: {
-  status: CpdStatus;
-  text: string;
-  zeroText?: string;
-  provenance: NtcProvenance;
-  absentTitle?: string;
-}) {
-  const { status, ...rest } = props;
-  return <>{renderCpdStatus(status, rest)}</>;
-}
+// (A `CpdCell` component wrapper was specced in Lucy's inventory for the DEFERRED C17/C18 breakdown
+// cells and comparison rows; with no consumer it is not shipped — `renderCpdStatus` is the whole
+// four-state renderer, and the wrapper returns with the surfaces that need a cell.)
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════
  * formatters — points as stored numeric, rates at one decimal (the house precision).
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** CPD points as stored (`numeric`), trimmed of a pointless trailing ".00". */
-function formatPoints(points: number): string {
+/**
+ * CPD points as stored (`numeric`), trimmed of a pointless trailing ".00".
+ *
+ * EXPORTED because `page.tsx`'s provenance ledger quotes the statutory threshold in prose: the chip
+ * prose and the panel's own "(20 pts)" must come from ONE formatter, or a policy change to a
+ * fractional target would print two different thresholds on one screen (Dex N7).
+ */
+export function formatPoints(points: number): string {
   return Number.isInteger(points) ? formatCount(points) : formatRatio(points, 2);
 }
 
@@ -321,6 +319,17 @@ export function CpdPanel({
 }) {
   const p = data.ntcProvenance;
   const target = data.ntcCpdTarget;
+  /**
+   * ⚠ THE C8 CONDITION IS "ARE THE CATEGORIES POPULATED", NOT "IS THE STAMP DEMO" (Dex B1).
+   *
+   * Three captions below describe what `cpd_points_total` CONTAINS, and that depends on whether the
+   * NTC categories are populated — which is true of a real LIVE feed exactly as it is of the demo
+   * stand-in. Keying them off `isDemo(p)` alone would give a LIVE feed the no-feed wording ("a
+   * PLC-only partial") and state something false about a measured figure. The stamp still decides the
+   * CHIP and the demo disclosure; the categories decide what the figure IS.
+   */
+  const categoriesAbsent =
+    data.specialised.status === "ABSENT" && data.recommended.status === "ABSENT";
   const targetClause = target === null ? "the national CPD requirement" : `the national CPD requirement (${formatPoints(target)} pts)`;
 
   return (
@@ -391,6 +400,9 @@ export function CpdPanel({
               }
               female={data.plcCoverage.bySex.female}
               male={data.plcCoverage.bySex.male}
+              /* PLC-OPERATIONAL, so never chipped: `plcRate`/`plcValue` cannot return a DEMO
+                 status and the chip gate is `status === "DEMO"`, so passing the provenance here
+                 carries no marker — C6's "PLC figures carry no chip" holds locally. */
               provenance={p}
               unit="RATE"
             />
@@ -403,6 +415,7 @@ export function CpdPanel({
             {renderCpdStatus(data.participation.status, {
               text: `${pctText(data.participation.rate ?? 0)} of expected PLC sessions were attended.`,
               zeroText: "0% — sessions ran but no attendance was logged.",
+              // PLC-operational: `plcRate` cannot produce a DEMO status, so no chip can render here.
               provenance: p,
               absentTitle: "No PLC attendance data for this term",
             })}
@@ -412,6 +425,9 @@ export function CpdPanel({
               label="Women teachers attended their expected PLC sessions at this rate, against men's."
               female={data.participation.bySex.female}
               male={data.participation.bySex.male}
+              /* PLC-OPERATIONAL, so never chipped: `plcRate`/`plcValue` cannot return a DEMO
+                 status and the chip gate is `status === "DEMO"`, so passing the provenance here
+                 carries no marker — C6's "PLC figures carry no chip" holds locally. */
               provenance={p}
               unit="RATE"
             />
@@ -497,16 +513,21 @@ export function CpdPanel({
               </p>
             </>
           )}
-          {/* B1-subset — C8's un-chipped real PLC subset. ABSENT in the demo state by construction:
-              the ETL folds the observed PLC floor into Mandatory, so no column carries it alone. */}
+          {/* B1-subset — C8's un-chipped real PLC subset. ABSENT whenever the categories are
+              populated (demo stand-in OR a real feed): the ETL folds the observed PLC floor into
+              Mandatory, so no column carries it alone and the total is then all-category. */}
           <p className="mt-1 text-[10.5px] text-navy-3">
             of which PLC-earned:{" "}
             {renderCpdStatus(data.plcEarnedPoints.status, {
               text: `${formatPoints(data.plcEarnedPoints.value ?? 0)} pts`,
               zeroText: "0 pts — no PLC points were earned",
               provenance: p,
-              absentTitle:
-                "PLC-earned points are not recorded apart from the demo NTC top-up in the Mandatory class",
+              // The REASON is state-dependent: in the demo the obscuring top-up is the stand-in's; once
+              // a real feed lands it is the measured NTC categories. Both are the same shape of fact
+              // (the PLC floor is not stored apart), stated honestly for the state in hand.
+              absentTitle: isDemo(p)
+                ? "PLC-earned points are not recorded apart from the demo NTC top-up in the Mandatory class"
+                : "PLC-earned points are not recorded apart from the NTC category totals in the Mandatory class",
             })}
           </p>
           {data.pointsMean.bySex ? (
@@ -535,9 +556,11 @@ export function CpdPanel({
             })}
           </Line>
           <p className="text-[10px] text-navy-3">
-            {isDemo(p)
-              ? "includes the PLC-earned points measured above; the non-PLC (NCPD) half is illustrative."
-              : "a PLC-only partial — the non-PLC (NCPD) half of Mandatory has no source yet."}
+            {categoriesAbsent
+              ? "a PLC-only partial — the non-PLC (NCPD) half of Mandatory has no source yet."
+              : isDemo(p)
+                ? "includes the PLC-earned points measured above; the non-PLC (NCPD) half is illustrative."
+                : "includes both the school-based PLC provision and the NCPD half, as sourced from NTC."}
           </p>
           <Line>
             Specialised:{" "}
@@ -647,9 +670,11 @@ export function CpdPanel({
                 Schools meeting their own PLC target:{" "}
                 <Absent
                   title={
-                    isDemo(p)
-                      ? "Not stateable while CPD points carry the demo NTC top-up — the school's own target is PLC-only"
-                      : "No school here has a configured PLC target"
+                    categoriesAbsent
+                      ? "No school here has a configured PLC target"
+                      : isDemo(p)
+                        ? "Not stateable while CPD points carry the demo NTC top-up — the school's own target is PLC-only"
+                        : "Not stateable while CPD points include the NTC category totals — the school's own target is PLC-only"
                   }
                 />
               </>

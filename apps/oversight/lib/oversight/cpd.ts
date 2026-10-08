@@ -109,7 +109,17 @@ export interface StatusValue {
 /** A discriminated re-derived rate. `bySex` is present only on the SEXED metrics (C14). */
 export interface StatusRate {
   status: CpdStatus;
-  /** Σnum ÷ Σden, as a 0..1 fraction. Absent when the status is ABSENT. */
+  /**
+   * Σnum ÷ Σden. Absent when the status is ABSENT.
+   *
+   * ⚠ NOT ALWAYS A 0..1 FRACTION. Four of the five rates here are fractions of a population (PLC
+   * coverage, participation, the CPD-threshold rate, each category coverage), but `pointsMean` is
+   * Σcpd_points_total ÷ Σcpd_points_teacher_count — POINTS PER TEACHER, so a 10.18 here is 10.18 pts
+   * and NOT 1,018%. The unit is enforced at the component boundary (`CpdUnit` on `ParityRow` in
+   * components/oversight/cpd-visuals.tsx, a required prop with no default); carrying the unit on this
+   * type instead is deferred until the C17/C18 breakdown-column and comparison-row consumers exist,
+   * which is when a second surface could disagree about it.
+   */
   rate?: number;
   num?: number;
   den?: number;
@@ -132,7 +142,12 @@ export interface TeacherCpdPanel {
   sessionCoverage: StatusRate;
 
   // ── B · CPD points & national compliance (ANNUAL cut) ──────────────────────────────────────────
-  /** Σcpd_points_total ÷ Σcpd_points_teacher_count — the mean's own denominator (AC-14). Sexed. */
+  /**
+   * Σcpd_points_total ÷ Σcpd_points_teacher_count — the mean's own denominator (AC-14). Sexed.
+   *
+   * ⚠ `rate` here is POINTS PER TEACHER, not a 0..1 fraction — the one exception on this type (see
+   * `StatusRate.rate`, and the `CpdUnit` guard the surface applies).
+   */
   pointsMean: StatusRate;
   /** Σcpd_points_total — the all-category total in the demo, the PLC-only subtotal otherwise (C8). */
   pointsTotal: StatusValue;
@@ -303,7 +318,6 @@ export async function getTeacherCpd(
        */
       const annualResult = await tx.execute(sql`
         select fpp.sex::text                                            as sex,
-               count(*)::int                                            as row_count,
                count(distinct fpp.jurisdiction_id)::int                 as schools,
                sum(fpp.schools_running_plc_count)::bigint               as schools_running,
                sum(fpp.teacher_headcount)::bigint                       as headcount,
@@ -311,7 +325,6 @@ export async function getTeacherCpd(
                sum(fpp.cpd_points_total)::numeric                       as points_total,
                count(fpp.cpd_points_total)::int                         as points_total_rows,
                sum(fpp.cpd_points_teacher_count)::bigint                as points_teachers,
-               count(fpp.cpd_points_teacher_count)::int                 as points_teachers_rows,
                sum(fpp.cpd_points_mandatory_total)::numeric             as mandatory,
                count(fpp.cpd_points_mandatory_total)::int               as mandatory_rows,
                sum(fpp.cpd_points_specialised_total)::numeric           as specialised,
@@ -374,13 +387,11 @@ export async function getTeacherCpd(
           ? null
           : await tx.execute(sql`
               select fpp.sex::text                                  as sex,
-                     count(*)::int                                  as row_count,
                      count(distinct fpp.jurisdiction_id)::int       as schools,
                      sum(fpp.schools_running_plc_count)::bigint     as schools_running,
                      sum(fpp.teacher_headcount)::bigint             as headcount,
                      count(fpp.teacher_headcount)::int              as headcount_rows,
                      sum(fpp.sessions_held)::bigint                 as sessions_held,
-                     count(fpp.sessions_held)::int                  as sessions_held_rows,
                      sum(fpp.sessions_expected)::bigint             as sessions_expected,
                      sum(fpp.attendance_events)::bigint             as attendance_events,
                      count(fpp.attendance_events)::int              as attendance_events_rows,
@@ -581,6 +592,21 @@ export async function getTeacherCpd(
         recommendedSum !== null &&
         Math.abs(mandatorySum + specialisedSum + recommendedSum - pointsTotalSum) < 0.01;
 
+      /**
+       * ⚠ THE C8 CONDITION IS "ARE THE CATEGORIES POPULATED", NOT "IS THE STAMP DEMO" (Dex B1).
+       *
+       * Two figures below are honest ONLY while `cpd_points_total` is the PLC-ONLY subtotal — i.e.
+       * while the NTC categories are ABSENT, which is exactly the state the schema's sourcing gate
+       * produces. The moment the categories ARE populated, the total is the ALL-CATEGORY figure and
+       * neither can be stated — and that is true of a real LIVE feed exactly as it is of the demo
+       * stand-in. Branching on `ntcProvenance === "DEMO"` would bucket LIVE with the no-feed state and
+       * publish a false, un-chipped figure the day the real feed lands, which would also falsify this
+       * slice's own C5/AC-6 claim that flipping to LIVE changes nothing else on the surface. So the
+       * branch is on the DISCRIMINATED CATEGORY STATUS the reader already computed, never on the stamp.
+       */
+      const categoriesAbsent =
+        specialised.status === "ABSENT" && recommended.status === "ABSENT";
+
       // The two target SCALARS: stated only when the subtree agrees on one value. NEVER summed.
       const singleTarget = (valuesKey: string, valueKey: string): number | null => {
         if (annualAll === undefined) return null;
@@ -590,18 +616,20 @@ export async function getTeacherCpd(
       /**
        * B4 — "N of Y schools met their own PLC target", a COUNT.
        *
-       * ⚠ FORK: withheld (ABSENT) in the DEMO state. The per-school comparison available in the fact
-       * table is `cpd_points_mean >= annual_plc_target`, and in the demo `cpd_points_mean` is the
-       * ALL-CATEGORY mean (C8) while `annual_plc_target` is a PLC-ONLY target — the schema is explicit
-       * that the two are not comparable ("8 PLC points is not 8/20ths of compliance"). Publishing the
-       * count anyway would be exactly the substitution C13 forbids, so the surface says it cannot be
-       * stated while the NTC topup is in the total. In the live-no-feed state the total/mean ARE the
-       * PLC-only subtotal, and the count is honest.
+       * ⚠ FORK: withheld (ABSENT) WHENEVER THE CATEGORIES ARE POPULATED — demo or live alike. The
+       * per-school comparison available in the fact table is `cpd_points_mean >= annual_plc_target`,
+       * and once the categories are populated `cpd_points_mean` is the ALL-CATEGORY mean (C8) while
+       * `annual_plc_target` is a PLC-ONLY target — the schema is explicit that the two are not
+       * comparable ("8 PLC points is not 8/20ths of compliance"). Publishing the count anyway would be
+       * exactly the substitution C13 forbids, and that reasoning holds identically under a real NTC
+       * feed. Only in the categories-absent state are the total/mean the PLC-only subtotal, and only
+       * there is the count honest. (The figure returns for good when the ETL exposes the PLC-earned
+       * points as their own column — see `plcEarnedPoints`.)
        */
       const plcTargetSchools = count(annualAll?.plc_target_schools);
       const plcTargetMetCount = count(annualAll?.plc_target_met);
       const plcTargetMet: TeacherCpdPanel["plcTargetMet"] =
-        ntcProvenance === "DEMO" || plcTargetSchools === 0
+        !categoriesAbsent || plcTargetSchools === 0
           ? { status: "ABSENT", schools: plcTargetSchools }
           : {
               status: plcTargetMetCount === 0 ? "REAL_ZERO" : "MEASURED",
@@ -617,11 +645,16 @@ export async function getTeacherCpd(
         sessionCoverage,
         pointsMean,
         pointsTotal: ntcValue(pointsTotalSum, pointsTotalRows, ntcProvenance),
-        // C8's real subset — see the field's note for why the DEMO state cannot state it.
-        plcEarnedPoints:
-          ntcProvenance === "DEMO"
-            ? { status: "ABSENT" }
-            : plcValue(pointsTotalSum, pointsTotalRows),
+        /**
+         * C8's real subset. Published ONLY while the categories are absent, because only then is
+         * `cpd_points_total` the PLC-only subtotal (see `categoriesAbsent` above). With the categories
+         * populated — demo stand-in or real NTC feed — the total is the all-category figure and the
+         * PLC floor is not separable from it, so the honest answer is ABSENT rather than the total
+         * relabelled as "PLC-earned".
+         */
+        plcEarnedPoints: categoriesAbsent
+          ? plcValue(pointsTotalSum, pointsTotalRows)
+          : { status: "ABSENT" },
         mandatory,
         specialised,
         recommended,
