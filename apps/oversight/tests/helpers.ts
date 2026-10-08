@@ -149,6 +149,120 @@ export function stepUpFixture(fresh: boolean): StepUpAssertion {
   return sealStepUpAssertion({ fresh });
 }
 
+/**
+ * ══ THE STORED-`ptr` SOURCE GUARD, IN ONE PLACE ══════════════════════════════════════════════════
+ *
+ * The house rule (STAFFING-PTR-DOMAIN-RULING §2, restated in lib/oversight/ptr.ts and
+ * lib/oversight/breakdown.ts): a tier roll-up is Σenrolment ÷ Σteachers, and the stored per-school
+ * `fact_staffing.ptr` column is NEVER selected. Four guard sites across four test files had each
+ * grown their own regex for it — `/\b(fs|st|fact_staffing)\.ptr\b/`, `/\b(fs|fact_staffing)\.ptr\b/`,
+ * `/\bfs\.ptr\b/`: three different answers to one question, and every one of them an ALIAS
+ * ALLOW-LIST, so `select s.ptr` after a re-alias walked straight through all of them.
+ *
+ * The naive fix — `/\w+\.ptr\b/` over the whole module — false-positives immediately: `r.ptr` in
+ * lib/oversight/comparison.ts and the `ptr` FIELD on the breakdown row are legitimate TypeScript
+ * property access on an ALREADY RE-DERIVED ratio, not a column selection. So the guard splits in
+ * two: first narrow the text to what is actually SQL, then be alias-blind within it.
+ */
+
+/**
+ * The EXECUTABLE text inside every `` sql`…` `` tagged template in `source`, concatenated. This is
+ * the module's SQL and nothing else: TS expressions and field names outside a query are excluded by
+ * construction rather than by a stripping heuristic.
+ *
+ * NESTED TEMPLATES ARE PART OF THE SQL (Dex D1). A conditional fragment —
+ * `` ${periodId ? sql`and fi.period_id = ${periodId}::uuid` : sql``} `` (the live case,
+ * lib/oversight/infrastructure.ts) — is a query the module really runs, so its body is collected too.
+ * This is why the extraction is a forward SCAN and not a non-greedy regex: `` /sql`([\s\S]*?)`/ ``
+ * ended the OUTER chunk at the inner template's opening backtick and then re-synchronised on the
+ * wrong backticks, leaving everything after the first nested fragment INVISIBLE to the guard (it saw
+ * 2,566 of infrastructure.ts's 9,472 characters). The scan tracks `${`/`}` depth instead: a backtick
+ * at depth 0 closes the chunk; a backtick at depth > 0 opens a nested template whose body is scanned
+ * and kept in its own right.
+ *
+ * `${…}` interpolations themselves are DROPPED (replaced by a space, so they cannot glue two tokens
+ * together): a bind is a parameter value, never a column name, so nothing the guard looks for can hide
+ * in one.
+ *
+ * SQL `--` line comments ARE stripped: these queries carry long in-query prose that REASONS about the
+ * columns the query refuses to read (breakdown.ts's "never avg(stored ptr)" note is the live case), and
+ * stating a prohibition is not committing it. ONLY `--` comments: a C-style block comment inside SQL is
+ * NOT stripped here (all four call sites pass source whose TS/block comments are already removed).
+ */
+export function sqlTextOf(source: string): string {
+  const chunks: string[] = [];
+  for (let i = 0; i < source.length; i += 1) {
+    if (source.startsWith("sql`", i)) i = scanTemplate(source, i + 4, chunks);
+  }
+  return chunks
+    .join("\n")
+    .split("\n")
+    .map((line) => line.replace(/--.*$/, ""))
+    .join("\n");
+}
+
+/**
+ * Scans one template body starting just AFTER its opening backtick; returns the index of the backtick
+ * that closed it (or the end of input on an unterminated template). Appends that body — and, via
+ * recursion, the body of every template nested inside one of its interpolations — to `chunks`.
+ */
+function scanTemplate(source: string, start: number, chunks: string[]): number {
+  let body = "";
+  let depth = 0; // `${` … `}` nesting, counted so a backtick can be told from a closing one
+  let i = start;
+  while (i < source.length) {
+    const c = source[i]!;
+    if (c === "\\") {
+      if (depth === 0) body += source.slice(i, i + 2);
+      i += 2;
+      continue;
+    }
+    if (c === "$" && source[i + 1] === "{") {
+      if (depth === 0) body += " "; // a bind is a value; keep the token break it stood for
+      depth += 1;
+      i += 2;
+      continue;
+    }
+    if (c === "}" && depth > 0) {
+      depth -= 1;
+      i += 1;
+      continue;
+    }
+    if (c === "`") {
+      if (depth === 0) {
+        chunks.push(body);
+        return i;
+      }
+      i = scanTemplate(source, i + 1, chunks) + 1;
+      continue;
+    }
+    if (depth === 0) body += c;
+    i += 1;
+  }
+  chunks.push(body);
+  return i;
+}
+
+/**
+ * Does `source`'s SQL select the stored per-school `ptr` rate — under ANY alias, or bare? The two
+ * shapes a selection can take are `<anything>.ptr` and a bare `ptr` at the start of a line or after
+ * a separator (`select ptr`, `, ptr`, `sum(ptr`). Deliberately ALIAS-BLIND: the point is that
+ * re-aliasing `fact_staffing` cannot evade it.
+ *
+ * WHAT IS BANNED IS THE STORED COLUMN, NOT THE NAME (Dex N1). The ruling bans SELECTING
+ * `fact_staffing.ptr`; it expressly blesses RE-DERIVING the ratio, and a re-derived column may be
+ * aliased `ptr` (`sum(enrolment_total)::numeric / sum(teachers_on_roll) as ptr`) — that is the Σ÷Σ
+ * form the rule demands, so `as ptr` is excluded from the bare arm. The qualified arm is untouched by
+ * that exclusion, so the stored column under a new alias (`select fs.ptr as x`) still fires.
+ */
+export function selectsStoredPtr(source: string): boolean {
+  const sqlText = sqlTextOf(source);
+  // A derived ratio's own alias is not a selection of the stored column — dropped before the bare arm
+  // runs, and only from the bare arm's copy.
+  const bare = sqlText.replace(/\bas\s+ptr\b/gi, " ");
+  return /\b\w+\.ptr\b/.test(sqlText) || /(^|[\s,(])ptr\b/m.test(bare);
+}
+
 /** Unique per test, so `auditRowsFor` isolates one test's rows from an append-only shared table. */
 export function caseRef(label: string): string {
   return `CASE-${label}-${Math.random().toString(36).slice(2, 10)}`;

@@ -18,7 +18,13 @@ import {
   PERIOD_ID_EXAM_COHORT,
   PERIOD_ID_TERM,
 } from "./fixtures/ids";
-import { adminAnalytics, districtOfficer, nationalOfficer, officerFixture } from "./helpers";
+import {
+  adminAnalytics,
+  districtOfficer,
+  nationalOfficer,
+  officerFixture,
+  selectsStoredPtr,
+} from "./helpers";
 
 /**
  * QA GATE PROBE — the attendance UNION arm, against a REAL database as the NON-OWNER `ov_app` role.
@@ -224,8 +230,10 @@ describe("P1 — the roll-up rate is Σpresent ÷ Σenrolled, not avg(stored rat
       .join("\n");
     expect(executable).not.toMatch(/attendance_rate/);
     expect(executable).not.toMatch(/\b(fa|fact_attendance)\.attendance_rate\b/);
-    // And the stored per-school ptr likewise (the sibling precedent).
-    expect(executable).not.toMatch(/\b(fs|fact_staffing)\.ptr\b/);
+    // And the stored per-school ptr likewise (the sibling precedent) — ALIAS-BLIND, over the module's
+    // whole SQL text (`selectsStoredPtr`, tests/helpers.ts, shared with the three other files that
+    // assert this rule). The former alias allow-list was evadable by a plain re-alias.
+    expect(selectsStoredPtr(code)).toBe(false);
   });
 });
 
@@ -477,7 +485,7 @@ describe("P7 — MAX_ENTITIES caps at 8 AFTER level-pinning, and the rank dot ne
           { id: "b", name: "B", meta: null, anchor: false },
         ],
         benchmarkLabel: "District average",
-        benchmarkMeta: "2 schools",
+        benchmarkPopulation: { count: 2, noun: "schools" },
         footnote: "x",
       } as never),
     );
@@ -610,7 +618,7 @@ describe("P3/P2 (render) — '—' for a non-filer, the rate still shown below t
         model,
         columns: cols.map((c, i) => ({ id: c.id, name: ["Filed SHS", "Tiny SHS", "Silent SHS"][i]!, meta: null, anchor: i === 0 })),
         benchmarkLabel: "District average",
-        benchmarkMeta: "2 SHS",
+        benchmarkPopulation: { count: 2, noun: "SHS" },
         footnote: "x",
       } as never),
     );

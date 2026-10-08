@@ -63,14 +63,15 @@ export function weightedBenchmark(
   let sumNum = 0;
   let sumDen = 0;
   let any = false;
+  // Hoisted out of the loop (Dex N3): the spec is constant across rows, so building it per row was N
+  // allocations per metric per render for an identical object. Behaviour is unchanged.
+  const spec: BenchmarkSpec = { kind: "weighted", num, den };
   for (const row of population) {
-    const n = num(row);
-    const d = den(row);
-    // Both components must be present for the row to contribute: a half-filed row is not a measured
-    // zero on either side. (In practice they are filed together — they come off one fact arm.)
-    if (n === null || d === null) continue;
-    sumNum += n;
-    sumDen += d;
+    // ONE skip rule, shared with `meanBenchmark` and with the contributor COUNT, so the figure and the
+    // "over N schools" claim beside it can never describe different row sets.
+    if (!contributes(spec, row)) continue;
+    sumNum += num(row)!;
+    sumDen += den(row)!;
     any = true;
   }
   if (!any || sumDen === 0) return null;
@@ -90,14 +91,65 @@ export function meanBenchmark(
 ): number | null {
   let sum = 0;
   let filers = 0;
+  // Hoisted, as in `weightedBenchmark` (Dex N3) — one spec object per call, not one per row.
+  const spec: BenchmarkSpec = { kind: "mean", value };
   for (const row of population) {
-    const v = value(row);
-    if (v === null) continue;
-    sum += v;
+    if (!contributes(spec, row)) continue;
+    sum += value(row)!;
     filers += 1;
   }
   if (filers === 0) return null;
   return sum / filers;
+}
+
+/**
+ * DOES THIS ROW CONTRIBUTE TO THIS BENCHMARK? The ONE statement of the per-row skip rule the two
+ * helpers above apply — `weighted` needs BOTH components (a half-filed row is not a measured zero on
+ * either side), `mean` needs the value (a school that filed nothing must not drag the mean down as if
+ * it enrolled zero pupils), and a `none`-kind benchmark has no contributors at all because there is no
+ * benchmark to contribute to.
+ *
+ * The accessors (`num`/`den`/`value`) must stay PURE field reads: this predicate calls them, and then the
+ * fold calls them again on the rows that passed, so a side effect or a changing answer would be seen twice.
+ *
+ * Internal on purpose: what callers outside this module need is the COUNT (`benchmarkContributorsOf`),
+ * and the figure a cell shows must come from the helper that applied the rule rather than from a
+ * re-implementation of it beside the number.
+ */
+function contributes(spec: BenchmarkSpec, row: BreakdownRow): boolean {
+  switch (spec.kind) {
+    case "none":
+      return false;
+    case "mean":
+      return spec.value(row) !== null;
+    case "weighted":
+      return spec.num(row) !== null && spec.den(row) !== null;
+  }
+}
+
+/**
+ * HOW MANY of the like-for-like population actually stand behind this metric's benchmark.
+ *
+ * THE OVER-CLAIM THIS EXISTS TO END. The surface used to compute "N schools" ONCE from
+ * `benchmarkPopulation.length` and print it on EVERY row — but the benchmark SKIPS non-contributing
+ * rows, and which rows those are is per-METRIC, not per-surface: vacancies is PUBLIC-only (GES sets no
+ * establishment for private/mission schools — R3.5), attendance exists only for gradebook adopters
+ * (R9.5b), qualification only for schools that sat the exam, girls' share only for enrolment filers.
+ * So on most rows the honest contributor count is STRICTLY BELOW the population, and a single
+ * population-wide numeral printed beside every figure asserts a base the figure does not have.
+ *
+ * Counted over the SAME predicate the benchmark itself folds over, so the two cannot drift. Zero means
+ * no row filed the measure, and the benchmark is then null and the cell shows `—`. (The converse is
+ * ALMOST exact: `weightedBenchmark` also returns null on a degenerate Σden = 0, where contributors
+ * exist but divide to nothing. Rare enough to be an absence either way, and the cell still shows `—`.)
+ */
+export function benchmarkContributorsOf(
+  population: readonly BreakdownRow[],
+  spec: BenchmarkSpec,
+): number {
+  let n = 0;
+  for (const row of population) if (contributes(spec, row)) n += 1;
+  return n;
 }
 
 /**
@@ -240,6 +292,13 @@ export interface ComparisonMetricRow {
   cells: ComparisonCell[];
   /** The pinned benchmark value, or null (absent cell, or `none`-kind benchmark). */
   benchmark: number | null;
+  /**
+   * HOW MANY like-for-like children stand behind THIS row's benchmark — per metric, because the skip
+   * rule is per metric (see `benchmarkContributorsOf`). Carried on the row so the surface can state the
+   * figure's real base beside it instead of re-printing the whole population's size on every row.
+   * 0 ⇒ `benchmark` is null and the cell shows `—`.
+   */
+  benchmarkContributors: number;
 }
 
 export interface ComparisonSection {
@@ -474,8 +533,15 @@ export function buildComparison(args: {
               metric.benchmark.den,
             );
 
+    // The honest base of the figure just computed, over the same predicate the fold used — so the row
+    // carries its own contributor count rather than inheriting the surface's population size.
+    const benchmarkContributors = benchmarkContributorsOf(
+      benchmarkPopulation,
+      metric.benchmark,
+    );
+
     const section = sections.find((s) => s.title === metric.section);
-    const row: ComparisonMetricRow = { metric, cells, benchmark };
+    const row: ComparisonMetricRow = { metric, cells, benchmark, benchmarkContributors };
     if (section) section.rows.push(row);
     else sections.push({ title: metric.section, rows: [row] });
   }

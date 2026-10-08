@@ -267,9 +267,18 @@ export default async function ComparisonWorkspace({
   // `entities.filter`, which includes schools that filed nothing, so a weighted Σ÷Σ or mean-per-filer
   // divisor could sit below the numeral the label asserted). Empty population ⇒ no benchmark column, so
   // no meta is needed.
-  const benchmarkCount = benchmarkPopulation.length;
-  const benchmarkNoun = childLevel === "SCHOOL" && pinnedType !== null ? pinnedType : childNoun;
-  const benchmarkMeta = `${benchmarkCount} ${benchmarkNoun}`;
+  //
+  // And it names the POPULATION, only that. It used to be printed as the base of every benchmark
+  // figure — but the benchmark skips children that did not file the measure, and which children those
+  // are is per-METRIC (vacancies is public-only, attendance gradebook-adopters-only, qualification the
+  // schools that sat), so one population-wide numeral asserted a base most rows do not have. The real
+  // per-row base is `row.benchmarkContributors` (lib/oversight/comparison.ts), which the table now
+  // states inside each benchmark cell; this count is the DENOMINATOR those cells divide by.
+  const benchmarkPopulationMeta = {
+    count: benchmarkPopulation.length,
+    noun: childLevel === "SCHOOL" && pinnedType !== null ? pinnedType : childNoun,
+  };
+  const benchmarkMeta = `${benchmarkPopulationMeta.count} ${benchmarkPopulationMeta.noun}`;
 
   const sittingYear = isOk(examCohort) ? sittingYearOf(examCohort.value.academicYear) : null;
 
@@ -297,7 +306,7 @@ export default async function ComparisonWorkspace({
             model={model}
             columns={headers}
             benchmarkLabel={benchmarkLabel}
-            benchmarkMeta={benchmarkMeta}
+            benchmarkPopulation={benchmarkPopulationMeta}
             footnote={
               <>
                 Read <b className="font-semibold text-navy-2">across a row</b> to compare,{" "}
@@ -305,8 +314,10 @@ export default async function ComparisonWorkspace({
                 {childLevel === "SCHOOL" ? "school" : childNoun.replace(/s$/, "")}. The best and
                 worst entity in each ranked row is marked; total enrolment and cohort size carry no
                 mark — size is not a measure of quality. The benchmark column is the like-for-like
-                average over {benchmarkMeta}{" "}
-                (rate rows weighted Σ÷Σ, count rows the mean per filer), pinned and never ranked.
+                average over the {benchmarkMeta} at this level (rate rows weighted Σ÷Σ, count rows the
+                mean per filer), pinned and never ranked; each benchmark cell names how many of them
+                filed <i>that</i> measure, which is fewer wherever a measure does not apply to every
+                one of them.
               </>
             }
           />
@@ -333,7 +344,7 @@ export default async function ComparisonWorkspace({
             ],
             [
               "Benchmark",
-              `like-for-like average over ${benchmarkMeta} — moves with the data, not your selection`,
+              `like-for-like average over the ${benchmarkMeta} at this level, each row over those of them that filed it — moves with the data, not your selection`,
             ],
             [
               "Attendance",

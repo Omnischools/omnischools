@@ -7,6 +7,7 @@ import type { BreakdownRow, ChildLevel } from "@/lib/oversight/breakdown";
 import { childLevelFor } from "@/lib/oversight/breakdown";
 import { withinTierCeiling } from "@/lib/auth/roles";
 import {
+  benchmarkContributorsOf,
   buildComparison,
   comparisonMetrics,
   meanBenchmark,
@@ -116,6 +117,129 @@ describe("meanBenchmark — Σ ÷ n over FILERS", () => {
 
   it("is null when no child filed (never 0)", () => {
     expect(meanBenchmark([row({ childId: "a" })], (r) => r.enrolment)).toBeNull();
+  });
+});
+
+/**
+ * THE BENCHMARK'S CONTRIBUTOR COUNT IS PER ROW, AND IT IS USUALLY SMALLER THAN THE POPULATION.
+ *
+ * The over-claim this closes: the surface computed "N schools" ONCE from `benchmarkPopulation.length`
+ * and printed it as the base of EVERY benchmark figure — on the column header, in the footnote and on
+ * the Provenance line. But both folds SKIP non-contributing rows, and which rows those are is a
+ * per-METRIC fact: a PRIVATE school has no GES establishment at all (R3.5), so it is outside the
+ * vacancy benchmark; a school that does not run the internal gradebook is outside the attendance one
+ * (R9.5b); only sitters are inside qualification. The population numeral therefore over-stated the
+ * base of most rows by exactly the rows the fold had already dropped.
+ *
+ * The population below is deliberately MIXED so the three cases separate in one build: one row filing
+ * everything, one PRIVATE row with no establishment, one non-gradebook row with no attendance days.
+ */
+describe("benchmarkContributors — the per-row honest base of the benchmark figure", () => {
+  const full = row({
+    childId: "full",
+    enrolment: 900,
+    femaleEnrolment: 450,
+    postsEstablished: 40,
+    vacancyNet: 6,
+    presentDays: 9000,
+    enrolledDays: 10_000,
+  });
+  // PRIVATE: GES sets no establishment, so `postsEstablished`/`vacancyNet` are null-not-zero — outside
+  // the vacancy benchmark, but a perfectly ordinary enrolment filer.
+  const privateSchool = row({
+    childId: "private",
+    enrolment: 500,
+    femaleEnrolment: 260,
+    postsEstablished: null,
+    vacancyNet: null,
+    presentDays: 4000,
+    enrolledDays: 5000,
+  });
+  // A PUBLIC school that does not run the internal gradebook: no attendance days to roll up.
+  const noGradebook = row({
+    childId: "nogradebook",
+    enrolment: 700,
+    femaleEnrolment: 350,
+    postsEstablished: 30,
+    vacancyNet: -2,
+    presentDays: null,
+    enrolledDays: null,
+  });
+  const population = [full, privateSchool, noGradebook];
+
+  const metrics = comparisonMetrics({ exam: "WASSCE", hasCoverage: true });
+  const rowFor = (key: string) => {
+    const model = buildComparison({
+      metrics,
+      benchmarkPopulation: population,
+      columns: population.map((r) => col(r)),
+    });
+    const found = model.sections.flatMap((s) => s.rows).find((r) => r.metric.key === key);
+    expect(found, `no ${key} row`).toBeDefined();
+    return found!;
+  };
+
+  it("vacancies and attendance count FEWER than the population; enrolment counts all of it", () => {
+    expect(population.length).toBe(3);
+    // The private row is not in the vacancy fold, so the row's own base is 2 of 3 — NOT the 3 the old
+    // population-wide label printed here.
+    const vacancies = rowFor("teacherVacancies");
+    expect(vacancies.benchmarkContributors).toBe(2);
+    expect(vacancies.benchmarkContributors).toBeLessThan(population.length);
+    // The non-gradebook row is not in the attendance fold — likewise 2 of 3.
+    const attendance = rowFor("attendance");
+    expect(attendance.benchmarkContributors).toBe(2);
+    expect(attendance.benchmarkContributors).toBeLessThan(population.length);
+    // Enrolment every one of them filed, so here — and ONLY here — the population count is the base.
+    // That it is EQUAL on this row is what makes the two inequalities above a real finding rather than
+    // a count that is simply always short.
+    expect(rowFor("enrolment").benchmarkContributors).toBe(population.length);
+    expect(rowFor("girlsShare").benchmarkContributors).toBe(population.length);
+  });
+
+  it("the figures themselves really are over those contributors, not over the population", () => {
+    // Vacancy benchmark = Σnet ÷ Σposts over the TWO public rows: (6 − 2) ÷ 70. The private row adds
+    // nothing to either side, which is precisely why its presence must not be counted.
+    expect(rowFor("teacherVacancies").benchmark).toBeCloseTo(4 / 70, 10);
+    // Attendance = Σpresent ÷ Σenrolled over the TWO gradebook filers: 13,000 ÷ 15,000. Note it is NOT
+    // the mean of their two stored rates (0.90 and 0.80 → 0.85) — the fold is day-weighted.
+    expect(rowFor("attendance").benchmark).toBeCloseTo(13_000 / 15_000, 10);
+    expect(rowFor("attendance").benchmark).not.toBeCloseTo(0.85, 4);
+    // …and the enrolment mean IS over all three, the one row whose base is the whole population.
+    expect(rowFor("enrolment").benchmark).toBeCloseTo((900 + 500 + 700) / 3, 10);
+  });
+
+  it("0 contributors ⇔ a null benchmark, for EVERY spec kind (never a confident 0)", () => {
+    // Over this population every spec resolves one way or the other, so the biconditional can be
+    // checked on the whole catalogue rather than on a hand-picked row. (`none`-kind — coverage — has no
+    // benchmark at all and must land on the 0/null side. The one shape that would break the ⇐ half is a
+    // degenerate Σden = 0 — contributors present, dividing to nothing — which no denominator here is.)
+    for (const r of buildComparison({
+      metrics,
+      benchmarkPopulation: population,
+      columns: population.map((c) => col(c)),
+    }).sections.flatMap((s) => s.rows)) {
+      expect(
+        r.benchmarkContributors === 0,
+        `${r.metric.key}: contributors=${r.benchmarkContributors} benchmark=${r.benchmark}`,
+      ).toBe(r.benchmark === null);
+    }
+    // …and the same holds on the EMPTY population, where every kind has 0 contributors at once.
+    for (const r of buildComparison({
+      metrics,
+      benchmarkPopulation: [],
+      columns: [col(full)],
+    }).sections.flatMap((s) => s.rows)) {
+      expect(r.benchmarkContributors).toBe(0);
+      expect(r.benchmark, r.metric.key).toBeNull();
+    }
+    // The spec-level helper agrees with the assembled row, over the same population.
+    for (const m of metrics)
+      expect(benchmarkContributorsOf(population, m.benchmark), m.key).toBe(
+        rowFor(m.key).benchmarkContributors,
+      );
+    // A `none`-kind benchmark has no contributors by construction — coverage, which renders `—`.
+    expect(benchmarkContributorsOf(population, { kind: "none" })).toBe(0);
   });
 });
 
@@ -390,7 +514,7 @@ describe("render smoke — the surface draws without throwing and keeps its hone
           { id: "ghost", name: "Ghost SHS", meta: null },
         ],
         benchmarkLabel: "District average",
-        benchmarkMeta: "all 2 SHS",
+        benchmarkPopulation: { count: 2, noun: "SHS" },
         footnote: "read across to compare",
       }),
     );
@@ -398,6 +522,59 @@ describe("render smoke — the surface draws without throwing and keeps its hone
     expect(html).toContain("Asankrangwa SHS");
     expect(html).toContain("—"); // the absent ghost column's cells
     expect(html).toContain("Pupil-teacher ratio");
+  });
+
+  /**
+   * THE RENDERED HALF OF THE CONTRIBUTOR COUNT (QA gate addition). `benchmarkContributors` is proved
+   * on the MODEL above, but the point of the nit is what the officer READS: a neutral population
+   * header, and each benchmark cell stating its OWN base. Without this the prop rename and the "k of
+   * N" line are untested at the render level — the component could drop either and stay green.
+   *
+   * The population is deliberately mixed the same way as the model-level block: a PRIVATE school has
+   * no GES establishment, so it is outside the VACANCY fold but inside the ENROLMENT one. So the same
+   * render must show BOTH a short base and a full one.
+   */
+  it("each benchmark cell states its OWN 'k of N' base, and the header names the population neutrally", () => {
+    const pub = row({
+      childId: "pub", name: "Public SHS", enrolment: 900,
+      postsEstablished: 40, vacancyNet: 6,
+    });
+    const priv = row({
+      childId: "priv", name: "Private SHS", enrolment: 500,
+      postsEstablished: null, vacancyNet: null,
+    });
+    const population = [pub, priv];
+    const model = buildComparison({
+      metrics: comparisonMetrics({ exam: "WASSCE", hasCoverage: false }),
+      benchmarkPopulation: population,
+      columns: [col(pub), col(priv)],
+    });
+
+    // The premise: the two metrics really do have DIFFERENT bases on this population, so the two
+    // assertions below cannot both be satisfied by one hard-coded string.
+    const rowOf = (key: string) =>
+      model.sections.flatMap((s) => s.rows).find((r) => r.metric.key === key)!;
+    expect(rowOf("enrolment").benchmarkContributors).toBe(2);
+    expect(rowOf("teacherVacancies").benchmarkContributors).toBe(1);
+
+    const html = renderToStaticMarkup(
+      createElement(ComparisonTable, {
+        model,
+        columns: [
+          { id: "pub", name: "Public SHS", meta: null, anchor: true },
+          { id: "priv", name: "Private SHS", meta: null },
+        ],
+        benchmarkLabel: "District average",
+        benchmarkPopulation: { count: 2, noun: "SHS" },
+        footnote: "x",
+      }),
+    );
+    // The header NAMES the group; it does not assert it as every row's divisor.
+    expect(html).toContain("like-for-like: 2 SHS");
+    // Both bases are rendered — the full one for enrolment, the SHORT one for vacancies. The second
+    // is the whole point: the old surface printed "2 SHS" beside this figure, which 1 school filed.
+    expect(html).toContain("2 of 2 SHS");
+    expect(html).toContain("1 of 2 SHS");
   });
 
   it("ComparisonPicker shows the active tier, a disabled tier and a removable chip", () => {
@@ -515,7 +692,7 @@ describe("AC5/AC6 — like-for-level: the exam is pinned by level, the section o
           { id: "b", name: "Beppo Primary", meta: null },
         ],
         benchmarkLabel: "District average",
-        benchmarkMeta: "all 2 PRIMARY",
+        benchmarkPopulation: { count: 2, noun: "PRIMARY" },
         footnote: "x",
       }),
     );
@@ -551,7 +728,7 @@ describe("AC8 — the benchmark column is pinned and NEVER marked, even when it 
           { id: "b", name: "B SHS", meta: null },
         ],
         benchmarkLabel: "District average",
-        benchmarkMeta: "all 3 SHS",
+        benchmarkPopulation: { count: 3, noun: "SHS" },
         footnote: "x",
       }),
     );
@@ -647,7 +824,7 @@ describe("AC9/AC22 — every benchmark rate is Σnum÷Σden off its own inputs, 
           { id: "real", name: "Real SHS", meta: null },
         ],
         benchmarkLabel: "District average",
-        benchmarkMeta: "all 1 SHS",
+        benchmarkPopulation: { count: 1, noun: "SHS" },
         footnote: "x",
       }),
     );
@@ -748,7 +925,7 @@ describe("AC20/AC21 — the cap counts real entities only; deferred metrics are 
         model,
         columns: rows.map((r, i) => ({ id: r.childId!, name: `School ${i}`, meta: null, anchor: i === 0 })),
         benchmarkLabel: "District average",
-        benchmarkMeta: "all 8 SHS",
+        benchmarkPopulation: { count: 8, noun: "SHS" },
         footnote: "x",
       }),
     );
@@ -870,7 +1047,7 @@ describe("RED-fix 2 — the thin-coverage flag is RENDERED, not silently swallow
           { id: "b", name: "Thin District", meta: null, coverageAmbiguous: true },
         ],
         benchmarkLabel: "Region average",
-        benchmarkMeta: "all 2 districts",
+        benchmarkPopulation: { count: 2, noun: "districts" },
         footnote: "x",
       }),
     );
@@ -975,7 +1152,7 @@ describe("RED-fix 2 re-verified — the flag is on the right column, and the cav
           { id: "c", name: "Middling District", meta: null, coverageAmbiguous: false },
         ],
         benchmarkLabel: "Region average",
-        benchmarkMeta: "all 3 districts",
+        benchmarkPopulation: { count: 3, noun: "districts" },
         footnote: "x",
       }),
     );
