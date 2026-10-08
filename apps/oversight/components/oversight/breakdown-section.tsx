@@ -3,8 +3,8 @@ import { isOk, type Reading } from "@/lib/oversight/reading";
 import type { ChildBreakdown } from "@/lib/oversight/breakdown";
 import { Banner, Panel, Provenance } from "./primitives";
 import { BreakdownTable, COVERAGE_BANDS } from "./breakdown-table";
-import { RankStrip, SpreadPanel } from "./breakdown-visuals";
-import { breakdownChrome, buildBreakdownTitle } from "./tier-chrome";
+import { RankStrip, SpreadPanel, TeacherEstablishmentPanel } from "./breakdown-visuals";
+import { breakdownChrome, buildBreakdownTitle, tierChrome } from "./tier-chrome";
 import { formatRatioPercent } from "./kpi-card";
 
 /**
@@ -21,6 +21,13 @@ import { formatRatioPercent } from "./kpi-card";
  * The section owns the ONE `officer.level` gate this slice has: national gets the spread panel, region
  * gets the rank strip, and a district mount gets neither (Lucy §4.5). Every other tier difference is a
  * string in `breakdownChrome()`.
+ *
+ * ═══ THE TEACHER-ESTABLISHMENT PANEL MOUNTS HERE, UNGATED (Kofi V8, Dex N1) ══════════════════════
+ * It is a SIBLING of the spread panel and the rank strip, and the one of the three that is NOT behind a
+ * tier gate: it renders at NATIONAL, REGION and DISTRICT alike (AC-13), including the district mount
+ * where the other two render nothing. Mounting it here rather than from `page.tsx` is what makes the
+ * unread case report ONCE — the banner below is the section's single statement that the roll-up could
+ * not be read, and the panel (which takes a RESOLVED breakdown) never stacks a second note above it.
  */
 export function BreakdownSection({
   level,
@@ -66,6 +73,27 @@ export function BreakdownSection({
 
   return (
     <section aria-label="Child breakdown" className="space-y-6">
+      {/*
+        THE TEACHER-ESTABLISHMENT PANEL (VACANCY-SURFACING-RULING V8), first in the section and so still
+        directly below the KPI strip, and NOT a fifth KPI card: the strip's four cards sit on a clean
+        2×2 / 1×4 grid, and a fifth single-number vacancy card would be the exact net-cancellation trap
+        the ruling exists to close (V7) — a near-zero national net hides large northern shortages
+        cancelled by southern surpluses. The panel presents the two GROSS magnitudes instead, with the
+        net subordinate and labelled, and the vacancy-rate dispersion that is the actual equity signal.
+
+        It is DERIVED FROM THE SAME `breakdown` READ the table below uses, so the panel, the table's
+        total-row cell and the comparison benchmark are one set of sums from one staffing scan (V11) —
+        not a second read that could disagree. Ungated by tier: see the file note.
+      */}
+      <TeacherEstablishmentPanel
+        breakdown={value}
+        chrome={chrome}
+        /* The officer's OWN tier as a NOUN, for the absence sentence ("No GES establishment in this
+           {tierNoun}"). From tierChrome so every tier reads a real noun — "country" at national,
+           "region"/"district"/"school" below — never the adjective ("regional" is not a noun). */
+        tierNoun={tierChrome(level, jurisdictionName).tierNoun}
+      />
+
       {/* Regional reading order: rank cards ABOVE the table. National's spread sits BELOW it. */}
       {level === "REGION" ? <RankStrip breakdown={value} /> : null}
 

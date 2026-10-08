@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { scopeFor, type JurisdictionScope } from "@/lib/db/rls";
-import { ok, unavailable, isOk, type Reading } from "@/lib/oversight/reading";
+import { unavailable, isOk, type Reading } from "@/lib/oversight/reading";
 import {
   childLevelFor,
   getChildBreakdown,
@@ -14,14 +14,18 @@ import {
   type BreakdownRow,
   type ChildBreakdown,
 } from "@/lib/oversight/breakdown";
-import { comparisonMetrics, weightedBenchmark } from "@/lib/oversight/comparison";
+import {
+  buildComparison,
+  comparisonMetrics,
+  weightedBenchmark,
+} from "@/lib/oversight/comparison";
 import { BreakdownTable } from "@/components/oversight/breakdown-table";
+import { BreakdownSection } from "@/components/oversight/breakdown-section";
 import {
   TeacherEstablishmentPanel,
   VACANCY_AXIS,
 } from "@/components/oversight/breakdown-visuals";
 import { ComparisonTable } from "@/components/oversight/comparison-table";
-import { buildComparison } from "@/lib/oversight/comparison";
 import { breakdownChrome } from "@/components/oversight/tier-chrome";
 import {
   JUR,
@@ -169,10 +173,11 @@ function textOf(markup: string): string {
 
 const CHROME = breakdownChrome("REGION", "Western Region");
 
-function panelMarkup(
-  breakdown: Reading<ChildBreakdown>,
-  tierNoun = "region",
-): string {
+/**
+ * The panel takes a RESOLVED `ChildBreakdown`, not a `Reading` (Dex N1): the unread case belongs to
+ * `BreakdownSection`'s one amber banner, which is asserted below through the section itself.
+ */
+function panelMarkup(breakdown: ChildBreakdown, tierNoun = "region"): string {
   return renderToStaticMarkup(
     createElement(TeacherEstablishmentPanel, { breakdown, chrome: CHROME, tierNoun }),
   );
@@ -292,7 +297,7 @@ describe("every vacancy figure sums PUBLIC-establishment rows only (ACs 1–3)",
     expect(staffingSchools).toBe(2);
     expect(est.schoolsWithEstablishment).toBe(1);
     // The panel STATES it, verbatim, with the exclusion named (Kofi V5).
-    const text = textOf(panelMarkup(ok(b)));
+    const text = textOf(panelMarkup(b));
     expect(text).toContain("Across 1 public school with a GES establishment");
     expect(text).toContain("private and mission schools are excluded");
   });
@@ -349,7 +354,7 @@ describe("the two-sided decomposition, never a lone net (ACs 4–6)", () => {
 
   it("the panel shows both magnitudes BESIDE the net, and the net is labelled 'net' (AC-4)", async () => {
     await withSchools([SHORT], async () => {
-      const text = textOf(panelMarkup(ok(await readBreakdown(regionScope))));
+      const text = textOf(panelMarkup(await readBreakdown(regionScope)));
       // Both gross magnitudes, each with its word.
       expect(text).toContain("Shortage");
       expect(text).toContain("12");
@@ -430,7 +435,7 @@ describe("the vacancy-rate spread is weighted, guarded and geography-free (ACs 7
     // The shared fixture has exactly ONE child with an establishment, so there is no spread to draw…
     const one = await readBreakdown(regionScope);
     expect(spreadOf(one, (r) => r.vacancyRate)).toBeNull();
-    const oneText = textOf(panelMarkup(ok(one)));
+    const oneText = textOf(panelMarkup(one));
     expect(oneText).not.toContain("Vacancy rate");
     expect(oneText).not.toContain("-point spread");
     // …but the two magnitudes and the net still render: the missing bar degrades ONE element.
@@ -438,7 +443,7 @@ describe("the vacancy-rate spread is weighted, guarded and geography-free (ACs 7
     expect(oneText).toMatch(/Net\s+3 teachers over establishment/);
     // …and with a second rate-carrying child it appears.
     await withSchools([SHORT], async () => {
-      const twoText = textOf(panelMarkup(ok(await readBreakdown(regionScope))));
+      const twoText = textOf(panelMarkup(await readBreakdown(regionScope)));
       expect(twoText).toContain("Vacancy rate");
       expect(twoText).toContain("-point spread");
     });
@@ -446,7 +451,7 @@ describe("the vacancy-rate spread is weighted, guarded and geography-free (ACs 7
 
   it("the spread caption states only the magnitude and names NO geography (AC-8)", async () => {
     await withSchools([SHORT], async () => {
-      const text = textOf(panelMarkup(ok(await readBreakdown(regionScope))));
+      const text = textOf(panelMarkup(await readBreakdown(regionScope)));
       // (12/50) − (−3/38) = 0.3189… → 31.9 points.
       expect(text).toContain("31.9-point spread");
       for (const forbidden of ["northern", "north", "greater accra", "rural", "urban"]) {
@@ -459,7 +464,7 @@ describe("the vacancy-rate spread is weighted, guarded and geography-free (ACs 7
 
   it("the bar's dots are navy at the surplus end and terra at the shortage end — never green", async () => {
     await withSchools([SHORT], async () => {
-      const markup = panelMarkup(ok(await readBreakdown(regionScope)));
+      const markup = panelMarkup(await readBreakdown(regionScope));
       const bar = markup.slice(markup.indexOf("Vacancy rate"));
       // Kofi V6/V8: a green dot at the surplus end would read "too many teachers here while the north
       // is short" as success. The surplus end is NEUTRAL navy; terra marks the adverse shortage end.
@@ -495,18 +500,16 @@ describe("the vacancy-rate spread is weighted, guarded and geography-free (ACs 7
     // The one thing a spread surface must never do is under-draw a gap its caption quotes. So an
     // out-of-axis value withholds the bar and says why, rather than pinning a dot to the rail.
     const text = textOf(
-      panelMarkup(
-        ok({
-          childLevel: "DISTRICT",
-          hasCoverage: true,
-          unattributed: null,
-          children: [
-            blankRow({ childId: "a", name: "A", postsEstablished: 10, vacancyShortage: 9, vacancySurplus: 0, vacancyNet: 9, vacancyRate: 0.9, schoolsWithEstablishment: 1 }),
-            blankRow({ childId: "b", name: "B", postsEstablished: 10, vacancyShortage: 0, vacancySurplus: 1, vacancyNet: -1, vacancyRate: -0.1, schoolsWithEstablishment: 1 }),
-          ],
-          total: blankRow({ postsEstablished: 20, vacancyShortage: 9, vacancySurplus: 1, vacancyNet: 8, vacancyRate: 0.4, schoolsWithEstablishment: 2 }),
-        }),
-      ),
+      panelMarkup({
+        childLevel: "DISTRICT",
+        hasCoverage: true,
+        unattributed: null,
+        children: [
+          blankRow({ childId: "a", name: "A", postsEstablished: 10, vacancyShortage: 9, vacancySurplus: 0, vacancyNet: 9, vacancyRate: 0.9, schoolsWithEstablishment: 1 }),
+          blankRow({ childId: "b", name: "B", postsEstablished: 10, vacancyShortage: 0, vacancySurplus: 1, vacancyNet: -1, vacancyRate: -0.1, schoolsWithEstablishment: 1 }),
+        ],
+        total: blankRow({ postsEstablished: 20, vacancyShortage: 9, vacancySurplus: 1, vacancyNet: 8, vacancyRate: 0.4, schoolsWithEstablishment: 2 }),
+      }),
     );
     expect(text).toContain("spread is not drawn");
     expect(text).toContain("Widen VACANCY_AXIS");
@@ -565,13 +568,13 @@ describe("a number is never shown without a word, and a surplus is never green (
   });
 
   it("the panel's wording follows the same three-way convention (AC-10)", () => {
-    const shortText = textOf(panelMarkup(ok(rows)));
+    const shortText = textOf(panelMarkup(rows));
     expect(shortText).toMatch(/Net\s+8 posts unfilled/);
     const balanced: ChildBreakdown = {
       ...rows,
       total: blankRow({ postsEstablished: 100, vacancyShortage: 7, vacancySurplus: 7, vacancyNet: 0, vacancyRate: 0, schoolsWithEstablishment: 4 }),
     };
-    const balancedText = textOf(panelMarkup(ok(balanced)));
+    const balancedText = textOf(panelMarkup(balanced));
     expect(balancedText).toContain("at establishment");
     expect(balancedText).toContain("balanced");
   });
@@ -618,7 +621,7 @@ describe("absence is absence; a cancelled zero is a measurement (ACs 16, 17)", (
         expect(b.total.vacancyNet).not.toBe(0);
         expect(teacherEstablishmentOf(b)).toBeNull();
         // The panel says so, in the tier's own words, and the rest of the page is unaffected.
-        const text = textOf(panelMarkup(ok(b), "district"));
+        const text = textOf(panelMarkup(b, "district"));
         expect(text).toContain("No GES establishment in this district");
         expect(text).toContain("private and mission schools carry none");
         expect(text).not.toContain("0 posts unfilled");
@@ -648,7 +651,7 @@ describe("absence is absence; a cancelled zero is a measurement (ACs 16, 17)", (
         expect(est!.net).toBe(0);
         expect(est!.shortage).toBe(3);
         expect(est!.surplus).toBe(3);
-        const text = textOf(panelMarkup(ok(b)));
+        const text = textOf(panelMarkup(b));
         // The decomposition is rendered, and the zero is explained rather than printed bare.
         expect(text).toContain("Across 2 public schools with a GES establishment");
         expect(text).toContain("at establishment");
@@ -668,10 +671,28 @@ describe("absence is absence; a cancelled zero is a measurement (ACs 16, 17)", (
     expect(teacherEstablishmentOf(term)).toBeNull();
   });
 
-  it("the panel is fail-soft on an unreadable roll-up (AC-13)", () => {
-    const text = textOf(panelMarkup(unavailable<ChildBreakdown>()));
+  it("an unreadable roll-up is reported ONCE, by the section, not twice (AC-13)", () => {
+    // The panel mounts inside `BreakdownSection` (Dex N1), so the section's single amber banner owns
+    // the unread case: the panel takes a resolved breakdown and cannot stack a second "could not be
+    // read" note above it. The fail-soft behaviour is unchanged — one statement instead of two.
+    const text = textOf(
+      renderToStaticMarkup(
+        createElement(BreakdownSection, {
+          level: "REGION",
+          jurisdictionName: "Western Region",
+          homeId: null,
+          breakdown: unavailable<ChildBreakdown>(),
+          termLabel: null,
+          sittingLabel: null,
+        }),
+      ),
+    );
     expect(text).toContain("could not be read");
     expect(text).toContain("headline figures above are unaffected");
+    // EXACTLY ONE report of the absence — the double-reporting Dex N1 names.
+    expect(text.match(/could not be read/g)!).toHaveLength(1);
+    // The panel does not render its own absence note in this state at all.
+    expect(text).not.toContain("GES-authorised posts");
     // No figure is invented in the failure state.
     expect(text).not.toMatch(/\d/);
   });
@@ -925,17 +946,18 @@ describe("the comparison row is UNRANKED, signed and benchmarked over public chi
     );
   });
 
-  it("the rendered cells carry words, and the benchmark is written as a rate", () => {
+  /** Render the vacancy row alone, over two columns whose nets the caller chooses. */
+  const renderVacancyRow = (shortNet: number, overNet: number) => {
     const columns = [
-      { id: "s", row: blankRow({ childId: "s", name: "Short", postsEstablished: 40, vacancyShortage: 9, vacancySurplus: 0, vacancyNet: 9 }), coverageAmbiguous: false },
-      { id: "o", row: blankRow({ childId: "o", name: "Over", postsEstablished: 40, vacancyShortage: 0, vacancySurplus: 4, vacancyNet: -4 }), coverageAmbiguous: false },
+      { id: "s", row: blankRow({ childId: "s", name: "Short", postsEstablished: 40, vacancyShortage: Math.max(shortNet, 0), vacancySurplus: Math.max(-shortNet, 0), vacancyNet: shortNet }), coverageAmbiguous: false },
+      { id: "o", row: blankRow({ childId: "o", name: "Over", postsEstablished: 40, vacancyShortage: Math.max(overNet, 0), vacancySurplus: Math.max(-overNet, 0), vacancyNet: overNet }), coverageAmbiguous: false },
     ];
     const model = buildComparison({
       metrics: [vacancy!],
       benchmarkPopulation: columns.map((c) => c.row),
       columns,
     });
-    const markup = renderToStaticMarkup(
+    return renderToStaticMarkup(
       createElement(ComparisonTable, {
         model,
         columns: [
@@ -947,6 +969,10 @@ describe("the comparison row is UNRANKED, signed and benchmarked over public chi
         footnote: null,
       }),
     );
+  };
+
+  it("the rendered cells carry words, and the benchmark is written as a rate", () => {
+    const markup = renderVacancyRow(9, -4);
     const text = textOf(markup);
     expect(text).toContain("+9 unfilled");
     expect(text).toContain("4 over");
@@ -956,6 +982,28 @@ describe("the comparison row is UNRANKED, signed and benchmarked over public chi
     const cells = markup.slice(markup.indexOf("Teacher vacancies"));
     expect(cells).toContain("text-terra");
     expect(cells).not.toContain("text-green");
+  });
+
+  /**
+   * THE BENCHMARK CELL CARRIES A WORD TOO (Dex B1). It is a SIGNED rate under a header that reads
+   * "District average", so a bare "-6%" there misreads as "6% below average" — the exact failure the
+   * signed-count rule forbids one column to the left. `signedRate` is the arm that fixes it.
+   */
+  it("the benchmark is WORDED, never a bare signed percentage (B1)", () => {
+    // Net −5 over 80 posts = −6.25% → a SURPLUS reference line.
+    const over = textOf(renderVacancyRow(-9, 4));
+    expect(over).toContain("6% over");
+    expect(over).not.toMatch(/[-−]\s?6%/);
+
+    // Net +5 over 80 = +6.25% → a SHORTAGE reference line, worded and unsigned.
+    const short = textOf(renderVacancyRow(9, -4));
+    expect(short).toContain("6% short");
+    expect(short).not.toMatch(/\+\s?6%/);
+
+    // A true zero reference line is the panel's own wording, not "0%".
+    const balanced = textOf(renderVacancyRow(4, -4));
+    const benchmarkText = balanced.slice(balanced.indexOf("Teacher vacancies"));
+    expect(benchmarkText).toContain("at establishment");
   });
 
   it("the stale 'Teacher vacancies … stay ABSENT' comment is gone, and the others stand", () => {

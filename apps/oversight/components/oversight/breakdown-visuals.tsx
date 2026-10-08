@@ -6,10 +6,10 @@ import {
   type BreakdownRow,
   type ChildBreakdown,
 } from "@/lib/oversight/breakdown";
-import { isOk, type Reading } from "@/lib/oversight/reading";
 import { Panel } from "./primitives";
 import { formatCount, formatRatio, formatRatioPercent } from "./kpi-card";
 import { pluralNoun, type BreakdownChrome } from "./tier-chrome";
+import { vacancyTone } from "./vacancy-tone";
 
 /**
  * THE SPREAD PANEL AND THE RANK STRIP (increment I slice 3, Lucy's breakdown map §4.4 / §4.5).
@@ -57,20 +57,71 @@ export const PTR_AXIS = { lo: 10, hi: 60 } as const;
  * the whole §3 seeded range and `tests/oversight-child-breakdown.test.ts` asserts no seeded tier/child
  * value clamps (Kofi §10.4). Widen PTR_AXIS, do not let this clamp silently, before plotting any future
  * value outside the window.
+ *
+ * (`projectVacancyRate` below is the FAIL-LOUD pattern this one predates: it returns null and the panel
+ * withholds the bar with a reason, which is what a new projection should copy.)
  */
 function projectPtr(value: number): number {
   return Math.min(1, Math.max(0, (value - PTR_AXIS.lo) / (PTR_AXIS.hi - PTR_AXIS.lo)));
 }
 
-/** Gap in PERCENTAGE POINTS, derived — the mock's "18-point gap" is its own data, not a constant. */
-function gapPoints(min: number, max: number): string {
-  return ((max - min) * 100).toFixed(0);
+/**
+ * Gap in PERCENTAGE POINTS, derived — the mock's "18-point gap" is its own data, not a constant.
+ *
+ * `decimals` because the two callers quote the same idiom at different precisions: the equity caption's
+ * whole points ("an 18-point WASSCE gap") and the vacancy caption's one decimal ("a 31.9-point spread").
+ * It is one function and not two spellings of `(max − min) × 100` (Dex N5) — the figure is
+ * axis-independent, so it must not drift between the surfaces that quote it.
+ */
+function gapPoints(min: number, max: number, decimals = 0): string {
+  return ((max - min) * 100).toFixed(decimals);
 }
 
 /**
+ * THE END-DOT TONE VOCABULARY for a measure with NO good end — a CLOSED union, deliberately (Dex N4).
+ *
+ * The only two tones such an axis may use are the neutral navy and the adverse terra. The union is what
+ * makes `endTones={{ low: "text-green", … }}` (or `bg-green`, or any passing string) a TYPE ERROR rather
+ * than a quiet re-introduction of the green dot the vacancy ruling exists to forbid (Kofi V6/V8).
+ */
+type EndDotTone = "bg-navy" | "bg-terra";
+
+/**
+ * HOW THE TWO END DOTS ARE TONED — exactly ONE of the two modes, never both (Dex N2).
+ *
+ * They are mutually exclusive by type because they are mutually exclusive in meaning: `goodEnd` says
+ * "this axis has a good end, put the green dot there", and `endTones` says "this axis has none, here are
+ * the two tones". A caller passing both would be asserting both at once, and the implementation would
+ * have to pick a winner silently — so the type refuses the call instead.
+ */
+type SpreadEnds =
+  | {
+      /**
+       * Which END of the axis is good: "high" puts the green dot at the high/right end (the rate bars),
+       * "low" at the low/left end (PTR, where fewer pupils per teacher is better). The axis itself still
+       * increases left→right — "inverted" is purely which end is green.
+       */
+      goodEnd: "high" | "low";
+      endTones?: never;
+    }
+  | {
+      goodEnd?: never;
+      /**
+       * THE TWO END DOTS' TONES, for a measure whose axis has NO "good" end.
+       *
+       * The VACANCY-RATE bar is the one caller, because its axis CROSSES ZERO: the low end is surplus
+       * (teachers over establishment), which is an allocation inefficiency and NOT a good outcome, so a
+       * green dot there would read "too many teachers here while the north is short" as success (Kofi
+       * V6/V8). It takes the neutral navy instead, with terra kept for the shortage end, which IS the
+       * adverse state.
+       */
+      endTones: { low: EndDotTone; high: EndDotTone };
+    };
+
+/**
  * One spread row. Takes TRACK POSITIONS (0..1), not raw figures, so a rate bar (0–100% axis) and the
- * PTR bar (projected onto PTR_AXIS) share one component. `goodEnd` is the ONLY thing the inversion
- * changes: "high" puts the green dot at the high/right end (rates), "low" at the low/left end (PTR).
+ * PTR bar (projected onto PTR_AXIS) share one component. The end dots are toned either by `goodEnd` or
+ * by an explicit `endTones` pair — see `SpreadEnds`.
  */
 function SpreadBar({
   label,
@@ -86,25 +137,14 @@ function SpreadBar({
   lowPos: number;
   highPos: number;
   meanPos: number | null;
-  goodEnd: "high" | "low";
   rangeText: string;
   meanText: string | null;
-  /**
-   * OVERRIDE THE TWO END DOTS' TONES — for a measure whose axis has no "good" end.
-   *
-   * Omitted (every rate bar, and PTR) ⇒ green on the `goodEnd` side, terra on the other, unchanged.
-   * The VACANCY-RATE bar passes it because its axis CROSSES ZERO: the low end is surplus (teachers over
-   * establishment), which is an allocation inefficiency and NOT a good outcome, so a green dot there
-   * would read "too many teachers here while the north is short" as success (Kofi V6/V8). It gets the
-   * neutral navy instead, with terra kept for the shortage end, which IS the adverse state.
-   */
-  endTones?: { low: string; high: string };
-}) {
+} & SpreadEnds) {
   // The green (best) dot goes to whichever END this measure counts as good; terra (worst) to the other.
   // The dots are positioned by END (low/high) and TONED by valence, which is what lets a measure with
-  // no good end (the vacancy rate) override the tones without a second pair of dots.
-  const lowTone = endTones?.low ?? (goodEnd === "low" ? "bg-green" : "bg-terra");
-  const highTone = endTones?.high ?? (goodEnd === "high" ? "bg-green" : "bg-terra");
+  // no good end (the vacancy rate) tone them explicitly without a second pair of dots.
+  const lowTone = endTones ? endTones.low : goodEnd === "low" ? "bg-green" : "bg-terra";
+  const highTone = endTones ? endTones.high : goodEnd === "high" ? "bg-green" : "bg-terra";
   return (
     <div className="flex items-center gap-3 border-b border-border-1 py-3 last:border-b-0">
       <span className="w-[140px] shrink-0 text-[11.5px] font-semibold text-navy">
@@ -126,9 +166,14 @@ function SpreadBar({
           />
         )}
         {/*
-          The two END dots, positioned by end and toned by valence. Without `endTones` the mapping is
-          exactly the historical one — green on the `goodEnd` side, terra on the other — written as
-          low/high so a measure with no good end can override the tones without a second pair of dots.
+          The two END dots, positioned by END and toned by VALENCE. Under `goodEnd` the mapping is green
+          on the good side and terra on the other; under `endTones` the caller states both, which is how
+          a measure with no good end avoids a green dot without needing a second pair of dots.
+
+          The HIGH dot carries `z-10` so the overlap is STATED rather than left to source order: when the
+          two extremes coincide (every child on the same rate — `spreadOf` permits min === max) the dots
+          sit on the same point, and the high/worse end is the one that must be visible. The DOM order is
+          unchanged (low first, then high), so nothing else about the bar moves.
         */}
         <span
           aria-hidden
@@ -141,7 +186,7 @@ function SpreadBar({
         <span
           aria-hidden
           className={cn(
-            "absolute top-1/2 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface",
+            "absolute top-1/2 z-10 h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface",
             highTone,
           )}
           style={{ left: pct(highPos) }}
@@ -302,9 +347,10 @@ export function SpreadPanel({
  *
  * ═══ IT IS DERIVED, NOT RE-READ ══════════════════════════════════════════════════════════════════
  * Every figure comes off `breakdown.total` and `breakdown.children` — the one staffing scan — so the
- * panel, the table's total-row cell and the comparison benchmark cannot disagree (V11). Fail-soft on its
- * own two-state reading: an unreadable or all-private tier renders an absence note and leaves the rest
- * of the page standing.
+ * panel, the table's total-row cell and the comparison benchmark cannot disagree (V11). It has ONE
+ * fail-soft of its own: an all-private/mission tier renders the absence note and leaves the rest of the
+ * page standing. An UNREADABLE roll-up is not its business — it mounts inside `BreakdownSection`, whose
+ * single amber banner reports that once for the whole section (Dex N1).
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /**
@@ -331,24 +377,26 @@ function projectVacancyRate(value: number): number | null {
 }
 
 /**
- * THE SIGN/LABEL CONVENTION, IN ONE PLACE (Kofi V6) — never a bare signed integer.
+ * THIS PANEL'S WORDING for the signed net (Kofi V6) — never a bare signed integer.
  *
- * Positive is a SHORTAGE ("posts unfilled"), the adverse state, in terra. Negative is a SURPLUS
- * ("teachers over establishment"), in NEUTRAL NAVY and deliberately NOT green: over-establishment is an
- * allocation inefficiency, not a success, and a green tone would read "too many teachers here while the
- * north is short" as a good outcome. Exactly 0, with a real public denominator, is "at establishment".
+ * The WORDS are this surface's own: the panel has room for the full phrase ("12 posts unfilled",
+ * "12 teachers over establishment"), where the breakdown table's narrow cell writes "+12 unfilled" and
+ * the comparison's benchmark writes a rate. Three legitimate phrasings, one per column width.
+ *
+ * The TONE is NOT decided here — it comes from `vacancyTone()`, the single home for the never-green
+ * rule that all three surfaces share (Dex N6). Positive is a SHORTAGE, the adverse state, in terra;
+ * negative is a SURPLUS in neutral navy; exactly 0, with a real public denominator, is "at
+ * establishment".
  */
 function vacancyWords(net: number): { text: string; tone: string } {
+  const tone = vacancyTone(net);
   if (net > 0) {
-    return { text: `${formatCount(net)} posts unfilled`, tone: "text-terra" };
+    return { text: `${formatCount(net)} posts unfilled`, tone };
   }
   if (net < 0) {
-    return {
-      text: `${formatCount(Math.abs(net))} teachers over establishment`,
-      tone: "text-navy",
-    };
+    return { text: `${formatCount(Math.abs(net))} teachers over establishment`, tone };
   }
-  return { text: "at establishment", tone: "text-navy" };
+  return { text: "at establishment", tone };
 }
 
 /** One of the two GROSS magnitudes — a number and a word, never a number alone. */
@@ -384,7 +432,12 @@ export function TeacherEstablishmentPanel({
   /** The officer's OWN tier noun, for the absence sentence ("No GES establishment in this region"). */
   tierNoun,
 }: {
-  breakdown: Reading<ChildBreakdown>;
+  /**
+   * The RESOLVED roll-up, not a `Reading` (Dex N1). The unread case is owned by `BreakdownSection`'s one
+   * amber banner, which is the section this panel mounts inside: a second "could not be read" note here
+   * stacked two reports of the same absence on the page.
+   */
+  breakdown: ChildBreakdown;
   chrome: BreakdownChrome;
   tierNoun: string;
 }) {
@@ -399,14 +452,8 @@ export function TeacherEstablishmentPanel({
     </Panel>
   );
 
-  // FAIL-SOFT #1: the roll-up itself could not be read. The panel says so and the page stands.
-  if (!isOk(breakdown)) {
-    return absence(
-      "Teacher establishment could not be read. The headline figures above are unaffected.",
-    );
-  }
-  const establishment = teacherEstablishmentOf(breakdown.value);
-  // FAIL-SOFT #2 — and the one that is a RULING, not a failure (Kofi V12): a tier with no
+  const establishment = teacherEstablishmentOf(breakdown);
+  // THE ONE FAIL-SOFT — and it is a RULING, not a failure (Kofi V12): a tier with no
   // public-establishment school is genuinely UNAVAILABLE. It is NOT "0 posts unfilled / fully staffed",
   // which is what a `coalesce(sum(…), 0)` anywhere upstream would have printed here.
   if (establishment === null) {
@@ -425,13 +472,15 @@ export function TeacherEstablishmentPanel({
    * vacancy rate (never the unweighted mean of child rates). It renders only with ≥2 children carrying a
    * rate — its own empty guard — so there are no zero-width bars.
    */
-  const spread = spreadOf(breakdown.value, (row) => row.vacancyRate);
+  const spread = spreadOf(breakdown, (row) => row.vacancyRate);
   const lowPos = spread === null ? null : projectVacancyRate(spread.min);
   const highPos = spread === null ? null : projectVacancyRate(spread.max);
   // FAIL LOUD, never a silently clamped bar: if either extreme lies outside the STATED axis the bar is
   // withheld and the reason is printed, because the caption below quotes the true (max − min) spread.
   const spreadClamped = spread !== null && (lowPos === null || highPos === null);
-  const spreadPoints = spread === null ? null : ((spread.max - spread.min) * 100).toFixed(1);
+  // The shared idiom, not a second spelling of it (Dex N5) — and AXIS-INDEPENDENT, which is why the
+  // clamp note below can still quote it after withholding the bar.
+  const spreadPoints = spread === null ? null : gapPoints(spread.min, spread.max, 1);
 
   return (
     <Panel title={title} meta="GES-authorised posts">
@@ -503,7 +552,8 @@ export function TeacherEstablishmentPanel({
             lowPos={lowPos!}
             highPos={highPos!}
             meanPos={spread.mean === null ? null : projectVacancyRate(spread.mean)}
-            goodEnd="low"
+            /* No `goodEnd`: this axis HAS no good end (surplus is not success), so the two tones are
+               stated outright. The two props are mutually exclusive by type (Dex N2/N3). */
             endTones={{ low: "bg-navy", high: "bg-terra" }}
             rangeText={`${formatRatioPercent(spread.min, 1)}% – ${formatRatioPercent(spread.max, 1)}%`}
             meanText={
@@ -518,6 +568,13 @@ export function TeacherEstablishmentPanel({
           falls outside the stated axis ({formatRatioPercent(VACANCY_AXIS.lo, 0)}% to{" "}
           {formatRatioPercent(VACANCY_AXIS.hi, 0)}%), and a bar that clamped it would
           under-draw the real spread. Widen VACANCY_AXIS.
+          {/*
+            THE FIGURE SURVIVES THE BAR. Withholding the drawing is the honest move; withholding the
+            SPREAD would be a second, unnecessary loss — the dispersion is (max − min), which is a fact
+            about the data and not about the axis, so it is stated here exactly as the caption below
+            states it when the bar does render.
+          */}
+          {spreadPoints === null ? null : ` The true spread is ${spreadPoints} points.`}
         </p>
       ) : null}
       {spread === null || spreadClamped || spreadPoints === null ? null : (

@@ -22,7 +22,6 @@ import {
 import { childLevelFor, getChildBreakdown } from "@/lib/oversight/breakdown";
 import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
-import { TeacherEstablishmentPanel } from "@/components/oversight/breakdown-visuals";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Provenance } from "@/components/oversight/primitives";
 import { PeriodBanner } from "@/components/oversight/period-banner";
@@ -33,7 +32,6 @@ import {
   formatRatio,
   formatRatioPercent,
 } from "@/components/oversight/kpi-card";
-import { breakdownChrome } from "@/components/oversight/tier-chrome";
 import {
   buildLedeFragments,
   buildTitle,
@@ -423,29 +421,6 @@ export default async function OversightHome() {
             }
           />
         </section>
-
-        {/*
-          INCREMENT J — THE TEACHER-ESTABLISHMENT PANEL (VACANCY-SURFACING-RULING V8).
-
-          Here, directly below the KPI strip, and NOT as a fifth KPI card: the strip's four cards sit on a
-          clean 2×2 / 1×4 grid, and a fifth single-number vacancy card would be the exact net-cancellation
-          trap the ruling exists to close (V7) — a near-zero national net hides large northern shortages
-          cancelled by southern surpluses. The panel presents the two GROSS magnitudes instead, with the
-          net subordinate and labelled, and the vacancy-rate dispersion that is the actual equity signal.
-
-          It is DERIVED FROM THE SAME `breakdown` READ the table below uses, so the panel, the table's
-          total-row cell and the comparison benchmark are one set of sums from one staffing scan (V11) —
-          not a second read that could disagree. Tier-polymorphic, and fail-soft on its own: an unreadable
-          or all-private/mission tier renders an absence note and leaves the rest of this page standing.
-        */}
-        <TeacherEstablishmentPanel
-          breakdown={breakdown}
-          chrome={breakdownChrome(officer.level, officer.jurisdictionName)}
-          /* The officer's OWN tier as a NOUN, for the absence sentence ("No GES establishment in this
-             {tierNoun}"). From tierChrome so every tier reads a real noun — "country" at national,
-             "region"/"district"/"school" below — never the adjective ("regional" is not a noun). */
-          tierNoun={chrome.tierNoun}
-        />
 
         {/*
           SLICE 3 — Lucy's Section 02, as a SECTION rather than a route (see BreakdownSection's note).
