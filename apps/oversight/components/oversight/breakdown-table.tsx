@@ -18,6 +18,13 @@ import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome"
  * is outside the `hasCoverage` pair. The per-child value is Σenrolment ÷ Σteachers (breakdown.ts), never
  * avg(stored ptr).
  *
+ * THE VACANCIES COLUMN sits directly AFTER PTR (increment J, VACANCY-SURFACING-RULING V9) and is the one
+ * column over a NARROWER population than the rest: GES sets an establishment for PUBLIC schools only, so
+ * its header states that denominator and a child with none renders the em-dash titled "No GES
+ * establishment", never a 0. Its value is the child's SIGNED net with a word and a tone; the
+ * authoritative shortage/surplus decomposition belongs to the "Teacher establishment" panel, not to the
+ * total row — a lone tier net is banned (V1).
+ *
  * ═══ WHAT IS NOT HERE, AND WHY — each omission is a claim this surface would otherwise make ═══════
  * · THE DRILL ARROW AND THE ROW LINK. The mock's rows open "that region's regional dashboard", and this
  *   slice mounts the breakdown as a section on the ONE `/` dashboard (the slice-1/2 single-route
@@ -93,10 +100,17 @@ export function initialsOf(name: string): string {
   return letters.length > 0 ? letters.join("") : "—";
 }
 
-/** The muted `—`: a cell with no measure. Never a fabricated 0, never a confident green. */
-function Absent() {
+/**
+ * The muted `—`: a cell with no measure. Never a fabricated 0, never a confident green.
+ *
+ * `title` is overridable because the ABSENCES are not all the same absence: for most columns the cell is
+ * empty because no return was filed, but for the Vacancies column it is empty because GES sets no
+ * establishment for the child's schools at all (Kofi V9/V12) — a different fact, which the affordance
+ * must state rather than flatten into "No return filed".
+ */
+function Absent({ title = "No return filed" }: { title?: string } = {}) {
   return (
-    <span className="text-navy-3" title="No return filed">
+    <span className="text-navy-3" title={title}>
       —
     </span>
   );
@@ -190,9 +204,11 @@ export function BreakdownTable({
   const isHome = (row: BreakdownRow): boolean =>
     row.childId !== null && row.childId === homeId;
   const homeRow = children.find(isHome) ?? null;
-  // +1 for the PTR column, which — unlike Schools/Coverage — renders at EVERY tier (every school files a
-  // staffing row), so it is outside the `hasCoverage` pair: 6→7 with coverage, 4→5 without.
-  const columns = hasCoverage ? 7 : 5;
+  // +1 for the PTR column and +1 for Vacancies, both of which — unlike Schools/Coverage — render at
+  // EVERY tier, so they sit outside the `hasCoverage` pair: 6→8 with coverage, 4→6 without. (Vacancies
+  // renders its own `<Absent/>` where a child has no GES establishment, which is a CELL state, not a
+  // reason to drop the column: the absence is the finding.)
+  const columns = hasCoverage ? 8 : 6;
 
   /** One cell renderer per measure, so the child rows, the unattributed row and the total agree. */
   const schoolsCell = (row: BreakdownRow) =>
@@ -220,6 +236,54 @@ export function BreakdownTable({
   // mislead. `{ratio}:1`, one decimal (Kofi), bold on the total row like every other total cell.
   const ptrCell = (row: BreakdownRow, bold?: boolean) =>
     row.ptr === null ? <Absent /> : <Num bold={bold}>{formatRatio(row.ptr, 1)}:1</Num>;
+
+  /**
+   * VACANCIES — the child's SIGNED NET against its GES establishment, with a WORD and a TONE (Kofi V6).
+   *
+   * A per-child signed net is INFORMATIVE here, not misleading (V9): the children ARE the geographic
+   * split a tier-level net would otherwise cancel — a northern region reads terra, Greater Accra reads
+   * navy. Positive is terra ("+n unfilled", the adverse state); negative is NEUTRAL NAVY ("n over"),
+   * deliberately NOT green, because over-establishment is a maldistribution and not a success; a real 0
+   * on a real public denominator is "balanced". Never a bare signed integer.
+   *
+   * A child with NO public establishment renders the em-dash with its OWN title — "No GES establishment"
+   * — and never a 0: all-private/mission districts are visibly EXCLUDED, not silently zero'd (V12, AC-3).
+   *
+   * The TOTAL row shows the net and DEFERS the authoritative shortage/surplus decomposition to the
+   * "Teacher establishment" panel (V9): a lone tier net is banned, so the cell's `title` carries the two
+   * gross magnitudes and points at the panel, which is the honesty anchor.
+   */
+  const vacancyCell = (row: BreakdownRow, bold?: boolean) => {
+    if (row.vacancyNet === null) {
+      return <Absent title="No GES establishment" />;
+    }
+    const net = row.vacancyNet;
+    const title =
+      row.vacancyShortage === null || row.vacancySurplus === null
+        ? undefined
+        : `${formatCount(row.vacancyShortage)} posts unfilled · ${formatCount(
+            row.vacancySurplus,
+          )} teachers over establishment — see the Teacher establishment panel`;
+    return (
+      <span
+        className={cn(
+          "font-mono text-[11px]",
+          bold && "font-bold",
+          net > 0 ? "text-terra" : "text-navy",
+        )}
+        title={title}
+      >
+        {/* The WORD carries the sign, so the magnitude is written unsigned on the surplus side: "3
+            over" rather than "−3 over", which reads as a double negative beside "over establishment".
+            The "+" is kept on the shortage side because that is the mock's/ruling's shorthand. */}
+        {net > 0
+          ? `+${formatCount(net)} unfilled`
+          : net < 0
+            ? `${formatCount(Math.abs(net))} over`
+            : "balanced"}
+      </span>
+    );
+  };
 
   return (
     <div>
@@ -285,6 +349,16 @@ export function BreakdownTable({
               <th scope="col" className={cn(TH, "text-center")}>
                 PTR
               </th>
+              {/* VACANCIES, AFTER PTR (Kofi V9). The header carries the PUBLIC-ONLY denominator, which is
+                  NARROWER than every other column's: establishment and vacancies exist for public
+                  schools only, so the column describes a different population and must say so. */}
+              <th
+                scope="col"
+                className={cn(TH, "text-center")}
+                title="Signed net against the GES establishment, over PUBLIC schools with an establishment only — private and mission schools carry none. Positive = posts unfilled; negative = teachers over establishment."
+              >
+                Vacancies
+              </th>
               {/*
                 THE RANKING WEIGHT, VISIBLE (Wells §5). The rank cards below ignore children with fewer
                 than 30 candidates, and that floor governs the superlative claim only — so the count it
@@ -341,6 +415,7 @@ export function BreakdownTable({
                   {row.wassceRate === null ? <Absent /> : <QualPill rate={row.wassceRate} />}
                 </td>
                 <td className={cn(TD, "text-center")}>{ptrCell(row)}</td>
+                <td className={cn(TD, "text-center")}>{vacancyCell(row)}</td>
                 <td className={cn(TD, "text-center")}>{candidatesCell(row)}</td>
               </tr>
             ))}
@@ -381,6 +456,7 @@ export function BreakdownTable({
                   )}
                 </td>
                 <td className={cn(TD, "text-center")}>{ptrCell(unattributed)}</td>
+                <td className={cn(TD, "text-center")}>{vacancyCell(unattributed)}</td>
                 <td className={cn(TD, "text-center")}>{candidatesCell(unattributed)}</td>
               </tr>
             )}
@@ -413,6 +489,7 @@ export function BreakdownTable({
                 {total.wassceRate === null ? <Absent /> : <QualPill rate={total.wassceRate} />}
               </td>
               <td className={cn(TD, "text-center")}>{ptrCell(total, true)}</td>
+              <td className={cn(TD, "text-center")}>{vacancyCell(total, true)}</td>
               <td className={cn(TD, "text-center")}>{candidatesCell(total)}</td>
             </tr>
           </tbody>

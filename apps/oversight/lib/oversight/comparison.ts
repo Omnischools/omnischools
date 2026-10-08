@@ -159,7 +159,7 @@ export function rankMarks(
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** How a cell's number is written. The component maps this to a formatter; the engine decides no format. */
-export type MetricKind = "pupils" | "count" | "rate" | "ratio";
+export type MetricKind = "pupils" | "count" | "rate" | "ratio" | "signedCount";
 
 /** The benchmark column's derivation for a metric (Kofi R3.4). `none` ⇒ no benchmark cell (coverage). */
 export type BenchmarkSpec =
@@ -177,6 +177,15 @@ export interface ComparisonMetricSpec {
   label: string;
   subLabel: string;
   kind: MetricKind;
+  /**
+   * How the BENCHMARK cell is written, when it is a different shape from the cells.
+   *
+   * Absent ⇒ the benchmark is written like the cells, which is true of every metric but one. Teacher
+   * vacancies is the exception by ruling: its cells are signed COUNTS while its benchmark is the weighted
+   * vacancy RATE (Σvacancies ÷ Σestablished, V10) — two different units in one row, so the row has to be
+   * able to say so rather than format a rate as if it were a count of posts.
+   */
+  benchmarkKind?: MetricKind;
   direction: MetricDirection;
   /** The value a cell shows, off one entity's row. Null ⇒ the muted `—`. */
   valueOf: (row: BreakdownRow) => number | null;
@@ -230,10 +239,13 @@ export interface ComparisonModel {
 
 /**
  * THE CATALOGUE. Every measure reads off `BreakdownRow` — the fast-follow added the attendance components
- * to that row (one additive UNION arm; COMPARISON-FASTFOLLOW-DATA-PLAN). Teacher vacancies and the 4-year
- * trend stay ABSENT rather than rendered as `—` rows claiming a measure exists; FEES is DEFERRED — it is
+ * to that row (one additive UNION arm; COMPARISON-FASTFOLLOW-DATA-PLAN). The 4-year trend stays ABSENT
+ * rather than rendered as a `—` row claiming a measure exists; FEES is DEFERRED — it is
  * billed-not-collected distributional data with no pupil denominator (Kofi R11) that cannot be honestly
- * ranked or benchmarked on this surface. GIRLS' SHARE is now BUILT: the enrolment grain is settled as
+ * ranked or benchmarked on this surface. TEACHER VACANCIES is now BUILT: `fact_staffing` carries a signed
+ * `vacancies` and a public-only `teaching_posts_established`, so the row reads a real signed net against
+ * a real weighted vacancy-rate benchmark — UNRANKED, because neither a shortage nor a surplus is the
+ * "good" end (VACANCY-SURFACING-RULING V10). GIRLS' SHARE is now BUILT: the enrolment grain is settled as
  * ANNUAL (enrolment-grain ruling), and the share reads femaleEnrolment ÷ enrolment off the same ANNUAL
  * fact as a real Σ÷Σ benchmark.
  *
@@ -337,6 +349,46 @@ export function comparisonMetrics(args: {
       valueOf: (r) => r.ptr,
       benchmark: { kind: "weighted", num: (r) => r.staffEnrolment, den: (r) => r.teachers },
       markLabel: { best: "best", worst: "worst" },
+    },
+    {
+      /**
+       * TEACHER VACANCIES — the mock's one attested vacancy surface (comparison workspace, "Attendance &
+       * staffing", directly under Pupil-teacher ratio), ruled by VACANCY-SURFACING-RULING V10.
+       *
+       * UNRANKED (`direction: "none"`), and that is the ruling's core posture, not a deferral: BOTH signs
+       * are adverse in different ways — a shortage understaffs a school, a surplus misallocates teachers
+       * away from the schools that are short — so there is no single "better" end to crown. Marking the
+       * largest surplus "best" would assert that over-establishment is a good outcome, which is the exact
+       * category error `girlsShare` (a parity measure) and `enrolment` (a size) already refuse. So the row
+       * is shown with its value and its benchmark and is never crowned; it carries no `markLabel`, so the
+       * mock's `most` dot does not render (Dex N1: no dead config).
+       *
+       * THE VALUE IS THE SIGNED NET WITH A WORD (V6) — `signedCount`, so no cell can print a bare signed
+       * integer: positive renders "+n unfilled" in terra, negative "n over" in neutral navy (never green),
+       * a real 0 "balanced". A per-entity signed net is honest at this grain for the same reason the
+       * breakdown's per-child column is (V9): the columns ARE the split a tier net would cancel.
+       *
+       * THE BENCHMARK IS THE WEIGHTED VACANCY RATE — Σvacancies ÷ Σestablished over the LIKE-FOR-LIKE
+       * population, never the mean of per-entity nets, and over PUBLIC children only by construction:
+       * `weightedBenchmark` skips any row where either component is null, and establishment/vacancies are
+       * NULL together for every private/mission entity (STAFFING-PTR-DOMAIN-RULING §4). So a private
+       * school is a named `—` cell AND contributes nothing to the reference line (V10, AC-15). It is a
+       * RATE while the cells are counts, which is why it carries its own `benchmarkKind`.
+       */
+      key: "teacherVacancies",
+      section: "Staffing",
+      // Verbatim from the mock (`Surfaces/schoolup-oversight-comparison-workspace.html` line 571).
+      label: "Teacher vacancies",
+      subLabel: "vs GES establishment",
+      kind: "signedCount",
+      direction: "none",
+      valueOf: (r) => r.vacancyNet,
+      benchmark: {
+        kind: "weighted",
+        num: (r) => r.vacancyNet,
+        den: (r) => r.postsEstablished,
+      },
+      benchmarkKind: "rate",
     },
   );
   if (hasCoverage) {

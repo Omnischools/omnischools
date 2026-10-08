@@ -46,6 +46,13 @@ export interface TierChrome {
   /** "National" | "Regional" | "District" — the crumb tail, the em, and the WASSCE sub-line word. */
   tierAdjective: string;
   /**
+   * The tier as a NOUN — "country" | "region" | "district" | "school" — for sentences that need the
+   * thing, not its adjective ("No GES establishment in this {tierNoun}"). "country" at national, since
+   * "this nation"/"this national" both read wrong. NOT `tierAdjective.toLowerCase()`: "regional" and
+   * "national" are adjectives, not nouns, and misread in a noun slot.
+   */
+  tierNoun: string;
+  /**
    * The child tier this officer's figures roll up FROM, or null where the children are schools.
    *
    * Null at DISTRICT is not an omission: a district's children are schools, which the "N schools
@@ -144,6 +151,7 @@ export function tierChrome(
       return {
         titleLead: "Ghana",
         tierAdjective: "National",
+        tierNoun: "country",
         childNoun: "region",
         // Two-part at national: there is no jurisdiction segment to insert, and "Oversight · Ghana ·
         // National dashboard" would imply Ghana is one node among siblings.
@@ -155,6 +163,7 @@ export function tierChrome(
       return {
         titleLead: subject,
         tierAdjective: "Regional",
+        tierNoun: "region",
         childNoun: "district",
         crumb: crumb("Regional"),
         // Names the region, because a regional director's ceiling is a specific place — or says "this
@@ -166,6 +175,7 @@ export function tierChrome(
       return {
         titleLead: subject,
         tierAdjective: "District",
+        tierNoun: "district",
         childNoun: null,
         crumb: crumb("District"),
         // ⚠ ASYMMETRY WITH REGION, AND IT IS THE MOCK'S (Lucy §1.5): the district line uses the
@@ -179,6 +189,7 @@ export function tierChrome(
       return {
         titleLead: subject,
         tierAdjective: "School",
+        tierNoun: "school",
         childNoun: null,
         crumb: crumb("School"),
         scopeLine: "school-ceiling · you cannot see other schools here",

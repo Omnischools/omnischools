@@ -170,6 +170,58 @@ export interface BreakdownRow {
    * better. Null when no attendance row was filed: 0/0 is not "nobody showed up".
    */
   attendanceRate: number | null;
+  /**
+   * ═══ THE TEACHER-ESTABLISHMENT COMPONENTS — PUBLIC-ONLY, AND THE DENOMINATOR IS NARROWER ═════════
+   *
+   * Σ teaching_posts_established over the child's schools that HAVE an establishment. GES sets an
+   * establishment for PUBLIC schools only, so `teaching_posts_established` (and therefore `vacancies`)
+   * is NULL for every PRIVATE/MISSION school (STAFFING-PTR-DOMAIN-RULING §4) and every sum here is
+   * taken over `teaching_posts_established IS NOT NULL` ONLY (§6 corollary, AC-17; Kofi V4). Those
+   * schools are VISIBLY EXCLUDED — null, never a 0 folded into the denominator — which is why this
+   * measure has its own row count and its own `schoolsWithEstablishment`, and is NOT the PTR/enrolment
+   * school count. Null when the child has no public-establishment school at all: that is genuine
+   * ABSENCE ("GES sets no establishment here"), never "0 posts".
+   */
+  postsEstablished: number | null;
+  /**
+   * The TWO-SIDED DECOMPOSITION of the signed `vacancies` column, split by sign at the school grain
+   * and then summed — Σ GREATEST(vacancies, 0), "posts unfilled".
+   *
+   * ⚠ A LONE NET Σ(vacancies) IS BANNED ABOVE SINGLE-SCHOOL GRAIN (Kofi V1/V3). Ghana's real
+   * distribution is shortage in the rural north and surplus in the urban south (the gradient
+   * `establishmentFactor` in lib/etl/staffing.ts bakes in), so one net figure cancels the two and can
+   * read as "roughly balanced" while hiding the exact equity story. The two gross magnitudes are
+   * therefore carried SEPARATELY, as summable components on the row, the same discipline
+   * `candidates`/`qualified` follow behind `wassceRate`. Both are spatial sums over school rows in ONE
+   * ANNUAL period (roll-up-safe, §6), and neither is floored in the read — the split happens per
+   * school, where the sign is honest, before anything is added up.
+   */
+  vacancyShortage: number | null;
+  /** Σ GREATEST(−vacancies, 0) — "teachers over establishment". The surplus half, never discarded. */
+  vacancySurplus: number | null;
+  /**
+   * shortage − surplus ≡ Σ vacancies, SIGNED: positive = net short, negative = net over establishment.
+   *
+   * Derived from the two gross magnitudes rather than summed from the signed column, so the read
+   * cannot produce a net without also producing the decomposition that qualifies it. A surface may
+   * show it ONLY labelled "net" and BESIDE the two magnitudes (V2); at single-school grain the signed
+   * value stands alone honestly, because there is no population to cancel across.
+   */
+  vacancyNet: number | null;
+  /**
+   * Σvacancies ÷ Σteaching_posts_established over the child's public-establishment schools — the
+   * normalised, roll-up-safe VACANCY RATE (a signed fraction: positive = net-short, negative =
+   * net-over). This is the dispersion measure the equity read hangs on (V3), and it is a Σ÷Σ per child,
+   * never the mean of per-school rates. Null when the child has no public establishment (never a 0/0).
+   */
+  vacancyRate: number | null;
+  /**
+   * `count(distinct school) FILTER (WHERE teaching_posts_established IS NOT NULL)` — the HONEST
+   * "Across N public schools with a GES establishment" denominator (V4/V5), and the two-state gate
+   * between UNAVAILABLE and a true net-zero (V12/V13): 0 here means there is no GES establishment in
+   * the child at all, which is absence, not "0 posts unfilled".
+   */
+  schoolsWithEstablishment: number | null;
   // NOTE: there is deliberately no `isHome` here, and no `scope.jurisdictionId` anywhere in this
   // module. Lucy's gold-tinted home row is a comparison between a child id and the officer's own node,
   // which is PRESENTATION — and keeping every `scope.*` field out of the read means the static guard
@@ -239,6 +291,14 @@ interface FactBucket {
   enrolledDays: number | null;
   /** Σ fact_enrolment.headcount, sex='FEMALE', class_form is null. Null = no enrolment row filed. */
   femaleEnrolment: number | null;
+  /** Σ teaching_posts_established over PUBLIC-establishment rows only. Null = the child has none. */
+  postsEstablished: number | null;
+  /** Σ GREATEST(vacancies, 0) over those same rows — posts unfilled. Null = the child has none. */
+  vacancyShortage: number | null;
+  /** Σ GREATEST(−vacancies, 0) over those same rows — teachers over establishment. */
+  vacancySurplus: number | null;
+  /** count(distinct school) with a non-null establishment — the honest public-only denominator. */
+  schoolsWithEstablishment: number | null;
 }
 
 interface RegisterBucket {
@@ -257,8 +317,9 @@ export async function getChildBreakdown(
     /** The ONE sitting the WASSCE columns are of. Null ⇒ those columns are simply absent. */
     examPeriodId: string | null;
     /**
-     * The ONE ANNUAL period the ENROLMENT, GIRLS'-SHARE and PTR columns are of. Null ⇒ those columns are
-     * absent. All three are STOCKS and hang off the SAME `dim_period` ANNUAL row the ETL writes against —
+     * The ONE ANNUAL period the ENROLMENT, GIRLS'-SHARE, PTR and TEACHER-ESTABLISHMENT columns are of.
+     * Null ⇒ those columns are absent. All are STOCKS and hang off the SAME `dim_period` ANNUAL row the
+     * ETL writes against —
      * enrolment and staffing by construction share it (`fact_staffing.enrolment_total` is enrolment's own
      * headcount roll, lib/etl/staffing.ts), which is why one id drives all three and never two that could
      * silently describe different years. See lib/oversight/enrolment.ts and lib/oversight/ptr.ts.
@@ -304,7 +365,10 @@ export async function getChildBreakdown(
                  0::bigint                   as teachers,
                  0::bigint                   as present_days,
                  0::bigint                   as enrolled_days,
-                 0::bigint                   as female_headcount
+                 0::bigint                   as female_headcount,
+                 0::bigint                   as posts_established,
+                 0::bigint                   as vacancy_shortage,
+                 0::bigint                   as vacancy_surplus
             from fact_enrolment fe
            -- ANNUAL, not TERM: enrolment is a STOCK (headcount on roll), the SAME dim_period row
            -- fact_staffing and fact_infrastructure hang off, and the only period the ETL ever writes
@@ -320,6 +384,9 @@ export async function getChildBreakdown(
                  0::bigint,
                  fpe.candidates::bigint,
                  fpe.qualified::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
                  0::bigint,
                  0::bigint,
                  0::bigint,
@@ -347,6 +414,9 @@ export async function getChildBreakdown(
                  fs.teachers_on_roll::bigint,
                  0::bigint,
                  0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
                  0::bigint
             from fact_staffing fs
            where fs.period_id = ${annualPeriodId}::uuid
@@ -367,6 +437,9 @@ export async function getChildBreakdown(
                  0::bigint,
                  fa.present_days::bigint,
                  fa.enrolled_days::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
                  0::bigint
             from fact_attendance fa
            where fa.period_id = ${termPeriodId}::uuid
@@ -390,11 +463,52 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  0::bigint,
-                 fe.headcount::bigint
+                 fe.headcount::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint
             from fact_enrolment fe
            where fe.period_id = ${annualPeriodId}::uuid
              and fe.sex = 'FEMALE'::ov_sex
              and fe.class_form is null
+          union all
+          -- ESTABLISHMENT -- the TEACHER-VACANCY arm, and a PARALLEL arm to STAFFING rather than more
+          -- columns on it, because its DENOMINATOR IS DIFFERENT. fact_staffing carries a staffing row for
+          -- every school, but GES sets a teaching_posts_established only for PUBLIC ones, so
+          -- establishment and vacancies are NULL for every PRIVATE/MISSION school
+          -- (STAFFING-PTR-DOMAIN-RULING §4). The is not null predicate below IS the §6/AC-17 read rule
+          -- made structural: every establishment/vacancy sum is over public rows ONLY, and the arm's own
+          -- row count + count(distinct …) give the honest "Across N public schools with a GES
+          -- establishment" denominator, which is NARROWER than the PTR/enrolment school count and must be
+          -- stated as such (Kofi V4/V5). Private and mission schools are thereby VISIBLY EXCLUDED: they
+          -- contribute no row here, so an all-private child comes back NULL — absence — and never a false
+          -- "0 posts unfilled".
+          --
+          -- ⚠ THE SIGN IS SPLIT HERE, AT SCHOOL GRAIN, AND NEVER FLOORED. vacancies is stored SIGNED
+          -- (positive = shortage / posts unfilled; negative = surplus / teachers over establishment, the
+          -- urban-south case), so greatest(vacancies,0) and greatest(-vacancies,0) are the two GROSS
+          -- magnitudes of Kofi V1's two-sided decomposition. A lone Σ(vacancies) at tier grain cancels
+          -- north shortage against south surplus and is BANNED, which is why this arm emits the two
+          -- magnitudes and the net is derived from them in TS below — the read cannot produce a net
+          -- without the decomposition that qualifies it. (Postgres greatest ignores NULLs, so a
+          -- defective row with an establishment but a null vacancies contributes 0 to both sides rather
+          -- than nulling the sum; the ETL forbids that state — vacancies is NULL iff establishment is.)
+          select fs.jurisdiction_id,
+                 'ESTABLISHMENT'::text,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 fs.teaching_posts_established::bigint,
+                 greatest(fs.vacancies, 0)::bigint,
+                 greatest(-fs.vacancies, 0)::bigint
+            from fact_staffing fs
+           where fs.period_id = ${annualPeriodId}::uuid
+             and fs.teaching_posts_established is not null
         ),
         attributed as (
           select case ${childLevel}::jurisdiction_level
@@ -416,7 +530,10 @@ export async function getChildBreakdown(
                  f.teachers               as teachers,
                  f.present_days           as present_days,
                  f.enrolled_days          as enrolled_days,
-                 f.female_headcount       as female_headcount
+                 f.female_headcount       as female_headcount,
+                 f.posts_established      as posts_established,
+                 f.vacancy_shortage       as vacancy_shortage,
+                 f.vacancy_surplus        as vacancy_surplus
             from facts f
             -- The fact's OWN node. INNER is correct here and only here: the fact row is visible, so its
             -- SCHOOL row is visible too (same predicate, same argument).
@@ -446,7 +563,13 @@ export async function getChildBreakdown(
                sum(enrolled_days) filter (where measure = 'ATTENDANCE')::bigint  as enrolled_days,
                count(*) filter (where measure = 'ATTENDANCE')::int               as attendance_rows,
                sum(female_headcount) filter (where measure = 'ENROLMENT_FEMALE')::bigint as female_enrolment,
-               count(*)              filter (where measure = 'ENROLMENT_FEMALE')::int    as female_rows
+               count(*)              filter (where measure = 'ENROLMENT_FEMALE')::int    as female_rows,
+               sum(posts_established) filter (where measure = 'ESTABLISHMENT')::bigint   as posts_established,
+               sum(vacancy_shortage) filter (where measure = 'ESTABLISHMENT')::bigint    as vacancy_shortage,
+               sum(vacancy_surplus)  filter (where measure = 'ESTABLISHMENT')::bigint    as vacancy_surplus,
+               count(*)              filter (where measure = 'ESTABLISHMENT')::int       as establishment_rows,
+               count(distinct jurisdiction_id)
+                 filter (where measure = 'ESTABLISHMENT')::int                           as schools_with_establishment
           from attributed
          group by grouping sets ((child_id, child_name), ())
       `);
@@ -460,6 +583,10 @@ export async function getChildBreakdown(
         const staffingRows = Number(row.staffing_rows);
         const attendanceRows = Number(row.attendance_rows);
         const femaleRows = Number(row.female_rows);
+        // The ESTABLISHMENT arm's OWN row count, separate from `staffing_rows`: a child can have
+        // staffing rows (every school files one) and NO establishment row (all-private/mission). That
+        // difference is exactly the UNAVAILABLE-vs-0 distinction (Kofi V12), so it needs its own count.
+        const establishmentRows = Number(row.establishment_rows);
         const bucket: FactBucket = {
           childId: (row.child_id as string | null) ?? null,
           name: (row.child_name as string | null) ?? null,
@@ -473,6 +600,14 @@ export async function getChildBreakdown(
           presentDays: attendanceRows === 0 ? null : Number(row.present_days),
           enrolledDays: attendanceRows === 0 ? null : Number(row.enrolled_days),
           femaleEnrolment: femaleRows === 0 ? null : Number(row.female_enrolment),
+          // `null` not `0` when no PUBLIC-establishment row was filed: an all-private/mission child has
+          // no GES establishment, which is ABSENCE, not "0 posts unfilled / fully staffed" (Kofi V12).
+          postsEstablished:
+            establishmentRows === 0 ? null : Number(row.posts_established),
+          vacancyShortage: establishmentRows === 0 ? null : Number(row.vacancy_shortage),
+          vacancySurplus: establishmentRows === 0 ? null : Number(row.vacancy_surplus),
+          schoolsWithEstablishment:
+            establishmentRows === 0 ? null : Number(row.schools_with_establishment),
         };
         if (Number(row.grp) === TOTAL_GROUPING) factTotal = bucket;
         else factBuckets.set(bucket.childId, bucket);
@@ -588,6 +723,27 @@ export async function getChildBreakdown(
           fact?.presentDays != null && fact.enrolledDays != null
             ? ratio(fact.presentDays, fact.enrolledDays)
             : null,
+        // THE TEACHER-ESTABLISHMENT COMPONENTS, PUBLIC-ONLY (Kofi V1/V4). The two gross magnitudes ride
+        // on the row like `candidates`/`qualified` behind `wassceRate`, so the per-child column, the
+        // comparison benchmark and the "Teacher establishment" panel all fold from ONE staffing scan and
+        // cannot disagree (V11). `vacancyNet` is DERIVED from the two magnitudes — shortage − surplus ≡
+        // Σ vacancies — so no surface can obtain a net without the decomposition that qualifies it.
+        postsEstablished: fact?.postsEstablished ?? null,
+        vacancyShortage: fact?.vacancyShortage ?? null,
+        vacancySurplus: fact?.vacancySurplus ?? null,
+        schoolsWithEstablishment: fact?.schoolsWithEstablishment ?? null,
+        vacancyNet:
+          fact?.vacancyShortage != null && fact.vacancySurplus != null
+            ? fact.vacancyShortage - fact.vacancySurplus
+            : null,
+        // Σvacancies ÷ Σestablished, per child — the normalised, roll-up-safe vacancy rate (signed).
+        // Null when the child has no public establishment: never a 0/0, and never a floored magnitude.
+        vacancyRate:
+          fact?.vacancyShortage != null &&
+          fact.vacancySurplus != null &&
+          fact.postsEstablished != null
+            ? ratio(fact.vacancyShortage - fact.vacancySurplus, fact.postsEstablished)
+            : null,
       });
 
       const childIds = new Set<string>();
@@ -635,6 +791,13 @@ export async function getChildBreakdown(
         sumOf((r) => r.teachers) === (total.teachers ?? 0) &&
         sumOf((r) => r.presentDays) === (total.presentDays ?? 0) &&
         sumOf((r) => r.enrolledDays) === (total.enrolledDays ?? 0) &&
+        // The PUBLIC-ONLY establishment sums reconcile the same way. Vacancies is a SIGNED column and
+        // its tier figure is a DECOMPOSITION, not one number, so the invariant is checked on each gross
+        // magnitude SEPARATELY: a net-only check would pass even if shortage and surplus had been
+        // swapped or cancelled on the way up, which is the exact failure this surface exists to prevent.
+        sumOf((r) => r.postsEstablished) === (total.postsEstablished ?? 0) &&
+        sumOf((r) => r.vacancyShortage) === (total.vacancyShortage ?? 0) &&
+        sumOf((r) => r.vacancySurplus) === (total.vacancySurplus ?? 0) &&
         (!hasCoverage ||
           (sumOf((r) => r.schoolsRegistered) === (total.schoolsRegistered ?? 0) &&
             sumOf((r) => r.schoolsReporting) === (total.schoolsReporting ?? 0)));
@@ -674,6 +837,62 @@ export function rankEnds(breakdown: ChildBreakdown): RankEnds | null {
   if (eligible.length < 2) return null;
   // `children` is already sorted by the active sort, and `filter` preserves order.
   return { strongest: eligible[0]!, weakest: eligible[eligible.length - 1]! };
+}
+
+/**
+ * THE TIER'S TEACHER-ESTABLISHMENT READING — the two-sided decomposition, folded from the SAME scan.
+ *
+ * Every field is the officer's own subtree total over PUBLIC-establishment rows for the one ANNUAL
+ * period, taken straight off `breakdown.total`, which is the `()` grouping-set row. That is what makes
+ * the panel's shortage/surplus/net, the breakdown total-row cell and the comparison benchmark the same
+ * figures by construction rather than by coincidence (Kofi V11).
+ */
+export interface TeacherEstablishment {
+  /** Σ teaching_posts_established over the subtree's public-establishment schools. */
+  postsEstablished: number;
+  /** Σ GREATEST(vacancies, 0) — posts unfilled. Shown as its OWN magnitude, never netted away. */
+  shortage: number;
+  /** Σ GREATEST(−vacancies, 0) — teachers over establishment. Likewise its own magnitude. */
+  surplus: number;
+  /** shortage − surplus ≡ Σ vacancies. Signed, and only ever shown labelled "net", beside the two. */
+  net: number;
+  /** net ÷ postsEstablished — the signed vacancy rate. Null if the establishment sum is 0. */
+  vacancyRate: number | null;
+  /** The honest "Across N public schools with a GES establishment" denominator. Always ≥ 1 here. */
+  schoolsWithEstablishment: number;
+}
+
+/**
+ * The tier reading, or `null` for GENUINELY UNAVAILABLE (Kofi V12) — not 0.
+ *
+ * `null` means the subtree contains NO school with a GES establishment (an all-private/mission tier),
+ * so there is no figure to state; the surface says so. It is deliberately NOT the same state as a true
+ * NET-ZERO (V13), which has a real public denominator and real shortage/surplus magnitudes that cancel,
+ * and which this function returns normally with `net === 0` so the caller can render the decomposition
+ * and the word "balanced". Nothing here `coalesce`s absence into a false "0 posts unfilled".
+ */
+export function teacherEstablishmentOf(
+  breakdown: ChildBreakdown,
+): TeacherEstablishment | null {
+  const t = breakdown.total;
+  if (
+    t.schoolsWithEstablishment === null ||
+    t.schoolsWithEstablishment === 0 ||
+    t.postsEstablished === null ||
+    t.vacancyShortage === null ||
+    t.vacancySurplus === null
+  ) {
+    return null;
+  }
+  const net = t.vacancyShortage - t.vacancySurplus;
+  return {
+    postsEstablished: t.postsEstablished,
+    shortage: t.vacancyShortage,
+    surplus: t.vacancySurplus,
+    net,
+    vacancyRate: ratio(net, t.postsEstablished),
+    schoolsWithEstablishment: t.schoolsWithEstablishment,
+  };
 }
 
 export interface Spread {

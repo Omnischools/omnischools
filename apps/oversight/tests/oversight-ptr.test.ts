@@ -646,11 +646,12 @@ describe("absence is absence — never a fabricated 0 and never an Infinity", ()
   });
 
   it("the empty-state colSpan still spans EVERY column, with and without coverage", () => {
-    // The PTR column moved the count 6→7 / 4→5. A colSpan that no longer matches the header row is a
-    // visible layout break that only appears in the EMPTY state, which no value assertion reaches.
+    // The PTR column moved the count 6→7 / 4→5, and the Vacancies column (increment J) 7→8 / 5→6. A
+    // colSpan that no longer matches the header row is a visible layout break that only appears in the
+    // EMPTY state, which no value assertion reaches.
     for (const [hasCoverage, expected] of [
-      [true, 7],
-      [false, 5],
+      [true, 8],
+      [false, 6],
     ] as const) {
       const markup = renderToStaticMarkup(
         createElement(BreakdownTable, {
@@ -727,6 +728,12 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     attendanceRate: null,
     femaleEnrolment: null,
     girlsShare: null,
+    postsEstablished: null,
+    vacancyShortage: null,
+    vacancySurplus: null,
+    vacancyNet: null,
+    vacancyRate: null,
+    schoolsWithEstablishment: null,
     ...fields,
   };
 }

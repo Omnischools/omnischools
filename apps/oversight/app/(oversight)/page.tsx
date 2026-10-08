@@ -22,6 +22,7 @@ import {
 import { childLevelFor, getChildBreakdown } from "@/lib/oversight/breakdown";
 import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
+import { TeacherEstablishmentPanel } from "@/components/oversight/breakdown-visuals";
 import { PageBody, PageHead } from "@/components/oversight/shell";
 import { Banner, Provenance } from "@/components/oversight/primitives";
 import { PeriodBanner } from "@/components/oversight/period-banner";
@@ -32,6 +33,7 @@ import {
   formatRatio,
   formatRatioPercent,
 } from "@/components/oversight/kpi-card";
+import { breakdownChrome } from "@/components/oversight/tier-chrome";
 import {
   buildLedeFragments,
   buildTitle,
@@ -423,6 +425,29 @@ export default async function OversightHome() {
         </section>
 
         {/*
+          INCREMENT J — THE TEACHER-ESTABLISHMENT PANEL (VACANCY-SURFACING-RULING V8).
+
+          Here, directly below the KPI strip, and NOT as a fifth KPI card: the strip's four cards sit on a
+          clean 2×2 / 1×4 grid, and a fifth single-number vacancy card would be the exact net-cancellation
+          trap the ruling exists to close (V7) — a near-zero national net hides large northern shortages
+          cancelled by southern surpluses. The panel presents the two GROSS magnitudes instead, with the
+          net subordinate and labelled, and the vacancy-rate dispersion that is the actual equity signal.
+
+          It is DERIVED FROM THE SAME `breakdown` READ the table below uses, so the panel, the table's
+          total-row cell and the comparison benchmark are one set of sums from one staffing scan (V11) —
+          not a second read that could disagree. Tier-polymorphic, and fail-soft on its own: an unreadable
+          or all-private/mission tier renders an absence note and leaves the rest of this page standing.
+        */}
+        <TeacherEstablishmentPanel
+          breakdown={breakdown}
+          chrome={breakdownChrome(officer.level, officer.jurisdictionName)}
+          /* The officer's OWN tier as a NOUN, for the absence sentence ("No GES establishment in this
+             {tierNoun}"). From tierChrome so every tier reads a real noun — "country" at national,
+             "region"/"district"/"school" below — never the adjective ("regional" is not a noun). */
+          tierNoun={chrome.tierNoun}
+        />
+
+        {/*
           SLICE 3 — Lucy's Section 02, as a SECTION rather than a route (see BreakdownSection's note).
           It sits below the KPI strip because its total row IS the strip's figures, computed from the same
           two periods in the same request: the one place that cross-module commitment can be read is with
@@ -487,6 +512,25 @@ export default async function OversightHome() {
               "Measure",
               "All-teacher PTR (trained + untrained); not the trained-teacher ratio (PTTR).",
             ],
+            /*
+              ⚠ THE ESTABLISHMENT CAVEAT (Kofi V14), rendered whenever the vacancy panel can render — i.e.
+              gated on the same `breakdown` reading the panel is derived from, so the ledger never explains
+              a figure the page is not showing, and never omits the caveat for a figure it is.
+
+              Three claims, each one the surface would otherwise let a reader get wrong: the establishment
+              is AUTHORISED POSTS, not a measured headcount of people; it is demo-derived (or the loaded
+              `ref_ges_teacher_establishment` vintage where one is present), not a GES publication; and
+              private and mission schools carry NONE, which is why the panel's denominator is narrower than
+              the PTR card's. Plus the signed convention, stated once in the officer's own words.
+            */
+            ...(isOk(breakdown)
+              ? ([
+                  [
+                    "Establishment",
+                    "Teaching posts established are the GES-authorised establishment (a demo-derived figure, or the loaded ref_ges_teacher_establishment vintage where present), not a measured headcount; private and mission schools carry no establishment. Vacancies are signed: positive = posts unfilled (shortage), negative = teachers over establishment (surplus).",
+                  ],
+                ] as [string, string][])
+              : []),
             [
               // The ceiling, stated per tier (Lucy §1.5). This replaces slice 1's generic "scoped to
               // your jurisdiction subtree" placeholder. It is a SECURITY CLAIM, not copy: it tells the
