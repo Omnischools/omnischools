@@ -965,7 +965,7 @@ describe("the comparison row is UNRANKED, signed and benchmarked over public chi
           { id: "o", name: "Over", meta: null },
         ],
         benchmarkLabel: "District average",
-        benchmarkMeta: "all JHS",
+        benchmarkPopulation: { count: 2, noun: "JHS" },
         footnote: null,
       }),
     );

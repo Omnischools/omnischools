@@ -43,13 +43,21 @@ function pct(fraction: number): string {
 }
 
 // PTR_AXIS — STATED presentation domain (owner/Kofi-movable, cf. SCHOOL_LEVEL_BANDS; Kofi §10.4).
-// lo/hi CONTAIN the full §3 seeded single-school range (JHS floor ~12 → primary-north ceiling ~60),
-// so no demo value clamps. This is load-bearing for honesty: the equity caption (§10.3) quotes the
-// TRUE (max − min) gap, so any value that clamped to a rail would make the bar UNDER-DRAW the stated
-// gap. Therefore the axis MUST be widened before plotting any real/future value outside [lo,hi];
-// never let projectPtr silently clamp data the caption then over-states. Prefer a dev assertion that
-// every plotted min/max lies within [lo,hi] (fail loud) over a silent clamp.
-export const PTR_AXIS = { lo: 10, hi: 60 } as const;
+// lo/hi CONTAIN the full §3 seeded single-school range, so no demo value clamps. This is load-bearing
+// for honesty: the equity caption (§10.3) quotes the TRUE (max − min) gap, so any value that clamped
+// to a rail would make the bar UNDER-DRAW the stated gap. Therefore the axis MUST be widened before
+// plotting any real/future value outside [lo,hi]; never let projectPtr silently clamp data the caption
+// then over-states. Prefer a dev assertion that every plotted min/max lies within [lo,hi] (fail loud)
+// over a silent clamp.
+//
+// WIDENED from [10, 60]. The old window was sized off the §3 bands' NOMINAL ends, but the generator's
+// per-school spread runs past them: measured across every row of the full ~849-school demo estate the
+// true range is [11.5, 66.5], with three northern schools (GH-NR-0437 at 66.50, GH-UE-0523 at 63.00,
+// GH-SV-0913 at 60.75) above the old `hi` — i.e. three real values were clamping. The axis moved,
+// NOT the bands: the bands are the data's ruled distribution, this is only the window it is drawn in.
+// `tests/etl-staffing.test.ts` now asserts containment over every generated row, so the next outlier
+// past these ends fails loudly instead of quietly flattening the bar.
+export const PTR_AXIS = { lo: 8, hi: 75 } as const;
 
 /**
  * A PTR value → its 0..1 position on `PTR_AXIS`. The clamp is a LAST RESORT: a value outside [lo,hi]

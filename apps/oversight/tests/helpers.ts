@@ -149,6 +149,55 @@ export function stepUpFixture(fresh: boolean): StepUpAssertion {
   return sealStepUpAssertion({ fresh });
 }
 
+/**
+ * ══ THE STORED-`ptr` SOURCE GUARD, IN ONE PLACE ══════════════════════════════════════════════════
+ *
+ * The house rule (STAFFING-PTR-DOMAIN-RULING §2, restated in lib/oversight/ptr.ts and
+ * lib/oversight/breakdown.ts): a tier roll-up is Σenrolment ÷ Σteachers, and the stored per-school
+ * `fact_staffing.ptr` column is NEVER selected. Four guard sites across four test files had each
+ * grown their own regex for it — `/\b(fs|st|fact_staffing)\.ptr\b/`, `/\b(fs|fact_staffing)\.ptr\b/`,
+ * `/\bfs\.ptr\b/`: three different answers to one question, and every one of them an ALIAS
+ * ALLOW-LIST, so `select s.ptr` after a re-alias walked straight through all of them.
+ *
+ * The naive fix — `/\w+\.ptr\b/` over the whole module — false-positives immediately: `r.ptr` in
+ * lib/oversight/comparison.ts and the `ptr` FIELD on the breakdown row are legitimate TypeScript
+ * property access on an ALREADY RE-DERIVED ratio, not a column selection. So the guard splits in
+ * two: first narrow the text to what is actually SQL, then be alias-blind within it.
+ */
+
+/**
+ * The EXECUTABLE text inside every `` sql`…` `` tagged template in `source`, concatenated. This is
+ * the module's SQL and nothing else: TS expressions and field names outside a query are excluded by
+ * construction rather than by a stripping heuristic. `${…}` placeholders are left in place — they are
+ * parameter binds, never a column name.
+ *
+ * SQL `--` line comments ARE stripped: these queries carry long in-query prose that REASONS about the
+ * columns the query refuses to read (breakdown.ts's "never avg(stored ptr)" note is the live case), and
+ * stating a prohibition is not committing it.
+ */
+export function sqlTextOf(source: string): string {
+  const chunks: string[] = [];
+  // Non-greedy to the next backtick: these queries contain no nested template literal, and a bind is
+  // `${…}` (no backtick), so the first backtick after the tag IS the closing one.
+  for (const m of source.matchAll(/sql`([\s\S]*?)`/g)) chunks.push(m[1]);
+  return chunks
+    .join("\n")
+    .split("\n")
+    .map((line) => line.replace(/--.*$/, ""))
+    .join("\n");
+}
+
+/**
+ * Does `source`'s SQL select the stored per-school `ptr` rate — under ANY alias, or bare? The two
+ * shapes a selection can take are `<anything>.ptr` and a bare `ptr` at the start of a line or after
+ * a separator (`select ptr`, `, ptr`, `sum(ptr`). Deliberately ALIAS-BLIND: the point is that
+ * re-aliasing `fact_staffing` cannot evade it.
+ */
+export function selectsStoredPtr(source: string): boolean {
+  const sqlText = sqlTextOf(source);
+  return /\b\w+\.ptr\b/.test(sqlText) || /(^|[\s,(])ptr\b/m.test(sqlText);
+}
+
 /** Unique per test, so `auditRowsFor` isolates one test's rows from an append-only shared table. */
 export function caseRef(label: string): string {
   return `CASE-${label}-${Math.random().toString(36).slice(2, 10)}`;

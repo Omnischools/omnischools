@@ -44,6 +44,7 @@ import {
   districtOfficer,
   nationalOfficer,
   officerFixture,
+  selectsStoredPtr,
 } from "./helpers";
 
 /**
@@ -754,8 +755,10 @@ describe("per-child rates are candidate-weighted", () => {
     // roll-up is Σnum ÷ Σden, re-derived, never the stored rate. So the precise guard is "the stored
     // rate column is never selected under ANY alias", not "the substring never appears" (the re-derived
     // `row.ptr` / `row.attendanceRate` fields and the module's own prose legitimately contain them).
-    // Widened past the current aliases so a future rename/re-alias cannot smuggle a stored rate back in.
-    expect(code).not.toMatch(/\b(fs|st|fact_staffing)\.ptr\b/);
+    // ALIAS-BLIND, over the module's SQL text only (`selectsStoredPtr`, tests/helpers.ts — shared with
+    // the three other files asserting this rule). The former alias allow-list was evadable by a plain
+    // re-alias (`select s.ptr`), which is the smuggling route it existed to close.
+    expect(selectsStoredPtr(code)).toBe(false);
     expect(code).not.toMatch(/\b(fa|fact_attendance)\.attendance_rate\b/);
   });
 
@@ -998,6 +1001,12 @@ describe("the spread is derived from the same rows, and its mean is the weighted
     // B3's defect was an axis too narrow for the data: a plotted min/max outside [lo,hi] clamps to a
     // rail while the §10.3 caption quotes the TRUE (max−min) gap, so the bar under-draws it. The axis is
     // sized to contain the whole §3 seeded range; prove it across the tiers the spread bar renders at.
+    //
+    // The ends come from PTR_AXIS itself, so this followed the widening to [8, 75] for free. What it
+    // CANNOT see is the tail: this DB is the small fixture, and only the national/region tiers draw a
+    // bar on it — the three demo schools that were clamping against the old `hi` are not here at all.
+    // The containment check over every generated row lives in tests/etl-staffing.test.ts (CRITERION 7),
+    // which has the full ~849-school estate; this one stays as the surface-level counterpart.
     for (const scope of [nationalScope, regionScope]) {
       const b = await readBreakdown(scope);
       const ptr = spreadOf(b, (r) => r.ptr);

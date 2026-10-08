@@ -52,18 +52,31 @@ export const GES_PTR_NORM_MAX = Math.max(...Object.values(GES_PTR_LEVEL_NORMS));
 export type PtrNormVerdict = "within" | "above" | "indeterminate";
 
 /**
- * THE THREE-WAY HONEST CONFORMANCE VERDICT for a blended tier PTR (Kofi §10.1). Gate on the ONE-DECIMAL
- * DISPLAYED value (`Number(formatRatio(ratio, 1))`), so the chip can never disagree with the number the
- * card shows.
- * - `within`        : blend ≤ tightest norm (25) → within EVERY level ceiling, whatever the level mix.
- * - `above`         : blend >  loosest norm (35) → above  EVERY level ceiling, whatever the level mix.
- * - `indeterminate` : 25 < blend ≤ 35 → a single blend cannot certify conformance to level-dependent
- *   norms (a 34.9 blend is within primary's 35 but ~40% above a JHS/SHS tier's 25). The card shows NO
- *   chip; the sub-line's norm RANGE is what lets the reader judge. NEVER a "within…" claim here.
+ * The DISPLAY precision of a tier PTR, one decimal (Kofi §10.5). It lives here because the verdict
+ * below rounds to it, and it MUST stay equal to the rounding `formatRatio(ratio, 1)` performs on the
+ * card (`components/oversight/kpi-card.tsx` — `value.toFixed(decimals)`). The rounding is spelled
+ * `.toFixed(…)` on both sides deliberately, so the two cannot disagree on a tie-break; `formatRatio`
+ * is NOT imported here (a data-layer module does not reach into `components/`), so the binding is
+ * asserted by test instead (tests/oversight-ptr.test.ts — the rounding-parity sweep).
  */
-export function ptrNormVerdict(displayedRatio: number): PtrNormVerdict {
-  if (displayedRatio <= GES_PTR_NORM_MIN) return "within";
-  if (displayedRatio > GES_PTR_NORM_MAX) return "above";
+export const PTR_DISPLAY_DECIMALS = 1;
+
+/**
+ * THE THREE-WAY HONEST CONFORMANCE VERDICT for a blended tier PTR (Kofi §10.1). Takes the RAW Σ÷Σ
+ * ratio and rounds it to the DISPLAYED one decimal INTERNALLY before gating, so the chip can never
+ * disagree with the number the card shows and no caller can forget to round (the mutation that once
+ * passed: gating on the unrounded quotient).
+ * - `within`        : displayed ≤ tightest norm (25) → within EVERY level ceiling, whatever the mix.
+ * - `above`         : displayed >  loosest norm (35) → above  EVERY level ceiling, whatever the mix.
+ * - `indeterminate` : 25 < displayed ≤ 35 → a single blend cannot certify conformance to
+ *   level-dependent norms (a 34.9 blend is within primary's 35 but ~40% above a JHS/SHS tier's 25).
+ *   The card shows NO chip; the sub-line's norm RANGE is what lets the reader judge. NEVER a
+ *   "within…" claim here.
+ */
+export function ptrNormVerdict(ratio: number): PtrNormVerdict {
+  const displayed = Number(ratio.toFixed(PTR_DISPLAY_DECIMALS));
+  if (displayed <= GES_PTR_NORM_MIN) return "within";
+  if (displayed > GES_PTR_NORM_MAX) return "above";
   return "indeterminate";
 }
 

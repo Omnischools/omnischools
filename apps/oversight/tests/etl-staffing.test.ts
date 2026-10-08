@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
-import { adminDemoAnalytics } from "./helpers";
+import { adminDemoAnalytics, selectsStoredPtr } from "./helpers";
 import {
   DEMO_TERMS,
   emisExtractFor,
@@ -28,6 +28,10 @@ import {
   writeStaffingFacts,
 } from "@/lib/etl/staffing";
 import type { FactEnrolmentRow } from "@/lib/etl/enrolment";
+// The presentation axis the PTR spread bar is drawn on. A plain object literal in a `.tsx` module, so
+// importing it here pulls in no React render path — and it is the ONE copy, so this assertion cannot
+// drift from the axis actually plotted.
+import { PTR_AXIS } from "@/components/oversight/breakdown-visuals";
 
 /**
  * THE SIXTH FACT ARM — `fact_staffing` end-to-end, against Kofi's
@@ -621,6 +625,33 @@ describe("CRITERION 7 · ptr is the row's OWN numerator ÷ denominator, re-deriv
   it("fits numeric(5,2) — no stored ptr is above 999.99", () => {
     expect(Math.max(...rows.map((r) => Number(r.ptr)))).toBeLessThanOrEqual(999.99);
   });
+
+  /**
+   * THE PRESENTATION AXIS MUST CONTAIN THE WHOLE GENERATED RANGE (Kofi §10.4). `projectPtr` clamps a
+   * value outside `PTR_AXIS` to a rail while the §10.3 equity caption still quotes the TRUE (max−min)
+   * gap — so a clamped value makes the bar UNDER-DRAW a gap the prose asserts. The axis comment states
+   * the contract ("the axis MUST be widened before plotting any value outside [lo,hi]"), and this is
+   * where it can actually be checked: `tests/oversight-child-breakdown.test.ts` can only reach the
+   * handful of schools on the small fixture DB, and only at the two tiers its spread bar renders at,
+   * whereas THIS file has every row the real generator produces for the full ~849-school demo estate.
+   *
+   * EVERY row, not a sample: the whole risk is the single outlier school at the tail of the §3 band
+   * spread, which is exactly what a sample misses. If this goes red the fix is to widen PTR_AXIS (a
+   * STATED owner-movable presentation domain), NEVER to narrow SCHOOL_LEVEL_BANDS — the bands are the
+   * data's own ruled distribution, and moving them regenerates the demo dataset.
+   */
+  it("every generated ptr lies inside PTR_AXIS — no demo value clamps the bar (Kofi §10.4)", () => {
+    const values = rows.map((r) => Number(r.ptr));
+    expect(values.length).toBeGreaterThan(800); // the full estate, not a fixture handful
+    const outside = rows
+      .filter((r) => Number(r.ptr) < PTR_AXIS.lo || Number(r.ptr) > PTR_AXIS.hi)
+      .map((r) => `${r.emis_school_id}=${r.ptr}`);
+    expect(
+      outside,
+      `PTR_AXIS [${PTR_AXIS.lo}, ${PTR_AXIS.hi}] does not contain the generated range ` +
+        `[${Math.min(...values)}, ${Math.max(...values)}] — widen the axis`,
+    ).toEqual([]);
+  });
 });
 
 describe("CRITERIA 10–12 · establishment and vacancies, signed and honestly null", () => {
@@ -1140,15 +1171,17 @@ describe("the structural half of the read rule — the stored ptr column stays o
       if (!file.endsWith(".ts")) continue;
       const text = readFileSync(join(dir, file), "utf8");
       // Comment lines are stripped first, so prose that REASONS about the stored ptr (as both readers
-      // and suppression.ts do) is not an offence — only a query that selects `fs.ptr` is.
+      // and suppression.ts do) is not an offence — only a query that selects the column is.
       const code = text
         .split("\n")
         .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
         .join("\n");
       if (/from\s+fact_staffing/.test(code)) staffingReaders.push(file);
-      // Widened past the current `fs` alias (Dex N3): `st`/`fact_staffing` too, so a future re-alias of
-      // the staffing table cannot smuggle the stored rate back into an allow-list unnoticed.
-      if (/\b(fs|st|fact_staffing)\.ptr\b/.test(code)) offenders.push(file);
+      // One ALIAS-BLIND guard shared with the three other files that assert this rule (see
+      // `selectsStoredPtr` in tests/helpers.ts): the former alias allow-list — `fs|st|fact_staffing`
+      // — was evadable by a plain re-alias (`select s.ptr`), which is exactly the smuggling route it
+      // was widened to close.
+      if (selectsStoredPtr(text)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
     // The surfacing slice HAS landed, so there ARE staffing readers now — the national PTR KPI read and

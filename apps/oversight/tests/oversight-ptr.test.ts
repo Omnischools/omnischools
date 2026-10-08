@@ -38,6 +38,7 @@ import {
   districtOfficer,
   nationalOfficer,
   officerFixture,
+  selectsStoredPtr,
 } from "./helpers";
 
 /**
@@ -294,9 +295,11 @@ describe("the KPI read is Σenrolment ÷ Σteachers, never the mean of the store
   it("the stored ptr column is structurally out of reach in BOTH reading modules", () => {
     for (const file of ["lib/oversight/ptr.ts", "lib/oversight/breakdown.ts"]) {
       const code = readCode(file);
-      // `fs` is the alias both modules give fact_staffing. The re-derived `row.ptr` / `ratio` field
-      // legitimately contains the substring, so the guard is on the SELECTED COLUMN.
-      expect(code, file).not.toMatch(/\bfs\.ptr\b/);
+      // The guard is on the SELECTED COLUMN — the re-derived `row.ptr` / `ratio` TS field legitimately
+      // contains the substring — and it is ALIAS-BLIND (`selectsStoredPtr`, tests/helpers.ts, the one
+      // copy shared with the three other files that assert this rule). The old `\bfs\.ptr\b` form
+      // named the CURRENT alias, so `select s.ptr` after a re-alias walked straight through it.
+      expect(selectsStoredPtr(code), file).toBe(false);
       // No aggregate over the stored rate, under any alias. (`avg(stored ptr)` in the modules' own
       // SQL comments is the prohibition being stated, not an occurrence of it.)
       expect(code, file).not.toMatch(/avg\s*\(\s*(fs\.)?ptr\b/i);
@@ -789,8 +792,12 @@ describe("Kofi's precision ruling: ONE decimal, on the Σ÷Σ figure, everywhere
 describe("the PTR spread bar is INVERTED — green at the low end", () => {
   // The shipped axis, imported (not restated) so this bar's projection can never drift from the
   // component's. Pinned to Kofi §10.4's widened window so a silent edit back to a narrow axis fails.
-  it("the axis is the §10.4 widened window [10, 60], which contains the whole seeded range", () => {
-    expect(PTR_AXIS).toEqual({ lo: 10, hi: 60 });
+  it("the axis is the §10.4 widened window [8, 75], which contains the whole seeded range", () => {
+    // Re-widened from [10, 60]: measured over EVERY row of the full demo estate the generated range is
+    // [11.5, 66.5], so three northern schools were clamping against the old `hi`. The containment
+    // assertion lives in tests/etl-staffing.test.ts (CRITERION 7); this pin is here so a silent edit
+    // back to a narrow axis fails loudly rather than flattening a bar.
+    expect(PTR_AXIS).toEqual({ lo: 8, hi: 75 });
   });
   const project = (v: number) =>
     Math.min(1, Math.max(0, (v - PTR_AXIS.lo) / (PTR_AXIS.hi - PTR_AXIS.lo)));
@@ -821,8 +828,9 @@ describe("the PTR spread bar is INVERTED — green at the low end", () => {
     const bar = await ptrBarMarkup();
     const green = leftOf(bar, "bg-green");
     const terra = leftOf(bar, "bg-terra");
-    // On the [10, 60] axis: min = 10.0 sits at the floor (0%); max = 40.0 projects to 60% — neither
-    // clamps (the whole seeded range fits), so the dots track the real values, not a rail.
+    // On the [8, 75] axis neither end clamps (the whole seeded range fits well inside it), so the dots
+    // track the real values rather than a rail. The expected positions are PROJECTED from the fixture's
+    // own stored ptrs, so they follow the axis window instead of restating hand-computed percentages.
     expect(green).toBeCloseTo(project(S.wassaStoredPtr) * 100, 1);
     expect(terra).toBeCloseTo(project(S.sekondiStoredPtr) * 100, 1);
     // THE INVERSION, stated as the thing that must not flip back: for PTR the green dot is LEFT of
@@ -1137,8 +1145,15 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
    * 33.0 — comfortably inside their bands — so NONE of them touches the two properties §10.1 states
    * most precisely: (a) the exact boundary placement (`≤ 25.0` green, `35.0` ITSELF indeterminate,
    * `> 35.0` terra) and (b) that the gate reads the ONE-DECIMAL DISPLAYED value, not the raw quotient.
-   * Proved by mutation: replacing `ptrNormVerdict(Number(formatRatio(ratio, 1)))` with
-   * `ptrNormVerdict(ratio)` in page.tsx left all 49 tests GREEN. The two blocks below close that.
+   *
+   * The original form of (b) was a CALL-SITE property: the page had to wrap the ratio in
+   * `Number(formatRatio(ratio, 1))`, and dropping the wrap (gating on the raw quotient) left the suite
+   * green. That mutation is no longer expressible — `ptrNormVerdict` now rounds INTERNALLY, so there is
+   * no unrounded path through it for any caller to take. What the blocks below prove instead is the
+   * property that replaced it: that the rounding inside the verdict is the SAME rounding the card's
+   * `formatRatio(ratio, 1)` performs (the parity sweep), that the band ends sit exactly where §10.1 puts
+   * them (BOUNDARIES), and that a raw/displayed divergence still resolves to the DISPLAYED side — now
+   * measured against a LOCAL unrounded reference verdict rather than against the page's call shape.
    */
   it("BOUNDARIES: 25.0 is within, 35.0 ITSELF is indeterminate, 35.1 is above (Kofi §10.1)", () => {
     // The ends are the §10.2 map's own min/max, so this cannot drift from the constant.
@@ -1162,10 +1177,39 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
   });
 
   /**
+   * ROUNDING PARITY — the gate's internal rounding IS the card's `formatRatio(ratio, 1)` rounding.
+   * `lib/oversight/ptr.ts` cannot import `formatRatio` (a data-layer module does not reach into
+   * `components/`), so the two spell `.toFixed(1)` separately and THIS is what binds them: across the
+   * raw quotients that straddle both band ends — including the .x5 ties where `Math.round(r*10)/10`
+   * and `toFixed(1)` part company (24.95, 25.05, 34.95, 35.05) — feeding the verdict the RAW ratio must
+   * give the same answer as feeding it the number the officer can actually see.
+   */
+  it("ROUNDING PARITY: ptrNormVerdict(raw) === ptrNormVerdict(Number(formatRatio(raw, 1)))", () => {
+    for (const r of [
+      24.94, 24.95, 24.96, 25.0, 25.04, 25.049, 25.05, 25.1, 34.95, 35.0, 35.04, 35.049,
+      35.05, 35.1,
+    ]) {
+      expect(ptrNormVerdict(r), `raw ${r} (shown ${formatRatio(r, 1)})`).toBe(
+        ptrNormVerdict(Number(formatRatio(r, 1))),
+      );
+    }
+  });
+
+  /**
    * THE GATE IS ON THE DISPLAYED VALUE. Each case plants a school in the district so the blend's RAW
    * quotient and its one-decimal DISPLAY fall on opposite sides of a norm end. The chip must follow the
    * number the officer can see — §10.1's "gate on the shown value so chip and number never disagree".
    */
+  /**
+   * A LOCAL, deliberately UNROUNDED re-statement of the §10.1 gate — the verdict a gate on the raw
+   * quotient would reach. It is written out here, and NOT exported from lib/oversight/ptr.ts, precisely
+   * so the divergence premise below stays a real comparison: if the production module exported its own
+   * unrounded variant and this used it, any rounding regression would move both sides together and the
+   * probe would assert nothing.
+   */
+  const rawVerdict = (r: number): string =>
+    r <= GES_PTR_NORM_MIN ? "within" : r > GES_PTR_NORM_MAX ? "above" : "indeterminate";
+
   for (const probe of [
     {
       what: "raw 25.01 displays 25.0 → the GREEN 'within' chip, following the SHOWN number",
@@ -1213,9 +1257,11 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
         expect(kpi.ratio).toBeCloseTo(probe.raw, 6);
         expect(formatRatio(kpi.ratio, 1)).toBe(probe.shown);
         if (probe.diverges) {
-          expect(ptrNormVerdict(kpi.ratio), "raw-value verdict (the mutation)").not.toBe(
-            ptrNormVerdict(Number(probe.shown)),
+          expect(rawVerdict(kpi.ratio), "unrounded verdict (the mutation)").not.toBe(
+            ptrNormVerdict(kpi.ratio),
           );
+          // …and the verdict the gate actually reaches is the DISPLAYED one.
+          expect(ptrNormVerdict(kpi.ratio)).toBe(rawVerdict(Number(probe.shown)));
         }
 
         await withEtlRun(async () => {
@@ -1283,8 +1329,14 @@ describe("the PTR KPI card states Kofi's ruling, and the norms chip is gated on 
     expect(page).not.toMatch(/GES_PTR_NORM_CEILING/);
     // No inline "<= 35" / "<= 25" ratio comparison survives in the page; the thresholds live in ptr.ts.
     expect(page).not.toMatch(/ratio\s*<=\s*3[05]\b/);
+    // The page hands over the RAW ratio — no `Number(...)`-wrapped pre-rounding at the call site. The
+    // rounding is the verdict's own job now, so a wrap here would be a second, driftable copy of it.
+    expect(page).not.toMatch(/ptrNormVerdict\(\s*Number\(/);
 
     const lib = readCode("lib/oversight/ptr.ts");
+    // …and the rounding really is inside ptr.ts, spelled `.toFixed(` — the same operation
+    // `formatRatio` performs, not a `Math.round(r*10)/10` that ties differently.
+    expect(lib).toMatch(/toFixed\(/);
     // The constant is the §3 level-norm map; MIN/MAX are DERIVED from it (bound to one source), not
     // re-typed literals, so the chip and sub-line cannot drift.
     expect(lib).toMatch(/GES_PTR_LEVEL_NORMS\s*=\s*\{[^}]*PRIMARY:\s*35[^}]*\}/);

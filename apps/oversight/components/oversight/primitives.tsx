@@ -68,6 +68,42 @@ export function Pill({
   );
 }
 
+type ChipTone = "green" | "terra";
+
+const CHIP_TONE: Record<ChipTone, string> = {
+  green: "bg-green-bg text-green",
+  terra: "bg-terra-bg text-terra",
+};
+
+/**
+ * The small tone-keyed verdict chip the KPI cards put in their delta slot — the affordance the PTR
+ * card's three-way GES-norm verdict uses for its two STATEABLE branches (green "within", terra
+ * "above"). Smaller and borderless where `Pill` is bordered and monospaced: this is a reading of the
+ * figure above it, not a status label.
+ *
+ * Only the TONE varies, so only the tone is a parameter — the six shared utilities (and in particular
+ * the `rounded-pill` token) live here once, in the `DOT_TONE` + `cn()` shape comparison-table.tsx
+ * already uses for its rank dots.
+ *
+ * THE EMPTY CASE EMITS NOTHING. The third branch of the PTR verdict is "the blend cannot certify
+ * conformance", and the card must then render NO chip at all — not a reworded neutral one, not a "—".
+ * Callers express that by not rendering a `Chip`; there is deliberately no `tone="none"` that would put
+ * an empty `rounded-pill` span into the markup, because the absence of that class IS how
+ * tests/oversight-ptr.test.ts proves the slot is empty.
+ */
+export function Chip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "mt-2 inline-flex items-center rounded-pill px-[7px] py-0.5 text-[10px] font-bold",
+        CHIP_TONE[tone],
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 /**
  * The legal-basis chip (Lucy C3). STATUTORY takes the green `audit` family, CONSENT the gold `fshs`
  * family — the same two colours the access & audit log already uses for those reason families, so

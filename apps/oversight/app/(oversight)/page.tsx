@@ -25,7 +25,7 @@ import { isOk, unavailable, type Reading } from "@/lib/oversight/reading";
 import { BreakdownSection } from "@/components/oversight/breakdown-section";
 import { FeesSection } from "@/components/oversight/fees-section";
 import { PageBody, PageHead } from "@/components/oversight/shell";
-import { Banner, Provenance } from "@/components/oversight/primitives";
+import { Banner, Chip, Provenance } from "@/components/oversight/primitives";
 import { PeriodBanner } from "@/components/oversight/period-banner";
 import {
   KpiCard,
@@ -235,12 +235,11 @@ export default async function OversightHome() {
   // One decimal (Kofi §10.5): the Σ÷Σ tier figure's DISPLAY precision, not the stored numeric(5,2).
   const ptrValue = kpi(ptr, (p) => formatRatio(p.ratio, 1));
   // Kofi §10.1: a THREE-WAY HONEST GATE against the level-norm band (lib/oversight/ptr.ts owns the
-  // thresholds). Gate on the ONE-DECIMAL DISPLAYED value, so the chip can never disagree with the number
-  // on the card: "within" only at/below the tightest norm (25, within every level ceiling); "above"
-  // only beyond the loosest (35, above every ceiling); between the two the blend cannot say, so NO chip.
-  const ptrVerdict = shown(ptr)
-    ? ptrNormVerdict(Number(formatRatio(ptr.value.ratio, 1)))
-    : null;
+  // thresholds AND the rounding). It takes the RAW ratio and rounds to the ONE-DECIMAL DISPLAYED value
+  // itself, so the chip can never disagree with the number on the card: "within" only at/below the
+  // tightest norm (25, within every level ceiling); "above" only beyond the loosest (35, above every
+  // ceiling); between the two the blend cannot say, so NO chip.
+  const ptrVerdict = shown(ptr) ? ptrNormVerdict(ptr.value.ratio) : null;
   const sittingYear = isOk(wassceCohort)
     ? sittingYearOf(wassceCohort.value.academicYear)
     : null;
@@ -425,13 +424,9 @@ export default async function OversightHome() {
                because a blend cannot certify level-dependent norms. No ▲/▼ glyph. */
             delta={
               ptrVerdict === "within" ? (
-                <span className="mt-2 inline-flex items-center rounded-pill bg-green-bg px-[7px] py-0.5 text-[10px] font-bold text-green">
-                  within GES level norms
-                </span>
+                <Chip tone="green">within GES level norms</Chip>
               ) : ptrVerdict === "above" ? (
-                <span className="mt-2 inline-flex items-center rounded-pill bg-terra-bg px-[7px] py-0.5 text-[10px] font-bold text-terra">
-                  above GES level norms
-                </span>
+                <Chip tone="terra">above GES level norms</Chip>
               ) : null
             }
           />

@@ -27,6 +27,17 @@ import { vacancyTone } from "./vacancy-tone";
  * The benchmark column is never marked (it is the reference, not a participant).
  */
 
+/**
+ * The like-for-like group the benchmark column is drawn from: its SIZE and the NOUN for one of its
+ * members ("schools", "districts", "SHS"). One object rather than a pre-baked string because the two
+ * parts are used in two places that say different things — the column header names the population,
+ * each benchmark cell divides its own contributor count by it.
+ */
+export interface BenchmarkPopulation {
+  count: number;
+  noun: string;
+}
+
 type MarkTone = "best" | "worst" | "none";
 
 /** cv value / bar colour follows the RELATIVE mark, not an absolute band (see file note). */
@@ -159,8 +170,14 @@ function RankDot({ mark, label }: { mark: "best" | "worst"; label: string }) {
   );
 }
 
-function MetricRows({ row }: { row: ComparisonMetricRow }) {
-  const { metric, cells, benchmark } = row;
+function MetricRows({
+  row,
+  benchmarkPopulation,
+}: {
+  row: ComparisonMetricRow;
+  benchmarkPopulation: BenchmarkPopulation;
+}) {
+  const { metric, cells, benchmark, benchmarkContributors } = row;
   return (
     <tr>
       <td className="border-b border-border-1 bg-bg px-3.5 py-3 text-left align-top">
@@ -208,6 +225,15 @@ function MetricRows({ row }: { row: ComparisonMetricRow }) {
             <div className="font-mono text-[14px] font-bold text-navy">
               {formatValue(metric.benchmarkKind ?? metric.kind, benchmark)}
             </div>
+            {/* THE FIGURE'S OWN BASE, per row. The benchmark folds over the children that FILED this
+                measure, and which those are is per-metric: vacancies is public-only, attendance is
+                gradebook adopters only, qualification is the schools that sat. So each cell states how
+                many of the like-for-like population stand behind IT, instead of the column header's
+                population size being read as every row's denominator. */}
+            <div className="mt-1 text-[8.5px] font-semibold leading-tight text-navy-3">
+              {benchmarkContributors} of {benchmarkPopulation.count}{" "}
+              {benchmarkPopulation.noun}
+            </div>
             {metric.bar ? <CvBar fraction={benchmark} tone="none" /> : null}
           </>
         )}
@@ -220,14 +246,20 @@ export function ComparisonTable({
   model,
   columns,
   benchmarkLabel,
-  benchmarkMeta,
+  benchmarkPopulation,
   footnote,
 }: {
   model: ComparisonModel;
   columns: ComparisonColumnHeader[];
   /** "District average" / "Region average" — the pinned benchmark column's name. */
   benchmarkLabel: string;
-  benchmarkMeta: string;
+  /**
+   * The like-for-like POPULATION the benchmark column is drawn from — a neutral label for the header,
+   * and the denominator of each cell's own "k of N" contributor line. It replaces the old
+   * `benchmarkMeta` string, which was a single population-wide count that the header asserted as if it
+   * were every row's contributor count (see `benchmarkContributorsOf`).
+   */
+  benchmarkPopulation: BenchmarkPopulation;
   footnote: ReactNode;
 }) {
   const span = 1 + columns.length + 1; // metric label + entities + benchmark
@@ -290,8 +322,11 @@ export function ComparisonTable({
                 <span className="block font-display text-[13px] font-semibold leading-tight text-navy">
                   {benchmarkLabel}
                 </span>
+                {/* The POPULATION, named neutrally — "the group this column is drawn from", not a
+                    claim that every figure below it averages all of them. The per-row contributor
+                    count lives in each benchmark cell. */}
                 <span className="mt-0.5 block text-[9px] font-semibold text-navy-3">
-                  {benchmarkMeta}
+                  like-for-like: {benchmarkPopulation.count} {benchmarkPopulation.noun}
                 </span>
               </th>
             </tr>
@@ -308,7 +343,11 @@ export function ComparisonTable({
                   </td>
                 </tr>
                 {section.rows.map((row) => (
-                  <MetricRows key={row.metric.key} row={row} />
+                  <MetricRows
+                    key={row.metric.key}
+                    row={row}
+                    benchmarkPopulation={benchmarkPopulation}
+                  />
                 ))}
               </Fragment>
             ))}
