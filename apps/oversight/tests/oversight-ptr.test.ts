@@ -292,6 +292,36 @@ describe("the KPI read is Σenrolment ÷ Σteachers, never the mean of the store
     expect(Math.abs(b.total.ptr! - unweighted)).toBeGreaterThan(5);
   });
 
+  /**
+   * POSITIVE CONTROLS FOR THE GUARD ITSELF (QA gate addition). The four guard sites that now share
+   * `selectsStoredPtr` all assert it returns FALSE — so a helper that returned false unconditionally
+   * (a broken `sqlTextOf`, a regex that stopped matching) would leave every one of them GREEN while
+   * guarding nothing. These cases pin that it fires when it should and stays quiet when it should,
+   * which is what makes the four `.toBe(false)` assertions evidence rather than decoration.
+   */
+  it("GUARD CONTROL: selectsStoredPtr fires on a selected ptr under ANY alias, and only in SQL", () => {
+    // ── FIRES: the column really is selected, aliased, bare, or under a former alias.
+    expect(selectsStoredPtr("const q = sql`select s.ptr from fact_staffing s`;")).toBe(true);
+    expect(selectsStoredPtr("const q = sql`select ptr from fact_staffing`;")).toBe(true);
+    expect(selectsStoredPtr("const q = sql`select fs.ptr from fact_staffing fs`;")).toBe(true);
+    expect(selectsStoredPtr("const q = sql`select avg(ptr) from fact_staffing`;")).toBe(true);
+    // ── QUIET: legitimate TypeScript property access / object literals on an ALREADY re-derived
+    // ratio. These live OUTSIDE any sql`…` template, which is exactly why the guard narrows first.
+    expect(selectsStoredPtr("const x = r.ptr;")).toBe(false);
+    expect(selectsStoredPtr("return { ptr: 1 };")).toBe(false);
+    expect(selectsStoredPtr("const row = { ptr: row.ptr === null ? null : Number(row.ptr) };")).toBe(
+      false,
+    );
+    // ── QUIET: an in-query `--` comment that STATES the prohibition. This is the live case —
+    // lib/oversight/breakdown.ts carries "never avg(stored ptr)" inside its own SQL — and a guard
+    // that tripped on it would make the rule unstateable in the very query that obeys it.
+    expect(selectsStoredPtr("const q = sql`select 1 -- never avg(stored ptr)\n from t`;")).toBe(
+      false,
+    );
+    // …and that really is what breakdown.ts contains, so the control above is not hypothetical.
+    expect(readCode("lib/oversight/breakdown.ts")).toContain("avg(stored ptr)");
+  });
+
   it("the stored ptr column is structurally out of reach in BOTH reading modules", () => {
     for (const file of ["lib/oversight/ptr.ts", "lib/oversight/breakdown.ts"]) {
       const code = readCode(file);

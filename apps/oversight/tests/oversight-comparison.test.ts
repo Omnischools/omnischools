@@ -524,6 +524,59 @@ describe("render smoke — the surface draws without throwing and keeps its hone
     expect(html).toContain("Pupil-teacher ratio");
   });
 
+  /**
+   * THE RENDERED HALF OF THE CONTRIBUTOR COUNT (QA gate addition). `benchmarkContributors` is proved
+   * on the MODEL above, but the point of the nit is what the officer READS: a neutral population
+   * header, and each benchmark cell stating its OWN base. Without this the prop rename and the "k of
+   * N" line are untested at the render level — the component could drop either and stay green.
+   *
+   * The population is deliberately mixed the same way as the model-level block: a PRIVATE school has
+   * no GES establishment, so it is outside the VACANCY fold but inside the ENROLMENT one. So the same
+   * render must show BOTH a short base and a full one.
+   */
+  it("each benchmark cell states its OWN 'k of N' base, and the header names the population neutrally", () => {
+    const pub = row({
+      childId: "pub", name: "Public SHS", enrolment: 900,
+      postsEstablished: 40, vacancyNet: 6,
+    });
+    const priv = row({
+      childId: "priv", name: "Private SHS", enrolment: 500,
+      postsEstablished: null, vacancyNet: null,
+    });
+    const population = [pub, priv];
+    const model = buildComparison({
+      metrics: comparisonMetrics({ exam: "WASSCE", hasCoverage: false }),
+      benchmarkPopulation: population,
+      columns: [col(pub), col(priv)],
+    });
+
+    // The premise: the two metrics really do have DIFFERENT bases on this population, so the two
+    // assertions below cannot both be satisfied by one hard-coded string.
+    const rowOf = (key: string) =>
+      model.sections.flatMap((s) => s.rows).find((r) => r.metric.key === key)!;
+    expect(rowOf("enrolment").benchmarkContributors).toBe(2);
+    expect(rowOf("teacherVacancies").benchmarkContributors).toBe(1);
+
+    const html = renderToStaticMarkup(
+      createElement(ComparisonTable, {
+        model,
+        columns: [
+          { id: "pub", name: "Public SHS", meta: null, anchor: true },
+          { id: "priv", name: "Private SHS", meta: null },
+        ],
+        benchmarkLabel: "District average",
+        benchmarkPopulation: { count: 2, noun: "SHS" },
+        footnote: "x",
+      }),
+    );
+    // The header NAMES the group; it does not assert it as every row's divisor.
+    expect(html).toContain("like-for-like: 2 SHS");
+    // Both bases are rendered — the full one for enrolment, the SHORT one for vacancies. The second
+    // is the whole point: the old surface printed "2 SHS" beside this figure, which 1 school filed.
+    expect(html).toContain("2 of 2 SHS");
+    expect(html).toContain("1 of 2 SHS");
+  });
+
   it("ComparisonPicker shows the active tier, a disabled tier and a removable chip", () => {
     const entities: ComparisonEntity[] = [
       { jurisdictionId: "as", name: "Asankrangwa SHS", schoolType: "SHS", ownershipType: "PUBLIC", foundedYear: 1960 },
