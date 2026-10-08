@@ -301,9 +301,9 @@ function markupOf(data: TeacherCpdPanel): string {
 function visibleText(markup: string): string {
   return markup
     .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&#x27;/g, "'")
     .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&") // decode the ampersand LAST so no entity is double-unescaped
     .replace(/\s+/g, " ")
     .trim();
 }
