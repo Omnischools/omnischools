@@ -122,6 +122,36 @@ function barWidth(rate: number): string {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠ THE UNIT OF A `StatusRate` IS NOT ALWAYS A 0..1 FRACTION — AND IT MUST BE STATED (Quinn RED-1).
+ *
+ * Five metrics on this panel carry a sex split, and FOUR of them are fractions of a population (PLC
+ * coverage, participation, the CPD-threshold rate, each category coverage). The fifth — B1's
+ * `pointsMean` — is Σcpd_points_total ÷ Σcpd_points_teacher_count, i.e. POINTS PER TEACHER: a 10.18-pt
+ * mean is not 1,018%. Formatting every sexed figure as a percentage printed exactly that, on the
+ * DEMO-chipped, GES-facing number — the misread C6 exists to prevent.
+ *
+ * So the unit is a CLOSED union and `ParityRow` REQUIRES it: there is deliberately NO default. The next
+ * sexed non-fraction metric cannot silently inherit the percentage formatter, because a call site that
+ * does not state its unit is a TYPE ERROR — the same discipline `ParityDotTone`/`SpreadBar.endTones`
+ * uses for the green dot. The headline in B1 and its parity row read the SAME formatter, so the two can
+ * never disagree about what the figure is.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+export type CpdUnit = "RATE" | "POINTS";
+
+/** A figure in its own unit: a fraction as a percentage, a points mean as points. */
+function unitText(unit: CpdUnit, value: number): string {
+  return unit === "RATE" ? pctText(value) : `${formatPoints(value)} pts`;
+}
+
+/** The gap between two figures, in the unit's OWN points — percentage points, or CPD points. */
+function gapText(unit: CpdUnit, delta: number): string {
+  return unit === "RATE"
+    ? `${formatRatio(delta * 100, 1)} percentage points`
+    : `${formatRatio(delta, 2)} CPD points`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
  * §4 — THE PLC PROGRESS BAR (the CPD mock's `.progress-cell` idiom): a label line, a gold-soft fill on
  * a `bg-bg` track, and the mono figure. The inline `style={{width}}` is the sanctioned one use — the
  * width IS the datum (the `SpreadBar`/`FeeCountBar` justification).
@@ -166,6 +196,8 @@ export function ParityRow({
   female,
   male,
   provenance,
+  unit,
+  axisMax,
   endTones = { low: "bg-navy", high: "bg-navy" },
 }: {
   /** The parity sentence, with both figures substituted in by the caller (the C14 wording). */
@@ -174,24 +206,41 @@ export function ParityRow({
   male: StatusRate;
   /** DEMO on an NTC-sourced metric chips EACH sexed figure (C6/C14); PLC metrics carry no chip. */
   provenance: NtcProvenance;
+  /**
+   * ⚠ REQUIRED, with NO default — see the unit note above. "RATE" for a 0..1 fraction, "POINTS" for a
+   * points-per-teacher mean. Omitting it is a type error rather than a silent percentage.
+   */
+  unit: CpdUnit;
+  /**
+   * The STATED axis the two dots are projected onto, for a unit that is not already 0..1 (POINTS:
+   * pass the statutory target, e.g. 20). Without it a POINTS row WITHHOLDS the track rather than
+   * clamping both dots to the rail — the figures and the gap are still stated (the `FeeRangeBar`
+   * fail-loud posture: withhold the drawing, never the figure).
+   */
+  axisMax?: number | null;
   endTones?: { low: ParityDotTone; high: ParityDotTone };
 }) {
   const figure = (side: StatusRate, who: string): ReactNode => (
     <span className="inline-flex items-baseline gap-1">
       <span className="text-[10px] uppercase tracking-wide text-navy-3">{who}</span>
       {renderCpdStatus(side.status, {
-        text: side.rate === undefined ? "" : pctText(side.rate),
-        zeroText: side.rate === undefined ? "0%" : pctText(side.rate),
+        text: side.rate === undefined ? "" : unitText(unit, side.rate),
+        zeroText: side.rate === undefined ? unitText(unit, 0) : unitText(unit, side.rate),
         provenance,
       })}
     </span>
   );
 
-  // The two-dot track is drawn only when BOTH sexes have a rate — a sex whose denominator is zero
-  // renders `<Absent/>` above and has no position on the track (never a 0% dot at the rail).
-  const canPlot = female.rate !== undefined && male.rate !== undefined;
-  const low = canPlot ? Math.min(female.rate!, male.rate!) : 0;
-  const high = canPlot ? Math.max(female.rate!, male.rate!) : 0;
+  // The two-dot track is drawn only when BOTH sexes have a figure AND the unit has an axis to project
+  // onto — a sex whose denominator is zero renders `<Absent/>` above and has no position on the track
+  // (never a 0% dot at the rail), and a POINTS row with no stated axis is withheld rather than clamped.
+  const scale = unit === "RATE" ? 1 : (axisMax ?? 0);
+  const hasFigures = female.rate !== undefined && male.rate !== undefined;
+  const canPlot = hasFigures && scale > 0;
+  const low = canPlot ? Math.min(female.rate!, male.rate!) / scale : 0;
+  const high = canPlot ? Math.max(female.rate!, male.rate!) / scale : 0;
+  // The GAP is in the metric's own unit, computed from the FIGURES (never from the track positions).
+  const gap = hasFigures ? Math.abs(female.rate! - male.rate!) : null;
 
   return (
     <div className="mt-2 border-l-2 border-border-1 pl-3">
@@ -225,12 +274,12 @@ export function ParityRow({
           </span>
         ) : null}
       </div>
-      {canPlot ? (
+      {gap === null ? null : (
         <p className="mt-1 text-[10px] text-navy-3">
-          A {formatRatio(Math.abs(high - low) * 100, 1)}-point gap. Neither figure is a
-          target — the signal is the gap.
+          A gap of {gapText(unit, gap)}. Neither figure is a target — the signal is the
+          gap.
         </p>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -343,6 +392,7 @@ export function CpdPanel({
               female={data.plcCoverage.bySex.female}
               male={data.plcCoverage.bySex.male}
               provenance={p}
+              unit="RATE"
             />
           ) : null}
         </div>
@@ -363,6 +413,7 @@ export function CpdPanel({
               female={data.participation.bySex.female}
               male={data.participation.bySex.male}
               provenance={p}
+              unit="RATE"
             />
           ) : null}
         </div>
@@ -464,6 +515,11 @@ export function CpdPanel({
               female={data.pointsMean.bySex.female}
               male={data.pointsMean.bySex.male}
               provenance={p}
+              /* ⚠ POINTS, not a rate: this mean is points per teacher (Quinn RED-1). The track is
+                 projected onto the STATED statutory target, the same scale as the headline above;
+                 with no agreed target the dots are withheld and the figures still stated. */
+              unit="POINTS"
+              axisMax={target}
             />
           ) : null}
         </div>
@@ -540,6 +596,7 @@ export function CpdPanel({
                     female={cov.bySex.female}
                     male={cov.bySex.male}
                     provenance={p}
+                    unit="RATE"
                   />
                 ) : null}
               </div>
@@ -577,6 +634,7 @@ export function CpdPanel({
               female={data.thresholdRate.bySex.female}
               male={data.thresholdRate.bySex.male}
               provenance={p}
+              unit="RATE"
             />
           ) : null}
         </div>

@@ -678,6 +678,25 @@ describe("the sex-invariant columns are never summed under the MALE/FEMALE split
     expect(target).not.toContain("women");
   });
 
+  it("each parity row states its metric's OWN unit — points for B1, percentages for the rest", async () => {
+    // Quinn RED-1: `pointsMean.rate` is POINTS PER TEACHER (Σtotal ÷ Σteacher_count), not a fraction,
+    // so a percentage formatter printed the district's 18.64-pt mean as "1863.6%" on the GES-facing,
+    // DEMO-chipped figure. `ParityRow` now REQUIRES a unit, so the next non-fraction sexed metric is a
+    // type error rather than a silent percentage.
+    const markup = panelMarkup(await demo());
+    const b1 = markup.slice(markup.indexOf("mean CPD points"));
+    const block = b1.slice(0, 1200);
+    // No three-or-more-digit percentage anywhere near the sexed mean…
+    expect(block).not.toMatch(/\d{3,}(\.\d+)?%/);
+    // …and the sexed figures carry the headline's own points idiom, with the gap in CPD points.
+    expect(block).toContain("pts");
+    expect(block).toContain("CPD points");
+    // The four fraction metrics keep their percentages, with the gap in percentage points.
+    const { plc } = subSections(markup);
+    expect(plc).toContain("percentage points");
+    expect(plc).toMatch(/\d+\.\d%/);
+  });
+
   it("the parity figures are re-derived per sex from summed inputs", async () => {
     const p = await demo();
     // Women: (8 + 400) ÷ (50 + 500); men: (2 + 400) ÷ (50 + 500) — each its own Σ÷Σ.
