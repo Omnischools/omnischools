@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import postgres from "postgres";
+import { plcSexShares } from "@/lib/etl/plc";
 import {
   GHANA_REGIONS,
   MISSION_PATRONS,
@@ -361,6 +362,108 @@ export interface DemoInvoiceRun {
   lines: DemoInvoiceLine[];
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+ * ── THE PLC REGISTER AND THE NTC CPD STAND-IN (increment L, the CPD/PLC slice) ─────────────────
+ *
+ * TWO SOURCES, DELIBERATELY APART, because they stand in for two different systems:
+ *   `demo_source.plc_*`             Omnischools' OWN operational PLC module. Real aggregate SHAPE,
+ *                                   demo VOLUME — identical in kind to the roster and the register.
+ *   `demo_ntc_source.ntc_cpd_summary`  A THIRD PARTY'S system (the NTC CPD portal), which
+ *                                   Omnischools cannot read at all today. The fact builder reads it
+ *                                   through a SEAM (`lib/etl/ntc-cpd-source.ts`) and populates the
+ *                                   schema's NULL-gated category/threshold columns FROM IT —
+ *                                   never by inventing a figure (Kofi's C1/C2).
+ *
+ * ⚠ THE TEACHER POOL IS DIMENSIONED TO STAY UNDER `fact_staffing.teachers_on_roll`, and that is a
+ * correctness requirement rather than tidiness. `teacher_headcount` on the fact row is PINNED to the
+ * staffing arm's derived roll (pupils ÷ a drawn PTR in [12, 55]), and every coverage rate divides by
+ * it — so a demo whose PLC cohort exceeded the roll would publish coverage above 100% across the
+ * country. The pool is therefore `max(1, round(pupils ÷ 60))`, which sits below the roll for EVERY
+ * band in `SCHOOL_LEVEL_BANDS` (whose widest is 55), and the per-PLC cohort is a fraction of that.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** One operational `plc_programme` row — the school's own cadence and its OWN PLC-only target. */
+export interface DemoPlcProgrammeRow {
+  schoolId: string;
+  weeksPerSemester: number;
+  /** `annual_plc_target` in exact HUNDREDTHS of a point (800 = the operational default of 8.00). */
+  annualPlcTargetHundredths: number;
+}
+
+/** One ACTIVE or ARCHIVED `plc` group. `archivedAt` non-null is the soft-archive case. */
+export interface DemoPlcGroupRow {
+  schoolId: string;
+  plcId: string;
+  /** NULL = inherit the programme cadence (weekly). BIWEEKLY halves the session expectation. */
+  overrideFrequency: "WEEKLY" | "BIWEEKLY" | null;
+  archivedAt: string | null;
+}
+
+/**
+ * One `plc_membership` row — ONE TEACHER in ONE PLC.
+ *
+ * `memberRank` is the teacher's 1-based position in the school's pool. It is NOT an operational
+ * column: it is dataset bookkeeping that lets the LEDGER be derived in SQL by a deterministic rule
+ * (see `loadDemoSource`) instead of being materialised as ~100,000 JS objects.
+ */
+export interface DemoPlcMembershipRow {
+  schoolId: string;
+  plcId: string;
+  userId: string;
+  memberRank: number;
+}
+
+/** One HELD `plc_session`. "Held" = the row exists — there is no status column upstream. */
+export interface DemoPlcSessionRow {
+  schoolId: string;
+  plcId: string;
+  sessionId: string;
+  /** The CIVIL date. Fixed offsets inside the term, never the clock. */
+  date: string;
+  /** The session's 1-based ordinal within its PLC and term. Dataset bookkeeping, as `memberRank` is. */
+  ordinal: number;
+}
+
+/**
+ * One `plc_session_attendance` row — PRESENT-BY-DEFAULT, so A ROW EXISTS ONLY FOR SOMEBODY WHO WAS
+ * NOT MARKED PRESENT. LATE rows are generated deliberately: Late IS Present for CPD, so a LATE row
+ * must deduct NOTHING from `attendance_events` and must still earn its ledger award. A dataset without
+ * them could not demonstrate the one status rule in this arm that is easy to get backwards.
+ */
+export interface DemoPlcAttendanceRow {
+  schoolId: string;
+  sessionId: string;
+  userId: string;
+  status: "ABSENT" | "EXCUSED" | "MEDICAL" | "LATE";
+}
+
+/**
+ * One `demo_ntc_source.ntc_cpd_summary` row — (school × academic year × teacher sex).
+ *
+ * ⚠ NOT A FACT ROW, AND NOT A COLUMN OF ONE. Nothing in this demo hand-seeds `fact_plc_participation`;
+ * these rows are an operational-SHAPED stand-in that the ETL reads through the swappable seam, exactly
+ * as `facilities_snapshot` rows are. If the transform is wrong, the demo CPD figures are wrong — which
+ * is the only honest arrangement.
+ *
+ * Every point figure is in exact HUNDREDTHS, so the reconciliation
+ * `mandatory + specialised + recommended = cpd_points_total` holds EXACTLY rather than approximately.
+ */
+export interface DemoNtcCpdRow {
+  emisSchoolId: string;
+  academicYear: string;
+  teacherSex: "MALE" | "FEMALE";
+  specialisedHundredths: number;
+  recommendedHundredths: number;
+  /** The NCPD half of Mandatory — the TOPUP the builder adds to the observed PLC floor (C7). */
+  ncpdHundredths: number;
+  mandatoryTeachers: number;
+  specialisedTeachers: number;
+  recommendedTeachers: number;
+  teachersMeetingThreshold: number;
+  /** The national statutory total. 2000 hundredths = 20.00 points. */
+  cpdTargetHundredths: number;
+}
+
 export interface DemoDataset {
   seed: number;
   terms: DemoTerm[];
@@ -378,6 +481,16 @@ export interface DemoDataset {
   feeCategories: DemoFeeCategoryRow[];
   /** The invoice bands — see `DemoInvoiceRun`. Expanded to real invoices + line items on load. */
   invoiceRuns: DemoInvoiceRun[];
+  /** The PLC programme configurations — one per school that has configured one. */
+  plcProgrammes: DemoPlcProgrammeRow[];
+  /** The PLC groups. A school with NONE runs no PLC, which is a MEASUREMENT (a 0 row), not absence. */
+  plcGroups: DemoPlcGroupRow[];
+  plcMemberships: DemoPlcMembershipRow[];
+  plcSessions: DemoPlcSessionRow[];
+  /** The NON-PRESENT (and LATE) register rows. Present-by-default: there is no PRESENT row. */
+  plcAttendance: DemoPlcAttendanceRow[];
+  /** The NTC CPD stand-in — a DIFFERENT schema, read through a DIFFERENT seam. See `DemoNtcCpdRow`. */
+  ntcCpd: DemoNtcCpdRow[];
 }
 
 /** The EMIS extract file format — the same `{ as_of_date, rows }` shape as the establishment file. */
@@ -1509,6 +1622,305 @@ function feeBookFor(
   return { categories, runs };
 }
 
+// ── the PLC register and the NTC CPD stand-in (increment L) ─────────────────────────────────────
+
+/** The operational PLC-group uuid for PLC #k of school #index. Index-derived, so it is run-stable. */
+export function demoOperationalPlcId(index: number, plcIndex: number): string {
+  return `e1000000-0000-4000-8000-${pad12(index * 100 + plcIndex)}`;
+}
+
+/** The operational PLC-session uuid. Keyed by (school, PLC, term, ordinal) so it is run-stable. */
+export function demoOperationalPlcSessionId(
+  index: number,
+  plcIndex: number,
+  term: number,
+  ordinal: number,
+): string {
+  return `f1000000-0000-4000-8000-${pad12((index * 100 + plcIndex) * 100 + term * 20 + ordinal)}`;
+}
+
+/**
+ * A STAFF uuid. ⚠ A COUNT OF TEACHERS IS WHAT THIS DEMO PUBLISHES; the uuid exists only because the
+ * operational UNIQUEs (`uniq_plc_membership`, `uniq_plc_session_attendance`, `uniq_plc_cpd_ledger`) are
+ * keyed by member and are LOAD-BEARING — they are what make a distinct count a count of PEOPLE. No
+ * attribute hangs off it: there is no name, no sex, no staff record, and the ETL never selects it.
+ */
+export function demoTeacherId(index: number, memberRank: number): string {
+  return `0a000000-0000-4000-8000-${pad12(index * 1000 + memberRank)}`;
+}
+
+/** The share of schools that run a PLC at all. NOT 100%: `schools_running_plc_count = 0` is a figure. */
+const PLC_RUNNING_RATE = 0.72;
+/** Of the schools that run NO PLC, how many have still CONFIGURED a programme (target set, no groups). */
+const PLC_CONFIGURED_WITHOUT_GROUPS_RATE = 0.55;
+/** Teachers per pupil in the demo staff pool — see the section header for why it is this conservative. */
+const PUPILS_PER_TEACHER_POOL = 60;
+/** The share of schools the NTC extract covers. NOT 100%: a covered neighbour must not imply coverage. */
+const NTC_COVERAGE_RATE = 0.92;
+/** The statutory CPD total, in hundredths. 20.00 points — asserted HIGH confidence in Kofi's §8. */
+const NTC_TARGET_HUNDREDTHS = 2_000;
+
+/** Whole civil days between two ISO dates, UTC. No clock, no locale — the artefact is byte-stable. */
+function daysBetween(fromIso: string, toIso: string): number {
+  const a = new Date(`${fromIso}T00:00:00Z`).getTime();
+  const b = new Date(`${toIso}T00:00:00Z`).getTime();
+  return Math.round((b - a) / 86_400_000);
+}
+
+/**
+ * ONE SCHOOL'S PLC MODULE across the declared terms — groups, cohorts, sessions and the non-present
+ * register. The CPD LEDGER IS NOT GENERATED HERE: it is DERIVED in `loadDemoSource` from (session ×
+ * member) minus the non-present rows, which is the upstream rule itself (R391 — the register's display
+ * and the ledger's accrual come from one computation), and which keeps ~100,000 ledger rows out of the
+ * in-memory dataset.
+ *
+ * ⚠ THE PLANTED EDGE CASES, keyed off the school INDEX so they are stable and findable. Each is a
+ * landmine in the ruling or the schema that would otherwise be exercised only by a hand-built fixture:
+ *   · index % 157 === 0 → A SCHOOL THAT RUNS A PLC BUT HELD NO SESSION IN THE LAST TERM. Session
+ *     coverage 0% against a real expectation, `attendance_expected = 0` and therefore a NULL
+ *     participation rate — NOT 0.00, because a rate with no denominator is not a measurement of zero.
+ *   · index % 163 === 0 → A PLC THAT MET BUT LOGGED EVERY MEMBER NON-PRESENT. A REAL zero:
+ *     `attendance_events = 0` against a positive expectation, rate 0.00. It must stay DISTINGUISHABLE
+ *     from the case above, and from a school with no PLC at all.
+ *   · index % 167 === 0 → AN ARCHIVED PLC WITH SESSIONS IN THE WINDOW. Its Fridays are history: they
+ *     must reach NO fact column (the group read excludes archived PLCs) and must be TALLIED as
+ *     `orphanSessions` rather than silently dropped.
+ *   · index % 173 === 0 → A BIWEEKLY PLC. Its session expectation is HALF the programme's weeks, which
+ *     is the only thing `plc.override_frequency` changes and is otherwise untested.
+ *   · index % 179 === 0 → A SCHOOL WITH PLCs BUT NO `plc_programme` ROW. `sessions_expected` and
+ *     `annual_plc_target` are then NULL — never 0, and never the upstream coalesced default of 8.
+ */
+function plcModuleFor(
+  rng: Rng,
+  school: DemoSchool,
+  index: number,
+  classes: DemoClassRow[],
+  pupilsByClass: Map<string, number>,
+  terms: readonly DemoTerm[],
+): {
+  programme: DemoPlcProgrammeRow | null;
+  groups: DemoPlcGroupRow[];
+  memberships: DemoPlcMembershipRow[];
+  sessions: DemoPlcSessionRow[];
+  attendance: DemoPlcAttendanceRow[];
+  /** The staff pool size — the NTC stand-in is dimensioned from the SAME number. */
+  teacherPool: number;
+} {
+  const schoolId = school.operationalSchoolId!;
+  const pupils = classes.reduce((t, c) => t + (pupilsByClass.get(c.classId) ?? 0), 0);
+  // Conservative ON PURPOSE — see the section header. It must stay below `teachers_on_roll`.
+  const teacherPool = Math.max(1, Math.round(pupils / PUPILS_PER_TEACHER_POOL));
+
+  const runsPlc = rng.bool(PLC_RUNNING_RATE);
+  const noProgramme = index % 179 === 0;
+  const biweekly = index % 173 === 0;
+  const archivedExtra = index % 167 === 0;
+  const allNonPresent = index % 163 === 0;
+  const dormantLastTerm = index % 157 === 0;
+
+  // A school with no PLC may still have CONFIGURED a programme (a target it set and never ran). The
+  // other half has no programme row at all, which is what makes the NULL `annual_plc_target` path real.
+  const hasProgramme =
+    !noProgramme && (runsPlc || rng.bool(PLC_CONFIGURED_WITHOUT_GROUPS_RATE));
+  const programme: DemoPlcProgrammeRow | null = hasProgramme
+    ? {
+        schoolId,
+        // 10–14 weeks around the operational default of 12 — schools do configure their own.
+        weeksPerSemester: rng.int(10, 14),
+        // The operational default is 8.00; a minority of schools set their own. ⚠ NOT the statutory 20.
+        annualPlcTargetHundredths: rng.bool(0.7) ? 800 : rng.int(10, 16) * 50,
+      }
+    : null;
+
+  const groups: DemoPlcGroupRow[] = [];
+  const memberships: DemoPlcMembershipRow[] = [];
+  const sessions: DemoPlcSessionRow[] = [];
+  const attendance: DemoPlcAttendanceRow[] = [];
+  if (!runsPlc && !archivedExtra)
+    return { programme, groups, memberships, sessions, attendance, teacherPool };
+
+  // 1–3 active PLCs, weighted to 1–2 (a subject circle, sometimes a cross-cutting one as well).
+  const activeCount = runsPlc ? rng.weighted([[1, 0.5] as const, [2, 0.35] as const, [3, 0.15] as const]) : 0;
+  let plcIndex = 0;
+  const plans: {
+    group: DemoPlcGroupRow;
+    members: DemoPlcMembershipRow[];
+    /** The PLC's 1-based index within its school — part of every session's index-derived uuid. */
+    plcIndex: number;
+  }[] = [];
+  for (let i = 0; i < activeCount; i++) {
+    plcIndex += 1;
+    const group: DemoPlcGroupRow = {
+      schoolId,
+      plcId: demoOperationalPlcId(index, plcIndex),
+      overrideFrequency: biweekly && i === 0 ? "BIWEEKLY" : null,
+      archivedAt: null,
+    };
+    // 50–95% of the pool per PLC, and the rank windows WRAP — so a teacher in two PLCs is a real,
+    // common case. That is what makes `teachers_in_plc` (distinct people) differ from Σ the per-PLC
+    // cohorts, which is the distinction `readPlcSchoolMemberCounts` exists for. The fraction is high
+    // because a school-based PLC really does take in most of the teaching staff; it stays below the
+    // pool, and the pool stays below the pinned roll, so PLC coverage cannot exceed 100%.
+    const size = Math.max(1, Math.min(teacherPool, Math.round(teacherPool * (0.5 + rng.next() * 0.45))));
+    const start = rng.int(1, teacherPool);
+    const members: DemoPlcMembershipRow[] = [];
+    for (let m = 0; m < size; m++) {
+      const rank = ((start - 1 + m) % teacherPool) + 1;
+      members.push({
+        schoolId,
+        plcId: group.plcId,
+        userId: demoTeacherId(index, rank),
+        memberRank: rank,
+      });
+    }
+    groups.push(group);
+    memberships.push(...members);
+    plans.push({ group, members, plcIndex });
+  }
+  // THE ARCHIVED PLC — soft-archived upstream, so its rows survive. Its sessions are in the window and
+  // must reach no fact column: the group read filters `archived_at IS NULL`.
+  if (archivedExtra) {
+    plcIndex += 1;
+    const group: DemoPlcGroupRow = {
+      schoolId,
+      plcId: demoOperationalPlcId(index, plcIndex),
+      overrideFrequency: null,
+      archivedAt: `${terms[0]!.startsOn}T12:00:00+00:00`,
+    };
+    const members: DemoPlcMembershipRow[] = [
+      {
+        schoolId,
+        plcId: group.plcId,
+        userId: demoTeacherId(index, 1),
+        memberRank: 1,
+      },
+    ];
+    groups.push(group);
+    memberships.push(...members);
+    plans.push({ group, members, plcIndex });
+  }
+
+  for (const term of terms) {
+    const weeks = programme?.weeksPerSemester ?? 12;
+    // The window cannot be exceeded: a session dated outside its term would belong to no cut at all.
+    const maxWeeks = Math.max(1, Math.floor((daysBetween(term.startsOn, term.endsOn) - 3) / 7) + 1);
+    for (const plan of plans) {
+      const expected = Math.min(
+        plan.group.overrideFrequency === "BIWEEKLY" ? Math.ceil(weeks / 2) : weeks,
+        maxWeeks,
+      );
+      const lastTerm = term.term === terms[terms.length - 1]!.term;
+      // 45–95% session coverage — plausible, and wide enough that the coverage rate varies. The
+      // planted dormant school holds NOTHING in the last term.
+      const held =
+        dormantLastTerm && lastTerm
+          ? 0
+          : Math.max(1, Math.round(expected * (0.45 + rng.next() * 0.5)));
+      const step = plan.group.overrideFrequency === "BIWEEKLY" ? 14 : 7;
+      for (let n = 1; n <= held; n++) {
+        const offset = 3 + (n - 1) * step;
+        if (offset > daysBetween(term.startsOn, term.endsOn)) break;
+        const sessionId = demoOperationalPlcSessionId(index, plan.plcIndex, term.term, n);
+        sessions.push({
+          schoolId,
+          plcId: plan.group.plcId,
+          sessionId,
+          date: addDays(term.startsOn, offset),
+          ordinal: n,
+        });
+        // THE NON-PRESENT REGISTER. Present-by-default, so only the exceptions get a row — and LATE
+        // is one of them while costing the member nothing.
+        if (allNonPresent && lastTerm) {
+          for (const member of plan.members)
+            attendance.push({
+              schoolId,
+              sessionId,
+              userId: member.userId,
+              status: "ABSENT",
+            });
+          continue;
+        }
+        for (const member of plan.members) {
+          if (!rng.bool(school.urban ? 0.14 : 0.2)) continue;
+          attendance.push({
+            schoolId,
+            sessionId,
+            userId: member.userId,
+            status: rng.weighted([
+              ["ABSENT", 0.5] as const,
+              ["LATE", 0.26] as const,
+              ["EXCUSED", 0.14] as const,
+              ["MEDICAL", 0.1] as const,
+            ]),
+          });
+        }
+      }
+    }
+  }
+
+  return { programme, groups, memberships, sessions, attendance, teacherPool };
+}
+
+/**
+ * ONE SCHOOL'S NTC CPD EXTRACT ROWS — the stand-in the fact builder reads its NULL-gated columns from.
+ *
+ * ⚠ THE SEX SPLIT USES THE **FACT BUILDER'S OWN** APPORTIONMENT SHARE (`plcSexShares`, imported from
+ * `lib/etl/plc.ts`), and that import is deliberate. The builder divides each sexed NTC count by that
+ * sex's share of the PINNED roll, so a stand-in dimensioned on any other split would need clamping on
+ * nearly every row — and the clamp exists to make a REAL mismatch between NTC's roll and ours visible,
+ * not to absorb one this generator created. Using the same share keeps the clamp tally at ~0 in the
+ * demo, which is what makes a non-zero tally mean something. (`scripts/` → `lib/` is the allowed
+ * direction; `lib/` never imports `scripts/`.)
+ *
+ * THE COMPLIANCE DISTRIBUTION is grounded rather than uniform: urban schools do better, and women and
+ * men differ by a per-school tilt — which is the whole point of the girls'-access frame (ruling C14).
+ * ⚠ PLAUSIBILITY WEIGHTS, NOT MEASUREMENTS. No figure here is a statement about Ghana's CPD
+ * compliance; the live NTC feed is not connected, and every one of these figures is marked DEMO on
+ * every surface that shows it.
+ */
+function ntcCpdFor(
+  rng: Rng,
+  school: DemoSchool,
+  academicYear: string,
+  teacherPool: number,
+): DemoNtcCpdRow[] {
+  if (!rng.bool(NTC_COVERAGE_RATE)) return []; // an UNCOVERED school: its NTC columns stay NULL.
+  const shares = plcSexShares(school.emisSchoolId, academicYear);
+  const female = Math.round((teacherPool * shares.headPerMille) / 1000);
+  const male = teacherPool - female;
+  // The school's own compliance level, drawn ONCE: CPD provision is a district/school phenomenon, so
+  // two teachers at one school are far more alike than two teachers in one region.
+  const base = 0.25 + rng.next() * 0.5 + (school.urban ? 0.1 : 0);
+  const sexTilt = (rng.next() * 2 - 1) * 0.12;
+  // Per-teacher point averages, drawn once per school: Specialised is the bigger external class.
+  const specialisedEach = rng.int(200, 700); // hundredths of a point per teacher
+  const recommendedEach = rng.int(100, 500);
+  const ncpdEach = rng.int(100, 600);
+  const rows: DemoNtcCpdRow[] = [];
+  for (const [teacherSex, count, tilt] of [
+    ["MALE", male, -sexTilt],
+    ["FEMALE", female, sexTilt],
+  ] as const) {
+    const compliance = Math.min(0.97, Math.max(0.03, base + tilt));
+    rows.push({
+      emisSchoolId: school.emisSchoolId,
+      academicYear,
+      teacherSex,
+      specialisedHundredths: count * specialisedEach,
+      recommendedHundredths: count * recommendedEach,
+      ncpdHundredths: count * ncpdEach,
+      // The three COVERAGE counts OVERLAP by construction — a teacher earning in two classes is in
+      // both — so they are never summed to each other, and each is bounded by its sex's own pool.
+      mandatoryTeachers: Math.round(count * Math.min(1, 0.6 + rng.next() * 0.4)),
+      specialisedTeachers: Math.round(count * (0.3 + rng.next() * 0.6)),
+      recommendedTeachers: Math.round(count * (0.2 + rng.next() * 0.6)),
+      teachersMeetingThreshold: Math.round(count * compliance),
+      cpdTargetHundredths: NTC_TARGET_HUNDREDTHS,
+    });
+  }
+  return rows;
+}
+
 /**
  * Build the whole dataset in memory. PURE (given a seed) — no DB, no filesystem — so a test can
  * assert hand-computed sums against exactly the rows the loader is about to write.
@@ -1666,6 +2078,49 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     invoiceRuns.push(...book.runs);
   }
 
+  // ── the PLC MODULE and the NTC STAND-IN: A FOURTH PASS, WITH ITS OWN RNG ──────────────────────
+  //
+  // ⚠ A NEW, DISTINCT SALT, for exactly the reason the attendance and fees passes document above:
+  // every draw from a stream shifts everything after it, so generating PLC rows from `rng`,
+  // `attendanceRng` or `feesRng` would silently move EVERY already-shipped arm's demo figures —
+  // censuses, rosters, sittings, registers AND the whole fee book — and a reviewer comparing branches
+  // would have thousands of unexplained differences to read past. A fourth, independently seeded
+  // generator keeps this slice's blast radius to this slice's own data, and `tests/etl-plc.test.ts`
+  // asserts the byte-identity of the five prior arms' datasets across it.
+  //
+  // THE TWO SOURCES SHARE ONE STREAM, deliberately: the NTC stand-in is DIMENSIONED from the PLC
+  // staff pool (see `ntcCpdFor`), so drawing them together keeps the two consistent per school and
+  // keeps the clamp tally at ~0 — which is what makes a non-zero clamp tally meaningful.
+  const cpdRng = rngOf(seed ^ 0x4350_4443); // "CPDC"
+  const plcProgrammes: DemoPlcProgrammeRow[] = [];
+  const plcGroups: DemoPlcGroupRow[] = [];
+  const plcMemberships: DemoPlcMembershipRow[] = [];
+  const plcSessions: DemoPlcSessionRow[] = [];
+  const plcAttendance: DemoPlcAttendanceRow[] = [];
+  const ntcCpd: DemoNtcCpdRow[] = [];
+  // The NTC extract is per ACADEMIC YEAR, and the PLC arm runs for the CURRENT one only (its
+  // `teacher_headcount` is pinned to a roll that exists only there), so the stand-in carries exactly
+  // that year. A stand-in covering a year the arm cannot file would be rows nothing reads.
+  const cpdAcademicYear = (DEMO_TERMS.find((t) => t.isCurrent) ?? DEMO_TERMS[0]!).academicYear;
+  for (const school of schools) {
+    if (!school.onSchoolup) continue; // no tenant → no operational PLC module → no fact row
+    const index = Number(school.operationalSchoolId!.slice(-12));
+    const module = plcModuleFor(
+      cpdRng,
+      school,
+      index,
+      classesBySchool.get(school.operationalSchoolId!) ?? [],
+      pupilsByClass,
+      DEMO_TERMS,
+    );
+    if (module.programme) plcProgrammes.push(module.programme);
+    plcGroups.push(...module.groups);
+    plcMemberships.push(...module.memberships);
+    plcSessions.push(...module.sessions);
+    plcAttendance.push(...module.attendance);
+    ntcCpd.push(...ntcCpdFor(cpdRng, school, cpdAcademicYear, module.teacherPool));
+  }
+
   return {
     seed,
     terms: [...DEMO_TERMS],
@@ -1679,6 +2134,12 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     attendanceMarks,
     feeCategories,
     invoiceRuns,
+    plcProgrammes,
+    plcGroups,
+    plcMemberships,
+    plcSessions,
+    plcAttendance,
+    ntcCpd,
   };
 }
 
@@ -1715,9 +2176,15 @@ export const DEMO_EMIS_EXTRACT_PATH = join(DEMO_DIR, "emis-register-extract.json
 
 const DEMO_SOURCE_SCHEMA_SQL = join(DEMO_DIR, "demo-source-schema.sql");
 
+/** Exact hundredths → the literal a `numeric(_,2)` column takes. Never via a float. */
+function hundredthsLiteral(hundredths: number): string {
+  return `${Math.floor(hundredths / 100)}.${String(hundredths % 100).padStart(2, "0")}`;
+}
+
 /**
- * (Re)create `demo_source` and load the operational-shaped rows. DROP-and-CREATE, not upsert: this
- * is a demo fixture, and a half-migrated stand-in source is a worse failure than a slow reload.
+ * (Re)create `demo_source` (and `demo_ntc_source`) and load the operational-shaped rows.
+ * DROP-and-CREATE, not upsert: this is a demo fixture, and a half-migrated stand-in source is a worse
+ * failure than a slow reload.
  */
 export async function loadDemoSource(
   sql: postgres.Sql,
@@ -1733,6 +2200,12 @@ export async function loadDemoSource(
   feeCategories: number;
   invoices: number;
   invoiceLineItems: number;
+  plcGroups: number;
+  plcSessions: number;
+  plcAttendance: number;
+  /** DERIVED in SQL from (session × member) minus the non-present rows — see the insert's own note. */
+  plcLedger: number;
+  ntcCpd: number;
 }> {
   await sql.unsafe(readFileSync(schemaSqlPath, "utf8"));
 
@@ -1990,6 +2463,152 @@ export async function loadDemoSource(
        where fc.name = ${DEMO_DUES_CATEGORY}`;
   });
 
+  // ---- the PLC MODULE: programme, groups, cohorts, sessions, the non-present register ----
+  // Straight inserts: unlike the roster and the register, every row here is already in the dataset
+  // (the volumes are thousands, not hundreds of thousands) EXCEPT the CPD ledger, which is DERIVED
+  // below.
+  for (let i = 0; i < dataset.plcProgrammes.length; i += CHUNK) {
+    const chunk = dataset.plcProgrammes.slice(i, i + CHUNK);
+    await sql`insert into demo_source.plc_programme ${sql(
+      chunk.map((p) => ({
+        school_id: p.schoolId,
+        weeks_per_semester: p.weeksPerSemester,
+        // Hundredths → the numeric(5,2) literal, built from integer arithmetic so the fixture's own
+        // expectation and the stored value cannot drift by a float rounding.
+        annual_plc_target: `${Math.floor(p.annualPlcTargetHundredths / 100)}.${String(
+          p.annualPlcTargetHundredths % 100,
+        ).padStart(2, "0")}`,
+      })),
+    )}`;
+  }
+  for (let i = 0; i < dataset.plcGroups.length; i += CHUNK) {
+    const chunk = dataset.plcGroups.slice(i, i + CHUNK);
+    await sql`insert into demo_source.plc ${sql(
+      chunk.map((g) => ({
+        id: g.plcId,
+        school_id: g.schoolId,
+        override_frequency: g.overrideFrequency,
+        archived_at: g.archivedAt,
+      })),
+    )}`;
+  }
+  for (let i = 0; i < dataset.plcMemberships.length; i += CHUNK) {
+    const chunk = dataset.plcMemberships.slice(i, i + CHUNK);
+    await sql`insert into demo_source.plc_membership ${sql(
+      chunk.map((m) => ({
+        school_id: m.schoolId,
+        plc_id: m.plcId,
+        user_id: m.userId,
+        // Every generated membership is ACTIVE (`left_at IS NULL`): the operational module stores no
+        // membership history beyond this one stamp, so the ETL reads the roster AS IT STANDS and the
+        // demo does not pretend otherwise (see `lib/etl/plc-source.ts`'s stated as-of limitation).
+        left_at: null,
+      })),
+    )}`;
+  }
+  for (let i = 0; i < dataset.plcSessions.length; i += CHUNK) {
+    const chunk = dataset.plcSessions.slice(i, i + CHUNK);
+    await sql`insert into demo_source.plc_session ${sql(
+      chunk.map((s) => ({
+        id: s.sessionId,
+        school_id: s.schoolId,
+        plc_id: s.plcId,
+        session_date: s.date,
+      })),
+    )}`;
+  }
+  for (let i = 0; i < dataset.plcAttendance.length; i += CHUNK) {
+    const chunk = dataset.plcAttendance.slice(i, i + CHUNK);
+    await sql`insert into demo_source.plc_session_attendance ${sql(
+      chunk.map((a) => ({
+        school_id: a.schoolId,
+        session_id: a.sessionId,
+        user_id: a.userId,
+        status: a.status,
+      })),
+    )}`;
+  }
+
+  // ---- the CPD LEDGER: **DERIVED**, not generated ----
+  //
+  // ⚠ THE LEDGER IS THE REGISTER'S OWN CONSEQUENCE, AND THIS INSERT-SELECT IS THAT RULE. Upstream,
+  // INCR-49 freezes one award per (session × member) from the SAME computation INCR-48's register
+  // displays (R391: display == accrual by construction). Generating the ledger independently in
+  // TypeScript would let the demo's points disagree with the demo's attendance — which is precisely
+  // the inconsistency the operational module is built to prevent, and which would make the Mandatory
+  // floor (`mandatory >= the observed PLC points`) a claim about two unrelated numbers.
+  //
+  // So: one row per (session × ACTIVE member), EXCLUDING the members whose register row says they were
+  // not present — and LATE IS NOT EXCLUDED, because Late IS Present for CPD (R383). The attended arm
+  // is the operational default 0.50; the reflection arm is 0.50 for a DETERMINISTIC ~70% of awards
+  // (`(member_rank + ordinal) % 10 < 7`), which is an arithmetic rule rather than a random draw so the
+  // whole fixture stays byte-stable without a PRNG inside SQL.
+  //
+  // `settled_at` is the session's own evening — the award instant the freeze is anchored to, and the
+  // ANNUAL row's `as_of_date`. NEVER `now()`: a wall-clock value here would make every re-run differ in
+  // provenance and turn the idempotency test into a test of the clock.
+  const LEDGER_CHUNK = 20_000;
+  const ledgerRows = dataset.plcSessions.map((s) => ({
+    school_id: s.schoolId,
+    session_id: s.sessionId,
+    plc_id: s.plcId,
+    ordinal: s.ordinal,
+  }));
+  for (let i = 0; i < ledgerRows.length; i += LEDGER_CHUNK) {
+    const chunk = ledgerRows.slice(i, i + LEDGER_CHUNK);
+    await sql`
+      insert into demo_source.plc_cpd_ledger
+        (school_id, session_id, user_id, attended_pts, reflection_pts, settled_at)
+      select g.school_id, g.session_id, m.user_id,
+             0.50,
+             case when ((m.rank_hint + g.ordinal) % 10) < 7 then 0.50 else 0.00 end,
+             (s.session_date + interval '18 hours')
+        from jsonb_to_recordset(${sql.json(chunk)}::jsonb)
+          as g(school_id uuid, session_id uuid, plc_id uuid, ordinal int)
+        join demo_source.plc_session s
+          on s.school_id = g.school_id and s.id = g.session_id
+        join (
+               select mm.school_id, mm.plc_id, mm.user_id,
+                      -- The member's position within its PLC, used ONLY by the deterministic
+                      -- reflection rule above. It is not an operational column.
+                      row_number() over (partition by mm.school_id, mm.plc_id order by mm.user_id)
+                        as rank_hint
+                 from demo_source.plc_membership mm
+                where mm.left_at is null
+             ) m
+          on m.school_id = g.school_id and m.plc_id = g.plc_id
+       where not exists (
+               select 1 from demo_source.plc_session_attendance a
+                where a.school_id = g.school_id
+                  and a.session_id = g.session_id
+                  and a.user_id = m.user_id
+                  and a.status in ('ABSENT', 'EXCUSED', 'MEDICAL')
+             )`;
+  }
+
+  // ---- the NTC CPD STAND-IN: a DIFFERENT SCHEMA, read through a DIFFERENT SEAM ----
+  // Keyed by EMIS code, because that is the only key a real NTC extract could arrive on. Nothing here
+  // writes a fact row: the ETL reads these rows through `lib/etl/ntc-cpd-source.ts` and populates the
+  // schema's NULL-gated columns FROM them, which is the whole of Kofi's C1/C2.
+  for (let i = 0; i < dataset.ntcCpd.length; i += CHUNK) {
+    const chunk = dataset.ntcCpd.slice(i, i + CHUNK);
+    await sql`insert into demo_ntc_source.ntc_cpd_summary ${sql(
+      chunk.map((n) => ({
+        emis_school_id: n.emisSchoolId,
+        academic_year: n.academicYear,
+        teacher_sex: n.teacherSex,
+        specialised_points: hundredthsLiteral(n.specialisedHundredths),
+        recommended_points: hundredthsLiteral(n.recommendedHundredths),
+        ncpd_points: hundredthsLiteral(n.ncpdHundredths),
+        mandatory_teachers: n.mandatoryTeachers,
+        specialised_teachers: n.specialisedTeachers,
+        recommended_teachers: n.recommendedTeachers,
+        teachers_meeting_threshold: n.teachersMeetingThreshold,
+        cpd_target_points: hundredthsLiteral(n.cpdTargetHundredths),
+      })),
+    )}`;
+  }
+
   return {
     periods: dataset.periods.length,
     facilities: dataset.facilities.length,
@@ -2006,7 +2625,25 @@ export async function loadDemoSource(
       (t, r) => t + (r.toRank - r.fromRank + 1) * r.lines.length,
       0,
     ),
+    plcGroups: dataset.plcGroups.length,
+    plcSessions: dataset.plcSessions.length,
+    plcAttendance: dataset.plcAttendance.length,
+    // COUNTED from the database rather than from the dataset, because this is the ONE table the
+    // generator does not enumerate: the ledger is derived by the INSERT-SELECT above, so the honest
+    // figure to report is the one the database actually holds.
+    plcLedger: Number(
+      (
+        await sql<{ n: number }[]>`
+          select count(*)::int as n from demo_source.plc_cpd_ledger`
+      )[0]!.n,
+    ),
+    ntcCpd: dataset.ntcCpd.length,
   };
+}
+
+/** The academic year the NTC stand-in covers — the CURRENT one, the only year the PLC arm files. */
+function cpdYearOf(dataset: DemoDataset): string {
+  return dataset.ntcCpd[0]?.academicYear ?? "no year";
 }
 
 /** Write the EMIS extract artefact to disk. Stable bytes for a given seed. */
@@ -2057,6 +2694,19 @@ async function main(): Promise<void> {
         `across ${loaded.feeCategories} fee categories (BILLED only — the payment estate has no ` +
         `stand-in at all), incl. Free-SHS billed-0 tuition, EXEMPT/DRAFT/VOIDED bills, a no-category ` +
         `line, a no-term invoice, and PTA dues reachable ONLY through the bridge`,
+    );
+    console.log(
+      `✓ demo_source → ${loaded.plcGroups} plc group(s), ${loaded.plcSessions} held session(s), ` +
+        `${loaded.plcAttendance} non-present/late register row(s) and ${loaded.plcLedger} CPD ledger ` +
+        `award(s) DERIVED from (session × member) minus the non-present rows — incl. an archived PLC, ` +
+        `a BIWEEKLY cadence, a school with PLCs but no programme row, a term held dormant and a ` +
+        `session logged all-absent`,
+    );
+    console.log(
+      `✓ demo_ntc_source → ${loaded.ntcCpd} ntc_cpd_summary row(s) (school × ${cpdYearOf(dataset)} × ` +
+        `teacher sex) — ⚠ ILLUSTRATIVE DEMO DATA for the GES/NTC demo, NOT measured: the live NTC ` +
+        `CPD feed is not connected. The ETL reads them through the swappable seam, so the real feed ` +
+        `replaces THIS SOURCE and nothing else`,
     );
   } finally {
     await sql.end({ timeout: 5 });
