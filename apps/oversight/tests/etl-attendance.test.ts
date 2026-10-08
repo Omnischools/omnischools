@@ -809,6 +809,11 @@ describe("the period is TERM, one row-set per declared term (criterion 10)", () 
     expect(annualPeriod[0]!.n).toBe(1);
   });
 
+  // ⚠ THE REFUSAL IS NOW A SHARED RUN PRECONDITION, NOT THIS ARM'S OWN (`assertTermWindowsDeclared`,
+  // pipeline step 2). It used to be one guard per term-grained arm, so WHICH message a reader saw
+  // depended on the order the arms happen to run in — and adding the PLC arm, which runs earlier,
+  // changed it. The message asserted here is the single one every term-grained arm now shares;
+  // `tests/etl-plc.test.ts` asserts the same refusal from the PLC side.
   it("an undated TERM spec is REFUSED by name — a flow cannot be aggregated over an empty window", async () => {
     await expect(
       runOversightEtl(sql, {
@@ -819,7 +824,7 @@ describe("the period is TERM, one row-set per declared term (criterion 10)", () 
         ],
         sourceSchema: "demo_source",
       }),
-    ).rejects.toThrow(/no window to aggregate over/);
+    ).rejects.toThrow(/no TERM-grained fact has a window to aggregate over/);
     // The dates-less upsert nulled that TERM row's window, so restore the dated baseline for what follows.
     await runEtl();
   }, 600_000);
@@ -990,6 +995,18 @@ describe("CRITERION 12 · attendance is a FLOW: the annual figure is Σ/Σ acros
     // Leave the database as found for every block after this one: the planted term's facts, its dim_period
     // row and its marks all go, and the two-term baseline is re-run.
     if (period3) await sql`delete from fact_attendance where period_id = ${period3}::uuid`;
+    // ⚠ THE PLANTED TERM NOW CARRIES ROWS IN **TWO** FACT TABLES. `fact_plc_participation` has a TERM
+    // cut of its own, and — unlike attendance and fees, which only write for a school that filed
+    // something in the window — it writes a row for EVERY computed school even when nothing happened,
+    // because a term with no PLC session is a MEASUREMENT (sessions_held = 0), not an absence. So a
+    // third term planted for this criterion gets ~2,500 PLC rows too, and `dim_period` cannot be
+    // deleted out from under them: the FK refuses it and this afterAll dies, taking the rest of the
+    // file's baseline with it. Cleared by PERIOD rather than by the captured id, so cleanup still
+    // works if the run above failed before `period3` was set.
+    await sql`
+      delete from fact_plc_participation
+       where period_id in (select period_id from dim_period
+                            where academic_year = ${ACADEMIC_YEAR} and term = 3)`;
     await sql`delete from dim_period where academic_year = ${ACADEMIC_YEAR} and term = 3`;
     await sql`
       delete from demo_source.attendance_record where date = ${TERM3_MARK_DATE}::date`;

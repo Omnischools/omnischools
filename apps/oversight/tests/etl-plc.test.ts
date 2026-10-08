@@ -182,6 +182,22 @@ beforeAll(async () => {
   sql = adminDemoAnalytics();
   dataset = generateDemoDataset();
   await loadDemoSource(sql, dataset);
+  // ⚠ THIS FILE OWNS `fact_plc_participation`'S STATE, AND HAS TO SAY SO EXPLICITLY.
+  //
+  // `oversight_test_demo` is SHARED by every ETL test file and `loadDemoSource` rebuilds only the
+  // SOURCE schemas — the fact tables persist across files. Several files (etl-attendance, notably)
+  // re-run the pipeline with VARIANT period declarations: edited term dates, different registers. The
+  // PLC arm now runs in EVERY pipeline invocation, so those runs write PLC rows at period_ids that
+  // this file never declares, and this arm's delete scope is bounded by (period, jurisdiction ∈
+  // computed) — deliberately, because that bound is what makes an uncomputed school's rows
+  // STALE-BUT-HONEST rather than deleted. Those variant-period rows are therefore not ours to
+  // replace, and they would inflate every whole-table assertion below if they survived into it.
+  //
+  // So the table is emptied HERE, once, before this file's first run. A bounded delete is the right
+  // behaviour for the ETL and the wrong basis for a whole-table count in a shared database; the fix
+  // belongs in the test, not in the writer. (This file's own runs are deterministic and declare the
+  // same periods every time, so it leaves no orphan behind for a later file.)
+  await sql`delete from fact_plc_participation`;
   report = await runEtl();
   expect(report.status).toBe("SUCCESS");
   rows = await readPlc();
@@ -1471,5 +1487,43 @@ describe("AC1/AC7, end to end · the gate CLOSED leaves the NTC columns NULL, ne
       return rest;
     };
     expect(termAfter.map(strip)).toEqual(termRows.map(strip));
+  }, 900_000);
+});
+
+/**
+ * ⚠ ALSO LAST, AND AFTER THE GATE-CLOSED RUN, because it declares a BROKEN period list and then
+ * restores the baseline. The refusal itself writes nothing, but the period upsert runs first and
+ * nulls that TERM row's window (the same sequence `tests/etl-attendance.test.ts` documents), so the
+ * dated baseline is re-run at the end to leave the shared database as this file found it.
+ */
+describe("the TERM window is a SHARED run precondition, refused once for every term-grained arm", () => {
+  it("refuses an undated TERM spec by the ONE message all three arms share", async () => {
+    const before = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_plc_participation`;
+    await expect(
+      runOversightEtl(sql, {
+        emisExtractText: JSON.stringify(emisExtractFor(dataset)),
+        periods: [
+          // Term 1 of the current year, stripped of BOTH dates. A PLC session belongs to the term
+          // containing its civil `session_date`, so this term could hold no session and expect none.
+          { academicYear: ACADEMIC_YEAR, term: 1, isCurrent: true },
+          ...periodsOption().slice(1),
+        ],
+        sourceSchema: "demo_source",
+      }),
+      // ⚠ THE SAME MESSAGE `tests/etl-attendance.test.ts` ASSERTS. There used to be one refusal per
+      // term-grained arm, which made the message a reader got depend on the order the arms run in —
+      // adding this (seventh) arm changed what the attendance arm had always said. One requirement,
+      // one refusal: `assertTermWindowsDeclared` in pipeline step 2.
+    ).rejects.toThrow(/no TERM-grained fact has a window to aggregate over/);
+
+    // It is refused BEFORE any arm computes, so not one fact row moved.
+    const after = await sql<{ n: number }[]>`
+      select count(*)::int as n from fact_plc_participation`;
+    expect(after[0]!.n).toBe(before[0]!.n);
+
+    // Restore the dated baseline (the upsert nulled term 1's window on the way to the refusal).
+    const restored = await runEtl();
+    expect(restored.status).toBe("SUCCESS");
   }, 900_000);
 });

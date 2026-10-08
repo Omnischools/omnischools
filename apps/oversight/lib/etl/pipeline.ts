@@ -734,6 +734,45 @@ export interface EtlRunReport {
   };
 }
 
+/**
+ * EVERY DECLARED TERM MUST CARRY ITS CIVIL DATES. Refused ONCE, for the whole run, before any arm
+ * reads a row.
+ *
+ * ⚠ WHY THIS IS A SHARED PRECONDITION AND NOT THREE PER-ARM GUARDS. The window is not optional for
+ * ANY term-grained fact: `fact_attendance` assigns a mark by its `date`, `fact_fees` an invoice by
+ * its `issued_at`, and `fact_plc_participation`'s TERM cut a session by its `session_date`. An
+ * undated TERM spec therefore produces an EMPTY term AND an empty delete scope in every one of them
+ * — a published term left stale under a SUCCESS banner, which is the failure mode this ETL exists to
+ * make impossible.
+ *
+ * Each arm used to refuse it separately, with its own message. That was three live refusals for one
+ * defect, and WHICH of them a 3am reader saw depended on the order the arms happen to run in — so
+ * adding the seventh arm (PLC, which runs before attendance) silently changed the message the
+ * attendance arm had always produced. The requirement belongs to the RUN, so it is checked once, in
+ * one place, with one message that names the requirement rather than whichever table noticed it.
+ *
+ * Pure and DB-free on purpose: it is a statement about `options`, so it can run before step 3 and
+ * cannot be satisfied or broken by anything in the database.
+ */
+function assertTermWindowsDeclared(periods: PeriodSpec[]): void {
+  for (const spec of periods) {
+    // EXAM_COHORT rows have `term IS NULL` AND no window by design (a sitting is a date, not a
+    // span), and an ANNUAL spec's window is DERIVED from its terms — so only numbered TERM specs are
+    // subject to this.
+    if (spec.term === null || spec.periodType === "EXAM_COHORT") continue;
+    if (spec.startsOn && spec.endsOn) continue;
+    throw new Error(
+      `the ${spec.academicYear} term ${String(spec.term)} declares ` +
+        `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
+        ", so no TERM-grained fact has a window to aggregate over. Teacher attendance, fees and PLC " +
+        "participation each assign a record to the term CONTAINING ITS OWN CIVIL DATE (a mark's " +
+        "`date`, an invoice's `issued_at`, a PLC session's `session_date`), so an undated term would " +
+        "publish nothing, leave whatever it published last time stale, and still close SUCCESS. " +
+        "Declare the term's dates in `options.periods`.",
+    );
+  }
+}
+
 export async function runOversightEtl(
   sql: postgres.Sql,
   options: EtlRunOptions,
@@ -770,6 +809,10 @@ export async function runOversightEtl(
     // `fact_enrolment.stage` is a FK to it. Asserted HERE so an unseeded database fails in step 2 with
     // the fix in the message, rather than hundreds of rows into step 5c with a constraint name.
     await assertStagesSeeded(sql);
+    // ⚠ ONE PRECONDITION FOR EVERY TERM-GRAINED ARM, CHECKED BEFORE ANY OF THEM READS ANYTHING.
+    // See `assertTermWindowsDeclared`. Three arms used to refuse an undated term separately, which
+    // made WHICH refusal a reader saw an accident of arm ordering.
+    assertTermWindowsDeclared(options.periods);
 
     // ── step 3 · reference delta: the EMIS register ──────────────────────────────────────────────
     await loadEmisRegister(sql, registerRows, (row) => {
@@ -951,6 +994,12 @@ export async function runOversightEtl(
       // ANNUAL points read is a civil-date WINDOW over `plc_session.session_date` (never the
       // operational `academic_period_id` — the Q3 problem), so a year with no window would claim no
       // session, publish an empty CPD cut and leave it stale under a SUCCESS banner.
+      //
+      // ⚠ THIS IS THE **YEAR'S** WINDOW, NOT A TERM'S, so it is NOT the shared term precondition
+      // (`assertTermWindowsDeclared`, step 2) restated: the ANNUAL spec's window is DERIVED from the
+      // year's declared terms, which means the precondition makes this unreachable TODAY and would
+      // stop making it unreachable the moment an ANNUAL spec could be declared directly. It is the
+      // ANNUAL cut's own statement about its own grain, and it names a YEAR rather than a term.
       if (!plcSpec.startsOn || !plcSpec.endsOn)
         throw new Error(
           `the current academic year ${plcSpec.academicYear} declares ` +
@@ -987,16 +1036,16 @@ export async function runOversightEtl(
             `dim_period has no TERM row for ${spec.academicYear} term ${String(spec.term)} after ` +
               "the refresh.",
           );
-        if (!spec.startsOn || !spec.endsOn)
-          throw new Error(
-            `the ${spec.academicYear} term ${String(spec.term)} declares no window, so ` +
-              "fact_plc_participation's TERM cut has no dates to assign PLC sessions to. A session " +
-              "belongs to the term containing its civil `session_date`.",
-          );
+        // THE WINDOW IS NOT OPTIONAL HERE EITHER — a PLC session belongs to the term containing its
+        // civil `session_date`, so an undated term would hold no sessions and expect none. It is
+        // guaranteed present by `assertTermWindowsDeclared` (step 2), which refuses an undated term
+        // ONCE for the whole run rather than letting each arm produce its own refusal.
+        const termStartsOn: string = spec.startsOn!;
+        const termEndsOn: string = spec.endsOn!;
         const sessions = await readPlcSessionAggregates(sql, {
           ...plcQuery,
-          startsOn: spec.startsOn,
-          endsOn: spec.endsOn,
+          startsOn: termStartsOn,
+          endsOn: termEndsOn,
         });
         const bySchool = new Map<string, PlcSessionAggregateRow[]>();
         for (const row of sessions) {
@@ -1008,8 +1057,8 @@ export async function runOversightEtl(
           spec,
           periodId: termPeriodId,
           term: spec.term,
-          startsOn: spec.startsOn,
-          endsOn: spec.endsOn,
+          startsOn: termStartsOn,
+          endsOn: termEndsOn,
           sessions: bySchool,
         });
       }
@@ -1695,22 +1744,17 @@ export async function runOversightEtl(
             `dim_period has no TERM row for ${spec.academicYear} term ${String(spec.term)} after the ` +
               "refresh.",
           );
-        // THE WINDOW IS NOT OPTIONAL. A term with no dates cannot claim a single mark — every mark is
-        // assigned by its civil date — so a dates-less TERM spec would silently produce an EMPTY term and
-        // an empty delete scope, i.e. a published term left stale under a SUCCESS banner. Refuse it here,
-        // naming the fix, exactly as the enrolment arm refuses a vintage-less current year.
-        if (!spec.startsOn || !spec.endsOn)
-          throw new Error(
-            `the ${spec.academicYear} term ${String(spec.term)} declares ` +
-              `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
-              ", so fact_attendance has no window to aggregate over. Attendance is a FLOW measured over a " +
-              "term's civil dates (a mark belongs to the term containing its `date`), so declare the " +
-              "term's dates in `options.periods` — an undated term would publish nothing and look fine.",
-          );
-
-        // Bound into locals so the narrowing above survives into the per-school closure below.
-        const startsOn: string = spec.startsOn;
-        const endsOn: string = spec.endsOn;
+        // THE WINDOW IS NOT OPTIONAL. A term with no dates cannot claim a single mark — attendance is a
+        // FLOW measured over a term's civil dates, and a mark belongs to the term containing its `date` —
+        // so a dates-less TERM spec would silently produce an EMPTY term and an empty delete scope, i.e. a
+        // published term left stale under a SUCCESS banner. That is refused for the WHOLE RUN by
+        // `assertTermWindowsDeclared` (step 2), which is why there is no refusal of its own here: three
+        // arms share this requirement, and three competing messages made the one a reader saw depend on
+        // the order the arms run in.
+        //
+        // Bound into locals so the guaranteed-present window survives into the per-school closure below.
+        const startsOn: string = spec.startsOn!;
+        const endsOn: string = spec.endsOn!;
         // `termSpecs` already filtered `term !== null`; an array filter does not narrow the element type.
         const term: number = spec.term!;
 
@@ -1845,17 +1889,10 @@ export async function runOversightEtl(
         // invoice belongs to is resolved from its operational period's own `starts_on` falling inside this
         // window (never from `period_number` — see the header), so a dates-less TERM spec would claim NO
         // invoice, produce an EMPTY term and an empty delete scope, and leave a published term stale under
-        // a SUCCESS banner.
-        if (!spec.startsOn || !spec.endsOn)
-          throw new Error(
-            `the ${spec.academicYear} term ${String(spec.term)} declares ` +
-              `${spec.startsOn ? "no ends_on" : spec.endsOn ? "no starts_on" : "neither starts_on nor ends_on"}` +
-              ", so fact_fees has no window to assign invoices to. An invoice is filed against the " +
-              "declared TERM containing its operational period's `starts_on`, so declare the term's " +
-              "dates in `options.periods` — an undated term would publish nothing and look fine.",
-          );
-        const startsOn: string = spec.startsOn;
-        const endsOn: string = spec.endsOn;
+        // a SUCCESS banner. Refused for the whole run by `assertTermWindowsDeclared` (step 2) — one
+        // requirement, one refusal, rather than one per term-grained arm.
+        const startsOn: string = spec.startsOn!;
+        const endsOn: string = spec.endsOn!;
         const term: number = spec.term!;
 
         const { groups } = await readFeeLineGroups(sql, {
