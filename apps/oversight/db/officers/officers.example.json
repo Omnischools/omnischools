@@ -1,0 +1,26 @@
+{
+  "as_of_date": "YYYY-MM-DD",
+  "actor_id": "REPLACE-with-the-provisioning-ADMIN-supabase-auth-uid",
+
+  "_README": "Copy this file, fill in real values, then run: PROVISIONER_DATABASE_URL=... pnpm db:load-officers <file>. JSON has no comments, so field notes live in docs/RUNNING-AND-PROVISIONING.md B2. Strip every _README key before loading (unknown keys at file level are ignored, but keep it clean). Allowed row fields: officer_id, jurisdiction_id, full_name, work_email, reason, approver_id, as_of_date, source. FORBIDDEN (hard reject): level, tier, officer_role — the tier/role are DERIVED from the node.",
+
+  "rows": [
+    {
+      "_note_district": "DISTRICT officer — no approver required (single-admin ok).",
+      "officer_id": "REPLACE-with-the-OFFICER-supabase-auth-uid",
+      "jurisdiction_id": "REPLACE-with-a-DISTRICT-dim_jurisdiction.jurisdiction_id",
+      "full_name": "Akua Mensah",
+      "work_email": "akua.mensah@ges.gov.gh",
+      "reason": "GES posting letter WAW/2026/011 — district director"
+    },
+    {
+      "_note_national": "REGION or NATIONAL officer — approver_id REQUIRED and MUST differ from actor_id (two-person rule).",
+      "officer_id": "REPLACE-with-the-OFFICER-supabase-auth-uid",
+      "jurisdiction_id": "REPLACE-with-the-NATIONAL-or-REGION-dim_jurisdiction.jurisdiction_id",
+      "full_name": "Kofi Boateng",
+      "work_email": "kofi.boateng@moe.gov.gh",
+      "reason": "MoE directive MOE/OV/2026/003 — national oversight",
+      "approver_id": "REPLACE-with-a-SECOND-admin-supabase-auth-uid-distinct-from-actor_id"
+    }
+  ]
+}
