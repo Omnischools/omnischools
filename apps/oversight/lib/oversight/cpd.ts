@@ -373,28 +373,30 @@ export async function getTeacherCpd(
                -- both numbers (never an aggregate comparison, never a summed target).
                --
                -- ⚠ THE BASIS IS THE PLC-EARNED MEAN, NOT THE ALL-CATEGORY MEAN. annual_plc_target is
-               -- a PLC-ONLY target, so comparing it against cpd_points_mean -- which is the
-               -- ALL-CATEGORY mean the moment the NTC categories are populated -- would credit a
-               -- school for Specialised and Recommended points its PLC target never covered (the C13
-               -- substitution). plc_earned_points_total / cpd_points_teacher_count carries the
-               -- identical PLC-only basis in BOTH data states, which is the whole reason the column is
-               -- stored. In the categories-absent state the two are numerically the same figure
-               -- (there, plc_earned_points_total = cpd_points_total by ETL invariant).
+               -- a PLC-ONLY target, so BOTH the numerator and the denominator must be PLC-only. The
+               -- numerator is plc_earned_points_total (the observed PLC floor); the denominator is
+               -- plc_earned_teacher_count (the observed PLC earners), NOT cpd_points_teacher_count --
+               -- the latter counts teachers who earned ANY CPD, so once the NTC categories are
+               -- populated it dilutes the PLC points across non-PLC teachers and can FALSELY report a
+               -- school as missing a target its PLC teachers met (and would flip on whether a feed
+               -- exists, breaking C5/AC-6). With both halves PLC-only the basis is identical in BOTH
+               -- data states; in the categories-absent state it is numerically the all-category mean
+               -- too, since there plc_earned_* = cpd_points_* by ETL invariant.
                --
-               -- Y (the denominator) and N (the numerator) are filtered on ONE basis, so N ≤ Y always:
-               -- the guard is the quotient itself being non-null, which drops both a school with no
-               -- configured target and one with no points-earning teachers to divide by.
+               -- Y (the denominator-count) and N (the numerator) are filtered on ONE basis, so N ≤ Y
+               -- always: the guard is the quotient itself being non-null, which drops both a school
+               -- with no configured target and one with no PLC earners to divide by.
                count(*) filter (
                  where fpp.annual_plc_target is not null
                    and fpp.plc_earned_points_total
-                         / nullif(fpp.cpd_points_teacher_count, 0) is not null
+                         / nullif(fpp.plc_earned_teacher_count, 0) is not null
                )::int                                                   as plc_target_schools,
                count(*) filter (
                  where fpp.annual_plc_target is not null
                    and fpp.plc_earned_points_total
-                         / nullif(fpp.cpd_points_teacher_count, 0) is not null
+                         / nullif(fpp.plc_earned_teacher_count, 0) is not null
                    and fpp.plc_earned_points_total
-                         / nullif(fpp.cpd_points_teacher_count, 0) >= fpp.annual_plc_target
+                         / nullif(fpp.plc_earned_teacher_count, 0) >= fpp.annual_plc_target
                )::int                                                   as plc_target_met,
                -- C5(ii) THE DEMO SIGNATURE: an OPERATIONAL_AGG row whose NTC columns are non-null.
                count(*) filter (
@@ -662,14 +664,16 @@ export async function getTeacherCpd(
        * B4 — "N of Y schools met their own PLC target", a COUNT.
        *
        * PUBLISHED IN EVERY DATA STATE. Both the numerator and the denominator are counted in SQL on
-       * the PLC-EARNED MEAN (`plc_earned_points_total ÷ cpd_points_teacher_count`) against the
-       * school's own `annual_plc_target`, per ROW, so the comparison is PLC-only on both sides —
-       * demo, live-no-feed and a real NTC feed alike. The all-category mean never enters it, so
-       * there is no state in which the count has to be withheld for honesty.
+       * the PLC-EARNED MEAN (`plc_earned_points_total ÷ plc_earned_teacher_count`) against the
+       * school's own `annual_plc_target`, per ROW, so the comparison is PLC-only on BOTH sides —
+       * demo, live-no-feed and a real NTC feed alike. cpd_points_teacher_count (any-CPD earners) is
+       * deliberately NOT the denominator; the all-category mean never enters it, so there is no
+       * state in which the count has to be withheld for honesty.
        *
        * The ONE absence left is a genuine one: `plcTargetSchools === 0` means no school in the
-       * subtree has a configured PLC target (or none has a teacher who earned any points to divide
-       * by), which is "we cannot see it" and must never render as "0 of 0 schools met".
+       * subtree has a MEASURABLE PLC target — either none has a configured `annual_plc_target`, or
+       * none has any PLC earners to divide by. That is "we cannot see it" and must never render as
+       * "0 of 0 schools met"; the surface states both possible causes (see cpd-visuals).
        */
       const plcTargetSchools = count(annualAll?.plc_target_schools);
       const plcTargetMetCount = count(annualAll?.plc_target_met);

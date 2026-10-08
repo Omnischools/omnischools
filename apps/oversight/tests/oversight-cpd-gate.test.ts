@@ -40,7 +40,9 @@ import { adminAnalytics, districtOfficer } from "./helpers";
  *     Two things a code reading cannot show are proved here: that neither figure carries a DEMO chip
  *     in the demo state (they are real measurements sitting beside stand-in figures), and that B4's
  *     basis really did move to the PLC-earned mean — the fixture is built so the old all-category
- *     basis gives a DIFFERENT, flattering answer ("1 of 2" against the honest "0 of 2").
+ *     basis AND the diluted any-CPD denominator each give a DIFFERENT answer to the same question
+ *     ("1 of 2" and "0 of 2" against the honest "2 of 2"), so the count the panel prints says which
+ *     of the three bases the reader actually used.
  *  6. AC-21, which no test referenced: the breakdown columns (C17) and comparison rows (C18) are
  *     DEFERRED by E-CPD-4, so they must be wholly ABSENT — never a `—` row standing in for them.
  *
@@ -103,6 +105,13 @@ interface AnnualRow {
    * invariant is that it EQUALS `cpd_points_total`.
    */
   plcEarned: number | null;
+  /**
+   * `plc_earned_teacher_count` — the PLC-earned mean's OWN denominator (the observed PLC earners).
+   * ⚠ NOT `teacherCount`, which counts ANY-category earners and would spread the PLC points across
+   * teachers who earned none. Same discipline as the points beside it: always populated on an
+   * ANNUAL row, `<= teacherCount` always, and `= teacherCount` when the categories are absent.
+   */
+  plcEarnedTeachers: number | null;
   ntcTarget: number | null;
   plcTarget: number | null;
   source?: string;
@@ -116,7 +125,7 @@ async function plant(row: AnnualRow): Promise<void> {
        teachers_meeting_cpd_threshold, annual_plc_target, ntc_cpd_target,
        cpd_points_mandatory_total, cpd_points_specialised_total, cpd_points_recommended_total,
        cpd_mandatory_teacher_count, cpd_specialised_teacher_count, cpd_recommended_teacher_count,
-       plc_earned_points_total,
+       plc_earned_points_total, plc_earned_teacher_count,
        source, as_of_date)
     values
       (${row.school}::uuid, ${row.period}::uuid, ${row.sex}::ov_sex, 1, ${row.headcount},
@@ -124,7 +133,7 @@ async function plant(row: AnnualRow): Promise<void> {
        ${row.threshold}, ${row.plcTarget}, ${row.ntcTarget},
        ${row.mandatory}, ${row.specialised}, ${row.recommended},
        ${row.mandatoryTeachers}, ${row.specialisedTeachers}, ${row.recommendedTeachers},
-       ${row.plcEarned},
+       ${row.plcEarned}, ${row.plcEarnedTeachers},
        ${(row.source ?? "OPERATIONAL_AGG") as string}::ov_source, now())
   `;
 }
@@ -168,12 +177,15 @@ beforeAll(async () => {
       mandatoryTeachers: h / 2,
       specialisedTeachers: h / 5,
       recommendedTeachers: h / 10,
-      // ⚠ THE TWO BASES DISAGREE HERE, DELIBERATELY. The observed PLC floor is 300 pts over 50
-      // points-earning teachers = 6.0 PLC pts/teacher, UNDER this school's own 8-pt PLC target —
-      // while its ALL-CATEGORY mean is 20 and would clear it. A reader still comparing
-      // `cpd_points_mean` to `annual_plc_target` counts this school as having met a target it did
-      // not meet, which is exactly the C13 substitution the stored column exists to end.
+      // ⚠ ALL THREE CANDIDATE BASES DISAGREE ABOUT THIS SCHOOL, DELIBERATELY:
+      //     300 PLC pts ÷ 30 PLC earners     = 10.0  ≥ 8  → MET      (the honest basis)
+      //     300 PLC pts ÷ 50 any-CPD earners =  6.0  < 8  → missing  (the DILUTED denominator)
+      //     the stored all-category mean     = 20.0  ≥ 8  → met, but for Specialised and
+      //                                                     Recommended points its PLC target
+      //                                                     never covered (the C13 substitution)
+      // So the verdict is "met" only on the honest basis AND for the right reason.
       plcEarned: h * 3,
+      plcEarnedTeachers: (h * 3) / 10,
       ntcTarget: NTC_TARGET,
       plcTarget: PLC_TARGET,
     });
@@ -195,8 +207,13 @@ beforeAll(async () => {
       specialisedTeachers: 0,
       recommendedTeachers: 0,
       // Specialised and Recommended are a sourced 0, so there are no non-PLC points: the observed
-      // floor IS the whole total (2.0 pts/teacher — under the 8-pt target on either basis).
+      // floor IS the whole total. ⚠ ITS DENOMINATOR IS NOT, THOUGH — only a FIFTH of this school's
+      // CPD earners earned a PLC point, which is the second verdict flip:
+      //     120 PLC pts ÷ 12 PLC earners     = 10.0  ≥ 8  → MET      (the honest basis)
+      //     120 PLC pts ÷ 60 any-CPD earners =  2.0  < 8  → missing  (the DILUTED denominator)
+      //     the stored all-category mean     =  2.0  < 8  → missing
       plcEarned: g * 2,
+      plcEarnedTeachers: g / 5,
       ntcTarget: NTC_TARGET,
       plcTarget: PLC_TARGET,
     });
@@ -229,9 +246,11 @@ beforeAll(async () => {
         mandatoryTeachers: t / mean,
         specialisedTeachers: null,
         recommendedTeachers: null,
-        // Categories ABSENT → the ETL invariant is plc_earned_points_total = cpd_points_total, so
-        // the PLC-earned mean and the stored all-category mean are the SAME number in this state.
+        // Categories ABSENT → the ETL invariants are plc_earned_points_total = cpd_points_total AND
+        // plc_earned_teacher_count = cpd_points_teacher_count, so the PLC-earned mean and the stored
+        // all-category mean are the SAME number in this state. The basis switch is a no-op here.
         plcEarned: t,
+        plcEarnedTeachers: t / mean,
         ntcTarget: null,
         plcTarget: PLC_TARGET,
       });
@@ -260,7 +279,10 @@ beforeAll(async () => {
         mandatoryTeachers: h,
         specialisedTeachers: null,
         recommendedTeachers: null,
-        plcEarned: h * 2, // 2.0 PLC pts/teacher, under the 8-pt target
+        // Only one NTC column is non-null here, so the categories read ABSENT and the PLC-earned
+        // pair coincides with its all-category counterpart: 4.0 pts/teacher, under the 8-pt target.
+        plcEarned: h * 4,
+        plcEarnedTeachers: h,
         ntcTarget: column === "threshold" ? NTC_TARGET : null,
         plcTarget: PLC_TARGET,
         source,
@@ -290,7 +312,8 @@ beforeAll(async () => {
     mandatoryTeachers: 90,
     specialisedTeachers: 40,
     recommendedTeachers: 20,
-    plcEarned: 450, // 5.0 PLC pts/teacher, under the 8-pt target
+    plcEarned: 450,
+    plcEarnedTeachers: 50, // 9.0 PLC pts/teacher over its PLC earners (450 ÷ 50)
     ntcTarget: NTC_TARGET,
     plcTarget: PLC_TARGET,
   });
@@ -607,8 +630,8 @@ describe("plcEarnedPoints (C8) and plcTargetMet (B4) in both data states", () =>
     };
     expect(lineAt("of which PLC-earned")).not.toContain(">DEMO<");
     expect(lineAt("of which PLC-earned")).not.toContain(DEMO_CHIP_TOOLTIP);
-    expect(lineAt("met its own PLC target")).not.toContain(">DEMO<");
-    expect(lineAt("met its own PLC target")).not.toContain(DEMO_CHIP_TOOLTIP);
+    expect(lineAt("met their own PLC target")).not.toContain(">DEMO<");
+    expect(lineAt("met their own PLC target")).not.toContain(DEMO_CHIP_TOOLTIP);
     // …and neither carries the old "not stateable / not recorded apart from" excuse any more.
     expect(markup).not.toContain("not recorded apart from");
     expect(markup).not.toContain("Not stateable while CPD points");
@@ -617,15 +640,35 @@ describe("plcEarnedPoints (C8) and plcTargetMet (B4) in both data states", () =>
     expect(text).toContain("of which PLC-earned: 420 pts");
     expect(text).not.toContain("of which PLC-earned: —");
 
-    // ⚠ THE BASIS SWITCH, PROVED BY A DIFFERENT ANSWER. On the PLC-earned mean NEITHER school clears
-    // its own 8-pt PLC target (6.0 and 2.0 pts/teacher) — a definite, adverse 0 of 2. On the old
-    // all-category basis school A's stored `cpd_points_mean` of 20 would have counted it as met, so
-    // a reader that never switched prints "1 of 2" here.
-    expect(p.plcTargetMet).toEqual({ status: "REAL_ZERO", count: 0, schools: 2 });
-    expect(text).toContain("No school met its own PLC target (0 of 2) (8 PLC pts)");
+    /* ⚠ THE BASIS, PROVED BY THREE DIFFERENT ANSWERS TO ONE QUESTION. Both schools are planted so
+     * that the three candidate per-school bases disagree, and the count the panel prints says which
+     * one the reader used:
+     *                                       school A   school B   →  "N of 2"
+     *   PLC pts ÷ PLC earners  (honest)       10.0 ✓     10.0 ✓      2  ← what must render
+     *   PLC pts ÷ any-CPD earners (diluted)    6.0 ✗      2.0 ✗      0  ← Dex's blocker
+     *   stored cpd_points_mean (all-category) 20.0 ✓      2.0 ✗      1  ← the C13 substitution
+     * The diluted denominator understates the mean by spreading PLC points over teachers who earned
+     * none, so it reports BOTH schools as missing targets their PLC teachers met. */
+    expect(p.plcTargetMet).toEqual({ status: "MEASURED", count: 2, schools: 2 });
+    expect(text).toContain("2 of 2 schools met their own PLC target (8 PLC pts)");
     expect(text).not.toContain("1 of 2 schools met their own PLC target");
-    // The REAL_ZERO is a figure, not the absence — the em-dash title must not be on that line.
-    expect(lineAt("No school met its own PLC target")).not.toContain(ABSENT_NTC_TITLE);
+    expect(text).not.toContain("No school met its own PLC target");
+  });
+
+  it("a REAL_ZERO count renders the definite, adverse zero — un-chipped, not an em-dash", async () => {
+    // The state the fixture deliberately no longer produces (both schools clear their targets), and
+    // the one a diluted denominator WOULD produce — so the render is proved at the figure.
+    const zero: TeacherCpdPanel = {
+      ...okValue(await getTeacherCpd(districtScope, null, P_DEMO_ZERO)),
+      plcTargetMet: { status: "REAL_ZERO", count: 0, schools: 2 },
+    };
+    const markup = markupOf(zero);
+    const text = visibleText(markup);
+    expect(text).toContain("No school met its own PLC target (0 of 2) (8 PLC pts)");
+    // A measured zero, not an absence and not a stand-in figure: no em-dash title, no chip.
+    const line = markup.slice(markup.indexOf("No school met its own PLC target"));
+    expect(line.slice(0, 400)).not.toContain(ABSENT_NTC_TITLE);
+    expect(line.slice(0, 400)).not.toContain(">DEMO<");
   });
 
   it("LIVE-no-feed: both are MEASURED on the same PLC-only arithmetic, unchanged", async () => {
@@ -635,7 +678,9 @@ describe("plcEarnedPoints (C8) and plcTargetMet (B4) in both data states", () =>
     expect(p.plcEarnedPoints).toEqual({ status: "MEASURED", value: 800 });
     expect(p.pointsTotal.value).toBe(800);
     // B4's per-ROW predicate on the PLC-earned mean: 500 ÷ 50 = 10 ≥ 8 (met), 300 ÷ 50 = 6 < 8 (not)
-    // — numerically the same comparison as the old basis in this state, which is the point.
+    // — and here the PLC earners ARE the any-CPD earners and the PLC points ARE the total, so all
+    // three candidate bases coincide. The switch is a no-op in the live-today state, which is why
+    // the dilution went unnoticed until the demo state was looked at.
     expect(p.plcTargetMet).toEqual({ status: "MEASURED", count: 1, schools: 2 });
     expect(p.annualPlcTarget).toBe(PLC_TARGET);
     const text = visibleText(markupOf(p));
@@ -646,17 +691,21 @@ describe("plcEarnedPoints (C8) and plcTargetMet (B4) in both data states", () =>
     expect(text).not.toContain("16 PLC pts");
   });
 
-  it("the genuine absence survives: no configured PLC target is an em-dash, not '0 of 0'", async () => {
-    // The ONE state B4 is still withheld in, and it is a REAL absence rather than a deferral: no
-    // school in the subtree has a configured PLC target to be measured against. Every planted period
-    // here carries one, so the claim is made at the figure — a zero DENOMINATOR must render the
-    // em-dash with its own reason, never "0 of 0 schools met".
+  it("the genuine absence survives: an unmeasurable PLC target is an em-dash, not '0 of 0'", async () => {
+    // The ONE state B4 is still withheld in, and it is a REAL absence rather than a deferral. Note
+    // there are now TWO ways to reach it — no configured `annual_plc_target`, or no PLC earners to
+    // form the mean — and the title must name BOTH, or an officer reads "nobody set a target" when
+    // the truth is "nobody here has earned a PLC point yet". Every planted period carries a target,
+    // so the claim is made at the figure: a zero DENOMINATOR renders the em-dash with its own
+    // reason, never "0 of 0 schools met".
     const absent: TeacherCpdPanel = {
       ...okValue(await getTeacherCpd(districtScope, null, P_DEMO_ZERO)),
       plcTargetMet: { status: "ABSENT", schools: 0 },
     };
     const markup = markupOf(absent);
-    expect(markup).toContain('title="No school here has a configured PLC target"');
+    expect(markup).toContain(
+      'title="No school here has a PLC target that can be measured — none is configured, or none has any PLC-earning teachers yet"',
+    );
     const text = visibleText(markup);
     expect(text).not.toContain("0 of 0");
     expect(text).not.toMatch(/\d+ of \d+ schools? met their own PLC target/);
@@ -669,8 +718,11 @@ describe("plcEarnedPoints (C8) and plcTargetMet (B4) in both data states", () =>
     const field = code.slice(code.indexOf("plcEarnedPoints: StatusValue") - 1200, code.indexOf("plcEarnedPoints: StatusValue"));
     expect(field).toContain("NEVER CHIPPED");
     expect(field).toContain("plcValue");
-    // And the SQL states the PLC-only basis beside the two filters it governs.
-    expect(code).toMatch(/PLC-EARNED MEAN[\s\S]{0,900}annual_plc_target/);
+    // And the SQL states the PLC-only basis beside the two filters it governs — including WHY the
+    // denominator is the PLC earners and not the any-CPD ones, which is the half a reader is most
+    // likely to "simplify" back to `cpd_points_teacher_count`.
+    expect(code).toMatch(/PLC-EARNED MEAN[\s\S]{0,1500}annual_plc_target/);
+    expect(code).toMatch(/plc_earned_teacher_count[\s\S]{0,400}NOT cpd_points_teacher_count/);
   });
 });
 

@@ -665,13 +665,14 @@ export function CpdPanel({
             SHOWN IN EVERY STATE and UN-CHIPPED: both sides of the per-school comparison are
             PLC-only (the PLC-earned mean against the school's own PLC target), so the count never
             borrows the all-category mean and never needs withholding. The ONE absence is genuine —
-            no school here has a configured target to be measured against. */}
+            no school here has a MEASURABLE PLC target: either none is configured, or none has any
+            PLC earners to form the mean (so the title names both, never just the first). */}
         <div className="mt-4 border-t border-border-1 pt-3">
           <Line>
             {data.plcTargetMet.status === "ABSENT" ? (
               <>
                 Schools meeting their own PLC target:{" "}
-                <Absent title="No school here has a configured PLC target" />
+                <Absent title="No school here has a PLC target that can be measured — none is configured, or none has any PLC-earning teachers yet" />
               </>
             ) : (
               <span className="font-mono text-navy">
