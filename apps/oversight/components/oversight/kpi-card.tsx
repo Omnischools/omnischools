@@ -119,3 +119,18 @@ export function formatRatio(value: number, decimals: number): string {
 export function formatCount(n: number): string {
   return n.toLocaleString("en-GB");
 }
+
+/**
+ * A GHS fee amount with the locked two-decimal currency format from the mock (`GHS 340.00`,
+ * `GHS 1,120.00`). `fact_fees.mean_amount/median_amount` are `numeric(10,2)` literals already in GHS
+ * (lib/etl/fees.ts), so the number is the amount itself — no ×100 and no pesewa conversion here.
+ *
+ * Always carries the `GHS` unit: a bare "0.00" in a fee cell is unreadable and, worse, a bare "0" would
+ * blur the billed-zero "charges nothing" state the fees surface exists to keep distinct (ruling F11).
+ */
+export function formatGhs(amount: number): string {
+  return `GHS ${amount.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

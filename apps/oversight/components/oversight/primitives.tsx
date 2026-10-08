@@ -188,6 +188,24 @@ export function RecField({
   );
 }
 
+/**
+ * The muted `—`: a cell with no measure. Never a fabricated 0, never a confident green.
+ *
+ * `title` is overridable because the ABSENCES are not all the same absence: for most breakdown columns
+ * the cell is empty because no return was filed; for the Vacancies column it is empty because GES sets
+ * no establishment for the child's schools at all (Kofi V9/V12); and on the fees surface it is empty
+ * because the school does not bill that category this term ("Not billed this term", ruling F12) — a
+ * different fact from a billed `0.00` ("Charges nothing", ruling F11), which this affordance must keep
+ * distinct from. Shared by the breakdown table, the fees panel and anywhere a cell is genuinely absent.
+ */
+export function Absent({ title = "No return filed" }: { title?: string }) {
+  return (
+    <span className="text-navy-3" title={title}>
+      —
+    </span>
+  );
+}
+
 /** The gold `⊘` scope line under the fields grid (Lucy §A1.2 / C7). */
 export function ScopeLine({ children }: { children: ReactNode }) {
   return (
