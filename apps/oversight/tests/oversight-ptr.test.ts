@@ -305,6 +305,24 @@ describe("the KPI read is Σenrolment ÷ Σteachers, never the mean of the store
     expect(selectsStoredPtr("const q = sql`select ptr from fact_staffing`;")).toBe(true);
     expect(selectsStoredPtr("const q = sql`select fs.ptr from fact_staffing fs`;")).toBe(true);
     expect(selectsStoredPtr("const q = sql`select avg(ptr) from fact_staffing`;")).toBe(true);
+    // ── FIRES THROUGH A NESTED TEMPLATE (Dex D1). A conditional fragment — the live shape in
+    // lib/oversight/infrastructure.ts — used to end the non-greedy outer match at the INNER backtick
+    // and re-synchronise wrong, so everything after the first nested `sql` in a module was invisible
+    // to the guard. The scan in `sqlTextOf` keeps reading, so a column selected after it still fires.
+    expect(
+      selectsStoredPtr("const q = sql`select 1 ${x ? sql`and a=1` : sql``} , fi.ptr from t`;"),
+    ).toBe(true);
+    // …and the nested FRAGMENT's own body is SQL in its own right, so an offence inside it fires too.
+    expect(selectsStoredPtr("const q = sql`select 1 ${x ? sql`, fs.ptr` : sql``} from t`;")).toBe(
+      true,
+    );
+    // ── FIRES: the stored column under a brand-new alias — what the alias-blind qualified arm is for.
+    expect(selectsStoredPtr("const q = sql`select fs.ptr as x from fact_staffing fs`;")).toBe(true);
+    // ── QUIET: a RE-DERIVED ratio aliased `ptr` (Dex N1). The ruling bans selecting the stored
+    // column, and expressly blesses this Σ÷Σ form — which the bare arm used to trip on.
+    expect(
+      selectsStoredPtr("const q = sql`select sum(a)::numeric / sum(b) as ptr from t`;"),
+    ).toBe(false);
     // ── QUIET: legitimate TypeScript property access / object literals on an ALREADY re-derived
     // ratio. These live OUTSIDE any sql`…` template, which is exactly why the guard narrows first.
     expect(selectsStoredPtr("const x = r.ptr;")).toBe(false);

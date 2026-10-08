@@ -1181,7 +1181,10 @@ describe("the structural half of the read rule — the stored ptr column stays o
       // `selectsStoredPtr` in tests/helpers.ts): the former alias allow-list — `fs|st|fact_staffing`
       // — was evadable by a plain re-alias (`select s.ptr`), which is exactly the smuggling route it
       // was widened to close.
-      if (selectsStoredPtr(text)) offenders.push(file);
+      // …and it is handed the SAME comment-stripped `code` the other three sites pass (Dex N2): the
+      // helper narrows to SQL itself, so raw source would also be sound, but one form across four
+      // sites means the guard cannot answer differently here than it does there.
+      if (selectsStoredPtr(code)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
     // The surfacing slice HAS landed, so there ARE staffing readers now — the national PTR KPI read and

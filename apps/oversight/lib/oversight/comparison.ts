@@ -63,10 +63,13 @@ export function weightedBenchmark(
   let sumNum = 0;
   let sumDen = 0;
   let any = false;
+  // Hoisted out of the loop (Dex N3): the spec is constant across rows, so building it per row was N
+  // allocations per metric per render for an identical object. Behaviour is unchanged.
+  const spec: BenchmarkSpec = { kind: "weighted", num, den };
   for (const row of population) {
     // ONE skip rule, shared with `meanBenchmark` and with the contributor COUNT, so the figure and the
     // "over N schools" claim beside it can never describe different row sets.
-    if (!contributes({ kind: "weighted", num, den }, row)) continue;
+    if (!contributes(spec, row)) continue;
     sumNum += num(row)!;
     sumDen += den(row)!;
     any = true;
@@ -88,8 +91,10 @@ export function meanBenchmark(
 ): number | null {
   let sum = 0;
   let filers = 0;
+  // Hoisted, as in `weightedBenchmark` (Dex N3) — one spec object per call, not one per row.
+  const spec: BenchmarkSpec = { kind: "mean", value };
   for (const row of population) {
-    if (!contributes({ kind: "mean", value }, row)) continue;
+    if (!contributes(spec, row)) continue;
     sum += value(row)!;
     filers += 1;
   }
@@ -103,6 +108,9 @@ export function meanBenchmark(
  * either side), `mean` needs the value (a school that filed nothing must not drag the mean down as if
  * it enrolled zero pupils), and a `none`-kind benchmark has no contributors at all because there is no
  * benchmark to contribute to.
+ *
+ * The accessors (`num`/`den`/`value`) must stay PURE field reads: this predicate calls them, and then the
+ * fold calls them again on the rows that passed, so a side effect or a changing answer would be seen twice.
  *
  * Internal on purpose: what callers outside this module need is the COUNT (`benchmarkContributorsOf`),
  * and the figure a cell shows must come from the helper that applied the rule rather than from a
