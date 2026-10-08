@@ -500,8 +500,8 @@ export const factInfrastructure = pgTable(
  *   TERM   rows carry sessions_* / attendance_* / plc_participation_rate / teachers_in_plc; the CPD
  *          columns are NULL.
  *   ANNUAL rows carry cpd_points_* (including the three NTC category totals and their teacher
- *          counts) / teachers_meeting_cpd_threshold / annual_plc_target / ntc_cpd_target; the
- *          session columns are NULL.
+ *          counts) / plc_earned_points_total / teachers_meeting_cpd_threshold / annual_plc_target /
+ *          ntc_cpd_target; the session columns are NULL.
  *   BOTH   cuts carry `teacher_headcount` (see the ETL contract below) — it is the ONLY cut-spanning
  *          MEASURE, because both cuts need the same on-roll denominator — and `sex`, which is a
  *          grain key rather than a measure.
@@ -578,6 +578,47 @@ export const factInfrastructure = pgTable(
  * both false and actionable, i.e. the worst possible failure mode for a regulator's dashboard.
  * `cpd_points_mandatory_total` may be populated from PLC points ONLY if the ETL is prepared to state
  * that it is a PLC-only partial; if not, it too stays NULL.
+ *
+ * ⚠ THE ONE COLUMN OUTSIDE THE SOURCING GATE — `plc_earned_points_total`. It holds the GENUINELY
+ * OBSERVED PLC-earned points: the exact figure the ETL reads out of the operational PLC aggregate
+ * (apps/oversight/lib/etl/plc-source.ts → `plc_cpd_ledger`.attended_pts + reflection_pts). It is
+ * ANNUAL-cut only (NULL on a TERM row), sexed like the other point totals, and ADDITIVE — it sums
+ * across sex and up the jurisdiction tree exactly like cpd_points_total, and is never re-derived.
+ *
+ * It exists because the figure it carries is OTHERWISE UNRECOVERABLE once the categories are
+ * populated. `cpd_points_total` is then the ALL-CATEGORY figure, and the PLC floor is FOLDED INTO
+ * `cpd_points_mandatory_total` beside an NCPD topup with no seam between them (see THE MANDATORY
+ * SPLIT in lib/etl/plc.ts). So "of which PLC-earned: X" — the one CPD number this product actually
+ * measures — could not be stated at all. This column is that seam, stored rather than inferred.
+ *
+ * ⚠ IT IS NEVER NTC-SOURCED AND MUST NOT BE CHIPPED AS DEMO. Its value comes ONLY from the
+ * operational PLC aggregate, NEVER from the NTC stand-in (lib/etl/ntc-cpd-source.ts / the
+ * `demo_ntc_source` table). It is therefore a REAL MEASURED FIGURE IN BOTH DATA STATES — the demo
+ * state and the live-no-feed state alike — and a reader that labels it "demo" because the row's NTC
+ * columns are populated is reporting a real measurement as fabricated.
+ *
+ * ⚠ AND IT IS NOT UNDER THE NULL-NEVER-0 RULE. A school whose teachers earned NO PLC points has
+ * `plc_earned_points_total = 0.00`, a MEASUREMENT — exactly the opposite of the gate above. The gate
+ * exists because the NTC classes have no feed at all, so 0 would assert something unobserved; PLC
+ * points always have a feed (the operational ledger), so 0 asserts only "nobody earned any", which
+ * is true and actionable. On an ANNUAL row this column is therefore ALWAYS populated: a NULL on an
+ * ANNUAL row is an ETL defect, not an absence. (It is nullable in DDL only because TERM rows exist.)
+ *
+ * TWO INVARIANTS, both asserted per row by `assertPlcInvariants`:
+ *     categories ABSENT (live):  plc_earned_points_total = cpd_points_total
+ *                                (there, cpd_points_total IS the PLC-only subtotal)
+ *     categories POPULATED:      plc_earned_points_total <= cpd_points_mandatory_total
+ *                                (the PLC floor is one part of NTC's Mandatory class, which also
+ *                                 carries the NCPD half — so the floor can never exceed it)
+ * Both hold on ONE row and survive roll-up, because every term in them is additive.
+ *
+ * ⚠ THE PLC-EARNED MEAN IS THE ONLY HONEST BASIS FOR "met their own PLC target". `annual_plc_target`
+ * is a PLC-ONLY target (see TWO DIFFERENT TARGETS above), so comparing it against `cpd_points_mean`
+ * — an ALL-CATEGORY mean once the categories are populated — would credit a school for Specialised
+ * and Recommended points its PLC target never covered. The comparison is
+ *     plc_earned_points_total / cpd_points_teacher_count  >=  annual_plc_target
+ * computed PER SCHOOL ROW (never against a summed target), and it carries the identical PLC-only
+ * basis in BOTH data states — which is the whole reason this column is stored.
  *
  * BREAKDOWN = SEX (E4), on both the TERM and the ANNUAL cut — "are women getting the same CPD access
  * as men" is a question GES asks of both session participation and points earned, so the column is on
@@ -695,6 +736,12 @@ export const factPlcParticipation = pgTable(
     cpdMandatoryTeacherCount: integer("cpd_mandatory_teacher_count"),
     cpdSpecialisedTeacherCount: integer("cpd_specialised_teacher_count"),
     cpdRecommendedTeacherCount: integer("cpd_recommended_teacher_count"),
+
+    // ---- ANNUAL cut · THE GENUINELY OBSERVED PLC-EARNED POINTS (C8) ----------------------------
+    // The REAL measured PLC subtotal, kept separable from the NTC category split. ⚠ NOT subject to
+    // the SOURCING GATE above and NEVER demo-stamped — see "THE ONE COLUMN OUTSIDE THE SOURCING
+    // GATE" in the doc comment. ANNUAL-cut only (NULL on a TERM row), sexed, additive.
+    plcEarnedPointsTotal: numeric("plc_earned_points_total", { precision: 7, scale: 2 }),
 
     ...provenance, // source = OPERATIONAL_AGG
   },

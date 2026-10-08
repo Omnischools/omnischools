@@ -1,0 +1,33 @@
+-- ---------------------------------------------------------------------------
+-- HAND-APPENDED COMMENTARY ONLY (no statement added, removed or reordered — the single statement
+-- below is drizzle-kit output verbatim). Re-add these notes if this file is ever regenerated.
+--
+-- WHAT IT ADDS. `fact_plc_participation.plc_earned_points_total` numeric(7,2) NULL — the GENUINELY
+-- OBSERVED PLC-earned points, ANNUAL-cut only (NULL on TERM rows, like every other CPD column),
+-- sexed and additive. It is the seam under `cpd_points_mandatory_total`: once the NTC categories are
+-- populated, Mandatory = the observed PLC floor + the NCPD stand-in topup with nothing separating
+-- them, so the one CPD figure this product actually measures was unrecoverable from the row. See
+-- db/schema/fact.ts ("THE ONE COLUMN OUTSIDE THE SOURCING GATE") and lib/etl/plc.ts.
+--
+-- PURELY ADDITIVE, AND SAFE ON A LIVE TABLE WITH DATA. One nullable ADD COLUMN with no default: no
+-- table rewrite, no lock beyond the brief ACCESS EXCLUSIVE for the catalogue update, no existing
+-- column, constraint, index, policy or row touched. The chain replays from empty unchanged.
+--   · NULLABLE, DELIBERATELY. TERM rows must carry NULL here, so NOT NULL is not expressible in DDL.
+--     On an ANNUAL row the column is nevertheless ALWAYS written — `assertPlcInvariants` claim 10
+--     refuses the school otherwise — and the pre-existing rows this migration leaves NULL are
+--     rewritten by the next ETL run, which deletes and re-inserts the whole period per school.
+--   · ⚠ NOT under the NULL-never-0 sourcing gate that governs the NTC columns. PLC points always
+--     have an operational feed (`plc_cpd_ledger`), so 0.00 here is a MEASUREMENT, not an absence.
+--
+-- RLS: NO PROD-PASTE FOR THIS MIGRATION, and that is the standing rule rather than a judgement call.
+-- `fact_plc_participation` already has RLS ENABLED with the `jurisdiction_scope` SELECT policy
+-- (db/sql/policies.sql; prod-paste-0001-fact-domains.sql), and that policy is declared WITHOUT a
+-- column list, so it covers every column of the table, present and future — the new column is
+-- isolated from the moment it exists. Per docs/PROVISIONING.md §2a a migration that only ADDS
+-- COLUMNS to an existing table needs step 1 (apply this file to prod by hand) and NEITHER step 2 (a
+-- paste) NOR step 3 (re-pasting prod-paste-0006-analytics-app-role.sql — whose blanket grants and
+-- Supabase sweep are per-TABLE / per-SEQUENCE / per-ROUTINE, none of which this creates; the app
+-- role's existing table-level SELECT already reaches the new column). Same posture as migration
+-- 0002, which is recorded in §2a's file list as a deliberate no-paste for the same reason.
+-- ---------------------------------------------------------------------------
+ALTER TABLE "fact_plc_participation" ADD COLUMN "plc_earned_points_total" numeric(7, 2);
