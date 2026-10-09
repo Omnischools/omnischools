@@ -1758,9 +1758,12 @@ describe("CRITERION 20 · H11 adds no analytics public TABLE, SEQUENCE or ROUTIN
     const files = readdirSync(join(process.cwd(), "db/migrations"))
       .filter((f) => f.endsWith(".sql"))
       .sort();
-    // Six migrations, 0000–0005, exactly as before H11. A SEVENTH would trigger the §6 prod-paste-0006
-    // re-run rule (a new object in the analytics `public` schema), which this slice deliberately does not.
-    expect(files).toHaveLength(6);
+    // 0000–0005 predate this slice; 0006 is the CPD `plc_earned_points_total` ADD COLUMN (increment-L
+    // follow-up, NOT the fees slice). The §6 prod-paste-0006 re-run rule fires only on a new TABLE,
+    // SEQUENCE or ROUTINE in the analytics `public` schema — a bare ADD COLUMN is none of those and is
+    // covered by the existing table-level RLS, so the rule still does not fire. The next `it` proves the
+    // public object inventory is genuinely unchanged.
+    expect(files).toHaveLength(7);
     expect(files.map((f) => f.slice(0, 4))).toEqual([
       "0000",
       "0001",
@@ -1768,7 +1771,15 @@ describe("CRITERION 20 · H11 adds no analytics public TABLE, SEQUENCE or ROUTIN
       "0003",
       "0004",
       "0005",
+      "0006",
     ]);
+    // 0006 is an ADD COLUMN only — no new table/sequence/routine.
+    const m0006 = readdirSync(join(process.cwd(), "db/migrations"))
+      .filter((f) => f.startsWith("0006") && f.endsWith(".sql"))
+      .map((f) => moduleText(join("db/migrations", f)))
+      .join("\n");
+    expect(m0006).toMatch(/alter table .*add column/i);
+    expect(m0006).not.toMatch(/create (table|sequence|function|procedure)/i);
     expect(moduleText("db/migrations/0000_fuzzy_slipstream.sql")).toContain("fact_fees");
     // The category mapping is a FUNCTION in version control, not a seeded table (criterion 2).
     expect(moduleText("lib/etl/fee-category.ts")).toContain(

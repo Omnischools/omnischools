@@ -513,21 +513,20 @@ export function CpdPanel({
               </p>
             </>
           )}
-          {/* B1-subset — C8's un-chipped real PLC subset. ABSENT whenever the categories are
-              populated (demo stand-in OR a real feed): the ETL folds the observed PLC floor into
-              Mandatory, so no column carries it alone and the total is then all-category. */}
+          {/* B1-subset — C8's real PLC subset, Σ`plc_earned_points_total`. SHOWN IN EVERY STATE and
+              UN-CHIPPED: the column is read only from the operational PLC aggregate, never from the
+              NTC stand-in, so it is a measurement even on a row whose NTC categories are populated.
+              `plcValue` cannot return a DEMO status, so no chip can render on this line — the same
+              local guarantee sub-section A's PLC figures carry (C6/C9). A 0 here is a REAL_ZERO, not
+              an absence: PLC points always have a feed. */}
           <p className="mt-1 text-[10.5px] text-navy-3">
             of which PLC-earned:{" "}
             {renderCpdStatus(data.plcEarnedPoints.status, {
               text: `${formatPoints(data.plcEarnedPoints.value ?? 0)} pts`,
               zeroText: "0 pts — no PLC points were earned",
               provenance: p,
-              // The REASON is state-dependent: in the demo the obscuring top-up is the stand-in's; once
-              // a real feed lands it is the measured NTC categories. Both are the same shape of fact
-              // (the PLC floor is not stored apart), stated honestly for the state in hand.
-              absentTitle: isDemo(p)
-                ? "PLC-earned points are not recorded apart from the demo NTC top-up in the Mandatory class"
-                : "PLC-earned points are not recorded apart from the NTC category totals in the Mandatory class",
+              // The only absence left is a genuine one: no row in this scope carried the column.
+              absentTitle: "No PLC-earned points are recorded for any school here",
             })}
           </p>
           {data.pointsMean.bySex ? (
@@ -662,21 +661,18 @@ export function CpdPanel({
           ) : null}
         </div>
 
-        {/* B4 — the school's OWN PLC target, as a COUNT. Never a summed target (C13/AC-16). */}
+        {/* B4 — the school's OWN PLC target, as a COUNT. Never a summed target (C13/AC-16).
+            SHOWN IN EVERY STATE and UN-CHIPPED: both sides of the per-school comparison are
+            PLC-only (the PLC-earned mean against the school's own PLC target), so the count never
+            borrows the all-category mean and never needs withholding. The ONE absence is genuine —
+            no school here has a MEASURABLE PLC target: either none is configured, or none has any
+            PLC earners to form the mean (so the title names both, never just the first). */}
         <div className="mt-4 border-t border-border-1 pt-3">
           <Line>
             {data.plcTargetMet.status === "ABSENT" ? (
               <>
                 Schools meeting their own PLC target:{" "}
-                <Absent
-                  title={
-                    categoriesAbsent
-                      ? "No school here has a configured PLC target"
-                      : isDemo(p)
-                        ? "Not stateable while CPD points carry the demo NTC top-up — the school's own target is PLC-only"
-                        : "Not stateable while CPD points include the NTC category totals — the school's own target is PLC-only"
-                  }
-                />
+                <Absent title="No school here has a PLC target that can be measured — none is configured, or none has any PLC-earning teachers yet" />
               </>
             ) : (
               <span className="font-mono text-navy">
@@ -698,7 +694,8 @@ export function CpdPanel({
           </Line>
           <p className="text-[10px] text-navy-3">
             A school&apos;s own PLC target is the cadence it set itself — it is not the
-            national CPD requirement, and the two are never substituted for one another.
+            national CPD requirement, and the two are never substituted for one another. Each
+            school is measured on its PLC-earned points alone.
           </p>
         </div>
 

@@ -16,6 +16,7 @@ import { runOversightEtl, type EtlRunReport, type PlcOutcome } from "@/lib/etl/p
 import {
   OV_SEXES,
   PlcTransformError,
+  assertPlcInvariants,
   buildSchoolPlcRows,
   expectedSessionsFor,
   makePlcRng,
@@ -47,7 +48,7 @@ import {
  *
  * ⚠ THE HEADLINE ASSERTIONS ARE MADE IN SQL AGAINST THE WRITTEN ROWS, not against the transform's
  * return value: an in-memory assertion would still pass if the writer dropped a column or swapped two
- * of them (there are twenty-three of them here, eight of which are nullable for a REASON).
+ * of them (there are twenty-five of them here, eight of which are nullable for a REASON).
  *
  * ⚠ THE TWO PROVENANCE STATES ARE BOTH EXERCISED AGAINST THE SAME BUILDER. The demo state (the NTC
  * seam pointed at `demo_ntc_source`) is the `beforeAll` run; the LIVE-TODAY state (the seam pointed at
@@ -101,6 +102,8 @@ interface PlcRow {
   cpd_mandatory_teacher_count: number | null;
   cpd_specialised_teacher_count: number | null;
   cpd_recommended_teacher_count: number | null;
+  plc_earned_points_total: string | null;
+  plc_earned_teacher_count: number | null;
   source: string;
   as_of_date: string;
   etl_run_id: string;
@@ -162,6 +165,8 @@ async function readPlc(): Promise<PlcRow[]> {
            fp.cpd_mandatory_teacher_count,
            fp.cpd_specialised_teacher_count,
            fp.cpd_recommended_teacher_count,
+           fp.plc_earned_points_total::text         as plc_earned_points_total,
+           fp.plc_earned_teacher_count,
            fp.source::text                          as source,
            fp.as_of_date::text                      as as_of_date,
            fp.etl_run_id::text                      as etl_run_id
@@ -273,6 +278,23 @@ function fixSource(over: Partial<PlcSchoolSource> = {}): PlcSchoolSource {
     ...over,
   };
 }
+
+/**
+ * THE SAME SCHOOL WITH FEWER PLC EARNERS — four, against the NTC stand-in's Mandatory count of five
+ * per sex. It is the fixture in which `cpd_points_teacher_count` (the ANY-category earner
+ * population) is STRICTLY WIDER than the PLC-earner count, which is the only state where using it
+ * as the PLC mean's denominator is visibly wrong. The default fixture's twelve earners already
+ * exceed every NTC category count, so there the two collapse onto each other — which is precisely
+ * why the diluted denominator shipped unnoticed.
+ */
+const FEW_EARNERS = {
+  annualPoints: {
+    schoolId: "s",
+    pointsHundredths: 4_000,
+    teachersWithPoints: 4,
+    lastSettledAt: "2026-06-30 18:00:00+00",
+  },
+} as const satisfies Partial<PlcSchoolSource>;
 
 function fixTarget(over: Partial<PlcTarget> = {}): PlcTarget {
   return {
@@ -513,6 +535,316 @@ describe("AC8/AC9 · the Mandatory SPLIT and the reconciliation (C7/C8)", () => 
   });
 });
 
+/**
+ * `plc_earned_points_total` — the OBSERVED PLC floor, carried out of the Mandatory fold so "of which
+ * PLC-earned: X" is readable in BOTH data states. Every claim here is about HONESTY of provenance,
+ * not arithmetic: the figure must be the operational one in the demo state too, must survive the
+ * fold into Mandatory, and must be a MEASURED 0.00 rather than a NULL when a school earned nothing.
+ */
+describe("plc_earned_points_total · the observed PLC floor, kept separable (C8)", () => {
+  it("is written on the ANNUAL rows and NULL on every TERM row", () => {
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    for (const sex of OV_SEXES) {
+      expect(annualOf(b, sex).plcEarnedPointsTotal).not.toBeNull();
+      // NULL on a TERM row, not 0.00 — the CPD ledger settles per YEAR, so a term figure would be a
+      // measurement of a window nothing was measured over.
+      expect(termOf(b, sex).plcEarnedPointsTotal).toBeNull();
+    }
+    expect(annualOf(b, "ALL").plcEarnedPointsTotal).toBe("40.00");
+  });
+
+  it("CATEGORIES ABSENT · equals cpd_points_total on every sex row", () => {
+    const b = buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget());
+    for (const sex of OV_SEXES) {
+      const row = annualOf(b, sex);
+      expect(row.plcEarnedPointsTotal).toBe(row.cpdPointsTotal);
+      // There the total IS the PLC subtotal, so it also coincides with the Mandatory partial.
+      expect(row.plcEarnedPointsTotal).toBe(row.cpdPointsMandatoryTotal);
+    }
+  });
+
+  it("CATEGORIES POPULATED · is <= cpd_points_mandatory_total and < cpd_points_total", () => {
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    for (const sex of OV_SEXES) {
+      const row = annualOf(b, sex);
+      expect(h(row.plcEarnedPointsTotal)).toBeLessThanOrEqual(h(row.cpdPointsMandatoryTotal));
+      // And it is STRICTLY below the all-category total here (the fixture has a non-zero NCPD topup
+      // plus two sourced categories), which is the whole reason the column has to exist: the figure
+      // is not recoverable from cpd_points_total once the categories are populated.
+      expect(h(row.plcEarnedPointsTotal)).toBeLessThan(h(row.cpdPointsTotal));
+    }
+  });
+
+  it("⚠ is the OPERATIONAL figure even in the demo state — never a slice of the NTC stand-in", () => {
+    // The same 4_000 observed hundredths, split by the school's own points share. IDENTICAL whether
+    // the NTC stand-in is present or absent: this is the claim that would break first if the build
+    // ever started sourcing the column from `demo_ntc_source`.
+    const plcSplit = splitBySex(4_000, plcSexShares("GH-FIX-0001", ACADEMIC_YEAR).pointsPerMille);
+    const sourced = buildSchoolPlcRows(fixSource(), fixTarget());
+    const unsourced = buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget());
+    for (const b of [sourced, unsourced]) {
+      expect(h(annualOf(b, "MALE").plcEarnedPointsTotal)).toBe(plcSplit.male);
+      expect(h(annualOf(b, "FEMALE").plcEarnedPointsTotal)).toBe(plcSplit.female);
+      expect(h(annualOf(b, "ALL").plcEarnedPointsTotal)).toBe(4_000);
+    }
+    // Said as the equality between the two states, so a future demo-only path cannot pass this file.
+    for (const sex of OV_SEXES)
+      expect(annualOf(sourced, sex).plcEarnedPointsTotal).toBe(
+        annualOf(unsourced, sex).plcEarnedPointsTotal,
+      );
+    // Meanwhile the all-category total DOES differ between the states — which proves the fixture
+    // actually exercises both and that the equality above is not comparing two identical runs.
+    expect(annualOf(sourced, "ALL").cpdPointsTotal).not.toBe(
+      annualOf(unsourced, "ALL").cpdPointsTotal,
+    );
+  });
+
+  it("⚠ is NOT under the NULL-never-0 gate: a school that earned nothing stores a MEASURED 0.00", () => {
+    // BOTH data states, because the gate is what differs between them and this column ignores it.
+    for (const over of [{ ntc: null, annualPoints: null }, { annualPoints: null }] as const) {
+      const b = buildSchoolPlcRows(fixSource(over), fixTarget());
+      for (const sex of OV_SEXES) {
+        expect(annualOf(b, sex).plcEarnedPointsTotal).toBe("0.00");
+        expect(annualOf(b, sex).plcEarnedPointsTotal).not.toBeNull();
+      }
+    }
+  });
+
+  it("rolls up as a SUM: MALE + FEMALE = ALL, exactly, in both data states", () => {
+    for (const b of [
+      buildSchoolPlcRows(fixSource(), fixTarget()),
+      buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget()),
+    ]) {
+      expect(
+        h(annualOf(b, "MALE").plcEarnedPointsTotal) +
+          h(annualOf(b, "FEMALE").plcEarnedPointsTotal),
+      ).toBe(h(annualOf(b, "ALL").plcEarnedPointsTotal));
+    }
+  });
+
+  it("the PLC-earned MEAN — the honest basis for 'met their own PLC target' — is NOT the all-category mean", () => {
+    // ⚠ THE BASIS CLAIM, asserted on the DATA the reader divides rather than in the reader (the
+    // comparison itself is a read-side aggregate in lib/oversight/cpd.ts). The school's own
+    // annual_plc_target is PLC-ONLY, so the mean it is compared against must be PLC-only too.
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    const all = annualOf(b, "ALL");
+    const denominator = all.cpdPointsTeacherCount!;
+    const plcMean = h(all.plcEarnedPointsTotal) / denominator;
+    const allCategoryMean = h(all.cpdPointsTotal) / denominator;
+    expect(plcMean).toBeLessThan(allCategoryMean);
+    // THE SIZE OF THE DISHONESTY, in the unit the target is set in: the all-category basis credits
+    // this school with over a POINT per teacher that its PLC provision never earned. Any
+    // annual_plc_target in that band flips the verdict from "missed" to "met" — which is exactly
+    // the false "N of Y schools met their own PLC target" the deferred field was deferred over.
+    expect(allCategoryMean - plcMean).toBeGreaterThan(100);
+    // The target itself is the school's OWN PLC-only figure, unchanged by any of this.
+    expect(all.annualPlcTarget).toBe("8.00");
+    // In the categories-ABSENT state the two bases COINCIDE — which is why the all-category basis
+    // went unnoticed, and why switching the reader to this one changes nothing there.
+    const absent = annualOf(buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget()), "ALL");
+    expect(absent.plcEarnedPointsTotal).toBe(absent.cpdPointsTotal);
+  });
+
+  it("refuses a row whose PLC-earned figure is not the observed floor", () => {
+    // The invariant has to be the thing that fails, not the INSERT. Reached by hand-corrupting a
+    // built row, because no source input can produce this state.
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    const corrupt = {
+      ...b,
+      rows: b.rows.map((r) =>
+        r.periodId === FIX_ANNUAL_PERIOD && r.sex === "ALL"
+          ? { ...r, plcEarnedPointsTotal: "999.00" }
+          : r,
+      ),
+    };
+    expect(() => assertPlcInvariants(corrupt, invariantContextFixture())).toThrow(
+      /operational PLC aggregate and NOTHING ELSE/,
+    );
+  });
+
+  it("refuses a NULL on an ANNUAL row — an absence here is an ETL defect, not a measurement", () => {
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    const corrupt = {
+      ...b,
+      rows: b.rows.map((r) =>
+        r.periodId === FIX_ANNUAL_PERIOD && r.sex === "MALE"
+          ? { ...r, plcEarnedPointsTotal: null }
+          : r,
+      ),
+    };
+    expect(() => assertPlcInvariants(corrupt, invariantContextFixture())).toThrow(
+      /NOT under the NULL-never-0 sourcing gate/,
+    );
+  });
+});
+
+/**
+ * `plc_earned_teacher_count` — THE OTHER HALF OF THE PLC-EARNED MEAN. A PLC-only numerator over
+ * `cpd_points_teacher_count` is not a PLC mean: that count is the ANY-category earner population, so
+ * the division spreads PLC points across teachers who earned none — and it does so ONLY while the
+ * NTC categories are populated, i.e. the figure would move on whether a feed exists. These tests
+ * pin the denominator to the same operational aggregate the numerator comes from.
+ */
+describe("plc_earned_teacher_count · the PLC-earned mean's own denominator (C8)", () => {
+  it("is written on the ANNUAL rows and NULL on every TERM row", () => {
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    for (const sex of OV_SEXES) {
+      expect(annualOf(b, sex).plcEarnedTeacherCount).not.toBeNull();
+      expect(termOf(b, sex).plcEarnedTeacherCount).toBeNull();
+    }
+    // The fixture's 12 PLC earners, as the operational aggregate reports them.
+    expect(annualOf(b, "ALL").plcEarnedTeacherCount).toBe(12);
+  });
+
+  it("CATEGORIES ABSENT · equals cpd_points_teacher_count — the same people", () => {
+    // There the only CPD points anybody can have earned ARE PLC points, so the two populations
+    // coincide. This is what makes the reader's switch of denominator a NO-OP in the live-today
+    // state: nothing on the current product's dashboards changes value.
+    const b = buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget());
+    for (const sex of OV_SEXES) {
+      const row = annualOf(b, sex);
+      expect(row.plcEarnedTeacherCount).toBe(row.cpdPointsTeacherCount);
+    }
+  });
+
+  it("⚠ CATEGORIES POPULATED · is STRICTLY below cpd_points_teacher_count — the bug this fixes", () => {
+    // THE WHOLE POINT, on a school whose NTC categories reach MORE teachers than its PLC does (four
+    // PLC earners against an NTC Mandatory count of five per sex). The default fixture has 12 PLC
+    // earners, which already EXCEEDS every NTC category count, so there the any-CPD denominator
+    // collapses onto the PLC one and the defect is invisible — which is exactly why it shipped.
+    const b = buildSchoolPlcRows(fixSource(FEW_EARNERS), fixTarget());
+    const all = annualOf(b, "ALL");
+    expect(all.plcEarnedTeacherCount).toBe(4);
+    expect(all.plcEarnedTeacherCount!).toBeLessThan(all.cpdPointsTeacherCount!);
+    // And the two means genuinely differ: dividing the SAME PLC points by the wider denominator
+    // UNDERSTATES the PLC mean, which is what could report a school as missing a target it met.
+    const honest = h(all.plcEarnedPointsTotal) / all.plcEarnedTeacherCount!;
+    const diluted = h(all.plcEarnedPointsTotal) / all.cpdPointsTeacherCount!;
+    expect(diluted).toBeLessThan(honest);
+    // Against this school's own 8.00 PLC target the verdict actually FLIPS — met on the honest
+    // basis, missed on the diluted one. That flip IS the B4 defect, in one assertion.
+    const target = h(all.annualPlcTarget);
+    expect(honest).toBeGreaterThanOrEqual(target);
+    expect(diluted).toBeLessThan(target);
+  });
+
+  it("is a SUBSET of cpd_points_teacher_count on every sex row, in both data states", () => {
+    for (const b of [
+      buildSchoolPlcRows(fixSource(), fixTarget()),
+      buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget()),
+    ])
+      for (const sex of OV_SEXES) {
+        const row = annualOf(b, sex);
+        // Every PLC point IS a CPD point, so a PLC earner is always an any-CPD earner.
+        expect(row.plcEarnedTeacherCount!).toBeLessThanOrEqual(row.cpdPointsTeacherCount!);
+      }
+  });
+
+  it("⚠ is the OPERATIONAL count in BOTH states — never the NTC stand-in's category counts", () => {
+    // Same FEW_EARNERS school, because it is the one where cpd_points_teacher_count DOES move
+    // between the states — so the equality below is a real claim rather than two identical runs.
+    const sourced = buildSchoolPlcRows(fixSource(FEW_EARNERS), fixTarget());
+    const unsourced = buildSchoolPlcRows(
+      fixSource({ ...FEW_EARNERS, ntc: null }),
+      fixTarget(),
+    );
+    for (const sex of OV_SEXES)
+      expect(annualOf(sourced, sex).plcEarnedTeacherCount).toBe(
+        annualOf(unsourced, sex).plcEarnedTeacherCount,
+      );
+    // Meanwhile cpd_points_teacher_count DOES move between the states — the negative control, and
+    // the reason it cannot be the PLC mean's denominator: the denominator would move with the feed.
+    expect(annualOf(sourced, "ALL").cpdPointsTeacherCount).not.toBe(
+      annualOf(unsourced, "ALL").cpdPointsTeacherCount,
+    );
+    expect(annualOf(sourced, "ALL").plcEarnedTeacherCount).toBe(4);
+  });
+
+  it("⚠ is NOT under the NULL-never-0 gate: a school where nobody earned stores a MEASURED 0", () => {
+    for (const over of [{ ntc: null, annualPoints: null }, { annualPoints: null }] as const) {
+      const b = buildSchoolPlcRows(fixSource(over), fixTarget());
+      for (const sex of OV_SEXES) {
+        expect(annualOf(b, sex).plcEarnedTeacherCount).toBe(0);
+        expect(annualOf(b, sex).plcEarnedTeacherCount).not.toBeNull();
+      }
+    }
+  });
+
+  it("rolls up as a SUM: MALE + FEMALE = ALL, exactly, in both data states", () => {
+    for (const b of [
+      buildSchoolPlcRows(fixSource(), fixTarget()),
+      buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget()),
+    ])
+      expect(
+        annualOf(b, "MALE").plcEarnedTeacherCount! +
+          annualOf(b, "FEMALE").plcEarnedTeacherCount!,
+      ).toBe(annualOf(b, "ALL").plcEarnedTeacherCount);
+  });
+
+  it("refuses a count that is not the observed PLC-earner count", () => {
+    // ⚠ CORRUPTED TO EXACTLY THE WRONG COLUMN — cpd_points_teacher_count, the mistake under review
+    // — on the FEW_EARNERS school, where the two genuinely differ. The invariant must catch the
+    // PLAUSIBLE substitution, not only an absurd value.
+    const b = buildSchoolPlcRows(fixSource(FEW_EARNERS), fixTarget());
+    const corrupt = {
+      ...b,
+      rows: b.rows.map((r) =>
+        r.periodId === FIX_ANNUAL_PERIOD && r.sex === "ALL"
+          ? { ...r, plcEarnedTeacherCount: r.cpdPointsTeacherCount }
+          : r,
+      ),
+    };
+    expect(() => assertPlcInvariants(corrupt, invariantContextFixture(4))).toThrow(
+      /OBSERVED PLC earners are/,
+    );
+  });
+
+  it("refuses a NULL on an ANNUAL row — an absence here is an ETL defect, not a measurement", () => {
+    const b = buildSchoolPlcRows(fixSource(), fixTarget());
+    const corrupt = {
+      ...b,
+      rows: b.rows.map((r) =>
+        r.periodId === FIX_ANNUAL_PERIOD && r.sex === "FEMALE"
+          ? { ...r, plcEarnedTeacherCount: null }
+          : r,
+      ),
+    };
+    expect(() => assertPlcInvariants(corrupt, invariantContextFixture())).toThrow(
+      /it is OUTSIDE the NULL-never-0 gate/,
+    );
+  });
+});
+
+/**
+ * The fixture's observed PLC figures per sex — the `floor` and the earner count the invariants are
+ * checked against (claims 6, 7, 10 and 11). Mirrors the transform's own splits exactly, which is
+ * what makes the hand-corrupted rows below fail on the CLAIM rather than on a mismatched fixture.
+ */
+function invariantContextFixture(earners = 12): {
+  emisSchoolId: string;
+  plcPointsOf: Record<OvSex, number>;
+  plcTeachersOf: Record<OvSex, number>;
+  annualPeriodId: string;
+} {
+  const shares = plcSexShares("GH-FIX-0001", ACADEMIC_YEAR);
+  const points = splitBySex(4_000, shares.pointsPerMille);
+  const head = splitBySex(20, shares.headPerMille);
+  const teachers = splitBySex(earners, shares.pointsPerMille, {
+    female: head.female,
+    male: head.male,
+  });
+  return {
+    emisSchoolId: "GH-FIX-0001",
+    plcPointsOf: { MALE: points.male, FEMALE: points.female, ALL: 4_000 },
+    plcTeachersOf: {
+      MALE: teachers.male,
+      FEMALE: teachers.female,
+      ALL: teachers.male + teachers.female,
+    },
+    annualPeriodId: FIX_ANNUAL_PERIOD,
+  };
+}
+
 describe("AC14 · every rate divides the denominator the schema names", () => {
   it("cpd_points_mean divides by cpd_points_teacher_count, NOT by teacher_headcount", () => {
     const b = buildSchoolPlcRows(fixSource({ ntc: null }), fixTarget());
@@ -605,6 +937,9 @@ describe("AC15/AC17 · the sex rows roll up, and the sex-invariant ones are REPE
       "attendanceExpected",
       "teachersInPlc",
       "cpdPointsTeacherCount",
+      // Additive exactly like the any-CPD count beside it — the PLC mean's denominator has to roll
+      // up or a district's "met their own PLC target" would divide by the wrong population.
+      "plcEarnedTeacherCount",
       "teachersMeetingCpdThreshold",
       "cpdMandatoryTeacherCount",
       "cpdSpecialisedTeacherCount",
@@ -615,6 +950,9 @@ describe("AC15/AC17 · the sex rows roll up, and the sex-invariant ones are REPE
       "cpdPointsMandatoryTotal",
       "cpdPointsSpecialisedTotal",
       "cpdPointsRecommendedTotal",
+      // The PLC-earned subtotal is additive exactly like the other point totals — it is SUMMED from
+      // the split, never re-derived, which is what lets a district's "of which PLC-earned" be read.
+      "plcEarnedPointsTotal",
     ] as const;
     for (const periodId of [FIX_TERM.periodId, FIX_ANNUAL_PERIOD]) {
       const male = b.rows.find((r) => r.periodId === periodId && r.sex === "MALE")!;
@@ -884,11 +1222,33 @@ describe("AC4 · source = OPERATIONAL_AGG, and no new ov_source value was minted
     ]);
   });
 
-  it("this slice added NO migration: the folder is the same six files, none of them altering ov_source", () => {
+  it("the ONE migration this follow-up added is ADD COLUMNs only, and no migration alters ov_source", () => {
+    // The original slice added NO migration at all. The follow-up that surfaces "of which PLC-earned"
+    // adds exactly one FILE — `0006_dashing_bloodstorm`, two nullable ADD COLUMNs (the PLC-earned
+    // points and their own denominator, which ship together because neither is usable alone) — and
+    // the claim this test actually defends is unchanged: NO new `ov_source` member is minted to mark
+    // a demo figure (C4). The demo state is recognised by its SIGNATURE, never by an enum value.
     const files = readdirSync(join(process.cwd(), "db/migrations"))
       .filter((f) => f.endsWith(".sql"))
       .sort();
-    expect(files).toHaveLength(6);
+    expect(files).toHaveLength(7);
+    expect(files[6]).toBe("0006_dashing_bloodstorm.sql");
+    const latest = readFileSync(
+      join(process.cwd(), "db/migrations", "0006_dashing_bloodstorm.sql"),
+      "utf8",
+    )
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("--"))
+      .join("\n")
+      .trim();
+    // ⚠ PURELY ADDITIVE, AND PINNED AS SUCH. A CREATE TABLE / SEQUENCE / ROUTINE here would oblige a
+    // re-paste of prod-paste-0006 (docs/PROVISIONING.md §2a step 3); a bare nullable ADD COLUMN on a
+    // table whose `jurisdiction_scope` policy has no column list needs no paste at all. If this
+    // assertion ever fails, the paste rule applies again — read §2a before shipping it.
+    expect(latest.split("--> statement-breakpoint").map((x) => x.trim())).toEqual([
+      'ALTER TABLE "fact_plc_participation" ADD COLUMN "plc_earned_points_total" numeric(7, 2);',
+      'ALTER TABLE "fact_plc_participation" ADD COLUMN "plc_earned_teacher_count" integer;',
+    ]);
     for (const file of files) {
       // ⚠ `--` COMMENTARY STRIPPED FIRST. These migrations carry long hand-appended headers that
       // DISCUSS `ALTER TYPE ... ADD VALUE` and `ov_source` by name; matching raw text would make a
@@ -936,6 +1296,8 @@ describe("the two period cuts are written at DIFFERENT periods, both fully sexed
       expect(row.cpd_points_mandatory_total).toBeNull();
       expect(row.ntc_cpd_target).toBeNull();
       expect(row.annual_plc_target).toBeNull();
+      expect(row.plc_earned_points_total).toBeNull();
+      expect(row.plc_earned_teacher_count).toBeNull();
       expect(row.sessions_held).not.toBeNull();
     }
     for (const row of annualRows) {
@@ -944,6 +1306,10 @@ describe("the two period cuts are written at DIFFERENT periods, both fully sexed
       expect(row.plc_participation_rate).toBeNull();
       expect(row.teachers_in_plc).toBeNull();
       expect(row.cpd_points_total).not.toBeNull();
+      // ⚠ ALWAYS populated on an ANNUAL row, in the demo state as in the live one — it is the
+      // observed PLC figure, so no sourcing gate applies to it.
+      expect(row.plc_earned_points_total).not.toBeNull();
+      expect(row.plc_earned_teacher_count).not.toBeNull();
     }
   });
 
@@ -1176,6 +1542,65 @@ describe("AC9, in SQL · the reconciliation holds in the demo state", () => {
     // national figures are compared, which is the one place a systematic inversion would show.
     expect(Number(plc.annual.cpdPointsTotal)).toBeGreaterThanOrEqual(Number(plc.annual.plcPoints));
     expect(Number(plc.annual.plcPoints)).toBeGreaterThan(0);
+  });
+
+  it("plc_earned_points_total ≤ cpd_points_mandatory_total on EVERY written row, in SQL", async () => {
+    // The PLC floor is one PART of NTC's Mandatory class. Asserted over the whole table rather than
+    // per fixture, because an inversion would be a systematic sourcing error, not a one-school one.
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n
+        from fact_plc_participation
+       where plc_earned_points_total is not null
+         and plc_earned_points_total > cpd_points_mandatory_total`;
+    expect(bad[0]!.n).toBe(0);
+  });
+
+  it("plc_earned_points_total is STRICTLY below cpd_points_total wherever ANY non-PLC points exist", async () => {
+    // Which is the whole reason the column exists: once the categories are populated the observed PLC
+    // figure is NOT recoverable from cpd_points_total. Said as the EXACT identity rather than a
+    // blanket `<`, because the two legitimately COINCIDE on a row with no non-PLC points at all — a
+    // covered school's empty sex row contributes zeros in all three NTC arms, and there the total
+    // still IS the PLC subtotal. The gap is (mandatory − plc_earned) + specialised + recommended, so
+    // "strictly below" must hold on exactly the rows where that is positive, and nowhere else.
+    const r = await sql<{ n: number; with_gap: number; strictly_below: number }[]>`
+      select count(*)::int                                                       as n,
+             count(*) filter (
+               where (cpd_points_mandatory_total - plc_earned_points_total)
+                   + cpd_points_specialised_total + cpd_points_recommended_total > 0
+             )::int                                                              as with_gap,
+             count(*) filter (
+               where plc_earned_points_total < cpd_points_total
+             )::int                                                              as strictly_below
+        from fact_plc_participation
+       where cpd_points_specialised_total is not null
+         and cpd_points_recommended_total is not null`;
+    expect(r[0]!.n).toBeGreaterThan(0);
+    // The demo state genuinely exercises the case — most rows DO carry non-PLC points.
+    expect(r[0]!.with_gap).toBeGreaterThan(r[0]!.n / 2);
+    expect(r[0]!.strictly_below).toBe(r[0]!.with_gap);
+  });
+
+  it("plc_earned_teacher_count ≤ cpd_points_teacher_count on EVERY written row, in SQL", async () => {
+    // The subset claim, over the whole table: PLC earners are a SUBSET of any-CPD earners, so the
+    // PLC mean's denominator is provably the tighter of the two and never divides by strangers.
+    const bad = await sql<{ n: number }[]>`
+      select count(*)::int as n
+        from fact_plc_participation
+       where plc_earned_teacher_count is not null
+         and plc_earned_teacher_count > cpd_points_teacher_count`;
+    expect(bad[0]!.n).toBe(0);
+  });
+
+  it("the national PLC-earned sum equals the run report's own observed PLC points", async () => {
+    // The roll-up property, end to end: summing the stored column over the ALL rows reproduces the
+    // figure the report states independently, so "of which PLC-earned" aggregates honestly.
+    const summed = await sql<{ total: string }[]>`
+      select coalesce(sum(fp.plc_earned_points_total), 0)::text as total
+        from fact_plc_participation fp
+        join dim_period d on d.period_id = fp.period_id
+       where d.period_type = 'ANNUAL'
+         and fp.sex = 'ALL'`;
+    expect(Number(summed[0]!.total)).toBe(Number(plc.annual.plcPoints));
   });
 });
 
@@ -1479,6 +1904,37 @@ describe("AC1/AC7, end to end · the gate CLOSED leaves the NTC columns NULL, ne
        where d.period_type = 'ANNUAL'
          and fp.cpd_points_total is distinct from fp.cpd_points_mandatory_total`;
     expect(bad[0]!.n).toBe(0);
+
+    // ⚠ AND THE PLC-EARNED PAIR SURVIVES THE CLOSED GATE UNTOUCHED — neither is one of the five.
+    // In this state the points EQUAL cpd_points_total and the count EQUALS cpd_points_teacher_count
+    // (there, the only CPD points ARE PLC points and the two populations are the same people) —
+    // the categories-ABSENT half of their stated invariants, asserted on the written rows. This is
+    // also the proof that the reader's switch of denominator changes nothing in the live state.
+    const plcEarnedMismatch = await sql<{ n: number }[]>`
+      select count(*)::int as n
+        from fact_plc_participation fp
+        join dim_period d on d.period_id = fp.period_id
+       where d.period_type = 'ANNUAL'
+         and (fp.plc_earned_points_total is distinct from fp.cpd_points_total
+           or fp.plc_earned_teacher_count is distinct from fp.cpd_points_teacher_count)`;
+    expect(plcEarnedMismatch[0]!.n).toBe(0);
+    // Never NULL on an ANNUAL row, even with every NTC column gone: a real 0.00 / 0 is a measurement.
+    const absentEarned = await sql<{ n: number }[]>`
+      select count(*)::int as n
+        from fact_plc_participation fp
+        join dim_period d on d.period_id = fp.period_id
+       where d.period_type = 'ANNUAL'
+         and (fp.plc_earned_points_total is null or fp.plc_earned_teacher_count is null)`;
+    expect(absentEarned[0]!.n).toBe(0);
+    // And both are the IDENTICAL measured figures the demo run wrote — they do not move when the
+    // NTC seam does, which is the provenance claim the reader labels "MEASURED" on.
+    for (const row of after.filter((r) => r.period_type === "ANNUAL")) {
+      const before = annualRows.find(
+        (r) => r.jurisdiction_id === row.jurisdiction_id && r.sex === row.sex,
+      )!;
+      expect(row.plc_earned_points_total).toBe(before.plc_earned_points_total);
+      expect(row.plc_earned_teacher_count).toBe(before.plc_earned_teacher_count);
+    }
 
     // And the TERM cut is UNAFFECTED by the NTC seam: participation is operationally observed.
     const termAfter = after.filter((r) => r.period_type === "TERM");

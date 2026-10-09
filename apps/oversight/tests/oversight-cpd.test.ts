@@ -77,6 +77,13 @@ const SMALL = {
       total: 100,
       teacherCount: 20,
       mean: 5,
+      // ⚠ THE DENOMINATOR FLIP, PLANTED DELIBERATELY. 40 observed PLC points over FOUR observed PLC
+      // earners = 10.0 PLC pts/teacher, which CLEARS this school's own 8-pt target. Spread over its
+      // 20 ANY-CPD earners instead it reads 2.0 and the school is reported as MISSING a target its
+      // PLC teachers met — the dilution Dex blocked. The points are strictly under both the
+      // Mandatory class they are folded into (60) and the all-category total (100), per claim 10.
+      plcEarned: 40,
+      plcEarnedTeachers: 4,
       threshold: 10,
       mandatory: 60,
       specialised: 25,
@@ -90,6 +97,8 @@ const SMALL = {
       total: 40,
       teacherCount: 10,
       mean: 4,
+      plcEarned: 16,
+      plcEarnedTeachers: 2,
       threshold: 4,
       mandatory: 24,
       specialised: 10,
@@ -103,6 +112,8 @@ const SMALL = {
       total: 60,
       teacherCount: 10,
       mean: 6,
+      plcEarned: 24, // MALE 16 + FEMALE 24 = ALL 40 — the column is ADDITIVE across sex
+      plcEarnedTeachers: 2, // …and so is its denominator: MALE 2 + FEMALE 2 = ALL 4
       threshold: 6,
       mandatory: 36,
       specialised: 15,
@@ -131,6 +142,12 @@ const BIG = {
       total: 4000,
       teacherCount: 200,
       mean: 20,
+      // The counter-case to SMALL: 800 observed PLC points over 160 observed PLC earners = 5.0 PLC
+      // pts/teacher, UNDER its own 8-pt target on the honest basis AND on the diluted one (4.0) —
+      // while its 20-pt ALL-CATEGORY mean would have cleared it. So this school is "not met" under
+      // both PLC bases and "met" under the all-category one.
+      plcEarned: 800,
+      plcEarnedTeachers: 160,
       threshold: 300,
       mandatory: 2400,
       specialised: 1000,
@@ -144,6 +161,8 @@ const BIG = {
       total: 2000,
       teacherCount: 100,
       mean: 20,
+      plcEarned: 400,
+      plcEarnedTeachers: 80,
       threshold: 150,
       mandatory: 1200,
       specialised: 500,
@@ -157,6 +176,8 @@ const BIG = {
       total: 2000,
       teacherCount: 100,
       mean: 20,
+      plcEarned: 400,
+      plcEarnedTeachers: 80,
       threshold: 150,
       mandatory: 1200,
       specialised: 500,
@@ -185,6 +206,8 @@ const OUTSIDE = {
       total: 20000,
       teacherCount: 1000,
       mean: 20,
+      plcEarned: 5000,
+      plcEarnedTeachers: 400,
       threshold: 1000,
       mandatory: 12000,
       specialised: 5000,
@@ -198,6 +221,8 @@ const OUTSIDE = {
       total: 10000,
       teacherCount: 500,
       mean: 20,
+      plcEarned: 2500,
+      plcEarnedTeachers: 200,
       threshold: 500,
       mandatory: 6000,
       specialised: 2500,
@@ -211,6 +236,8 @@ const OUTSIDE = {
       total: 10000,
       teacherCount: 500,
       mean: 20,
+      plcEarned: 2500,
+      plcEarnedTeachers: 200,
       threshold: 500,
       mandatory: 6000,
       specialised: 2500,
@@ -284,6 +311,21 @@ interface AnnualSexVals {
   total: number;
   teacherCount: number;
   mean: number;
+  /**
+   * `plc_earned_points_total` — the OBSERVED PLC-earned points, the one CPD column outside the NTC
+   * sourcing gate. Used as-is when the NTC categories are populated; when they are NOT, the ETL
+   * invariant is `plc_earned_points_total = cpd_points_total`, so `plantAnnual` plants the total
+   * instead (see there) and this field is ignored.
+   */
+  plcEarned: number;
+  /**
+   * `plc_earned_teacher_count` — the PLC-earned mean's OWN denominator (the observed PLC earners).
+   * ⚠ NOT `teacherCount`, which counts ANY-category earners: a PLC-only numerator over an any-CPD
+   * denominator spreads the points across teachers who earned none. `<= teacherCount` always, and
+   * `= teacherCount` when the categories are absent — so `plantAnnual` plants the teacher count
+   * instead in that state (see there) and this field is ignored.
+   */
+  plcEarnedTeachers: number;
   threshold: number;
   mandatory: number;
   specialised: number;
@@ -345,6 +387,7 @@ async function plantAnnual(
          teachers_meeting_cpd_threshold, annual_plc_target, ntc_cpd_target,
          cpd_points_mandatory_total, cpd_points_specialised_total, cpd_points_recommended_total,
          cpd_mandatory_teacher_count, cpd_specialised_teacher_count, cpd_recommended_teacher_count,
+         plc_earned_points_total, plc_earned_teacher_count,
          source, as_of_date)
       values
         (${school.id}::uuid, ${periodId}::uuid, ${sex}::ov_sex,
@@ -357,6 +400,15 @@ async function plantAnnual(
          ${v.mandatoryTeachers},
          ${options.ntc ? v.specialisedTeachers : null},
          ${options.ntc ? v.recommendedTeachers : null},
+         -- ⚠ THE PLC-EARNED PAIR. ALWAYS POPULATED on an ANNUAL row — a NULL in either would be an
+         -- ETL defect, not an absence (both columns are OUTSIDE the NULL-never-0 gate: PLC points
+         -- always have an operational feed). With the categories ABSENT the ETL's invariants are
+         -- that the points EQUAL cpd_points_total (there, the total IS the PLC-only subtotal) and
+         -- the earners EQUAL cpd_points_teacher_count (there, the only CPD earners ARE the PLC
+         -- earners) — which is exactly why the reader's switch to this denominator is a no-op in the
+         -- live-today state. With them populated both are the smaller observed figures.
+         ${options.ntc ? v.plcEarned : v.total},
+         ${options.ntc ? v.plcEarnedTeachers : v.teacherCount},
          'OPERATIONAL_AGG', now())
     `;
   }
@@ -405,6 +457,8 @@ beforeAll(async () => {
     total: 0,
     teacherCount: 0,
     mean: 0,
+    plcEarned: 0,
+    plcEarnedTeachers: 0,
     threshold: 0,
     mandatory: 0,
     specialised: 0,
@@ -447,6 +501,11 @@ beforeAll(async () => {
     total,
     teacherCount: teachers,
     mean: teachers === 0 ? 0 : Number((total / teachers).toFixed(2)),
+    // No non-PLC points here (Specialised and Recommended are a sourced 0), so the observed floor
+    // IS the whole total and its earners ARE the whole any-CPD population — the invariants permit
+    // equality exactly when nothing non-PLC exists.
+    plcEarned: total,
+    plcEarnedTeachers: teachers,
     threshold: Math.min(headcount, teachers),
     mandatory: total,
     specialised: 0,
@@ -519,6 +578,17 @@ function panelMarkup(data: TeacherCpdPanel, provenance?: NtcProvenance): string 
       tierNoun: "district",
     }),
   );
+}
+
+/** The panel's VISIBLE TEXT — tags, titles and class names stripped, entities decoded. */
+function visibleTextOf(markup: string): string {
+  return markup
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&") // decode the ampersand LAST so no entity is double-unescaped
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** The two sub-sections, split so a chip can be attributed to A (PLC) or B (CPD/NTC). */
@@ -595,6 +665,9 @@ describe("every tier figure is re-derived from summed counts (AC-13)", () => {
       "cpd_points_total",
       "cpd_points_teacher_count",
       "teachers_meeting_cpd_threshold",
+      // The observed PLC-earned points are SUMMED exactly like the other point totals — the column
+      // is additive, so "of which PLC-earned" at a district is Σ over its schools and nothing else.
+      "plc_earned_points_total",
     ])
       expect(code, column).toMatch(new RegExp(`sum\\(fpp\\.${column}\\)`));
   });
@@ -733,7 +806,10 @@ describe("the sourcing gate is never laundered into a zero (AC-10/11)", () => {
     // …while the PLC-operational half of the same period still states its figures.
     expect(p.plcCoverage.status).toBe("MEASURED");
     expect(p.mandatory.status).toBe("MEASURED"); // the stated PLC-only partial, un-chipped
-    expect(p.plcEarnedPoints.status).toBe("MEASURED");
+    // The observed PLC-earned column is outside the gate entirely: it is measured here, and in this
+    // state the ETL invariant makes it equal to `cpd_points_total` (SMALL 100 + BIG 4,000).
+    expect(p.plcEarnedPoints).toEqual({ status: "MEASURED", value: 4100 });
+    expect(p.pointsTotal.value).toBe(4100);
   });
 
   it("the panel renders the ABSENT threshold as the NTC em-dash, with NO 0 and NO 0%", async () => {
@@ -773,32 +849,80 @@ describe("the sourcing gate is never laundered into a zero (AC-10/11)", () => {
     expect(markup).toContain("cover 2 of 3 schools");
   });
 
-  it("the two C8-conditional figures key off the CATEGORIES, not the DEMO stamp (Dex B1)", async () => {
-    // With the categories POPULATED, `cpd_points_total` is the all-category figure, so neither the
-    // PLC-earned subset nor "N of Y schools met their own PLC target" can be stated — and that is
-    // true of a real LIVE feed exactly as it is of the demo stand-in.
+  it("the two PLC-only figures are published with the categories POPULATED, un-chipped (C8/B4)", async () => {
+    // Both figures used to be withheld whenever the NTC categories were populated, because the only
+    // PLC-earned number in the row was `cpd_points_total` (all-category in that state). They now read
+    // `plc_earned_points_total`, which is observed from the operational PLC aggregate ONLY — so it is
+    // a real measurement in the demo state too, and must be stated there.
     const demoState = await demo();
-    expect(demoState.specialised.status).not.toBe("ABSENT");
-    expect(demoState.plcEarnedPoints.status).toBe("ABSENT");
-    expect(demoState.plcEarnedPoints.value).toBeUndefined();
-    expect(demoState.plcTargetMet.status).toBe("ABSENT");
-    expect(demoState.plcTargetMet.count).toBeUndefined();
-    // …and with the categories ABSENT (the sourcing-gate state) both ARE stated.
+    expect(demoState.specialised.status).not.toBe("ABSENT"); // the categories really ARE populated
+    // SMALL 40 + BIG 800 + the uncovered school's observed 0.
+    expect(demoState.plcEarnedPoints).toEqual({ status: "MEASURED", value: 840 });
+    // ⚠ GENUINELY NEW INFORMATION, not the total relabelled: it is strictly below `pointsTotal`
+    // (4,100), which is what a reader that re-published the total would get wrong.
+    expect(demoState.plcEarnedPoints.value!).toBeLessThan(demoState.pointsTotal.value!);
+    // NOT CHIPPED. `plcValue` cannot produce a DEMO status, so no chip can render on the figure…
+    expect(demoState.plcEarnedPoints.status).not.toBe("DEMO");
+    const earnedLine = (markup: string): string => {
+      const at = markup.indexOf("of which PLC-earned");
+      expect(at, "the PLC-earned line did not render").toBeGreaterThan(-1);
+      return markup.slice(at, markup.indexOf("</p>", at));
+    };
+    const markup = panelMarkup(demoState);
+    expect(earnedLine(markup)).toContain("840 pts");
+    expect(earnedLine(markup)).not.toContain(">DEMO<");
+    expect(earnedLine(markup)).not.toContain(DEMO_CHIP_TOOLTIP);
+
+    // B4 is the PLC-EARNED mean — Σ PLC points ÷ PLC EARNERS, per row — against each school's own
+    // PLC target, so Y and N share ONE wholly PLC-only basis: SMALL earns 40 ÷ 4 = 10.0 PLC
+    // pts/teacher (≥ 8, MET), BIG earns 800 ÷ 160 = 5.0 (< 8, not met).
+    expect(demoState.plcTargetMet).toEqual({ status: "MEASURED", count: 1, schools: 2 });
+    expect(visibleTextOf(markup)).toContain(
+      "1 of 2 schools met their own PLC target (8 PLC pts)",
+    );
+
+    /* ⚠ THE DENOMINATOR IS THE PLC EARNERS, NOT THE ANY-CPD EARNERS (Dex's blocker, behavioural).
+     *
+     * SMALL is planted as a verdict FLIP, so the two candidate denominators disagree about it:
+     *     40 PLC pts ÷  4 PLC earners      = 10.0  ≥ 8  → MET      (the honest basis)
+     *     40 PLC pts ÷ 20 any-CPD earners  =  2.0  < 8  → missing  (the diluted basis)
+     * A PLC-only numerator over an any-CPD denominator spreads the points across teachers who
+     * earned none, understates the mean, and reports a school as missing a target its PLC teachers
+     * met. BIG agrees under both (5.0 and 4.0, missing either way), so on the diluted denominator
+     * this district would read "No school met its own PLC target (0 of 2)" — a different, adverse
+     * and FALSE answer, which is what the assertions above would catch. */
+    const flip = SMALL.annual.ALL;
+    expect(flip.plcEarned / flip.plcEarnedTeachers).toBeGreaterThanOrEqual(PLC_TARGET);
+    expect(flip.plcEarned / flip.teacherCount).toBeLessThan(PLC_TARGET);
+    expect(flip.plcEarnedTeachers).toBeLessThan(flip.teacherCount); // a strict SUBSET, as planted
+    expect(visibleTextOf(markup)).not.toContain("No school met its own PLC target");
+    // …and the all-category mean is a third, different number again: 18.6 pts/teacher against the
+    // district's honest PLC-earned mean of 840 ÷ 164 = 5.1.
+    const plcMean =
+      demoState.plcEarnedPoints.value! /
+      (SMALL.annual.ALL.plcEarnedTeachers + BIG.annual.ALL.plcEarnedTeachers);
+    expect(demoState.pointsMean.rate! - plcMean).toBeGreaterThan(1);
+
+    // …and with the categories ABSENT nothing moves, because there the ETL invariants make BOTH
+    // halves of the basis equal their all-category counterparts (points = `cpd_points_total`,
+    // earners = `cpd_points_teacher_count`) — the switch is a no-op in the live-today state.
     const noFeed = okValue(
       await getTeacherCpd(districtScope, PERIOD_NOFEED_TERM, PERIOD_NOFEED_ANNUAL),
     );
-    expect(noFeed.plcEarnedPoints.status).toBe("MEASURED");
-    expect(noFeed.plcTargetMet.status).not.toBe("ABSENT");
-    expect(noFeed.plcTargetMet.count).toBe(1); // only the 400-teacher school's mean clears 8 PLC pts
-    // THE PIN: the branch is on the discriminated category status, never on the provenance value — so
-    // a LIVE feed (unreachable from the database until `ov_source` gains NTC_CPD_EXTRACT) cannot be
-    // bucketed with the no-feed state and publish a false, un-chipped figure.
+    expect(noFeed.plcEarnedPoints).toEqual({ status: "MEASURED", value: 4100 });
+    expect(noFeed.plcTargetMet.count).toBe(1); // only the 400-teacher school clears 8 PLC pts
+
+    // THE PINS. The subset is built with the UN-CHIPPED PLC constructor, never `ntcValue`; the
+    // per-school comparison divides the PLC points by the PLC EARNERS, never by the any-CPD earners
+    // and never using the stored all-category mean; and no figure branches on the provenance value.
     const code = readCode("lib/oversight/cpd.ts");
+    expect(code).toMatch(/plcEarnedPoints: plcValue\(/);
+    expect(code).not.toMatch(/plcEarnedPoints: ntcValue/);
     expect(code).toMatch(
-      /const categoriesAbsent =\s*specialised\.status === "ABSENT" && recommended\.status === "ABSENT"/,
+      /fpp\.plc_earned_points_total\s*\n?\s*\/ nullif\(fpp\.plc_earned_teacher_count, 0\) >= fpp\.annual_plc_target/,
     );
-    expect(code).toMatch(/plcEarnedPoints: categoriesAbsent/);
-    expect(code).toMatch(/!categoriesAbsent \|\| plcTargetSchools === 0/);
+    expect(code).not.toMatch(/nullif\(fpp\.cpd_points_teacher_count/);
+    expect(code).not.toMatch(/cpd_points_mean >= fpp\.annual_plc_target/);
     expect(code).not.toMatch(/ntcProvenance === "DEMO"/);
   });
 
@@ -809,13 +933,14 @@ describe("the sourcing gate is never laundered into a zero (AC-10/11)", () => {
     expect(live).toContain("includes both the school-based PLC provision and the NCPD half");
     expect(live).not.toContain("a PLC-only partial");
     expect(live).not.toContain("is illustrative");
-    // The two C8-conditional figures stay withheld, with the provenance-neutral reasons…
-    expect(live).toContain(
-      "Not stateable while CPD points include the NTC category totals",
-    );
-    expect(live).toContain("not recorded apart from the NTC category totals");
-    // …and NEITHER withheld figure blames the demo stand-in under a live feed.
+    // The two PLC-only figures are stated under LIVE exactly as under DEMO — the observed column is
+    // the same measurement either way, so the flip changes NOTHING about them…
+    const text = visibleTextOf(live);
+    expect(text).toContain("of which PLC-earned: 840 pts");
+    expect(text).toContain("1 of 2 schools met their own PLC target (8 PLC pts)");
+    // …and neither carries, or excuses itself with, any demo language under a live feed.
     expect(live).not.toContain("demo NTC top-up");
+    expect(live).not.toContain("Not stateable while CPD points");
     // …and no chip and no demo prose survive the flip.
     expect(live).not.toContain(">DEMO<");
     expect(live).not.toContain("illustrative demo data");
@@ -1008,7 +1133,8 @@ describe("isolation is RLS's, and the read writes no ceiling of its own (AC-23)"
       "teachers_in_plc",
       "cpd_points_total",
       "cpd_points_teacher_count",
-      "cpd_points_mean",
+      "plc_earned_points_total",
+      "plc_earned_teacher_count",
       "teachers_meeting_cpd_threshold",
       "annual_plc_target",
       "ntc_cpd_target",
@@ -1020,7 +1146,9 @@ describe("isolation is RLS's, and the read writes no ceiling of its own (AC-23)"
       "cpd_recommended_teacher_count",
     ]);
     // EVERY column the SQL names must be on the list — so a widened select is a failing test, not a
-    // review miss. (`cpd_points_mean` appears only in the per-ROW PLC-target predicate, never summed.)
+    // review miss. (`cpd_points_mean` is deliberately OFF the list now: the per-ROW PLC-target
+    // predicate was its last reader, and that predicate is on the PLC-earned mean instead — so
+    // naming the stored all-category mean anywhere in this file is a failing test.)
     for (const match of code.matchAll(/fpp\.([a-z_]+)/g))
       expect(ALLOWED.has(match[1]!), `fpp.${match[1]} is not on the allow-list`).toBe(true);
     // The named-record vocabulary must not appear at all.

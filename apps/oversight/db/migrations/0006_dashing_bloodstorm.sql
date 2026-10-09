@@ -1,0 +1,48 @@
+-- ---------------------------------------------------------------------------
+-- HAND-APPENDED COMMENTARY ONLY (no statement added, removed or reordered — the two statements below
+-- are drizzle-kit output verbatim). Re-add these notes if this file is ever regenerated.
+--
+-- WHAT IT ADDS — A NUMERATOR AND ITS OWN DENOMINATOR, deliberately in ONE migration because neither
+-- is usable without the other:
+--   · `fact_plc_participation.plc_earned_points_total` numeric(7,2) NULL — the GENUINELY OBSERVED
+--     PLC-earned points. It is the seam under `cpd_points_mandatory_total`: once the NTC categories
+--     are populated, Mandatory = the observed PLC floor + the NCPD stand-in topup with nothing
+--     separating them, so the one CPD figure this product actually measures was unrecoverable from
+--     the row.
+--   · `fact_plc_participation.plc_earned_teacher_count` integer NULL — the teachers who earned those
+--     points, i.e. the PLC aggregate's own `count(distinct user_id)`. ⚠ `cpd_points_teacher_count` is
+--     NOT this denominator: it counts ANY-category earners, so dividing PLC points by it spreads
+--     them over teachers who never earned a PLC point — understating the PLC mean, and ONLY in the
+--     state where the NTC categories are populated, which is a figure that moves on whether a feed
+--     exists. Shipping the points column without this one would have published exactly that.
+-- Both are ANNUAL-cut only (NULL on TERM rows, like every other CPD column), sexed and additive. See
+-- db/schema/fact.ts ("THE TWO COLUMNS OUTSIDE THE SOURCING GATE") and lib/etl/plc.ts.
+--
+-- PURELY ADDITIVE, AND SAFE ON A LIVE TABLE WITH DATA. Two nullable ADD COLUMNs with no defaults: no
+-- table rewrite, no lock beyond the brief ACCESS EXCLUSIVE for the catalogue update, no existing
+-- column, constraint, index, policy or row touched. The chain replays from empty unchanged.
+--   · NULLABLE, DELIBERATELY. TERM rows must carry NULL in both, so NOT NULL is not expressible in
+--     DDL. On an ANNUAL row both are nevertheless ALWAYS written — `assertPlcInvariants` claims 10
+--     and 11 refuse the school otherwise.
+--   · ⚠ NOT under the NULL-never-0 sourcing gate that governs the NTC columns. PLC points always
+--     have an operational feed (`plc_cpd_ledger`), so `0.00` / `0` here are MEASUREMENTS, not
+--     absences.
+--   · ⚠ APPLY IT IMMEDIATELY BEFORE A PLC ETL RUN. The columns land NULL on every pre-existing row
+--     and are only filled by the next run (which deletes and re-inserts each computed school's whole
+--     period). Until then both CPD figures that read them — "of which PLC-earned" and "N of Y
+--     schools met their own PLC target" — render as ABSENT. That is the correct, fail-honest
+--     behaviour, not a defect; it is just a gap worth not leaving open.
+--
+-- RLS: NO PROD-PASTE FOR THIS MIGRATION, and that is the standing rule rather than a judgement call.
+-- `fact_plc_participation` already has RLS ENABLED with the `jurisdiction_scope` SELECT policy
+-- (db/sql/policies.sql; prod-paste-0001-fact-domains.sql), and that policy is declared WITHOUT a
+-- column list, so it covers both new columns from the moment they exist. Per docs/PROVISIONING.md
+-- §2a a migration that only ADDS COLUMNS to an existing table needs step 1 (apply this file to prod
+-- by hand) and NEITHER step 2 (a paste) NOR step 3 (re-pasting
+-- prod-paste-0006-analytics-app-role.sql — whose blanket grants and Supabase sweep are per-TABLE /
+-- per-SEQUENCE / per-ROUTINE, none of which this creates; the app role's existing table-level SELECT
+-- already reaches both new columns). Same posture as migration 0002, which is recorded in §2a's file
+-- list as a deliberate no-paste for the same reason.
+-- ---------------------------------------------------------------------------
+ALTER TABLE "fact_plc_participation" ADD COLUMN "plc_earned_points_total" numeric(7, 2);--> statement-breakpoint
+ALTER TABLE "fact_plc_participation" ADD COLUMN "plc_earned_teacher_count" integer;

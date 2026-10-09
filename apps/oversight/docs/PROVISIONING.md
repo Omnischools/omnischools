@@ -271,6 +271,26 @@ Current files:
 > 0005's G5 pass, and 0006's checks for 0005's objects are deliberately `WARNING`s so that ordering
 > is possible. Then re-run 0006 so the app role picks up `EXECUTE` on 0005's functions.
 
+- *(migration `0006_dashing_bloodstorm` — two nullable columns on `fact_plc_participation`,
+  `plc_earned_points_total` numeric(7,2) and `plc_earned_teacher_count` integer: the observed
+  PLC-earned points kept separable from the NTC category split, **and their own denominator** (the
+  all-category `cpd_points_teacher_count` is the wrong one — it would spread PLC points over
+  teachers who earned none) — has **no paste**, and needs **no 0006 re-run**. Same
+  carve-out as `0002_unusual_deathstrike`: `fact_plc_participation` already carries RLS **enabled**
+  with the `jurisdiction_scope` policy from `prod-paste-0001`, that policy has **no column list** so
+  it covers both new columns from the moment they exist, and `ADD COLUMN` creates no table, sequence
+  or routine for 0006's point-in-time grants and sweep to miss. Apply the migration (step 1) and
+  stop. **No precondition:** both columns are nullable with no default, so it is a catalogue-only
+  change on a table with data.)*
+
+  > **⚠ Apply it immediately BEFORE a PLC ETL run.** Both columns land **NULL on every pre-existing
+  > row** and are only filled by the next run, which deletes and re-inserts each computed school's
+  > whole period. In the gap, the two CPD figures that read them — "of which PLC-earned" and "N of Y
+  > schools met their own PLC target" — render as **ABSENT** on every panel. That is the correct
+  > fail-honest behaviour and not a defect (an unmeasured column must not be reported as a figure),
+  > but it is a visibly empty pair of statements on a live dashboard, so do not leave the gap open
+  > across a reporting day: sequence the migration and the ETL run together.
+
 ## 3 · Load the reference data (GES / GSS / WAEC agreements)
 
 These are **external data-agreement** loads, not part of the seed. Load with each source's own
