@@ -64,6 +64,26 @@ const P_SIG_SPECIALISED = "20000000-0000-4000-8000-0000000000b4";
 const P_SIG_RECOMMENDED = "20000000-0000-4000-8000-0000000000b5";
 /** Only an ALL row: the sexed denominators are missing, so suppression must fail CLOSED. */
 const P_NO_SEX_ROWS = "20000000-0000-4000-8000-0000000000b6";
+/**
+ * ⚠ THE MIGRATION-0006 WINDOW, EVERY SCHOOL: both new columns still NULL on every row, because
+ * `0006` landed them nullable on the pre-existing rows and only the NEXT PLC ETL run fills them.
+ * The migration file asserts both figures render ABSENT until then; this is where that is checked.
+ */
+const P_UNRUN = "20000000-0000-4000-8000-0000000000b7";
+/**
+ * ⚠ THE SAME WINDOW, HALF-CLOSED — and it is NOT only a migration window. `writePlcFactsTx` deletes
+ * and re-inserts ONLY the jurisdictions it computed, and `computePerSchool` drops a school whose
+ * invariants fail while the run still closes SUCCESS inside its 1% failure budget. So a school can
+ * keep a row with both columns NULL beside neighbours that carry values, in an ordinarily successful
+ * run. The published figures must degrade honestly rather than silently narrow.
+ */
+const P_PARTIAL = "20000000-0000-4000-8000-0000000000b8";
+/**
+ * A school with a configured PLC target and ZERO observed PLC earners, beside one with earners. The
+ * `nullif(plc_earned_teacher_count, 0)` guard drops it from BOTH sides of B4 — so it must not be
+ * counted as having missed its target, and N ≤ Y must survive.
+ */
+const P_ZERO_EARNERS = "20000000-0000-4000-8000-0000000000b9";
 
 const PLANTED = [
   P_DEMO_ZERO,
@@ -72,6 +92,9 @@ const PLANTED = [
   P_SIG_SPECIALISED,
   P_SIG_RECOMMENDED,
   P_NO_SEX_ROWS,
+  P_UNRUN,
+  P_PARTIAL,
+  P_ZERO_EARNERS,
 ];
 
 const NTC_TARGET = 20;
@@ -153,7 +176,10 @@ beforeAll(async () => {
       (${P_SIG_THRESHOLD}::uuid,    '2012/13', null, 'ANNUAL', false),
       (${P_SIG_SPECIALISED}::uuid,  '2013/14', null, 'ANNUAL', false),
       (${P_SIG_RECOMMENDED}::uuid,  '2014/15', null, 'ANNUAL', false),
-      (${P_NO_SEX_ROWS}::uuid,      '2015/16', null, 'ANNUAL', false)
+      (${P_NO_SEX_ROWS}::uuid,      '2015/16', null, 'ANNUAL', false),
+      (${P_UNRUN}::uuid,            '2016/17', null, 'ANNUAL', false),
+      (${P_PARTIAL}::uuid,          '2017/18', null, 'ANNUAL', false),
+      (${P_ZERO_EARNERS}::uuid,     '2018/19', null, 'ANNUAL', false)
   `;
 
   // ── P_DEMO_ZERO: school A is fully covered; school B is covered and SOURCED a genuine 0 ──────────
@@ -317,6 +343,114 @@ beforeAll(async () => {
     ntcTarget: NTC_TARGET,
     plcTarget: PLC_TARGET,
   });
+
+  /* ── the three PLC-EARNED COLUMN-POPULATION states (Quinn, the 0006 follow-up) ────────────────
+   * The columns are nullable in DDL BECAUSE a TERM row must carry NULL, so a NULL on an ANNUAL row
+   * is unrepresentable as a constraint and is reachable from the database even though the ETL never
+   * writes one: migration 0006 lands both columns NULL on every pre-existing row, and
+   * `writePlcFactsTx` only re-inserts the jurisdictions the run computed. Every other fixture here
+   * has both columns populated, so these three are the only place the reader's behaviour on a NULL
+   * is observed — which is the state the two figures were un-withheld INTO. */
+
+  // Both columns NULL on every school: the state migration 0006 documents between the hand-apply and
+  // the next PLC ETL run.
+  const unrunOrPartial = async (period: string, fill: boolean): Promise<void> => {
+    for (const sex of SEXES) {
+      const h = split(100)[sex];
+      // School A: re-run by the ETL in the PARTIAL case, not yet in the UNRUN case.
+      await plant({
+        school: JUR.schoolPublicConsented,
+        period,
+        sex,
+        headcount: h,
+        total: h * 5,
+        teacherCount: h / 2,
+        mean: 10,
+        threshold: null,
+        mandatory: h * 5,
+        specialised: null,
+        recommended: null,
+        mandatoryTeachers: h / 2,
+        specialisedTeachers: null,
+        recommendedTeachers: null,
+        // 500 ÷ 50 = 10.0 ≥ 8 → this school MET its own target, once it is measurable at all.
+        plcEarned: fill ? h * 5 : null,
+        plcEarnedTeachers: fill ? h / 2 : null,
+        ntcTarget: null,
+        plcTarget: PLC_TARGET,
+      });
+      // School B: NEVER re-run in either case — its row predates the two columns.
+      await plant({
+        school: JUR.schoolPublicNoConsent,
+        period,
+        sex,
+        headcount: h,
+        total: h * 2,
+        teacherCount: h / 2,
+        mean: 4,
+        threshold: null,
+        mandatory: h * 2,
+        specialised: null,
+        recommended: null,
+        mandatoryTeachers: h / 2,
+        specialisedTeachers: null,
+        recommendedTeachers: null,
+        plcEarned: null,
+        plcEarnedTeachers: null,
+        ntcTarget: null,
+        plcTarget: PLC_TARGET,
+      });
+    }
+  };
+  await unrunOrPartial(P_UNRUN, false);
+  await unrunOrPartial(P_PARTIAL, true);
+
+  // A measurable school beside one with a target and ZERO observed PLC earners.
+  for (const sex of SEXES) {
+    const h = split(100)[sex];
+    await plant({
+      school: JUR.schoolPublicConsented,
+      period: P_ZERO_EARNERS,
+      sex,
+      headcount: h,
+      total: h * 5,
+      teacherCount: h / 2,
+      mean: 10,
+      threshold: null,
+      mandatory: h * 5,
+      specialised: null,
+      recommended: null,
+      mandatoryTeachers: h / 2,
+      specialisedTeachers: null,
+      recommendedTeachers: null,
+      plcEarned: h * 5,
+      plcEarnedTeachers: h / 2,
+      ntcTarget: null,
+      plcTarget: PLC_TARGET,
+    });
+    await plant({
+      school: JUR.schoolPublicNoConsent,
+      period: P_ZERO_EARNERS,
+      sex,
+      headcount: h,
+      // A MEASURED nothing on both halves — the legitimate 0 the two columns are outside the
+      // NULL-never-0 gate to permit. There is no mean to form, so no verdict to publish.
+      total: 0,
+      teacherCount: 0,
+      mean: 0,
+      threshold: null,
+      mandatory: 0,
+      specialised: null,
+      recommended: null,
+      mandatoryTeachers: 0,
+      specialisedTeachers: null,
+      recommendedTeachers: null,
+      plcEarned: 0,
+      plcEarnedTeachers: 0,
+      ntcTarget: null,
+      plcTarget: PLC_TARGET,
+    });
+  }
 });
 
 afterAll(async () => {
@@ -723,6 +857,140 @@ describe("plcEarnedPoints (C8) and plcTargetMet (B4) in both data states", () =>
     // likely to "simplify" back to `cpd_points_teacher_count`.
     expect(code).toMatch(/PLC-EARNED MEAN[\s\S]{0,1500}annual_plc_target/);
     expect(code).toMatch(/plc_earned_teacher_count[\s\S]{0,400}NOT cpd_points_teacher_count/);
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE PLC-EARNED COLUMNS WHEN THEY ARE NOT POPULATED (Quinn, the 0006 follow-up).
+ *
+ * Both columns are NULLABLE in DDL and must be — a TERM row carries NULL in both, so "NOT NULL on
+ * an ANNUAL row" is not expressible as a constraint, only as `assertPlcInvariants` claims 10 and 11.
+ * That makes an ANNUAL NULL unreachable from the ETL and REACHABLE from the database, by two routes
+ * the migration and the writer each name:
+ *   · migration 0006 lands both columns NULL on every pre-existing row, and only the next PLC ETL
+ *     run fills them (the file's own ⚠ "APPLY IT IMMEDIATELY BEFORE A PLC ETL RUN");
+ *   · `writePlcFactsTx` deletes and re-inserts ONLY the jurisdictions the run computed, while
+ *     `computePerSchool` drops a school whose invariants fail and the run still closes SUCCESS
+ *     inside its 1% failure budget — so ONE school can keep a NULL row beside populated neighbours
+ *     in an ordinarily successful run, with no migration window involved.
+ * Every other fixture in this file and its sibling populates both columns, so this is the only place
+ * the reader is observed on the input it was un-withheld INTO.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe("the PLC-earned columns unpopulated — the state migration 0006 lands in", () => {
+  it("EVERY row NULL · both figures are ABSENT, with no invented zero and no '0 of 0'", async () => {
+    // The claim migration 0006 makes in prose ("render as ABSENT … the correct, fail-honest
+    // behaviour"), asserted. `plcValue` returns ABSENT on `nonNullRows = 0`, and B4's Y collapses to
+    // 0 because the quotient is NULL on every row.
+    const p = okValue(await getTeacherCpd(districtScope, null, P_UNRUN));
+    expect(p.plcEarnedPoints).toEqual({ status: "ABSENT" });
+    expect(p.plcEarnedPoints.value).toBeUndefined();
+    expect(p.plcTargetMet).toEqual({ status: "ABSENT", schools: 0 });
+    expect(p.plcTargetMet.count).toBeUndefined();
+    // ⚠ AND THE REST OF THE PANEL STANDS — the all-category total is still readable, so the two new
+    // columns being unpopulated must not take the CPD section down with them.
+    expect(p.pointsTotal).toEqual({ status: "MEASURED", value: 700 });
+    const text = visibleText(markupOf(p));
+    expect(text).toContain("of which PLC-earned: —");
+    expect(text).not.toMatch(/of which PLC-earned: [\d,]/);
+    expect(text).not.toContain("0 of 0");
+    expect(text).not.toMatch(/\d+ of \d+ schools? met their own PLC target/);
+    expect(text).not.toContain("No school met its own PLC target");
+  });
+
+  it("⚠ HALF the rows NULL · B4's Y narrows to the MEASURABLE schools and says so, N ≤ Y", async () => {
+    // School A measurable (500 ÷ 50 = 10.0 ≥ 8, met); school B's row predates the columns. The
+    // verdict must cover ONE school and SAY one — "1 of 1", never "1 of 2" (which would assert a
+    // school was measured that was not) and never "0 of 2" (which would call it adverse).
+    const p = okValue(await getTeacherCpd(districtScope, null, P_PARTIAL));
+    expect(p.plcTargetMet).toEqual({ status: "MEASURED", count: 1, schools: 1 });
+    expect(p.plcTargetMet.count!).toBeLessThanOrEqual(p.plcTargetMet.schools);
+    // Y is the count of MEASURABLE schools, which is strictly below the schools in the subtree —
+    // the honest narrowing, because a NULL row cannot be said to have met or missed anything.
+    expect(p.annualSchools).toBe(2);
+    expect(p.plcTargetMet.schools).toBeLessThan(p.annualSchools);
+    const text = visibleText(markupOf(p));
+    // `pluralNoun` agrees with Y, so a Y of 1 reads "1 of 1 school".
+    expect(text).toContain("1 of 1 school met their own PLC target (8 PLC pts)");
+    expect(text).not.toContain("1 of 2 schools met their own PLC target");
+    expect(text).not.toContain("0 of 2 schools met their own PLC target");
+  });
+
+  it("⚠ HALF the rows NULL · the subset is the Σ of the rows that HAVE it, never a coalesced 0", async () => {
+    // ⚠ A KNOWN AND ACCEPTED NARROWING, PINNED SO IT STAYS A DECISION. The subset sums only the
+    // non-null rows, so during this window it is school A's 500 against an all-category total of 700
+    // that includes school B — i.e. it UNDERSTATES "of which PLC-earned" and the panel carries no
+    // caption saying the subset covers fewer schools than the total (the NTC half has one:
+    // `ntcSchools` vs `annualSchools`). It is accepted because the alternative is worse in both
+    // directions — coalescing school B to 0 would publish a fabricated measurement, and withholding
+    // the whole figure whenever ANY school lags would make it unreadable on the 1%-failure path —
+    // and because no reconciliation claim is published against it (`categoriesReconcile` covers the
+    // three NTC categories only, never this column). If a coverage caption is ever added for it,
+    // this is the test that should change.
+    const p = okValue(await getTeacherCpd(districtScope, null, P_PARTIAL));
+    expect(p.plcEarnedPoints).toEqual({ status: "MEASURED", value: 500 });
+    expect(p.pointsTotal).toEqual({ status: "MEASURED", value: 700 });
+    // NOT coalesced: school B's unknown split contributes nothing rather than a 0.
+    expect(p.plcEarnedPoints.value!).toBeLessThan(p.pointsTotal.value!);
+    // …and the figure is NOT chipped even here: a partial measurement is still a measurement.
+    expect(p.plcEarnedPoints.status).not.toBe("DEMO");
+    expect(p.categoriesReconcile).toBe(false);
+  });
+
+  it("ZERO PLC earners · the school leaves BOTH sides of B4, so it is not reported as missing", async () => {
+    // `nullif(plc_earned_teacher_count, 0)` makes the quotient NULL, which drops the school from Y as
+    // well as from N. The alternative — counting it in Y only — would publish "1 of 2 schools met"
+    // and assert that a school with no PLC earners MISSED a target, which is a verdict the data
+    // cannot support. Its MEASURED 0.00 points still roll into the subset, because that part IS
+    // observed.
+    const p = okValue(await getTeacherCpd(districtScope, null, P_ZERO_EARNERS));
+    expect(p.plcTargetMet).toEqual({ status: "MEASURED", count: 1, schools: 1 });
+    expect(p.plcTargetMet.count!).toBeLessThanOrEqual(p.plcTargetMet.schools);
+    expect(p.annualSchools).toBe(2);
+    // The 0-earner school contributes its observed 0.00 to the subset and nothing to the verdict.
+    expect(p.plcEarnedPoints).toEqual({ status: "MEASURED", value: 500 });
+    const text = visibleText(markupOf(p));
+    expect(text).toContain("1 of 1 school met their own PLC target");
+    expect(text).not.toContain("1 of 2 schools met their own PLC target");
+  });
+
+  it("⚠ N ≤ Y ON EVERY PLANTED PERIOD — a school cannot 'meet' a target it was not counted for", async () => {
+    // The structural guarantee is that B4's two `count(*) filter`s share one basis and the N filter
+    // CONJOINS the target comparison onto Y's exact predicate list, so N's rows are a subset of Y's.
+    // Asserted across every data state in the file so that editing the two filters apart — the one
+    // change that could break it — fails here rather than in production.
+    for (const period of PLANTED) {
+      const p = okValue(await getTeacherCpd(districtScope, null, period));
+      const { status, count: met, schools } = p.plcTargetMet;
+      expect(met ?? 0, `N ≤ Y violated on ${period}`).toBeLessThanOrEqual(schools);
+      // And the status/number pairing holds: ABSENT iff Y is 0, and never a number without a Y.
+      if (status === "ABSENT") {
+        expect(schools, `ABSENT with a non-zero Y on ${period}`).toBe(0);
+        expect(met, `ABSENT carrying a count on ${period}`).toBeUndefined();
+      } else {
+        expect(schools, `a published verdict with Y = 0 on ${period}`).toBeGreaterThan(0);
+        expect(met, `a published verdict with no N on ${period}`).not.toBeUndefined();
+      }
+    }
+  });
+
+  it("the two filters share ONE basis, which is what makes N ≤ Y structural (static)", () => {
+    // The guarantee above is only as good as the two filters staying coupled: N's `where` must be
+    // Y's `where` plus the comparison, on the SAME quotient. Read as text because it is a property
+    // of the SQL's shape, not of any one fixture.
+    const code = readCode("lib/oversight/cpd.ts");
+    const basis =
+      /fpp\.annual_plc_target is not null\s*\n\s*and fpp\.plc_earned_points_total\s*\n\s*\/ nullif\(fpp\.plc_earned_teacher_count, 0\) is not null/g;
+    // Once for Y, once for N — the N filter re-states Y's predicates verbatim before adding its own.
+    expect(code.match(basis)?.length).toBe(2);
+    // …and N adds exactly one thing to that basis: the comparison, on the SAME quotient.
+    expect(code).toMatch(
+      /and fpp\.plc_earned_points_total\s*\n\s*\/ nullif\(fpp\.plc_earned_teacher_count, 0\) >= fpp\.annual_plc_target/,
+    );
+    // Neither side may reach for the any-CPD denominator or the stored all-category mean. (Matched
+    // as `fpp.`-qualified COLUMN references: the module's prose discusses both by name on purpose.)
+    expect(code).not.toMatch(/nullif\(fpp\.cpd_points_teacher_count/);
+    expect(code).not.toMatch(/fpp\.cpd_points_mean/);
   });
 });
 
