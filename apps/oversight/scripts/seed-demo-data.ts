@@ -288,7 +288,12 @@ export interface DemoAttendanceMarkGroup {
   toRank: number;
 }
 
-export type DemoAttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | "MEDICAL";
+export type DemoAttendanceStatus =
+  | "PRESENT"
+  | "ABSENT"
+  | "LATE"
+  | "EXCUSED"
+  | "MEDICAL";
 
 /**
  * ── THE FEE BOOK (fifth slice, task H11) ────────────────────────────────────────────────────────
@@ -305,7 +310,13 @@ export interface DemoFeeCategoryRow {
 }
 
 export type DemoInvoiceStatus =
-  "DRAFT" | "ISSUED" | "PARTIAL" | "PAID" | "OVERDUE" | "EXEMPT" | "VOIDED";
+  | "DRAFT"
+  | "ISSUED"
+  | "PARTIAL"
+  | "PAID"
+  | "OVERDUE"
+  | "EXEMPT"
+  | "VOIDED";
 
 /** One billed line on every invoice of a run. Amount in EXACT PESEWAS — never a float GHS figure. */
 export interface DemoInvoiceLine {
@@ -1454,14 +1465,12 @@ const PLANTED_STATUSES: readonly DemoInvoiceStatus[] = Object.freeze([
   "DRAFT",
   "VOIDED",
 ]);
-const SAMPLED_STATUSES: readonly (readonly [DemoInvoiceStatus, number])[] = Object.freeze(
-  [
-    ["ISSUED", 0.4],
-    ["PAID", 0.25],
-    ["PARTIAL", 0.2],
-    ["OVERDUE", 0.15],
-  ],
-);
+const SAMPLED_STATUSES: readonly (readonly [DemoInvoiceStatus, number])[] = Object.freeze([
+  ["ISSUED", 0.4],
+  ["PAID", 0.25],
+  ["PARTIAL", 0.2],
+  ["OVERDUE", 0.15],
+]);
 
 /** GHS × 100, rounded to the nearest 50 pesewas — real fee books are priced in half-cedis. */
 function pesewasBetween(rng: Rng, loGhs: number, hiGhs: number): number {
@@ -1590,11 +1599,7 @@ function feeBookFor(
             dues: true,
           });
         // The planted no-category line — on the first band of the first class only, so it is findable.
-        if (
-          uncategorisedLine &&
-          band === 0 &&
-          klass.classId === billedClasses[0]!.classId
-        )
+        if (uncategorisedLine && band === 0 && klass.classId === billedClasses[0]!.classId)
           lines.push({
             categoryName: null,
             amountPesewas: pesewasBetween(rng, 20, 90),
@@ -1760,9 +1765,7 @@ function plcModuleFor(
     return { programme, groups, memberships, sessions, attendance, teacherPool };
 
   // 1–3 active PLCs, weighted to 1–2 (a subject circle, sometimes a cross-cutting one as well).
-  const activeCount = runsPlc
-    ? rng.weighted([[1, 0.5] as const, [2, 0.35] as const, [3, 0.15] as const])
-    : 0;
+  const activeCount = runsPlc ? rng.weighted([[1, 0.5] as const, [2, 0.35] as const, [3, 0.15] as const]) : 0;
   let plcIndex = 0;
   const plans: {
     group: DemoPlcGroupRow;
@@ -1783,10 +1786,7 @@ function plcModuleFor(
     // cohorts, which is the distinction `readPlcSchoolMemberCounts` exists for. The fraction is high
     // because a school-based PLC really does take in most of the teaching staff; it stays below the
     // pool, and the pool stays below the pinned roll, so PLC coverage cannot exceed 100%.
-    const size = Math.max(
-      1,
-      Math.min(teacherPool, Math.round(teacherPool * (0.5 + rng.next() * 0.45))),
-    );
+    const size = Math.max(1, Math.min(teacherPool, Math.round(teacherPool * (0.5 + rng.next() * 0.45))));
     const start = rng.int(1, teacherPool);
     const members: DemoPlcMembershipRow[] = [];
     for (let m = 0; m < size; m++) {
@@ -1828,10 +1828,7 @@ function plcModuleFor(
   for (const term of terms) {
     const weeks = programme?.weeksPerSemester ?? 12;
     // The window cannot be exceeded: a session dated outside its term would belong to no cut at all.
-    const maxWeeks = Math.max(
-      1,
-      Math.floor((daysBetween(term.startsOn, term.endsOn) - 3) / 7) + 1,
-    );
+    const maxWeeks = Math.max(1, Math.floor((daysBetween(term.startsOn, term.endsOn) - 3) / 7) + 1);
     for (const plan of plans) {
       const expected = Math.min(
         plan.group.overrideFrequency === "BIWEEKLY" ? Math.ceil(weeks / 2) : weeks,
@@ -2160,8 +2157,7 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
   // The NTC extract is per ACADEMIC YEAR, and the PLC arm runs for the CURRENT one only (its
   // `teacher_headcount` is pinned to a roll that exists only there), so the stand-in carries exactly
   // that year. A stand-in covering a year the arm cannot file would be rows nothing reads.
-  const cpdAcademicYear = (DEMO_TERMS.find((t) => t.isCurrent) ?? DEMO_TERMS[0]!)
-    .academicYear;
+  const cpdAcademicYear = (DEMO_TERMS.find((t) => t.isCurrent) ?? DEMO_TERMS[0]!).academicYear;
   for (const school of schools) {
     if (!school.onSchoolup) continue; // no tenant → no operational PLC module → no fact row
     const index = Number(school.operationalSchoolId!.slice(-12));

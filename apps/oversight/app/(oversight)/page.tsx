@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { getOfficerSession } from "@/lib/auth";
 import { scopeFor } from "@/lib/db/rls";
 import { formatAsOf, getLatestSuccessfulEtlRun } from "@/lib/oversight/etl-status";
@@ -296,14 +297,17 @@ export default async function OversightHome() {
    * the headline itself is (`shown(wassce)`), so the pill never makes a change-claim beside an
    * "Unavailable" / "No successful run yet" value.
    */
-  const wassceDelta = (() => {
-    if (!shown(wassce) || !isOk(wassceCohort) || !isOk(wassceTrend)) return null;
+  const wassceDelta = ((): { node: ReactNode; measured: boolean } => {
+    if (!shown(wassce) || !isOk(wassceCohort) || !isOk(wassceTrend))
+      return { node: null, measured: false };
     const yoy = examQualificationYoy(
       wassceTrend.value.points,
       wassceCohort.value.academicYear,
     );
     // No prior sitting in this subtree → the honest "no comparator yet" state, never a fake ▲ 0% (M9).
-    if (yoy === null) return noComparatorYet("— no prior sitting yet");
+    // `measured: false` so the provenance ledger below explains no change the strip is not showing (M13).
+    if (yoy === null)
+      return { node: noComparatorYet("— no prior sitting yet"), measured: false };
     // The points shown are the difference of the two rates ROUNDED THE WAY THE CARD DISPLAYS THEM (0 dp),
     // so the pill can never disagree with the "64%" above it — the PTR card's chip-vs-value discipline,
     // carried into time (M7's re-derivation is upstream; this is the presentation step).
@@ -311,16 +315,21 @@ export default async function OversightHome() {
     const priorSitting = sittingYearOf(yoy.priorAcademicYear);
     const vs = priorSitting !== null ? ` vs ${priorSitting}` : "";
     // A change invisible at the card's precision is a MEASURED no-change AT that precision (M10) — flat,
-    // a definite "no change", NOT the em-dash absent state.
-    if (deltaPts === 0) return <KDelta tone="flat">no change{vs}</KDelta>;
+    // a definite "no change", NOT the em-dash absent state. It IS a real between-sitting comparison, so it
+    // is `measured: true` and the ledger explains it.
+    if (deltaPts === 0)
+      return { node: <KDelta tone="flat">no change{vs}</KDelta>, measured: true };
     // `pluralise` ("1 pt" / "2 pts") — the shared helper, so the page hand-rolls no pluralisation of its
     // own (Dex N2, the same rule the enrolment sub-line follows).
-    return (
-      <KDelta tone={deltaPts > 0 ? "up" : "down"}>
-        {pluralise(Math.abs(deltaPts), "pt")}
-        {vs}
-      </KDelta>
-    );
+    return {
+      node: (
+        <KDelta tone={deltaPts > 0 ? "up" : "down"}>
+          {pluralise(Math.abs(deltaPts), "pt")}
+          {vs}
+        </KDelta>
+      ),
+      measured: true,
+    };
   })();
 
   /**
@@ -491,7 +500,7 @@ export default async function OversightHome() {
                 </>
               ) : null
             }
-            delta={wassceDelta}
+            delta={wassceDelta.node}
           />
           <KpiCard
             label="Pupil-teacher ratio"
@@ -633,6 +642,22 @@ export default async function OversightHome() {
               "Measure",
               "All-teacher PTR (trained + untrained); not the trained-teacher ratio (PTTR).",
             ],
+            /*
+              ⚠ THE TREND CAVEAT (MULTI-YEAR-TREND-RULING M13 / AC19), rendered ONLY when a real WASSCE
+              year-over-year pill is on the strip — `wassceDelta.measured` is true for a measured ▲/▼ or a
+              measured "no change", and false for the "no comparator yet" em-dash (M9) and the unavailable
+              state. So the ledger explains the between-sitting change exactly when the strip shows one, and
+              never claims a trend an absent pill is not making — the same gating every conditional line
+              above follows. The wording is M13's, verbatim.
+            */
+            ...(wassceDelta.measured
+              ? ([
+                  [
+                    "Change",
+                    "Change is measured between closed exam sittings — each year's qualification rate is re-derived from that sitting's own candidates and passes (credit or above), never carried forward or averaged. A region's change is its schools' pooled rate each year, compared across years.",
+                  ],
+                ] as [string, string][])
+              : []),
             /*
               ⚠ THE ESTABLISHMENT CAVEAT (Kofi V14), rendered whenever the vacancy panel can render — i.e.
               gated on the same `breakdown` reading the panel is derived from, so the ledger never explains

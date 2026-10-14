@@ -111,6 +111,13 @@ export async function getExamQualification(
  *
  * NO SUBTREE `WHERE`: RLS has already scoped the rows, so each year's Σ/Σ is the subtree's own weighted
  * rate for that sitting — a region officer's series is its OWN schools' pooled rate per year (M20).
+ *
+ * GROUPS BY `academic_year`, NOT `period_id`: one series point per sitting YEAR is what a trend means, and
+ * `refreshPeriods` upserts EXAM_COHORT rows keyed on exactly `(academic_year, term, period_type)` with the
+ * sitting-year → "(N-1)/N" map bijective, so one academic_year resolves to exactly one EXAM_COHORT period.
+ * Two EXAM_COHORT rows sharing an academic_year (which would pool two sittings here) therefore cannot be
+ * produced by the pipeline; a unique constraint would be belt-and-braces, not a live fix, so none is added
+ * (AC22 — no migration). The single-period card reader pins `period_id` because it wants exactly one.
  */
 
 /** One sitting's re-derived figure. `academicYear` is the EXAM_COHORT period's "(N-1)/N" label. */
