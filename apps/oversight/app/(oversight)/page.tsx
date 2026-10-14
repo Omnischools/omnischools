@@ -555,6 +555,14 @@ export default async function OversightHome() {
           /* Wells trap 4: the table must STATE the sitting it ranks on, because the resolver is
              tier-sensitive and two officers can honestly be looking at two different sittings. */
           sittingLabel={sittingYear === null ? null : `${sittingYear} WASSCE`}
+          /* INCREMENT L (C17): the table's CPD-compliance column marks its figure DEMO off the ONE
+             ntcProvenance the CPD reader resolved (C5), shared with the panel below. When the CPD read
+             FAILED we pass `null`, NOT "ABSENT": "ABSENT" is a claim about the DATA (NTC supplied
+             nothing — in which case the breakdown's own threshold rows are NULL too and the cells are
+             already absent), whereas a failed read leaves those threshold rows intact, so conflating the
+             two would print a synthetic compliance figure with no DEMO chip (C6). `null` makes the cell
+             fail CLOSED to an absence. The breakdown is otherwise wholly independent of the CPD read. */
+          ntcProvenance={isOk(cpd) ? cpd.value.ntcProvenance : null}
         />
 
         {/*

@@ -19,10 +19,12 @@ import { CpdPanel } from "./cpd-visuals";
  * `Reading` — so a broken breakdown roll-up must not take it down, and an unreadable CPD read must
  * leave the KPI strip, the breakdown section and the fees section standing. Of the two equivalent
  * mounts the surface map sanctions, this takes the `FeesSection` precedent: `page.tsx` renders
- * `<CpdSection/>` as its own sibling immediately after `<BreakdownSection>`. That is the lighter change
- * (no new prop threaded through `BreakdownSection`, no fragment refactor of its two return branches)
- * and it is structurally independent of the breakdown-unavailable early-return, which is the property
- * AC-20 actually asks for. It is mounted EXACTLY ONCE.
+ * `<CpdSection/>` as its own sibling immediately after `<BreakdownSection>`. The decisive reason is
+ * structural independence from the breakdown-unavailable early-return, which is the property AC-20
+ * actually asks for: the panel keeps its own `Reading`, so a breakdown roll-up failure never takes CPD
+ * down (nor the reverse). (Increment L (C17) did later thread one narrow `ntcProvenance` switch THROUGH
+ * `BreakdownSection` — for the table's CPD-compliance DEMO chip — but that is a presentation flag for a
+ * single cell, not a data dependency, and does not couple the two readers.) It is mounted EXACTLY ONCE.
  */
 
 function CpdNote({ children }: { children: string }) {

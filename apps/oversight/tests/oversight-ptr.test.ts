@@ -697,15 +697,17 @@ describe("absence is absence — never a fabricated 0 and never an Infinity", ()
   });
 
   it("the empty-state colSpan still spans EVERY column, with and without coverage", () => {
-    // The PTR column moved the count 6→7 / 4→5, and the Vacancies column (increment J) 7→8 / 5→6. A
-    // colSpan that no longer matches the header row is a visible layout break that only appears in the
-    // EMPTY state, which no value assertion reaches.
+    // The PTR column moved the count 6→7 / 4→5, the Vacancies column (increment J) 7→8 / 5→6, and the
+    // two CPD/PLC columns (increment L — PLC coverage + CPD compliance) 8→10 / 6→8. A colSpan that no
+    // longer matches the header row is a visible layout break that only appears in the EMPTY state,
+    // which no value assertion reaches.
     for (const [hasCoverage, expected] of [
-      [true, 8],
-      [false, 6],
+      [true, 10],
+      [false, 8],
     ] as const) {
       const markup = renderToStaticMarkup(
         createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
           chrome: breakdownChrome(hasCoverage ? "NATIONAL" : "DISTRICT", "Western Region"),
           homeId: null,
           breakdown: {
@@ -729,6 +731,7 @@ describe("absence is absence — never a fabricated 0 and never an Infinity", ()
   it("a null PTR renders the muted em-dash, not a 0:1", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("REGION", "Western Region"),
         homeId: null,
         breakdown: {
@@ -785,6 +788,14 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     vacancyNet: null,
     vacancyRate: null,
     schoolsWithEstablishment: null,
+    plcInPlc: null,
+    plcTermHeadcount: null,
+    plcCoverage: null,
+    plcThreshold: null,
+    plcAnnualHeadcount: null,
+    plcThresholdRows: 0,
+    plcAnnualRows: 0,
+    cpdCompliance: null,
     ...fields,
   };
 }
@@ -807,6 +818,7 @@ describe("Kofi's precision ruling: ONE decimal, on the Σ÷Σ figure, everywhere
     const table = textOf(
       renderToStaticMarkup(
         createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
           chrome: breakdownChrome("REGION", "Western Region"),
           homeId: null,
           breakdown: b,

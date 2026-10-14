@@ -185,7 +185,7 @@ function panelMarkup(breakdown: ChildBreakdown, tierNoun = "region"): string {
 
 function tableMarkup(breakdown: ChildBreakdown, chrome = CHROME): string {
   return renderToStaticMarkup(
-    createElement(BreakdownTable, { breakdown, chrome, homeId: null }),
+    createElement(BreakdownTable, { breakdown, chrome, homeId: null, ntcProvenance: "ABSENT" as const }),
   );
 }
 
@@ -678,6 +678,7 @@ describe("absence is absence; a cancelled zero is a measurement (ACs 16, 17)", (
     const text = textOf(
       renderToStaticMarkup(
         createElement(BreakdownSection, {
+        ntcProvenance: "ABSENT" as const,
           level: "REGION",
           jurisdictionName: "Western Region",
           homeId: null,
@@ -852,14 +853,16 @@ describe("the subtree bound is RLS's, and the figures are each officer's own (AC
 
 describe("the column sits after PTR and spans every row (AC-14)", () => {
   it("the empty-state colSpan still spans EVERY column, with and without coverage", () => {
-    // The Vacancies column moved the count 7→8 / 5→6. A stale colSpan is a layout break that only
+    // The Vacancies column moved the count 7→8 / 5→6, and the two CPD/PLC columns (increment L — PLC
+    // coverage + CPD compliance) moved it again 8→10 / 6→8. A stale colSpan is a layout break that only
     // appears in the EMPTY state, which no value assertion reaches.
     for (const [hasCoverage, expected] of [
-      [true, 8],
-      [false, 6],
+      [true, 10],
+      [false, 8],
     ] as const) {
       const markup = renderToStaticMarkup(
         createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
           chrome: breakdownChrome(hasCoverage ? "NATIONAL" : "DISTRICT", "Western Region"),
           homeId: null,
           breakdown: {
@@ -883,6 +886,7 @@ describe("the column sits after PTR and spans every row (AC-14)", () => {
   it("Vacancies comes immediately AFTER PTR, and the header carries the public denominator", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("NATIONAL", "Ghana"),
         homeId: null,
         breakdown: {
@@ -1122,6 +1126,14 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     vacancyNet: null,
     vacancyRate: null,
     schoolsWithEstablishment: null,
+    plcInPlc: null,
+    plcTermHeadcount: null,
+    plcCoverage: null,
+    plcThreshold: null,
+    plcAnnualHeadcount: null,
+    plcThresholdRows: 0,
+    plcAnnualRows: 0,
+    cpdCompliance: null,
     ...fields,
   };
 }

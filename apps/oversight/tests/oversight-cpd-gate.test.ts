@@ -998,17 +998,45 @@ describe("the PLC-earned columns unpopulated — the state migration 0006 lands 
  * (6) AC-21 — THE DEFERRED BREAKDOWN COLUMNS AND COMPARISON ROWS ARE ABSENT, NOT A DASH
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-describe("the deferred C17/C18 surfaces are wholly absent (AC-21, E-CPD-4)", () => {
-  it("the breakdown table gained no CPD or PLC column", () => {
-    for (const file of [
-      "components/oversight/breakdown-visuals.tsx",
-      "components/oversight/breakdown-section.tsx",
-    ]) {
-      const code = readCode(file);
-      expect(code, file).not.toMatch(/\bPLC\b/);
-      expect(code, file).not.toMatch(/\bCPD\b/);
-      expect(code, file).not.toMatch(/cpd[A-Z_]/);
-    }
+describe("the C17 breakdown columns are built; the C18 comparison rows stay deferred (AC-21, E-CPD-4)", () => {
+  it("the breakdown TABLE gained the two C17 columns, DEMO-gated and un-ranked", () => {
+    // E-CPD-4 is now BUILT for the breakdown table (CPD-SURFACING-RULING C17): PLC coverage and CPD
+    // compliance, at every tier. The columns live in `breakdown-table.tsx` and the ntcProvenance switch
+    // is threaded through `breakdown-section.tsx` — NOT in the spread/rank/establishment visuals, which
+    // are not the CPD home and must stay CPD-free.
+    const table = readCode("components/oversight/breakdown-table.tsx");
+    expect(table).toMatch(/PLC coverage/);
+    expect(table).toMatch(/CPD compliance/);
+    // The DEMO chip is the ONE resolved switch (C5/C6), never a second decision; and the sourcing-gate
+    // absence is "No PLC data" / the shared sourcing-gate title, never a coalesced 0% (C10/C11).
+    expect(table).toContain("DemoChip");
+    expect(table).toContain("ntcProvenance");
+    expect(table).toContain('title="No PLC data"');
+    // N1: the sourcing-gate sentence is the ONE exported constant, not a drifting re-typed copy — the
+    // table imports it from `cpd-visuals` and the constant itself carries the officer-facing text.
+    expect(table).toContain("ABSENT_NTC_TITLE");
+    const visualsSrc = readCode("components/oversight/cpd-visuals.tsx");
+    expect(visualsSrc).toMatch(/ABSENT_NTC_TITLE\s*=\s*\n?\s*"Not yet sourced from NTC/);
+    // C6 fail-CLOSED: when the CPD read failed the one switch is `null`, and the compliance cell must
+    // refuse to print a figure (which, un-chipped, would claim "measured") — it renders an absence.
+    expect(table).toMatch(/ntcProvenance === null/);
+    expect(table).toContain("CPD data could not be read just now");
+    // The compliance cell is neutral navy — NEVER toned green/terra (C17/C18 carry the never-crown
+    // rule onto the table). Both CPD cell renderers live between their declarations and the vacancy
+    // toolbar `return (` of the component body; neither reaches for a tone lookup (toneFor/PILL_TONE)
+    // or a green/terra class.
+    const cpdCells = table.slice(
+      table.indexOf("const plcCoverageCell"),
+      table.indexOf("return (\n    <div>"),
+    );
+    expect(cpdCells).toContain("text-navy");
+    expect(cpdCells).not.toMatch(/text-green|text-terra|PILL_TONE|toneFor/);
+
+    // The spread/rank/establishment visuals are NOT the CPD home and gained nothing.
+    const visuals = readCode("components/oversight/breakdown-visuals.tsx");
+    expect(visuals).not.toMatch(/\bPLC\b/);
+    expect(visuals).not.toMatch(/\bCPD\b/);
+    expect(visuals).not.toMatch(/cpd[A-Z_]/);
   });
 
   it("the comparison workspace gained no CPD or PLC row", () => {

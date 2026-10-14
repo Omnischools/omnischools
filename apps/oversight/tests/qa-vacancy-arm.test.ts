@@ -318,6 +318,7 @@ describe("the per-school signed value IS surfaced, at single-school grain, with 
     // …and it is rendered SIGNED WITH A WORD, in neutral navy, never green, never a bare "-3".
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         breakdown: b,
         chrome: breakdownChrome("DISTRICT", "Wassa Amenfi West"),
         homeId: null,
@@ -469,6 +470,7 @@ describe("a MISSION school is excluded exactly as a PRIVATE one is (ACs 1, 3)", 
         expect(mission!.schoolsWithEstablishment).toBeNull();
         const markup = renderToStaticMarkup(
           createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
             breakdown: d,
             chrome: breakdownChrome("DISTRICT", "Wassa Amenfi West"),
             homeId: null,
@@ -723,6 +725,7 @@ function vacancyCellClass(row: string): string {
 function tableMarkup(breakdown: ChildBreakdown, level: "REGION" | "DISTRICT" = "REGION"): string {
   return renderToStaticMarkup(
     createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
       breakdown,
       chrome: breakdownChrome(
         level,

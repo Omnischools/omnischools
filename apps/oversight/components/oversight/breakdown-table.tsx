@@ -10,6 +10,8 @@ import {
 import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome";
 import { vacancyTone } from "./vacancy-tone";
 import { Absent } from "./primitives";
+import { DemoChip, ABSENT_NTC_TITLE } from "./cpd-visuals";
+import type { NtcProvenance } from "@/lib/oversight/cpd";
 
 /**
  * THE CHILD BREAKDOWN TABLE (increment I slice 3, Lucy's breakdown map §4.1).
@@ -177,9 +179,21 @@ export function BreakdownTable({
   breakdown,
   chrome,
   homeId,
+  ntcProvenance,
 }: {
   breakdown: ChildBreakdown;
   chrome: BreakdownChrome;
+  /**
+   * The ONE NTC demo/live switch the CPD reader resolved (CPD-SURFACING-RULING C5), threaded here so
+   * the CPD-compliance cell's DEMO chip is decided in exactly one place, shared with the "Teacher CPD &
+   * PLC" panel. `"DEMO"` chips every compliance figure; flipping to `"LIVE"` removes every chip with no
+   * other change. `"ABSENT"` is the genuine NTC-absence the reader reports (no NTC rows at all) — in
+   * which case every child's threshold is NULL too and the cells are already absent, so it chips
+   * nothing. `null` is the DIFFERENT "provenance unknown" state: the CPD read itself failed, so the
+   * breakdown's own threshold rows (which CAN survive that failure) must NOT be printed as if measured —
+   * the cell fails CLOSED to an absence, never an un-chipped synthetic figure (C6).
+   */
+  ntcProvenance: NtcProvenance | null;
   /**
    * The officer's OWN node, so a child row that IS it can be gold-tinted (Lucy's `tr.home`).
    *
@@ -200,7 +214,10 @@ export function BreakdownTable({
   // EVERY tier, so they sit outside the `hasCoverage` pair: 6→8 with coverage, 4→6 without. (Vacancies
   // renders its own `<Absent/>` where a child has no GES establishment, which is a CELL state, not a
   // reason to drop the column: the absence is the finding.)
-  const columns = hasCoverage ? 8 : 6;
+  // +2 more for PLC coverage and CPD compliance, both of which — like PTR and Vacancies — render at
+  // EVERY tier (CPD/PLC rolls up honestly everywhere, CPD-SURFACING-RULING C17), so they sit outside
+  // the `hasCoverage` pair: 8→10 with coverage, 6→8 without.
+  const columns = hasCoverage ? 10 : 8;
 
   /** One cell renderer per measure, so the child rows, the unattributed row and the total agree. */
   const schoolsCell = (row: BreakdownRow) =>
@@ -279,6 +296,73 @@ export function BreakdownTable({
     );
   };
 
+  /**
+   * PLC COVERAGE — Σteachers_in_plc ÷ Σteacher_headcount over the child's schools, this term (C17).
+   *
+   * Real-shape operational aggregate, so NO demo chip and NO good/bad tone (CPD-SURFACING-RULING
+   * C6/C9 — PLC is treated exactly like enrolment/attendance): a plain neutral-navy mono percentage.
+   * A child with no PLC data (no TERM PLC row, or a 0 headcount) renders the em-dash titled "No PLC
+   * data", NEVER a 0 (C17); a measured 0% (teachers on roll but none in a PLC) is a real zero and
+   * renders as "0.0%", visibly distinct from the absence.
+   */
+  const plcCoverageCell = (row: BreakdownRow, bold?: boolean) => {
+    if (row.plcCoverage === null) return <Absent title="No PLC data" />;
+    const title =
+      row.plcInPlc === null || row.plcTermHeadcount === null
+        ? undefined
+        : `${formatCount(row.plcInPlc)} of ${formatCount(
+            row.plcTermHeadcount,
+          )} teachers take part in a PLC`;
+    return (
+      <span
+        className={cn("font-mono text-[12px] text-navy", bold && "font-bold")}
+        title={title}
+      >
+        {formatRatioPercent(row.plcCoverage, 1)}%
+      </span>
+    );
+  };
+
+  /**
+   * CPD COMPLIANCE — Σteachers_meeting_cpd_threshold ÷ Σteacher_headcount over the child's schools,
+   * this year (C17). FIVE honest absences/states, never a coalesced 0% (the schema wrote ~20 lines to
+   * protect this — C10/C11), and never an un-chipped synthetic figure (C6):
+   *   · CPD read itself failed (prov null) → "CPD data could not be read just now" (fail CLOSED, prop doc)
+   *   · no ANNUAL PLC row at all           → "No PLC data"
+   *   · ANNUAL rows but threshold NULL     → "Not yet sourced from NTC" (the live sourcing-gate state)
+   *   · threshold sourced, no denominator  → "No PLC data" (a 0/absent headcount, NOT an NTC-gate miss)
+   *   · threshold sourced + denominator    → the rate, DEMO-chipped while the NTC source is the stand-in
+   * NEVER toned green/terra — a synthetic compliance figure carries no valence (cpd-tone.ts), and
+   * crowning a "most compliant district" on demo data is exactly the misread the chip exists to
+   * prevent. The chip is the ONE `ntcProvenance` the reader resolved, so LIVE removes it with no other
+   * change. The total row's figure is the re-derived tier rate (Σ÷Σ), never an average of the cells.
+   */
+  const cpdComplianceCell = (row: BreakdownRow, bold?: boolean) => {
+    // Fail CLOSED when the CPD read failed: the breakdown's threshold rows can outlive that failure, so
+    // without a resolved provenance a printed figure would claim "measured" by omitting the chip (C6).
+    if (ntcProvenance === null)
+      return <Absent title="CPD data could not be read just now" />;
+    if (row.plcAnnualRows === 0) return <Absent title="No PLC data" />;
+    if (row.plcThresholdRows === 0) return <Absent title={ABSENT_NTC_TITLE} />;
+    // Threshold IS sourced but the denominator is 0/absent: a "No PLC data" absence, NOT the NTC gate.
+    if (row.cpdCompliance === null) return <Absent title="No PLC data" />;
+    const title =
+      row.plcThreshold === null || row.plcAnnualHeadcount === null
+        ? undefined
+        : `${formatCount(row.plcThreshold)} of ${formatCount(
+            row.plcAnnualHeadcount,
+          )} teachers met the national CPD requirement`;
+    return (
+      <span
+        className={cn("font-mono text-[12px] text-navy", bold && "font-bold")}
+        title={title}
+      >
+        {formatRatioPercent(row.cpdCompliance, 1)}%
+        <DemoChip provenance={ntcProvenance} />
+      </span>
+    );
+  };
+
   return (
     <div>
       {/*
@@ -353,6 +437,25 @@ export function BreakdownTable({
               >
                 Vacancies
               </th>
+              {/* CPD / PLC (increment L, C17). Both render at EVERY tier — CPD/PLC rolls up honestly
+                  by Σ÷Σ everywhere (unlike a distribution-only domain), so there is no tier gate. PLC
+                  coverage is a measured operational figure; CPD compliance is NTC-sourced and marked
+                  DEMO while the NTC source is illustrative, or an em-dash when not yet sourced — never
+                  a 0% (C10/C11). */}
+              <th
+                scope="col"
+                className={cn(TH, "text-center")}
+                title="Teachers in a Professional Learning Community ÷ teachers on roll, this term. Re-derived Σ÷Σ over the child's schools, never an average of school rates."
+              >
+                PLC coverage
+              </th>
+              <th
+                scope="col"
+                className={cn(TH, "text-center")}
+                title="Teachers meeting the national CPD requirement ÷ teachers on roll, this year. Marked DEMO while the NTC CPD data is illustrative; an em-dash means not yet sourced from NTC — never 0%."
+              >
+                CPD compliance
+              </th>
               {/*
                 THE RANKING WEIGHT, VISIBLE (Wells §5). The rank cards below ignore children with fewer
                 than 30 candidates, and that floor governs the superlative claim only — so the count it
@@ -414,6 +517,8 @@ export function BreakdownTable({
                 </td>
                 <td className={cn(TD, "text-center")}>{ptrCell(row)}</td>
                 <td className={cn(TD, "text-center")}>{vacancyCell(row)}</td>
+                <td className={cn(TD, "text-center")}>{plcCoverageCell(row)}</td>
+                <td className={cn(TD, "text-center")}>{cpdComplianceCell(row)}</td>
                 <td className={cn(TD, "text-center")}>{candidatesCell(row)}</td>
               </tr>
             ))}
@@ -456,6 +561,8 @@ export function BreakdownTable({
                 </td>
                 <td className={cn(TD, "text-center")}>{ptrCell(unattributed)}</td>
                 <td className={cn(TD, "text-center")}>{vacancyCell(unattributed)}</td>
+                <td className={cn(TD, "text-center")}>{plcCoverageCell(unattributed)}</td>
+                <td className={cn(TD, "text-center")}>{cpdComplianceCell(unattributed)}</td>
                 <td className={cn(TD, "text-center")}>{candidatesCell(unattributed)}</td>
               </tr>
             )}
@@ -493,6 +600,8 @@ export function BreakdownTable({
               </td>
               <td className={cn(TD, "text-center")}>{ptrCell(total, true)}</td>
               <td className={cn(TD, "text-center")}>{vacancyCell(total, true)}</td>
+              <td className={cn(TD, "text-center")}>{plcCoverageCell(total, true)}</td>
+              <td className={cn(TD, "text-center")}>{cpdComplianceCell(total, true)}</td>
               <td className={cn(TD, "text-center")}>{candidatesCell(total)}</td>
             </tr>
           </tbody>

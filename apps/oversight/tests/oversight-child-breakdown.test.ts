@@ -746,8 +746,10 @@ describe("per-child rates are candidate-weighted", () => {
   it("stored rates are structurally out of reach — none is in the allow-list", () => {
     const code = readCode("lib/oversight/breakdown.ts");
     expect(code).not.toMatch(/\bqualification_rate\b/);
-    // This stored rate lives on a fact table this module never reads (fact_plc_participation), so the
-    // column name must not appear at all.
+    // fact_plc_participation IS now read (increment L: the PLC-coverage and CPD-compliance columns),
+    // but ONLY its summable inputs — teachers_in_plc, teachers_meeting_cpd_threshold, teacher_headcount
+    // — never its STORED per-school rate. PLC coverage and CPD compliance are Σnum ÷ Σden re-derived,
+    // exactly like PTR/attendance, so the stored `plc_participation_rate` column must not appear at all.
     expect(code).not.toContain("plc_participation_rate");
     // PTR and ATTENDANCE are the exceptions that prove the rule: fact_staffing (aliased `fs`) and
     // fact_attendance (aliased `fa`) ARE read here, for the PTR and attendance numerator/denominator —
@@ -860,19 +862,24 @@ describe("each mandatory filter is load-bearing per child, not only in the total
 
   it("the stocks bind the SAME annual parameter and attendance alone binds the term one", () => {
     // The enrolment-grain regression guard (enrolment-grain ruling §2.6/§3): the enrolment, girls'-share
-    // and staffing arms are ANNUAL stocks pinned to the ONE annualPeriodId, and attendance is the only arm
-    // on termPeriodId. The one place the enrolment grain is stated is this binding — so count it, cheaply
-    // and durably, in the `facts` CTE. enrolment + ENROLMENT_FEMALE + staffing + ESTABLISHMENT = 4 annual bindings;
-    // attendance = 1 term binding. Both enrolment arms binding the SAME parameter is what keeps the
-    // girls'-share numerator and denominator from ever being pinned to different periods. The
-    // ESTABLISHMENT arm (increment J — teacher vacancies) is a FOURTH annual binding: it reads the same
-    // fact_staffing rows on the same ANNUAL period, filtered to the PUBLIC ones that carry a GES
-    // establishment, so the vacancy figures can never describe a different year from the PTR beside them.
+    // and staffing arms are ANNUAL stocks pinned to the ONE annualPeriodId, and the term-grain arms bind
+    // termPeriodId. The one place the enrolment grain is stated is this binding — so count it, cheaply
+    // and durably, in the `facts` CTE.
+    //   ANNUAL (5): enrolment + ENROLMENT_FEMALE + staffing + ESTABLISHMENT + PLC_ANNUAL.
+    //   TERM   (2): attendance + PLC_TERM.
+    // Both enrolment arms binding the SAME parameter is what keeps the girls'-share numerator and
+    // denominator from ever being pinned to different periods. The ESTABLISHMENT arm (increment J —
+    // teacher vacancies) reads the same fact_staffing rows on the same ANNUAL period, filtered to the
+    // PUBLIC ones that carry a GES establishment. The two PLC arms (increment L — CPD/PLC surfacing,
+    // CPD-SURFACING-RULING C17) are the CPD additions: PLC_ANNUAL reads fact_plc_participation's ANNUAL
+    // cut (the CPD-compliance threshold) on annualPeriodId, and PLC_TERM reads its TERM cut (PLC
+    // coverage) on termPeriodId — the two period cuts the schema discriminates, each pinned to its own
+    // id so a termly coverage figure can never be confused with an annual compliance one.
     const code = readCode("lib/oversight/breakdown.ts");
     const factsCte = code.slice(code.indexOf("facts as ("), code.indexOf("attributed as ("));
     const count = (needle: string) => factsCte.split(needle).length - 1;
-    expect(count("${annualPeriodId}::uuid")).toBe(4);
-    expect(count("${termPeriodId}::uuid")).toBe(1);
+    expect(count("${annualPeriodId}::uuid")).toBe(5);
+    expect(count("${termPeriodId}::uuid")).toBe(2);
   });
 });
 
@@ -1260,6 +1267,7 @@ describe("tones are COMPUTED from the ratio against the stated rule", () => {
   it("the mock's inconsistent per-row classes are not copied: 85.0% is GREEN, 70.5% is AMBER", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("NATIONAL", null),
         homeId: null,
         breakdown: {
@@ -1317,6 +1325,14 @@ function row(fields: Partial<BreakdownRow>): BreakdownRow {
     vacancyNet: null,
     vacancyRate: null,
     schoolsWithEstablishment: null,
+    plcInPlc: null,
+    plcTermHeadcount: null,
+    plcCoverage: null,
+    plcThreshold: null,
+    plcAnnualHeadcount: null,
+    plcThresholdRows: 0,
+    plcAnnualRows: 0,
+    cpdCompliance: null,
     ...fields,
   };
 }
@@ -1325,6 +1341,7 @@ describe("the section renders the honest states", () => {
   it("an unavailable read renders a WARN banner and no table", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownSection, {
+        ntcProvenance: "ABSENT" as const,
         level: "REGION",
         jurisdictionName: "Western Region",
         homeId: JUR.region,
@@ -1345,6 +1362,7 @@ describe("the section renders the honest states", () => {
   it("an empty read renders the tier's empty copy, not a zero-filled table", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownSection, {
+        ntcProvenance: "ABSENT" as const,
         level: "NATIONAL",
         jurisdictionName: null,
         homeId: null,
@@ -1376,6 +1394,7 @@ describe("the section renders the honest states", () => {
   it("a missing measure renders a muted dash, never a fabricated 0%", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("REGION", "Western Region"),
         homeId: null,
         breakdown: {
@@ -1396,6 +1415,7 @@ describe("the section renders the honest states", () => {
   it("the unattributed bucket is rendered with its school count", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("REGION", "Western Region"),
         homeId: null,
         breakdown: {
@@ -1417,6 +1437,7 @@ describe("the section renders the honest states", () => {
   it("PTR column is present now; still no drill arrow and no Compare chip — those have no target", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("NATIONAL", null),
         homeId: null,
         breakdown: {
@@ -1710,6 +1731,7 @@ describe("the coverage columns are PRESENT above the district tier", () => {
   it("national and region render the two register columns; district renders neither", () => {
     const withCoverage = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("NATIONAL", null),
         homeId: null,
         breakdown: {
@@ -1735,6 +1757,7 @@ describe("the coverage columns are PRESENT above the district tier", () => {
 
     const withoutCoverage = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("DISTRICT", "Wassa Amenfi West"),
         homeId: null,
         breakdown: {
