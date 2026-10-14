@@ -55,10 +55,10 @@ import {
 
 /**
  * The "no prior-year comparator yet" pill (MULTI-YEAR-TREND-RULING M9/M13) — a flat em-dash, with the
- * tooltip the ruling fixes. The wording is deliberately NOT "not yet sourced from a feed": that would
- * imply a backfill is coming, which for a stateless-roster measure it never is (M2). It says the trend
- * appears as further years are MEASURED — true for every absent trend, whether it accrues forward
- * (enrolment) or is simply deferred (coverage).
+ * tooltip the ruling fixes. The wording deliberately does NOT imply a backfill or a feed is coming,
+ * which for a stateless-roster measure it never is (M2). It says the trend appears as further years are
+ * MEASURED — true for every absent trend, whether it accrues forward (enrolment) or is simply deferred
+ * (coverage).
  */
 function noComparatorYet(label: string) {
   return (
