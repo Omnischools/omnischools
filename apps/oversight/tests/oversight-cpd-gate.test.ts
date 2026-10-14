@@ -1008,11 +1008,19 @@ describe("the C17 breakdown columns are built; the C18 comparison rows stay defe
     expect(table).toMatch(/PLC coverage/);
     expect(table).toMatch(/CPD compliance/);
     // The DEMO chip is the ONE resolved switch (C5/C6), never a second decision; and the sourcing-gate
-    // absence is "No PLC data"/"Not yet sourced from NTC", never a coalesced 0% (C10/C11).
+    // absence is "No PLC data" / the shared sourcing-gate title, never a coalesced 0% (C10/C11).
     expect(table).toContain("DemoChip");
     expect(table).toContain("ntcProvenance");
     expect(table).toContain('title="No PLC data"');
-    expect(table).toMatch(/Not yet sourced from NTC/);
+    // N1: the sourcing-gate sentence is the ONE exported constant, not a drifting re-typed copy — the
+    // table imports it from `cpd-visuals` and the constant itself carries the officer-facing text.
+    expect(table).toContain("ABSENT_NTC_TITLE");
+    const visualsSrc = readCode("components/oversight/cpd-visuals.tsx");
+    expect(visualsSrc).toMatch(/ABSENT_NTC_TITLE\s*=\s*\n?\s*"Not yet sourced from NTC/);
+    // C6 fail-CLOSED: when the CPD read failed the one switch is `null`, and the compliance cell must
+    // refuse to print a figure (which, un-chipped, would claim "measured") — it renders an absence.
+    expect(table).toMatch(/ntcProvenance === null/);
+    expect(table).toContain("CPD provenance unavailable");
     // The compliance cell is neutral navy — NEVER toned green/terra (C17/C18 carry the never-crown
     // rule onto the table). Both CPD cell renderers live between their declarations and the vacancy
     // toolbar `return (` of the component body; neither reaches for a tone lookup (toneFor/PILL_TONE)

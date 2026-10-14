@@ -41,9 +41,10 @@ export function BreakdownSection({
   sittingLabel,
   /**
    * The ONE NTC demo/live switch (CPD-SURFACING-RULING C5), for the table's CPD-compliance DEMO chip.
-   * Resolved by the CPD reader and threaded through from `page.tsx`; `"ABSENT"` when CPD is Unavailable.
-   * It touches only the one CPD cell — the roll-up table is otherwise independent of the CPD read, and
-   * a CPD failure never degrades the breakdown (nor the reverse).
+   * Resolved by the CPD reader and threaded through from `page.tsx`; `null` when the CPD read FAILED
+   * (provenance unknown → the cell fails closed, see `BreakdownTable`), distinct from the reader's own
+   * `"ABSENT"` (NTC supplied nothing). It touches only the one CPD cell — the roll-up table is otherwise
+   * independent of the CPD read, and a CPD failure never degrades the breakdown (nor the reverse).
    */
   ntcProvenance,
 }: {
@@ -54,7 +55,7 @@ export function BreakdownSection({
   breakdown: Reading<ChildBreakdown>;
   termLabel: string | null;
   sittingLabel: string | null;
-  ntcProvenance: NtcProvenance;
+  ntcProvenance: NtcProvenance | null;
 }) {
   const chrome = breakdownChrome(level, jurisdictionName);
 

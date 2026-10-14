@@ -10,7 +10,7 @@ import {
 import { breakdownFooter, pluralise, type BreakdownChrome } from "./tier-chrome";
 import { vacancyTone } from "./vacancy-tone";
 import { Absent } from "./primitives";
-import { DemoChip } from "./cpd-visuals";
+import { DemoChip, ABSENT_NTC_TITLE } from "./cpd-visuals";
 import type { NtcProvenance } from "@/lib/oversight/cpd";
 
 /**
@@ -186,11 +186,14 @@ export function BreakdownTable({
   /**
    * The ONE NTC demo/live switch the CPD reader resolved (CPD-SURFACING-RULING C5), threaded here so
    * the CPD-compliance cell's DEMO chip is decided in exactly one place, shared with the "Teacher CPD &
-   * PLC" panel. `"DEMO"` chips every compliance figure; flipping to `"LIVE"`/`"ABSENT"` removes every
-   * chip with no other change. `"ABSENT"` when the CPD read was Unavailable — the compliance figures
-   * are then driven by the per-child threshold NULLs alone and simply carry no chip.
+   * PLC" panel. `"DEMO"` chips every compliance figure; flipping to `"LIVE"` removes every chip with no
+   * other change. `"ABSENT"` is the genuine NTC-absence the reader reports (no NTC rows at all) — in
+   * which case every child's threshold is NULL too and the cells are already absent, so it chips
+   * nothing. `null` is the DIFFERENT "provenance unknown" state: the CPD read itself failed, so the
+   * breakdown's own threshold rows (which CAN survive that failure) must NOT be printed as if measured —
+   * the cell fails CLOSED to an absence, never an un-chipped synthetic figure (C6).
    */
-  ntcProvenance: NtcProvenance;
+  ntcProvenance: NtcProvenance | null;
   /**
    * The officer's OWN node, so a child row that IS it can be gold-tinted (Lucy's `tr.home`).
    *
@@ -322,22 +325,27 @@ export function BreakdownTable({
 
   /**
    * CPD COMPLIANCE — Σteachers_meeting_cpd_threshold ÷ Σteacher_headcount over the child's schools,
-   * this year (C17). THREE honest absences/states, never a coalesced 0% (the schema wrote ~20 lines to
-   * protect this — C10/C11):
-   *   · no ANNUAL PLC row at all          → "No PLC data"
-   *   · ANNUAL rows but threshold NULL    → "Not yet sourced from NTC" (the live sourcing-gate state)
-   *   · threshold sourced                 → the rate, DEMO-chipped while the NTC source is the stand-in
+   * this year (C17). FOUR honest absences/states, never a coalesced 0% (the schema wrote ~20 lines to
+   * protect this — C10/C11), and never an un-chipped synthetic figure (C6):
+   *   · CPD read itself failed (prov null) → "CPD provenance unavailable" (fail CLOSED, see the prop doc)
+   *   · no ANNUAL PLC row at all           → "No PLC data"
+   *   · ANNUAL rows but threshold NULL     → "Not yet sourced from NTC" (the live sourcing-gate state)
+   *   · threshold sourced, no denominator  → "No PLC data" (a 0/absent headcount, NOT an NTC-gate miss)
+   *   · threshold sourced + denominator    → the rate, DEMO-chipped while the NTC source is the stand-in
    * NEVER toned green/terra — a synthetic compliance figure carries no valence (cpd-tone.ts), and
    * crowning a "most compliant district" on demo data is exactly the misread the chip exists to
    * prevent. The chip is the ONE `ntcProvenance` the reader resolved, so LIVE removes it with no other
    * change. The total row's figure is the re-derived tier rate (Σ÷Σ), never an average of the cells.
    */
   const cpdComplianceCell = (row: BreakdownRow, bold?: boolean) => {
+    // Fail CLOSED when the CPD read failed: the breakdown's threshold rows can outlive that failure, so
+    // without a resolved provenance a printed figure would claim "measured" by omitting the chip (C6).
+    if (ntcProvenance === null)
+      return <Absent title="CPD provenance unavailable" />;
     if (row.plcAnnualRows === 0) return <Absent title="No PLC data" />;
-    if (row.plcThresholdRows === 0 || row.cpdCompliance === null)
-      return (
-        <Absent title="Not yet sourced from NTC — the live NTC CPD connection is not yet established" />
-      );
+    if (row.plcThresholdRows === 0) return <Absent title={ABSENT_NTC_TITLE} />;
+    // Threshold IS sourced but the denominator is 0/absent: a "No PLC data" absence, NOT the NTC gate.
+    if (row.cpdCompliance === null) return <Absent title="No PLC data" />;
     const title =
       row.plcThreshold === null || row.plcAnnualHeadcount === null
         ? undefined

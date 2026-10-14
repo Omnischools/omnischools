@@ -774,15 +774,25 @@ export async function getChildBreakdown(
             establishmentRows === 0 ? null : Number(row.schools_with_establishment),
           // CPD / PLC. `null` not `0` when no PLC row was filed (the row-count gate), and the ANNUAL
           // threshold stays `null` when the sum ignored every NULL — the sourcing-gate state that must
-          // never read as 0% compliant (fact.ts ⚠ SOURCING GATE, C10/C11).
-          plcInPlc: Number(row.plc_term_rows) === 0 ? null : Number(row.plc_in_plc),
+          // never read as 0% compliant (fact.ts ⚠ SOURCING GATE, C10/C11). The `row.* === null` arm
+          // keeps the discipline even if the ETL invariant (teachers_in_plc / teacher_headcount always
+          // non-null on a filed row — lib/etl/plc.ts) ever regresses: an all-NULL sum then stays NULL
+          // rather than coalescing to a measured 0 — the same defensiveness cpd.ts carries.
+          plcInPlc:
+            Number(row.plc_term_rows) === 0 || row.plc_in_plc === null
+              ? null
+              : Number(row.plc_in_plc),
           plcTermHeadcount:
-            Number(row.plc_term_rows) === 0 ? null : Number(row.plc_term_headcount),
+            Number(row.plc_term_rows) === 0 || row.plc_term_headcount === null
+              ? null
+              : Number(row.plc_term_headcount),
           plcTermRows: Number(row.plc_term_rows),
           plcThreshold: row.plc_threshold === null ? null : Number(row.plc_threshold),
           plcThresholdRows: Number(row.plc_threshold_rows),
           plcAnnualHeadcount:
-            Number(row.plc_annual_rows) === 0 ? null : Number(row.plc_annual_headcount),
+            Number(row.plc_annual_rows) === 0 || row.plc_annual_headcount === null
+              ? null
+              : Number(row.plc_annual_headcount),
           plcAnnualRows: Number(row.plc_annual_rows),
         };
         if (Number(row.grp) === TOTAL_GROUPING) factTotal = bucket;
