@@ -64,6 +64,23 @@ function stripOf(markup: string): string {
   return markup.slice(start, markup.indexOf("</section>", start));
 }
 
+/**
+ * Strip HTML tags to read a pill's visible text. The input is our OWN `renderToStaticMarkup` output,
+ * never untrusted HTML and never rendered back to a browser, so this is a test-assertion convenience,
+ * not a sanitiser. It still loops until the string stops changing so a split/nested tag cannot survive
+ * a single pass — which is the robust form, and keeps CodeQL's incomplete-multi-character-sanitization
+ * scan quiet on the one-pass regex.
+ */
+function stripTags(html: string): string {
+  let prev: string;
+  let out = html;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]+>/g, "");
+  } while (out !== prev);
+  return out;
+}
+
 /** Every `.k-delta` pill in the KPI strip, as `{ classes, text }` in document order. */
 function pillsOf(markup: string): { classes: string; text: string }[] {
   const strip = stripOf(markup);
@@ -73,11 +90,7 @@ function pillsOf(markup: string): { classes: string; text: string }[] {
   ))
     out.push({
       classes: m[1]!,
-      text: m[2]!
-        .replace(/<[^>]+>/g, "")
-        .replace(/&#x27;/g, "'")
-        .replace(/&amp;/g, "&")
-        .trim(),
+      text: stripTags(m[2]!).replace(/&#x27;/g, "'").replace(/&amp;/g, "&").trim(),
     });
   return out;
 }
@@ -94,7 +107,7 @@ const pillFor = (markup: string, label: string) => {
     ? {
         classes: found[1]!,
         html: found[2]!,
-        text: found[2]!.replace(/<[^>]+>/g, "").trim(),
+        text: stripTags(found[2]!).trim(),
       }
     : null;
 };
