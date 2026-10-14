@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { getOfficerSession } from "@/lib/auth";
 import { scopeFor } from "@/lib/db/rls";
 import { formatAsOf, getLatestSuccessfulEtlRun } from "@/lib/oversight/etl-status";
@@ -17,6 +18,8 @@ import {
 import { getSchoolCoverage } from "@/lib/oversight/coverage";
 import {
   getExamQualification,
+  getExamQualificationTrend,
+  examQualificationYoy,
   type ExamQualification,
 } from "@/lib/oversight/performance";
 import { childLevelFor, getChildBreakdown } from "@/lib/oversight/breakdown";
@@ -34,6 +37,7 @@ import { Banner, Chip, Provenance } from "@/components/oversight/primitives";
 import { PeriodBanner } from "@/components/oversight/period-banner";
 import {
   KpiCard,
+  KDelta,
   formatCount,
   formatPupilCount,
   formatRatio,
@@ -44,10 +48,28 @@ import {
   buildTitle,
   childCountOf,
   pluralNoun,
+  pluralise,
   rollupClause,
   sourceLine,
   tierChrome,
 } from "@/components/oversight/tier-chrome";
+
+/**
+ * The "no prior-year comparator yet" pill (MULTI-YEAR-TREND-RULING M9/M13) — a flat em-dash, with the
+ * tooltip the ruling fixes. The wording deliberately does NOT imply a backfill or a feed is coming,
+ * which for a stateless-roster measure it never is (M2). It says the trend appears as further years are
+ * MEASURED — true for every absent trend, whether it accrues forward (enrolment) or is simply deferred
+ * (coverage).
+ */
+function noComparatorYet(label: string) {
+  return (
+    <KDelta tone="flat">
+      <span title="No prior-year comparator yet — the trend appears as further years are measured.">
+        {label}
+      </span>
+    </KDelta>
+  );
+}
 
 /**
  * THE OVERSIGHT DASHBOARD — ONE TIER-POLYMORPHIC SURFACE (increment I, slices 1 and 2).
@@ -149,8 +171,8 @@ export default async function OversightHome() {
   const chrome = tierChrome(officer.level, officer.jurisdictionName);
 
   // Independent reads, in parallel: each is separately fail-soft, so one failure degrades one card.
-  const [latestRun, termPeriod, annualPeriod, coverage, wassceCohort] = await Promise.all(
-    [
+  const [latestRun, termPeriod, annualPeriod, coverage, wassceCohort, wassceTrend] =
+    await Promise.all([
       getLatestSuccessfulEtlRun(scope),
       // period_type is NAMED. `is_current` alone matches the TERM *and* the ANNUAL row of the same
       // academic year (db/schema/dim.ts). The TERM row is now resolved for attendance only (and for the
@@ -161,8 +183,11 @@ export default async function OversightHome() {
       getCurrentPeriod(scope, "ANNUAL"),
       getSchoolCoverage(scope),
       getLatestExamCohortPeriod(scope, "WASSCE"),
-    ],
-  );
+      // The multi-year WASSCE series (increment M). Resolves its OWN EXAM_COHORT periods, so it does not
+      // depend on `wassceCohort` above; the headline card and the pill then share the same latest sitting
+      // because both resolve "the latest sitting WITH WASSCE rows in this subtree".
+      getExamQualificationTrend(scope, "WASSCE"),
+    ]);
 
   // Period-dependent reads. Enrolment and PTR pin the ANNUAL row (stocks), attendance the TERM row (a
   // flow), WASSCE its own sitting — one period_id each, which is what keeps enrolment from summing two
@@ -263,6 +288,60 @@ export default async function OversightHome() {
   const sittingYear = isOk(wassceCohort)
     ? sittingYearOf(wassceCohort.value.academicYear)
     : null;
+
+  /**
+   * THE WASSCE YEAR-OVER-YEAR PILL (increment M, MULTI-YEAR-TREND-RULING M4/M7/M9/M10). WASSCE is the
+   * one KPI whose source is PERIOD-STAMPED and can therefore carry an honest trend (M1): each sitting is
+   * a closed cohort, re-derived Σqualified ÷ Σcandidates. Anchored to the SAME sitting the card's value
+   * shows, compared against the sitting immediately before it in THIS subtree's series. Shown only when
+   * the headline itself is (`shown(wassce)`), so the pill never makes a change-claim beside an
+   * "Unavailable" / "No successful run yet" value.
+   */
+  const wassceDelta = ((): { node: ReactNode; measured: boolean } => {
+    if (!shown(wassce) || !isOk(wassceCohort) || !isOk(wassceTrend))
+      return { node: null, measured: false };
+    const yoy = examQualificationYoy(
+      wassceTrend.value.points,
+      wassceCohort.value.academicYear,
+    );
+    // No prior sitting in this subtree → the honest "no comparator yet" state, never a fake ▲ 0% (M9).
+    // `measured: false` so the provenance ledger below explains no change the strip is not showing (M13).
+    if (yoy === null)
+      return { node: noComparatorYet("— no prior sitting yet"), measured: false };
+    // The points shown are the difference of the two rates ROUNDED THE WAY THE CARD DISPLAYS THEM (0 dp),
+    // so the pill can never disagree with the "64%" above it — the PTR card's chip-vs-value discipline,
+    // carried into time (M7's re-derivation is upstream; this is the presentation step).
+    const deltaPts = Math.round(yoy.currentRate * 100) - Math.round(yoy.priorRate * 100);
+    const priorSitting = sittingYearOf(yoy.priorAcademicYear);
+    const vs = priorSitting !== null ? ` vs ${priorSitting}` : "";
+    // A change invisible at the card's precision is a MEASURED no-change AT that precision (M10) — flat,
+    // a definite "no change", NOT the em-dash absent state. It IS a real between-sitting comparison, so it
+    // is `measured: true` and the ledger explains it.
+    if (deltaPts === 0)
+      return { node: <KDelta tone="flat">no change{vs}</KDelta>, measured: true };
+    // `pluralise` ("1 pt" / "2 pts") — the shared helper, so the page hand-rolls no pluralisation of its
+    // own (Dex N2, the same rule the enrolment sub-line follows).
+    return {
+      node: (
+        <KDelta tone={deltaPts > 0 ? "up" : "down"}>
+          {pluralise(Math.abs(deltaPts), "pt")}
+          {vs}
+        </KDelta>
+      ),
+      measured: true,
+    };
+  })();
+
+  /**
+   * ENROLMENT AND COVERAGE SHOW THE HONEST "NO COMPARATOR YET" PILL (MULTI-YEAR-TREND-RULING M6/M9, and
+   * coverage's YoY is DEFERRED per E-TREND-3). Both read a single vintage today — enrolment a stateless
+   * live roster that can never be historically reconstructed (M2), coverage a single-vintage register —
+   * so their year-over-year trend is ABSENT and appears only FORWARD as further years are measured. The
+   * flat em-dash is that state: never a demo-faked figure, never a DEMO chip, never a fake ▲ 0%. Shown
+   * only beside a real value.
+   */
+  const enrolmentDelta = shown(enrolment) ? noComparatorYet("— no prior year yet") : null;
+  const coverageDelta = shown(coverage) ? noComparatorYet("— no prior year yet") : null;
 
   // The lede's stat fragments follow the SAME rule as the cards — `shown()`, so with no successful
   // ETL run the lede states that rather than quoting numbers the strip is refusing to show. The SHAPE
@@ -386,6 +465,7 @@ export default async function OversightHome() {
                 </>
               ) : null
             }
+            delta={enrolmentDelta}
           />
           <KpiCard
             label="School coverage"
@@ -403,6 +483,7 @@ export default async function OversightHome() {
                 </>
               ) : null
             }
+            delta={coverageDelta}
           />
           <KpiCard
             label="WASSCE qualification"
@@ -419,6 +500,7 @@ export default async function OversightHome() {
                 </>
               ) : null
             }
+            delta={wassceDelta.node}
           />
           <KpiCard
             label="Pupil-teacher ratio"
@@ -438,8 +520,9 @@ export default async function OversightHome() {
                 </>
               ) : null
             }
-            /* NOT a year-over-year delta (the "no delta pills" rule stands for those — one demo year,
-               no comparator). This is the THREE-WAY conformance chip (Kofi §10.1): green "within" only
+            /* NOT a year-over-year delta: this is a TARGET-relative chip, so it needs only the GES norm,
+               never a prior-year comparator, and the trend increment neither gates nor converts it (M9).
+               The THREE-WAY conformance chip (Kofi §10.1): green "within" only
                at/below the tightest norm, terra "above" only beyond the loosest, and NO chip in between
                because a blend cannot certify level-dependent norms. No ▲/▼ glyph. */
             delta={
@@ -560,6 +643,22 @@ export default async function OversightHome() {
               "Measure",
               "All-teacher PTR (trained + untrained); not the trained-teacher ratio (PTTR).",
             ],
+            /*
+              ⚠ THE TREND CAVEAT (MULTI-YEAR-TREND-RULING M13 / AC19), rendered ONLY when a real WASSCE
+              year-over-year pill is on the strip — `wassceDelta.measured` is true for a measured ▲/▼ or a
+              measured "no change", and false for the "no comparator yet" em-dash (M9) and the unavailable
+              state. So the ledger explains the between-sitting change exactly when the strip shows one, and
+              never claims a trend an absent pill is not making — the same gating every conditional line
+              above follows. The wording is M13's, verbatim.
+            */
+            ...(wassceDelta.measured
+              ? ([
+                  [
+                    "Change",
+                    "Change is measured between closed exam sittings — each year's qualification rate is re-derived from that sitting's own candidates and passes (credit or above), never carried forward or averaged. A region's change is its schools' pooled rate each year, compared across years.",
+                  ],
+                ] as [string, string][])
+              : []),
             /*
               ⚠ THE ESTABLISHMENT CAVEAT (Kofi V14), rendered whenever the vacancy panel can render — i.e.
               gated on the same `breakdown` reading the panel is derived from, so the ledger never explains

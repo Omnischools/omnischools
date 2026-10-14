@@ -9,12 +9,13 @@ import { cn } from "@/lib/utils";
  * the decorative top-right circle rebuilt as an absolutely-positioned div at `bg-gold/10` (the
  * nearest Tailwind step to the mock's 0.08 alpha, which §7 rules acceptable).
  *
- * ⚠ `delta` IS AN UNRENDERED SLOT ON PURPOSE, and this comment is the reason it is not deleted.
- * Lucy specifies three `.k-delta` tones, but the demo carries a SINGLE academic year (2025/26), so
- * there is no prior-year comparator to compute a delta FROM. A `▲ 0%` or an em-dash pill would both
- * be claims about change that nothing in the data supports — Lucy §3.5's "never a fake ▲ 0%". So the
- * prop exists, is typed, and no caller on this surface passes it; the day a second year lands, the
- * pill is a one-line change rather than a redesign.
+ * `delta` IS NOW RENDERED, for the measures whose source can honestly carry a year-over-year change
+ * (MULTI-YEAR-TREND-RULING, increment M). The `KDelta` pill below is Lucy's three-tone `.k-delta`:
+ * `up`/`down` for a real re-derived change, `flat` for a MEASURED no-change ("no change") OR — with an
+ * em-dash — for "no prior-year comparator yet" (§3.5's "never a fake ▲ 0%"). The slot is still a plain
+ * `ReactNode`, so the PTR card keeps passing its target-conformance `Chip` here (that is NOT a YoY —
+ * ruling M9), and a card whose source cannot carry a trend (enrolment, until history accrues forward)
+ * passes a `flat` em-dash `KDelta`.
  */
 export function KpiCard({
   label,
@@ -31,7 +32,7 @@ export function KpiCard({
   /** `%`, `pupils`, … Rendered in body font, never italic (§3.3). */
   unit?: string;
   sub?: ReactNode;
-  /** Lucy's `.k-delta` pill. Unrendered on this surface — see the note above. */
+  /** Lucy's `.k-delta` pill (now rendered — see the note above), or the PTR target chip. */
   delta?: ReactNode;
   lead?: boolean;
   /**
@@ -85,6 +86,50 @@ export function KpiCard({
         {delta ?? null}
       </div>
     </div>
+  );
+}
+
+/**
+ * THE `.k-delta` YEAR-OVER-YEAR PILL (Lucy §3.3 / §3.5), ported to tokens.
+ *
+ * Three tones, exactly the mock's:
+ *   `up`   → `bg-green-bg text-green`, leading `▲` — a real, re-derived improvement.
+ *   `down` → `bg-terra-bg text-terra`, leading `▼` — a real decline.
+ *   `flat` → `bg-bg text-navy-3`, NO glyph — either a MEASURED no-change ("no change vs 2024",
+ *            MULTI-YEAR-TREND-RULING M10) or, with an em-dash label, "no prior-year comparator yet"
+ *            (M9). The two flat uses are distinguished by their LABEL, never by a fake `▲ 0%`.
+ *
+ * The direction is NOT left to the glyph or the colour. The label this surface builds is the ABSOLUTE
+ * size ("15 pts vs 2025" — `page.tsx` renders `Math.abs(...)`), so a rise and a fall have the identical
+ * accessible name; the triangle is `aria-hidden` and the green/terra is colour. An officer on a screen
+ * reader, or who cannot tell green from terra, would read a decline as an improvement (a WCAG 1.4.1
+ * use-of-colour failure, and the same "honesty must reach what the officer perceives, not stop at the
+ * figure" rule the `state` typography note above records). So a visually-hidden direction WORD ("up"/
+ * "down") carries the sign to assistive tech; the triangle is then genuinely decorative, redundant with
+ * that word for a sighted reader. `flat` (measured no-change and the em-dash absent state) has no
+ * direction to announce — its words already carry the whole meaning (M9/M10).
+ */
+export type KDeltaTone = "up" | "down" | "flat";
+
+export function KDelta({ tone, children }: { tone: KDeltaTone; children: ReactNode }) {
+  const glyph = tone === "up" ? "▲" : tone === "down" ? "▼" : null;
+  return (
+    <span
+      className={cn(
+        "mt-2 inline-flex items-center gap-1 rounded-pill px-[7px] py-0.5 text-[10px] font-bold",
+        tone === "up"
+          ? "bg-green-bg text-green"
+          : tone === "down"
+            ? "bg-terra-bg text-terra"
+            : "bg-bg text-navy-3",
+      )}
+    >
+      {glyph ? <span aria-hidden>{glyph}</span> : null}
+      {tone !== "flat" ? (
+        <span className="sr-only">{tone === "up" ? "up " : "down "}</span>
+      ) : null}
+      {children}
+    </span>
   );
 }
 

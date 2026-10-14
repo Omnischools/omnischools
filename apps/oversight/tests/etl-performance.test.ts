@@ -1035,19 +1035,24 @@ describe("roll-ups sum SPATIALLY under the mandatory filters (criterion 11)", ()
     expect(mixedRate).not.toBe(beceRate);
     expect(mixedRate).not.toBe(wassceRate);
 
-    // 3 · NO PERIOD FILTER → two SITTINGS summed. Different candidates in different years: a trend is a
-    //     SERIES of per-sitting figures, never a sum. (Stated here as the arithmetic a reader would get.)
+    // 3 · NO PERIOD FILTER → EVERY declared SITTING summed. Different candidates in different years: a
+    //     trend is a SERIES of per-sitting figures, never a sum. (Stated here as the arithmetic a reader
+    //     would get.) Since increment M the demo carries FOUR sittings, so the unfiltered total is the
+    //     sum of all four per-sitting figures — not just the latest and the earliest.
     const acrossSittings = (
       await sql<{ total: number }[]>`
         select sum(f.candidates)::int as total from fact_performance_exam f
          where f.exam = 'BECE' and f.sex = 'ALL'`
     )[0]!.total;
-    const earlierBece = await rollUp(
-      national,
-      await cohortPeriodId(EARLIER_COHORT.sittingYear),
-      { exam: "BECE", sex: "ALL" },
-    );
-    expect(Number(acrossSittings)).toBe(correctBece + earlierBece);
+    let expectedAcrossSittings = 0;
+    for (const cohort of DEMO_EXAM_COHORTS)
+      expectedAcrossSittings += await rollUp(
+        national,
+        await cohortPeriodId(cohort.sittingYear),
+        { exam: "BECE", sex: "ALL" },
+      );
+    expect(Number(acrossSittings)).toBe(expectedAcrossSittings);
+    // The unfiltered total strictly exceeds any single sitting's figure (there is more than one sitting).
     expect(Number(acrossSittings)).toBeGreaterThan(correctBece);
   });
 

@@ -547,23 +547,48 @@ export interface DemoExamCohort {
 }
 
 /**
- * TWO SITTING YEARS, not one, and this is the third slice's equivalent of `DEMO_TERMS` having two terms.
+ * FOUR SITTING YEARS — the multi-year performance trend (increment M, MULTI-YEAR-TREND-RULING M3).
  *
- * A single sitting cannot demonstrate either of the two rules that make `fact_performance_exam`
- * dangerous to read:
- *   · BACKFILL IS LEGITIMATE HERE. A sitting is a CLOSED, IMMUTABLE cohort, so the arm runs for every
- *     declared cohort rather than the current year only (which is the enrolment arm's rule, and the
- *     opposite one). Two years is what makes that testable rather than asserted.
- *   · ROLL-UPS SUM SPATIALLY, NEVER ACROSS SITTINGS. The 2025 and 2026 BECE candidates are DIFFERENT
- *     CHILDREN; adding the two sittings produces a number with no referent. With one year in the data
- *     that mistake is unmakeable and therefore untested.
+ * `fact_performance_exam` is the one domain whose source is PERIOD-STAMPED and backfill-legitimate (a
+ * sitting is a CLOSED, IMMUTABLE cohort of candidates, so a historical year's figure is genuinely that
+ * year's — ruling M1). That is why the trend lives here and NOT on enrolment/staffing/PLC, whose source
+ * is a stateless live roster with no history to reconstruct (ruling M2/M6). "4-year trend" on the
+ * comparison workspace means literally these four sittings.
+ *
+ * Even two sittings already demonstrate the two rules that make the table dangerous to read:
+ *   · BACKFILL IS LEGITIMATE HERE. The arm runs for every declared cohort, not the current year only
+ *     (which is the enrolment arm's rule, and the opposite one).
+ *   · ROLL-UPS SUM SPATIALLY, NEVER ACROSS SITTINGS. Two sittings' BECE candidates are DIFFERENT
+ *     CHILDREN; adding sittings produces a number with no referent.
+ *
+ * ⚠ THE SET IS SPLIT INTO CURRENT AND PRIOR, AND THE SPLIT IS LOAD-BEARING FOR BYTE-STABILITY. The
+ * CURRENT sittings (2025, 2026) are drawn inside the main shared-`rng` loop of `generateDemoDataset`,
+ * exactly as they were before this increment, so they — and every already-shipped arm whose draws
+ * follow them in that stream — stay byte-identical. The PRIOR sittings (2023, 2024) are drawn in a
+ * SEPARATE, independently-salted pass (the same discipline the attendance/fees/PLC passes already
+ * follow), so adding them shifts NOTHING that shipped. `DEMO_EXAM_COHORTS` is the union, chronological,
+ * and is what the run DECLARES (`refreshPeriods` upserts one EXAM_COHORT `dim_period` per sitting) and
+ * what the dashboards trend over.
  *
  * The windows are the REGULAR MAY/JUNE sitting (BECE and WASSCE both sit in that window in Ghana). They
- * are fixed dates, not derived from the clock, so the artefact and every `as_of_date` are byte-stable.
+ * are fixed dates, not derived from the clock, so the artefact and every `as_of_date` are byte-stable,
+ * and the four `ends_on` dates are distinct so the four sittings cannot collide onto one vintage.
  */
-export const DEMO_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+export const DEMO_CURRENT_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
   { sittingYear: 2025, startsOn: "2025-05-05", endsOn: "2025-06-27" },
   { sittingYear: 2026, startsOn: "2026-05-04", endsOn: "2026-06-26" },
+]);
+
+/** The earlier sittings that complete the four-year trend. Drawn in their own salted pass (see above). */
+export const DEMO_PRIOR_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+  { sittingYear: 2023, startsOn: "2023-05-08", endsOn: "2023-06-30" },
+  { sittingYear: 2024, startsOn: "2024-05-06", endsOn: "2024-06-28" },
+]);
+
+/** All four sittings, chronological (earliest first) — what the run declares and the dashboards trend over. */
+export const DEMO_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+  ...DEMO_PRIOR_EXAM_COHORTS,
+  ...DEMO_CURRENT_EXAM_COHORTS,
 ]);
 
 // ── deterministic ids ───────────────────────────────────────────────────────────────────────────
@@ -2005,7 +2030,38 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     // The SITTINGS are per school and per sitting YEAR, and they carry NO operational period either: a
     // sitting is identified by its calendar year (`terminal_exam_result.year`), which the ETL maps to an
     // EXAM_COHORT `dim_period`. Generated outside the term loop, for that reason.
-    terminalExamResults.push(...sittingsFor(rng, school, schoolIndex, DEMO_EXAM_COHORTS));
+    //
+    // ⚠ CURRENT sittings ONLY here, from the shared `rng`. The PRIOR sittings that complete the
+    // four-year trend are drawn in their own salted pass below, so the draws on this line — and every
+    // already-shipped arm whose draws follow them in this stream — are byte-identical to before
+    // increment M (see `DEMO_EXAM_COHORTS` above).
+    terminalExamResults.push(
+      ...sittingsFor(rng, school, schoolIndex, DEMO_CURRENT_EXAM_COHORTS),
+    );
+  }
+
+  // ── the PRIOR SITTINGS: the four-year performance trend's earlier cohorts, A SEPARATE PASS WITH ITS
+  // OWN RNG ─────────────────────────────────────────────────────────────────────────────────────────
+  //
+  // ⚠ A NEW, DISTINCT SALT, for exactly the reason the attendance/fees/PLC passes document: every draw
+  // from a stream shifts everything after it, so drawing these from the main `rng` would silently move
+  // the CURRENT sittings and every census/roster of every subsequent school — i.e. adding the trend's
+  // history would move all the ALREADY-SHIPPED arms' demo figures. An independently seeded generator
+  // keeps this increment's blast radius to its own new rows, and the ETL's per-year exam read
+  // (`readTerminalExamResults`, grouped and ordered in SQL) does not care what order the demo inserted
+  // them in. These are PERIOD-STAMPED backfills (ruling M1): a closed sitting carries its own vintage,
+  // so the series is genuinely measured — unlike enrolment/staffing/PLC, which get no such pass (M2/M6).
+  const sittingsRng = rngOf(seed ^ 0x5349_5454); // "SITT"
+  for (const school of schools) {
+    if (!school.onSchoolup) continue; // no tenant → no sitting filed → no fact row
+    terminalExamResults.push(
+      ...sittingsFor(
+        sittingsRng,
+        school,
+        Number(school.operationalSchoolId!.slice(-12)),
+        DEMO_PRIOR_EXAM_COHORTS,
+      ),
+    );
   }
 
   // ── the REGISTERS: a SEPARATE PASS, WITH ITS OWN RNG ──────────────────────────────────────────
