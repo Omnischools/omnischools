@@ -47,6 +47,7 @@ import {
   buildTitle,
   childCountOf,
   pluralNoun,
+  pluralise,
   rollupClause,
   sourceLine,
   tierChrome,
@@ -312,10 +313,11 @@ export default async function OversightHome() {
     // A change invisible at the card's precision is a MEASURED no-change AT that precision (M10) — flat,
     // a definite "no change", NOT the em-dash absent state.
     if (deltaPts === 0) return <KDelta tone="flat">no change{vs}</KDelta>;
-    const magnitude = Math.abs(deltaPts);
+    // `pluralise` ("1 pt" / "2 pts") — the shared helper, so the page hand-rolls no pluralisation of its
+    // own (Dex N2, the same rule the enrolment sub-line follows).
     return (
       <KDelta tone={deltaPts > 0 ? "up" : "down"}>
-        {magnitude} {magnitude === 1 ? "pt" : "pts"}
+        {pluralise(Math.abs(deltaPts), "pt")}
         {vs}
       </KDelta>
     );
