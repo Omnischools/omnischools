@@ -325,9 +325,9 @@ export function BreakdownTable({
 
   /**
    * CPD COMPLIANCE — Σteachers_meeting_cpd_threshold ÷ Σteacher_headcount over the child's schools,
-   * this year (C17). FOUR honest absences/states, never a coalesced 0% (the schema wrote ~20 lines to
+   * this year (C17). FIVE honest absences/states, never a coalesced 0% (the schema wrote ~20 lines to
    * protect this — C10/C11), and never an un-chipped synthetic figure (C6):
-   *   · CPD read itself failed (prov null) → "CPD provenance unavailable" (fail CLOSED, see the prop doc)
+   *   · CPD read itself failed (prov null) → "CPD data could not be read just now" (fail CLOSED, prop doc)
    *   · no ANNUAL PLC row at all           → "No PLC data"
    *   · ANNUAL rows but threshold NULL     → "Not yet sourced from NTC" (the live sourcing-gate state)
    *   · threshold sourced, no denominator  → "No PLC data" (a 0/absent headcount, NOT an NTC-gate miss)
@@ -341,7 +341,7 @@ export function BreakdownTable({
     // Fail CLOSED when the CPD read failed: the breakdown's threshold rows can outlive that failure, so
     // without a resolved provenance a printed figure would claim "measured" by omitting the chip (C6).
     if (ntcProvenance === null)
-      return <Absent title="CPD provenance unavailable" />;
+      return <Absent title="CPD data could not be read just now" />;
     if (row.plcAnnualRows === 0) return <Absent title="No PLC data" />;
     if (row.plcThresholdRows === 0) return <Absent title={ABSENT_NTC_TITLE} />;
     // Threshold IS sourced but the denominator is 0/absent: a "No PLC data" absence, NOT the NTC gate.

@@ -1020,7 +1020,7 @@ describe("the C17 breakdown columns are built; the C18 comparison rows stay defe
     // C6 fail-CLOSED: when the CPD read failed the one switch is `null`, and the compliance cell must
     // refuse to print a figure (which, un-chipped, would claim "measured") — it renders an absence.
     expect(table).toMatch(/ntcProvenance === null/);
-    expect(table).toContain("CPD provenance unavailable");
+    expect(table).toContain("CPD data could not be read just now");
     // The compliance cell is neutral navy — NEVER toned green/terra (C17/C18 carry the never-crown
     // rule onto the table). Both CPD cell renderers live between their declarations and the vacancy
     // toolbar `return (` of the component body; neither reaches for a tone lookup (toneFor/PILL_TONE)
