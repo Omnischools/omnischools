@@ -706,6 +706,7 @@ describe("absence is absence — never a fabricated 0 and never an Infinity", ()
     ] as const) {
       const markup = renderToStaticMarkup(
         createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
           chrome: breakdownChrome(hasCoverage ? "NATIONAL" : "DISTRICT", "Western Region"),
           homeId: null,
           breakdown: {
@@ -729,6 +730,7 @@ describe("absence is absence — never a fabricated 0 and never an Infinity", ()
   it("a null PTR renders the muted em-dash, not a 0:1", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("REGION", "Western Region"),
         homeId: null,
         breakdown: {
@@ -785,6 +787,14 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     vacancyNet: null,
     vacancyRate: null,
     schoolsWithEstablishment: null,
+    plcInPlc: null,
+    plcTermHeadcount: null,
+    plcCoverage: null,
+    plcThreshold: null,
+    plcAnnualHeadcount: null,
+    plcThresholdRows: 0,
+    plcAnnualRows: 0,
+    cpdCompliance: null,
     ...fields,
   };
 }
@@ -807,6 +817,7 @@ describe("Kofi's precision ruling: ONE decimal, on the Σ÷Σ figure, everywhere
     const table = textOf(
       renderToStaticMarkup(
         createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
           chrome: breakdownChrome("REGION", "Western Region"),
           homeId: null,
           breakdown: b,

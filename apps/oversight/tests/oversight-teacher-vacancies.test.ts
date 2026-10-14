@@ -185,7 +185,7 @@ function panelMarkup(breakdown: ChildBreakdown, tierNoun = "region"): string {
 
 function tableMarkup(breakdown: ChildBreakdown, chrome = CHROME): string {
   return renderToStaticMarkup(
-    createElement(BreakdownTable, { breakdown, chrome, homeId: null }),
+    createElement(BreakdownTable, { breakdown, chrome, homeId: null, ntcProvenance: "ABSENT" as const }),
   );
 }
 
@@ -678,6 +678,7 @@ describe("absence is absence; a cancelled zero is a measurement (ACs 16, 17)", (
     const text = textOf(
       renderToStaticMarkup(
         createElement(BreakdownSection, {
+        ntcProvenance: "ABSENT" as const,
           level: "REGION",
           jurisdictionName: "Western Region",
           homeId: null,
@@ -860,6 +861,7 @@ describe("the column sits after PTR and spans every row (AC-14)", () => {
     ] as const) {
       const markup = renderToStaticMarkup(
         createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
           chrome: breakdownChrome(hasCoverage ? "NATIONAL" : "DISTRICT", "Western Region"),
           homeId: null,
           breakdown: {
@@ -883,6 +885,7 @@ describe("the column sits after PTR and spans every row (AC-14)", () => {
   it("Vacancies comes immediately AFTER PTR, and the header carries the public denominator", () => {
     const markup = renderToStaticMarkup(
       createElement(BreakdownTable, {
+        ntcProvenance: "ABSENT" as const,
         chrome: breakdownChrome("NATIONAL", "Ghana"),
         homeId: null,
         breakdown: {
@@ -1122,6 +1125,14 @@ function blankRow(fields: Partial<BreakdownRow>): BreakdownRow {
     vacancyNet: null,
     vacancyRate: null,
     schoolsWithEstablishment: null,
+    plcInPlc: null,
+    plcTermHeadcount: null,
+    plcCoverage: null,
+    plcThreshold: null,
+    plcAnnualHeadcount: null,
+    plcThresholdRows: 0,
+    plcAnnualRows: 0,
+    cpdCompliance: null,
     ...fields,
   };
 }

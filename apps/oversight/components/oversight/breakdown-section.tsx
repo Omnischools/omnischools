@@ -1,6 +1,7 @@
 import type { JurisdictionLevel } from "@/lib/db/rls";
 import { isOk, type Reading } from "@/lib/oversight/reading";
 import type { ChildBreakdown } from "@/lib/oversight/breakdown";
+import type { NtcProvenance } from "@/lib/oversight/cpd";
 import { Banner, Panel, Provenance } from "./primitives";
 import { BreakdownTable, COVERAGE_BANDS } from "./breakdown-table";
 import { RankStrip, SpreadPanel, TeacherEstablishmentPanel } from "./breakdown-visuals";
@@ -38,6 +39,13 @@ export function BreakdownSection({
   termLabel,
   /** The resolved SITTING. Wells trap 4: the table must state the sitting it ranks on. */
   sittingLabel,
+  /**
+   * The ONE NTC demo/live switch (CPD-SURFACING-RULING C5), for the table's CPD-compliance DEMO chip.
+   * Resolved by the CPD reader and threaded through from `page.tsx`; `"ABSENT"` when CPD is Unavailable.
+   * It touches only the one CPD cell — the roll-up table is otherwise independent of the CPD read, and
+   * a CPD failure never degrades the breakdown (nor the reverse).
+   */
+  ntcProvenance,
 }: {
   level: JurisdictionLevel;
   jurisdictionName: string | null;
@@ -46,6 +54,7 @@ export function BreakdownSection({
   breakdown: Reading<ChildBreakdown>;
   termLabel: string | null;
   sittingLabel: string | null;
+  ntcProvenance: NtcProvenance;
 }) {
   const chrome = breakdownChrome(level, jurisdictionName);
 
@@ -104,7 +113,12 @@ export function BreakdownSection({
            their own full-bleed rule, which is the mock's structure. */
         className="[&>div]:p-0"
       >
-        <BreakdownTable breakdown={value} chrome={chrome} homeId={homeId} />
+        <BreakdownTable
+          breakdown={value}
+          chrome={chrome}
+          homeId={homeId}
+          ntcProvenance={ntcProvenance}
+        />
       </Panel>
 
       {level === "NATIONAL" ? <SpreadPanel breakdown={value} chrome={chrome} /> : null}

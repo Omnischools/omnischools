@@ -222,6 +222,44 @@ export interface BreakdownRow {
    * the child at all, which is absence, not "0 posts unfilled".
    */
   schoolsWithEstablishment: number | null;
+  /**
+   * ═══ THE CPD / PLC CELLS (increment L, CPD-SURFACING-RULING C17) ═══════════════════════════════
+   *
+   * Two per-child figures, re-derived Σnum ÷ Σden over the child's school rows, never an average of
+   * child rates — the identical discipline every rate here follows, and the reason the numerators and
+   * denominators ride on the row: the breakdown total equals the "Teacher CPD & PLC" panel's own
+   * figure from one scan (C19).
+   */
+  /** Σteachers_in_plc over the child's TERM PLC rows (sex='ALL'). Null = no TERM PLC row filed. */
+  plcInPlc: number | null;
+  /** Σteacher_headcount on those TERM rows — PLC coverage's denominator. Null = none filed. */
+  plcTermHeadcount: number | null;
+  /**
+   * Σteachers_in_plc ÷ Σteacher_headcount, per child (TERM, sex='ALL') — PLC coverage. Null when no
+   * TERM PLC row was filed OR the headcount is 0 (never a 0/0): the surface renders that as "No PLC
+   * data", distinct from a measured 0% (no teacher in a PLC) which is a real zero, navy. Un-chipped —
+   * PLC is a real-shape operational aggregate (C6/C9), never DEMO.
+   */
+  plcCoverage: number | null;
+  /**
+   * Σteachers_meeting_cpd_threshold over the child's ANNUAL PLC rows (sex='ALL'). Null when every such
+   * row's threshold is NULL — the live sourcing-gate state — NEVER coalesced to 0 (C10/C11).
+   */
+  plcThreshold: number | null;
+  /** Σteacher_headcount on the ANNUAL rows — CPD compliance's denominator. Null = none filed. */
+  plcAnnualHeadcount: number | null;
+  /** Count of ANNUAL PLC rows with a NON-NULL threshold — gates "not yet sourced" vs a demo figure. */
+  plcThresholdRows: number;
+  /** Count of the child's ANNUAL PLC rows — gates "No PLC data" vs an unsourced/demo figure. */
+  plcAnnualRows: number;
+  /**
+   * Σteachers_meeting_cpd_threshold ÷ Σteacher_headcount, per child (ANNUAL, sex='ALL') — the CPD
+   * compliance rate. Null when no threshold was sourced (the figure then renders `<Absent/>`, never
+   * 0%) or no ANNUAL PLC row was filed. In the demo state the surface marks it DEMO (via the one
+   * `ntcProvenance` the cpd.ts reader resolves, threaded to the table); it is NEVER toned green/terra
+   * (cpd-tone.ts: synthetic figures carry no valence).
+   */
+  cpdCompliance: number | null;
   // NOTE: there is deliberately no `isHome` here, and no `scope.jurisdictionId` anywhere in this
   // module. Lucy's gold-tinted home row is a comparison between a child id and the officer's own node,
   // which is PRESENTATION — and keeping every `scope.*` field out of the read means the static guard
@@ -299,6 +337,23 @@ interface FactBucket {
   vacancySurplus: number | null;
   /** count(distinct school) with a non-null establishment — the honest public-only denominator. */
   schoolsWithEstablishment: number | null;
+  /** Σteachers_in_plc over the child's TERM PLC rows (sex='ALL'). Null = no TERM PLC row filed. */
+  plcInPlc: number | null;
+  /** Σteacher_headcount on those TERM rows — the PLC-coverage denominator. Null = none filed. */
+  plcTermHeadcount: number | null;
+  /** Count of the child's TERM PLC rows — ABSENCE vs a measured figure. */
+  plcTermRows: number;
+  /**
+   * Σteachers_meeting_cpd_threshold over the child's ANNUAL PLC rows (sex='ALL'). Null when every such
+   * row's threshold is NULL (the live sourcing-gate state) — NEVER coalesced to 0 (C10/C11).
+   */
+  plcThreshold: number | null;
+  /** Count of ANNUAL PLC rows with a NON-NULL threshold — "not yet sourced from NTC" vs a demo figure. */
+  plcThresholdRows: number;
+  /** Σteacher_headcount on the ANNUAL rows — the CPD-compliance denominator. Null = none filed. */
+  plcAnnualHeadcount: number | null;
+  /** Count of the child's ANNUAL PLC rows — "no PLC data" vs an unsourced/demo figure. */
+  plcAnnualRows: number;
 }
 
 interface RegisterBucket {
@@ -368,7 +423,17 @@ export async function getChildBreakdown(
                  0::bigint                   as female_headcount,
                  0::bigint                   as posts_established,
                  0::bigint                   as vacancy_shortage,
-                 0::bigint                   as vacancy_surplus
+                 0::bigint                   as vacancy_surplus,
+                 -- ═══ THE CPD / PLC COLUMNS (increment L, CPD-SURFACING-RULING C17) ═══════════════
+                 -- Carried as summable numerator/denominator components on the row, like
+                 -- candidates/qualified behind wassceRate, so PLC coverage and CPD compliance are
+                 -- Σnum ÷ Σden re-derived per child and reconcile through sumOf with no second scan --
+                 -- and the breakdown total row equals the "Teacher CPD & PLC" panel's own figure (C19).
+                 -- Zero-filled on every non-PLC arm; the two real PLC arms sit at the end of the union.
+                 0::bigint                   as plc_in_plc,
+                 0::bigint                   as plc_term_headcount,
+                 null::bigint                as plc_threshold,
+                 0::bigint                   as plc_annual_headcount
             from fact_enrolment fe
            -- ANNUAL, not TERM: enrolment is a STOCK (headcount on roll), the SAME dim_period row
            -- fact_staffing and fact_infrastructure hang off, and the only period the ETL ever writes
@@ -391,6 +456,10 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 null::bigint,
                  0::bigint
             from fact_performance_exam fpe
            where fpe.period_id = ${examPeriodId}::uuid
@@ -417,6 +486,10 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 null::bigint,
                  0::bigint
             from fact_staffing fs
            where fs.period_id = ${annualPeriodId}::uuid
@@ -440,6 +513,10 @@ export async function getChildBreakdown(
                  0::bigint,
                  0::bigint,
                  0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 null::bigint,
                  0::bigint
             from fact_attendance fa
            where fa.period_id = ${termPeriodId}::uuid
@@ -466,6 +543,10 @@ export async function getChildBreakdown(
                  fe.headcount::bigint,
                  0::bigint,
                  0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 null::bigint,
                  0::bigint
             from fact_enrolment fe
            where fe.period_id = ${annualPeriodId}::uuid
@@ -505,10 +586,78 @@ export async function getChildBreakdown(
                  0::bigint,
                  fs.teaching_posts_established::bigint,
                  greatest(fs.vacancies, 0)::bigint,
-                 greatest(-fs.vacancies, 0)::bigint
+                 greatest(-fs.vacancies, 0)::bigint,
+                 0::bigint,
+                 0::bigint,
+                 null::bigint,
+                 0::bigint
             from fact_staffing fs
            where fs.period_id = ${annualPeriodId}::uuid
              and fs.teaching_posts_established is not null
+          union all
+          -- PLC_TERM — the PLC-COVERAGE arm. fact_plc_participation's TERM cut carries teachers_in_plc
+          -- (the numerator) beside teacher_headcount (the shared on-roll denominator, populated on BOTH
+          -- cuts). Pinned to termPeriodId, the SAME term the attendance arm is of. sex = 'ALL' ONLY:
+          -- teachers_in_plc and teacher_headcount are sexed, but the breakdown cell is the un-split
+          -- coverage, and the ALL row carries the all-sex total — summing the MALE/FEMALE split instead
+          -- would double-count (schema's one-sex-value-per-query rule). PLC coverage = Σteachers_in_plc
+          -- ÷ Σteacher_headcount per child, re-derived in TS below, never the average of the stored
+          -- per-school participation rate (that stored rate column is deliberately never selected, the
+          -- same discipline PTR and attendance follow). See lib/oversight/cpd.ts.
+          select fpp.jurisdiction_id,
+                 'PLC_TERM'::text,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 fpp.teachers_in_plc::bigint,
+                 fpp.teacher_headcount::bigint,
+                 null::bigint,
+                 0::bigint
+            from fact_plc_participation fpp
+           where fpp.period_id = ${termPeriodId}::uuid
+             and fpp.sex = 'ALL'::ov_sex
+          union all
+          -- PLC_ANNUAL — the CPD-COMPLIANCE arm. fact_plc_participation's ANNUAL cut carries
+          -- teachers_meeting_cpd_threshold (the numerator) beside teacher_headcount (the denominator).
+          -- Pinned to annualPeriodId. sex = 'ALL' ONLY, as above. CPD compliance = Σthreshold ÷
+          -- Σteacher_headcount per child, re-derived in TS below.
+          --
+          -- ⚠ THE THRESHOLD IS NULL-GATED (fact.ts ⚠ SOURCING GATE): until an NTC feed exists it is
+          -- NULL on every row, and NULL must NEVER render as 0% compliant. The arm therefore emits the
+          -- threshold as a nullable column and the final select counts its non-null rows SEPARATELY from
+          -- the arm's own row count, so the surface can tell "no PLC data here" (no ANNUAL row) from "not
+          -- yet sourced from NTC" (ANNUAL rows exist, threshold NULL) from a populated demo figure — the
+          -- three-state distinction the schema wrote ~20 lines to protect (C10/C11). The demo/live chip
+          -- decision itself is the ONE ntcProvenance the cpd.ts reader resolves (C5), threaded to the
+          -- table; this module only re-derives the honest rate and carries the two row counts.
+          select fpp.jurisdiction_id,
+                 'PLC_ANNUAL'::text,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 0::bigint,
+                 fpp.teachers_meeting_cpd_threshold::bigint,
+                 fpp.teacher_headcount::bigint
+            from fact_plc_participation fpp
+           where fpp.period_id = ${annualPeriodId}::uuid
+             and fpp.sex = 'ALL'::ov_sex
         ),
         attributed as (
           select case ${childLevel}::jurisdiction_level
@@ -533,7 +682,11 @@ export async function getChildBreakdown(
                  f.female_headcount       as female_headcount,
                  f.posts_established      as posts_established,
                  f.vacancy_shortage       as vacancy_shortage,
-                 f.vacancy_surplus        as vacancy_surplus
+                 f.vacancy_surplus        as vacancy_surplus,
+                 f.plc_in_plc             as plc_in_plc,
+                 f.plc_term_headcount     as plc_term_headcount,
+                 f.plc_threshold          as plc_threshold,
+                 f.plc_annual_headcount   as plc_annual_headcount
             from facts f
             -- The fact's OWN node. INNER is correct here and only here: the fact row is visible, so its
             -- SCHOOL row is visible too (same predicate, same argument).
@@ -569,7 +722,18 @@ export async function getChildBreakdown(
                sum(vacancy_surplus)  filter (where measure = 'ESTABLISHMENT')::bigint    as vacancy_surplus,
                count(*)              filter (where measure = 'ESTABLISHMENT')::int       as establishment_rows,
                count(distinct jurisdiction_id)
-                 filter (where measure = 'ESTABLISHMENT')::int                           as schools_with_establishment
+                 filter (where measure = 'ESTABLISHMENT')::int                           as schools_with_establishment,
+               -- CPD / PLC. The two rates are Σnum ÷ Σden re-derived per child in TS, exactly like the
+               -- others. Each arm's own row count gates ABSENCE (no PLC row filed) vs a measured figure;
+               -- the ANNUAL arm additionally counts its NON-NULL threshold rows, so the NULL-never-0
+               -- sourcing-gate state ("not yet sourced from NTC") is distinguishable from "no PLC data".
+               sum(plc_in_plc) filter (where measure = 'PLC_TERM')::bigint               as plc_in_plc,
+               sum(plc_term_headcount) filter (where measure = 'PLC_TERM')::bigint        as plc_term_headcount,
+               count(*) filter (where measure = 'PLC_TERM')::int                          as plc_term_rows,
+               sum(plc_threshold) filter (where measure = 'PLC_ANNUAL')::bigint           as plc_threshold,
+               count(plc_threshold) filter (where measure = 'PLC_ANNUAL')::int            as plc_threshold_rows,
+               sum(plc_annual_headcount) filter (where measure = 'PLC_ANNUAL')::bigint     as plc_annual_headcount,
+               count(*) filter (where measure = 'PLC_ANNUAL')::int                        as plc_annual_rows
           from attributed
          group by grouping sets ((child_id, child_name), ())
       `);
@@ -608,6 +772,18 @@ export async function getChildBreakdown(
           vacancySurplus: establishmentRows === 0 ? null : Number(row.vacancy_surplus),
           schoolsWithEstablishment:
             establishmentRows === 0 ? null : Number(row.schools_with_establishment),
+          // CPD / PLC. `null` not `0` when no PLC row was filed (the row-count gate), and the ANNUAL
+          // threshold stays `null` when the sum ignored every NULL — the sourcing-gate state that must
+          // never read as 0% compliant (fact.ts ⚠ SOURCING GATE, C10/C11).
+          plcInPlc: Number(row.plc_term_rows) === 0 ? null : Number(row.plc_in_plc),
+          plcTermHeadcount:
+            Number(row.plc_term_rows) === 0 ? null : Number(row.plc_term_headcount),
+          plcTermRows: Number(row.plc_term_rows),
+          plcThreshold: row.plc_threshold === null ? null : Number(row.plc_threshold),
+          plcThresholdRows: Number(row.plc_threshold_rows),
+          plcAnnualHeadcount:
+            Number(row.plc_annual_rows) === 0 ? null : Number(row.plc_annual_headcount),
+          plcAnnualRows: Number(row.plc_annual_rows),
         };
         if (Number(row.grp) === TOTAL_GROUPING) factTotal = bucket;
         else factBuckets.set(bucket.childId, bucket);
@@ -744,6 +920,25 @@ export async function getChildBreakdown(
           fact.postsEstablished != null
             ? ratio(fact.vacancyShortage - fact.vacancySurplus, fact.postsEstablished)
             : null,
+        // CPD / PLC — the two rates fold from the same scan as everything above (C19). `ratio()`
+        // returns null on a 0 denominator, so a child with a PLC row but 0 teacher_headcount is
+        // "No PLC data", while a child with teachers but 0 in a PLC is a measured 0% — the real-zero vs
+        // absent distinction the whole surface turns on. The threshold rate stays null (→ `<Absent/>`,
+        // never 0%) whenever the NTC source left the threshold NULL (C10/C11).
+        plcInPlc: fact?.plcInPlc ?? null,
+        plcTermHeadcount: fact?.plcTermHeadcount ?? null,
+        plcCoverage:
+          fact?.plcInPlc != null && fact.plcTermHeadcount != null
+            ? ratio(fact.plcInPlc, fact.plcTermHeadcount)
+            : null,
+        plcThreshold: fact?.plcThreshold ?? null,
+        plcAnnualHeadcount: fact?.plcAnnualHeadcount ?? null,
+        plcThresholdRows: fact?.plcThresholdRows ?? 0,
+        plcAnnualRows: fact?.plcAnnualRows ?? 0,
+        cpdCompliance:
+          fact?.plcThreshold != null && fact.plcAnnualHeadcount != null
+            ? ratio(fact.plcThreshold, fact.plcAnnualHeadcount)
+            : null,
       });
 
       const childIds = new Set<string>();
@@ -798,6 +993,14 @@ export async function getChildBreakdown(
         sumOf((r) => r.postsEstablished) === (total.postsEstablished ?? 0) &&
         sumOf((r) => r.vacancyShortage) === (total.vacancyShortage ?? 0) &&
         sumOf((r) => r.vacancySurplus) === (total.vacancySurplus ?? 0) &&
+        // CPD / PLC additive components reconcile exactly like the others: each is a Σ over the child's
+        // school rows, and the total is the `()` grouping of the same scan. The threshold sum reconciles
+        // over its NON-NULL rows (a NULL contributes 0 to both the SQL sum and `sumOf`), so the
+        // sourcing-gate state (all NULL → total null → 0) reconciles as cleanly as a populated demo.
+        sumOf((r) => r.plcInPlc) === (total.plcInPlc ?? 0) &&
+        sumOf((r) => r.plcTermHeadcount) === (total.plcTermHeadcount ?? 0) &&
+        sumOf((r) => r.plcThreshold) === (total.plcThreshold ?? 0) &&
+        sumOf((r) => r.plcAnnualHeadcount) === (total.plcAnnualHeadcount ?? 0) &&
         (!hasCoverage ||
           (sumOf((r) => r.schoolsRegistered) === (total.schoolsRegistered ?? 0) &&
             sumOf((r) => r.schoolsReporting) === (total.schoolsReporting ?? 0)));

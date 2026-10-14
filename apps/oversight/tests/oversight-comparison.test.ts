@@ -60,6 +60,14 @@ function row(over: Partial<BreakdownRow> & { childId: string }): BreakdownRow {
     vacancyNet: null,
     vacancyRate: null,
     schoolsWithEstablishment: null,
+    plcInPlc: null,
+    plcTermHeadcount: null,
+    plcCoverage: null,
+    plcThreshold: null,
+    plcAnnualHeadcount: null,
+    plcThresholdRows: 0,
+    plcAnnualRows: 0,
+    cpdCompliance: null,
     ...over,
   };
 }
