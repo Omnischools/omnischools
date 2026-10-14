@@ -9,12 +9,13 @@ import { cn } from "@/lib/utils";
  * the decorative top-right circle rebuilt as an absolutely-positioned div at `bg-gold/10` (the
  * nearest Tailwind step to the mock's 0.08 alpha, which §7 rules acceptable).
  *
- * ⚠ `delta` IS AN UNRENDERED SLOT ON PURPOSE, and this comment is the reason it is not deleted.
- * Lucy specifies three `.k-delta` tones, but the demo carries a SINGLE academic year (2025/26), so
- * there is no prior-year comparator to compute a delta FROM. A `▲ 0%` or an em-dash pill would both
- * be claims about change that nothing in the data supports — Lucy §3.5's "never a fake ▲ 0%". So the
- * prop exists, is typed, and no caller on this surface passes it; the day a second year lands, the
- * pill is a one-line change rather than a redesign.
+ * `delta` IS NOW RENDERED, for the measures whose source can honestly carry a year-over-year change
+ * (MULTI-YEAR-TREND-RULING, increment M). The `KDelta` pill below is Lucy's three-tone `.k-delta`:
+ * `up`/`down` for a real re-derived change, `flat` for a MEASURED no-change ("no change") OR — with an
+ * em-dash — for "no prior-year comparator yet" (§3.5's "never a fake ▲ 0%"). The slot is still a plain
+ * `ReactNode`, so the PTR card keeps passing its target-conformance `Chip` here (that is NOT a YoY —
+ * ruling M9), and a card whose source cannot carry a trend (enrolment, until history accrues forward)
+ * passes a `flat` em-dash `KDelta`.
  */
 export function KpiCard({
   label,
@@ -85,6 +86,40 @@ export function KpiCard({
         {delta ?? null}
       </div>
     </div>
+  );
+}
+
+/**
+ * THE `.k-delta` YEAR-OVER-YEAR PILL (Lucy §3.3 / §3.5), ported to tokens.
+ *
+ * Three tones, exactly the mock's:
+ *   `up`   → `bg-green-bg text-green`, leading `▲` — a real, re-derived improvement.
+ *   `down` → `bg-terra-bg text-terra`, leading `▼` — a real decline.
+ *   `flat` → `bg-bg text-navy-3`, NO glyph — either a MEASURED no-change ("no change vs 2024",
+ *            MULTI-YEAR-TREND-RULING M10) or, with an em-dash label, "no prior-year comparator yet"
+ *            (M9). The two flat uses are distinguished by their LABEL, never by a fake `▲ 0%`.
+ *
+ * The glyph is `aria-hidden`: the direction is already in the label's words ("▲ 2 pts" is read as
+ * "2 pts" + the tone's meaning carried by the text), so the triangle is decoration, not content.
+ */
+export type KDeltaTone = "up" | "down" | "flat";
+
+export function KDelta({ tone, children }: { tone: KDeltaTone; children: ReactNode }) {
+  const glyph = tone === "up" ? "▲" : tone === "down" ? "▼" : null;
+  return (
+    <span
+      className={cn(
+        "mt-2 inline-flex items-center gap-1 rounded-pill px-[7px] py-0.5 text-[10px] font-bold",
+        tone === "up"
+          ? "bg-green-bg text-green"
+          : tone === "down"
+            ? "bg-terra-bg text-terra"
+            : "bg-bg text-navy-3",
+      )}
+    >
+      {glyph ? <span aria-hidden>{glyph}</span> : null}
+      {children}
+    </span>
   );
 }
 

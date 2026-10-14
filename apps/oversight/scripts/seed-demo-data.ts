@@ -288,12 +288,7 @@ export interface DemoAttendanceMarkGroup {
   toRank: number;
 }
 
-export type DemoAttendanceStatus =
-  | "PRESENT"
-  | "ABSENT"
-  | "LATE"
-  | "EXCUSED"
-  | "MEDICAL";
+export type DemoAttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | "MEDICAL";
 
 /**
  * ── THE FEE BOOK (fifth slice, task H11) ────────────────────────────────────────────────────────
@@ -310,13 +305,7 @@ export interface DemoFeeCategoryRow {
 }
 
 export type DemoInvoiceStatus =
-  | "DRAFT"
-  | "ISSUED"
-  | "PARTIAL"
-  | "PAID"
-  | "OVERDUE"
-  | "EXEMPT"
-  | "VOIDED";
+  "DRAFT" | "ISSUED" | "PARTIAL" | "PAID" | "OVERDUE" | "EXEMPT" | "VOIDED";
 
 /** One billed line on every invoice of a run. Amount in EXACT PESEWAS — never a float GHS figure. */
 export interface DemoInvoiceLine {
@@ -547,23 +536,48 @@ export interface DemoExamCohort {
 }
 
 /**
- * TWO SITTING YEARS, not one, and this is the third slice's equivalent of `DEMO_TERMS` having two terms.
+ * FOUR SITTING YEARS — the multi-year performance trend (increment M, MULTI-YEAR-TREND-RULING M3).
  *
- * A single sitting cannot demonstrate either of the two rules that make `fact_performance_exam`
- * dangerous to read:
- *   · BACKFILL IS LEGITIMATE HERE. A sitting is a CLOSED, IMMUTABLE cohort, so the arm runs for every
- *     declared cohort rather than the current year only (which is the enrolment arm's rule, and the
- *     opposite one). Two years is what makes that testable rather than asserted.
- *   · ROLL-UPS SUM SPATIALLY, NEVER ACROSS SITTINGS. The 2025 and 2026 BECE candidates are DIFFERENT
- *     CHILDREN; adding the two sittings produces a number with no referent. With one year in the data
- *     that mistake is unmakeable and therefore untested.
+ * `fact_performance_exam` is the one domain whose source is PERIOD-STAMPED and backfill-legitimate (a
+ * sitting is a CLOSED, IMMUTABLE cohort of candidates, so a historical year's figure is genuinely that
+ * year's — ruling M1). That is why the trend lives here and NOT on enrolment/staffing/PLC, whose source
+ * is a stateless live roster with no history to reconstruct (ruling M2/M6). "4-year trend" on the
+ * comparison workspace means literally these four sittings.
+ *
+ * Even two sittings already demonstrate the two rules that make the table dangerous to read:
+ *   · BACKFILL IS LEGITIMATE HERE. The arm runs for every declared cohort, not the current year only
+ *     (which is the enrolment arm's rule, and the opposite one).
+ *   · ROLL-UPS SUM SPATIALLY, NEVER ACROSS SITTINGS. Two sittings' BECE candidates are DIFFERENT
+ *     CHILDREN; adding sittings produces a number with no referent.
+ *
+ * ⚠ THE SET IS SPLIT INTO CURRENT AND PRIOR, AND THE SPLIT IS LOAD-BEARING FOR BYTE-STABILITY. The
+ * CURRENT sittings (2025, 2026) are drawn inside the main shared-`rng` loop of `generateDemoDataset`,
+ * exactly as they were before this increment, so they — and every already-shipped arm whose draws
+ * follow them in that stream — stay byte-identical. The PRIOR sittings (2023, 2024) are drawn in a
+ * SEPARATE, independently-salted pass (the same discipline the attendance/fees/PLC passes already
+ * follow), so adding them shifts NOTHING that shipped. `DEMO_EXAM_COHORTS` is the union, chronological,
+ * and is what the run DECLARES (`refreshPeriods` upserts one EXAM_COHORT `dim_period` per sitting) and
+ * what the dashboards trend over.
  *
  * The windows are the REGULAR MAY/JUNE sitting (BECE and WASSCE both sit in that window in Ghana). They
- * are fixed dates, not derived from the clock, so the artefact and every `as_of_date` are byte-stable.
+ * are fixed dates, not derived from the clock, so the artefact and every `as_of_date` are byte-stable,
+ * and the four `ends_on` dates are distinct so the four sittings cannot collide onto one vintage.
  */
-export const DEMO_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+export const DEMO_CURRENT_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
   { sittingYear: 2025, startsOn: "2025-05-05", endsOn: "2025-06-27" },
   { sittingYear: 2026, startsOn: "2026-05-04", endsOn: "2026-06-26" },
+]);
+
+/** The earlier sittings that complete the four-year trend. Drawn in their own salted pass (see above). */
+export const DEMO_PRIOR_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+  { sittingYear: 2023, startsOn: "2023-05-08", endsOn: "2023-06-30" },
+  { sittingYear: 2024, startsOn: "2024-05-06", endsOn: "2024-06-28" },
+]);
+
+/** All four sittings, chronological (earliest first) — what the run declares and the dashboards trend over. */
+export const DEMO_EXAM_COHORTS: readonly DemoExamCohort[] = Object.freeze([
+  ...DEMO_PRIOR_EXAM_COHORTS,
+  ...DEMO_CURRENT_EXAM_COHORTS,
 ]);
 
 // ── deterministic ids ───────────────────────────────────────────────────────────────────────────
@@ -1440,12 +1454,14 @@ const PLANTED_STATUSES: readonly DemoInvoiceStatus[] = Object.freeze([
   "DRAFT",
   "VOIDED",
 ]);
-const SAMPLED_STATUSES: readonly (readonly [DemoInvoiceStatus, number])[] = Object.freeze([
-  ["ISSUED", 0.4],
-  ["PAID", 0.25],
-  ["PARTIAL", 0.2],
-  ["OVERDUE", 0.15],
-]);
+const SAMPLED_STATUSES: readonly (readonly [DemoInvoiceStatus, number])[] = Object.freeze(
+  [
+    ["ISSUED", 0.4],
+    ["PAID", 0.25],
+    ["PARTIAL", 0.2],
+    ["OVERDUE", 0.15],
+  ],
+);
 
 /** GHS × 100, rounded to the nearest 50 pesewas — real fee books are priced in half-cedis. */
 function pesewasBetween(rng: Rng, loGhs: number, hiGhs: number): number {
@@ -1574,7 +1590,11 @@ function feeBookFor(
             dues: true,
           });
         // The planted no-category line — on the first band of the first class only, so it is findable.
-        if (uncategorisedLine && band === 0 && klass.classId === billedClasses[0]!.classId)
+        if (
+          uncategorisedLine &&
+          band === 0 &&
+          klass.classId === billedClasses[0]!.classId
+        )
           lines.push({
             categoryName: null,
             amountPesewas: pesewasBetween(rng, 20, 90),
@@ -1740,7 +1760,9 @@ function plcModuleFor(
     return { programme, groups, memberships, sessions, attendance, teacherPool };
 
   // 1–3 active PLCs, weighted to 1–2 (a subject circle, sometimes a cross-cutting one as well).
-  const activeCount = runsPlc ? rng.weighted([[1, 0.5] as const, [2, 0.35] as const, [3, 0.15] as const]) : 0;
+  const activeCount = runsPlc
+    ? rng.weighted([[1, 0.5] as const, [2, 0.35] as const, [3, 0.15] as const])
+    : 0;
   let plcIndex = 0;
   const plans: {
     group: DemoPlcGroupRow;
@@ -1761,7 +1783,10 @@ function plcModuleFor(
     // cohorts, which is the distinction `readPlcSchoolMemberCounts` exists for. The fraction is high
     // because a school-based PLC really does take in most of the teaching staff; it stays below the
     // pool, and the pool stays below the pinned roll, so PLC coverage cannot exceed 100%.
-    const size = Math.max(1, Math.min(teacherPool, Math.round(teacherPool * (0.5 + rng.next() * 0.45))));
+    const size = Math.max(
+      1,
+      Math.min(teacherPool, Math.round(teacherPool * (0.5 + rng.next() * 0.45))),
+    );
     const start = rng.int(1, teacherPool);
     const members: DemoPlcMembershipRow[] = [];
     for (let m = 0; m < size; m++) {
@@ -1803,7 +1828,10 @@ function plcModuleFor(
   for (const term of terms) {
     const weeks = programme?.weeksPerSemester ?? 12;
     // The window cannot be exceeded: a session dated outside its term would belong to no cut at all.
-    const maxWeeks = Math.max(1, Math.floor((daysBetween(term.startsOn, term.endsOn) - 3) / 7) + 1);
+    const maxWeeks = Math.max(
+      1,
+      Math.floor((daysBetween(term.startsOn, term.endsOn) - 3) / 7) + 1,
+    );
     for (const plan of plans) {
       const expected = Math.min(
         plan.group.overrideFrequency === "BIWEEKLY" ? Math.ceil(weeks / 2) : weeks,
@@ -2005,7 +2033,38 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
     // The SITTINGS are per school and per sitting YEAR, and they carry NO operational period either: a
     // sitting is identified by its calendar year (`terminal_exam_result.year`), which the ETL maps to an
     // EXAM_COHORT `dim_period`. Generated outside the term loop, for that reason.
-    terminalExamResults.push(...sittingsFor(rng, school, schoolIndex, DEMO_EXAM_COHORTS));
+    //
+    // ⚠ CURRENT sittings ONLY here, from the shared `rng`. The PRIOR sittings that complete the
+    // four-year trend are drawn in their own salted pass below, so the draws on this line — and every
+    // already-shipped arm whose draws follow them in this stream — are byte-identical to before
+    // increment M (see `DEMO_EXAM_COHORTS` above).
+    terminalExamResults.push(
+      ...sittingsFor(rng, school, schoolIndex, DEMO_CURRENT_EXAM_COHORTS),
+    );
+  }
+
+  // ── the PRIOR SITTINGS: the four-year performance trend's earlier cohorts, A SEPARATE PASS WITH ITS
+  // OWN RNG ─────────────────────────────────────────────────────────────────────────────────────────
+  //
+  // ⚠ A NEW, DISTINCT SALT, for exactly the reason the attendance/fees/PLC passes document: every draw
+  // from a stream shifts everything after it, so drawing these from the main `rng` would silently move
+  // the CURRENT sittings and every census/roster of every subsequent school — i.e. adding the trend's
+  // history would move all the ALREADY-SHIPPED arms' demo figures. An independently seeded generator
+  // keeps this increment's blast radius to its own new rows, and the ETL's per-year exam read
+  // (`readTerminalExamResults`, grouped and ordered in SQL) does not care what order the demo inserted
+  // them in. These are PERIOD-STAMPED backfills (ruling M1): a closed sitting carries its own vintage,
+  // so the series is genuinely measured — unlike enrolment/staffing/PLC, which get no such pass (M2/M6).
+  const sittingsRng = rngOf(seed ^ 0x5349_5454); // "SITT"
+  for (const school of schools) {
+    if (!school.onSchoolup) continue; // no tenant → no sitting filed → no fact row
+    terminalExamResults.push(
+      ...sittingsFor(
+        sittingsRng,
+        school,
+        Number(school.operationalSchoolId!.slice(-12)),
+        DEMO_PRIOR_EXAM_COHORTS,
+      ),
+    );
   }
 
   // ── the REGISTERS: a SEPARATE PASS, WITH ITS OWN RNG ──────────────────────────────────────────
@@ -2101,7 +2160,8 @@ export function generateDemoDataset(seed: number = DEFAULT_SEED): DemoDataset {
   // The NTC extract is per ACADEMIC YEAR, and the PLC arm runs for the CURRENT one only (its
   // `teacher_headcount` is pinned to a roll that exists only there), so the stand-in carries exactly
   // that year. A stand-in covering a year the arm cannot file would be rows nothing reads.
-  const cpdAcademicYear = (DEMO_TERMS.find((t) => t.isCurrent) ?? DEMO_TERMS[0]!).academicYear;
+  const cpdAcademicYear = (DEMO_TERMS.find((t) => t.isCurrent) ?? DEMO_TERMS[0]!)
+    .academicYear;
   for (const school of schools) {
     if (!school.onSchoolup) continue; // no tenant → no operational PLC module → no fact row
     const index = Number(school.operationalSchoolId!.slice(-12));
