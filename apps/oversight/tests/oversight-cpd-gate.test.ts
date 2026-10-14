@@ -998,17 +998,37 @@ describe("the PLC-earned columns unpopulated — the state migration 0006 lands 
  * (6) AC-21 — THE DEFERRED BREAKDOWN COLUMNS AND COMPARISON ROWS ARE ABSENT, NOT A DASH
  * ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-describe("the deferred C17/C18 surfaces are wholly absent (AC-21, E-CPD-4)", () => {
-  it("the breakdown table gained no CPD or PLC column", () => {
-    for (const file of [
-      "components/oversight/breakdown-visuals.tsx",
-      "components/oversight/breakdown-section.tsx",
-    ]) {
-      const code = readCode(file);
-      expect(code, file).not.toMatch(/\bPLC\b/);
-      expect(code, file).not.toMatch(/\bCPD\b/);
-      expect(code, file).not.toMatch(/cpd[A-Z_]/);
-    }
+describe("the C17 breakdown columns are built; the C18 comparison rows stay deferred (AC-21, E-CPD-4)", () => {
+  it("the breakdown TABLE gained the two C17 columns, DEMO-gated and un-ranked", () => {
+    // E-CPD-4 is now BUILT for the breakdown table (CPD-SURFACING-RULING C17): PLC coverage and CPD
+    // compliance, at every tier. The columns live in `breakdown-table.tsx` and the ntcProvenance switch
+    // is threaded through `breakdown-section.tsx` — NOT in the spread/rank/establishment visuals, which
+    // are not the CPD home and must stay CPD-free.
+    const table = readCode("components/oversight/breakdown-table.tsx");
+    expect(table).toMatch(/PLC coverage/);
+    expect(table).toMatch(/CPD compliance/);
+    // The DEMO chip is the ONE resolved switch (C5/C6), never a second decision; and the sourcing-gate
+    // absence is "No PLC data"/"Not yet sourced from NTC", never a coalesced 0% (C10/C11).
+    expect(table).toContain("DemoChip");
+    expect(table).toContain("ntcProvenance");
+    expect(table).toContain('title="No PLC data"');
+    expect(table).toMatch(/Not yet sourced from NTC/);
+    // The compliance cell is neutral navy — NEVER toned green/terra (C17/C18 carry the never-crown
+    // rule onto the table). Both CPD cell renderers live between their declarations and the vacancy
+    // toolbar `return (` of the component body; neither reaches for a tone lookup (toneFor/PILL_TONE)
+    // or a green/terra class.
+    const cpdCells = table.slice(
+      table.indexOf("const plcCoverageCell"),
+      table.indexOf("return (\n    <div>"),
+    );
+    expect(cpdCells).toContain("text-navy");
+    expect(cpdCells).not.toMatch(/text-green|text-terra|PILL_TONE|toneFor/);
+
+    // The spread/rank/establishment visuals are NOT the CPD home and gained nothing.
+    const visuals = readCode("components/oversight/breakdown-visuals.tsx");
+    expect(visuals).not.toMatch(/\bPLC\b/);
+    expect(visuals).not.toMatch(/\bCPD\b/);
+    expect(visuals).not.toMatch(/cpd[A-Z_]/);
   });
 
   it("the comparison workspace gained no CPD or PLC row", () => {

@@ -326,7 +326,7 @@ export function BreakdownTable({
    * protect this — C10/C11):
    *   · no ANNUAL PLC row at all          → "No PLC data"
    *   · ANNUAL rows but threshold NULL    → "Not yet sourced from NTC" (the live sourcing-gate state)
-   *   · threshold sourced                 → the rate, DEMO-chipped while the NTC feed is the stand-in
+   *   · threshold sourced                 → the rate, DEMO-chipped while the NTC source is the stand-in
    * NEVER toned green/terra — a synthetic compliance figure carries no valence (cpd-tone.ts), and
    * crowning a "most compliant district" on demo data is exactly the misread the chip exists to
    * prevent. The chip is the ONE `ntcProvenance` the reader resolved, so LIVE removes it with no other
@@ -336,7 +336,7 @@ export function BreakdownTable({
     if (row.plcAnnualRows === 0) return <Absent title="No PLC data" />;
     if (row.plcThresholdRows === 0 || row.cpdCompliance === null)
       return (
-        <Absent title="Not yet sourced from NTC — the live NTC CPD feed is not connected" />
+        <Absent title="Not yet sourced from NTC — the live NTC CPD connection is not yet established" />
       );
     const title =
       row.plcThreshold === null || row.plcAnnualHeadcount === null
@@ -430,9 +430,10 @@ export function BreakdownTable({
                 Vacancies
               </th>
               {/* CPD / PLC (increment L, C17). Both render at EVERY tier — CPD/PLC rolls up honestly
-                  by Σ÷Σ everywhere (unlike fees), so there is no tier gate. PLC coverage is a measured
-                  operational figure; CPD compliance is NTC-sourced and marked DEMO while the feed is
-                  illustrative, or an em-dash when not yet sourced — never a 0% (C10/C11). */}
+                  by Σ÷Σ everywhere (unlike a distribution-only domain), so there is no tier gate. PLC
+                  coverage is a measured operational figure; CPD compliance is NTC-sourced and marked
+                  DEMO while the NTC source is illustrative, or an em-dash when not yet sourced — never
+                  a 0% (C10/C11). */}
               <th
                 scope="col"
                 className={cn(TH, "text-center")}
@@ -443,7 +444,7 @@ export function BreakdownTable({
               <th
                 scope="col"
                 className={cn(TH, "text-center")}
-                title="Teachers meeting the national CPD requirement ÷ teachers on roll, this year. Marked DEMO while the NTC CPD feed is illustrative; an em-dash means not yet sourced from NTC — never 0%."
+                title="Teachers meeting the national CPD requirement ÷ teachers on roll, this year. Marked DEMO while the NTC CPD data is illustrative; an em-dash means not yet sourced from NTC — never 0%."
               >
                 CPD compliance
               </th>
