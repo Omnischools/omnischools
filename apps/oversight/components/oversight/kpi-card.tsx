@@ -32,7 +32,7 @@ export function KpiCard({
   /** `%`, `pupils`, … Rendered in body font, never italic (§3.3). */
   unit?: string;
   sub?: ReactNode;
-  /** Lucy's `.k-delta` pill. Unrendered on this surface — see the note above. */
+  /** Lucy's `.k-delta` pill (now rendered — see the note above), or the PTR target chip. */
   delta?: ReactNode;
   lead?: boolean;
   /**
@@ -99,8 +99,15 @@ export function KpiCard({
  *            MULTI-YEAR-TREND-RULING M10) or, with an em-dash label, "no prior-year comparator yet"
  *            (M9). The two flat uses are distinguished by their LABEL, never by a fake `▲ 0%`.
  *
- * The glyph is `aria-hidden`: the direction is already in the label's words ("▲ 2 pts" is read as
- * "2 pts" + the tone's meaning carried by the text), so the triangle is decoration, not content.
+ * The direction is NOT left to the glyph or the colour. The label this surface builds is the ABSOLUTE
+ * size ("15 pts vs 2025" — `page.tsx` renders `Math.abs(...)`), so a rise and a fall have the identical
+ * accessible name; the triangle is `aria-hidden` and the green/terra is colour. An officer on a screen
+ * reader, or who cannot tell green from terra, would read a decline as an improvement (a WCAG 1.4.1
+ * use-of-colour failure, and the same "honesty must reach what the officer perceives, not stop at the
+ * figure" rule the `state` typography note above records). So a visually-hidden direction WORD ("up"/
+ * "down") carries the sign to assistive tech; the triangle is then genuinely decorative, redundant with
+ * that word for a sighted reader. `flat` (measured no-change and the em-dash absent state) has no
+ * direction to announce — its words already carry the whole meaning (M9/M10).
  */
 export type KDeltaTone = "up" | "down" | "flat";
 
@@ -118,6 +125,9 @@ export function KDelta({ tone, children }: { tone: KDeltaTone; children: ReactNo
       )}
     >
       {glyph ? <span aria-hidden>{glyph}</span> : null}
+      {tone !== "flat" ? (
+        <span className="sr-only">{tone === "up" ? "up " : "down "}</span>
+      ) : null}
       {children}
     </span>
   );

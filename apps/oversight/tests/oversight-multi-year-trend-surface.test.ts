@@ -160,7 +160,12 @@ describe("the WASSCE pill as rendered: real change, measured zero, no comparator
     // 75% now against 50% then — the delta is the difference of two independently re-derived Σ/Σ
     // rates, in POINTS, and the comparator year is on the face of the pill.
     const pill = pillFor(await renderWithPrior(100), "WASSCE qualification")!;
-    expect(pill.text).toBe(`▲25 pts vs ${PRIOR.sittingYear}`);
+    // `pill.text` strips tags but keeps text content, so it merges the aria-hidden glyph, the sr-only
+    // direction word and the visible label: "▲" + "up " + "25 pts vs 2020". The DIRECTION reaches a
+    // screen reader through that sr-only word, never through the glyph or the colour alone (Dex B1 /
+    // WCAG 1.4.1); the visible figure is the absolute size.
+    expect(pill.text).toBe(`▲up 25 pts vs ${PRIOR.sittingYear}`);
+    expect(pill.html).toContain('<span class="sr-only">up </span>');
     expect(pill.classes).toContain("bg-green-bg");
     expect(pill.classes).toContain("text-green");
     expect(pill.html).toContain("▲");
@@ -172,10 +177,13 @@ describe("the WASSCE pill as rendered: real change, measured zero, no comparator
   it("a real FALL is a terra ▼ — the sign follows the data, not the surface's optimism", async () => {
     // 75% now against 90% then → −15 points.
     const pill = pillFor(await renderWithPrior(180), "WASSCE qualification")!;
-    expect(pill.text).toBe(`▼15 pts vs ${PRIOR.sittingYear}`);
+    // "▼" + "down " + "15 pts vs 2020" (see the rise test for why the merged text reads this way).
+    expect(pill.text).toBe(`▼down 15 pts vs ${PRIOR.sittingYear}`);
+    expect(pill.html).toContain('<span class="sr-only">down </span>');
     expect(pill.classes).toContain("bg-terra-bg");
     expect(pill.classes).toContain("text-terra");
-    // The figure is the ABSOLUTE size; the direction is the tone and the glyph, never a "-15".
+    // The figure is the ABSOLUTE size; the direction is the sr-only word, the tone and the glyph — but
+    // never a signed "-15" in the visible label.
     expect(pill.text).not.toContain("-15");
   });
 

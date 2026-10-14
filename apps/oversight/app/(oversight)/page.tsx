@@ -520,8 +520,9 @@ export default async function OversightHome() {
                 </>
               ) : null
             }
-            /* NOT a year-over-year delta (the "no delta pills" rule stands for those — one demo year,
-               no comparator). This is the THREE-WAY conformance chip (Kofi §10.1): green "within" only
+            /* NOT a year-over-year delta: this is a TARGET-relative chip, so it needs only the GES norm,
+               never a prior-year comparator, and the trend increment neither gates nor converts it (M9).
+               The THREE-WAY conformance chip (Kofi §10.1): green "within" only
                at/below the tightest norm, terra "above" only beyond the loosest, and NO chip in between
                because a blend cannot certify level-dependent norms. No ▲/▼ glyph. */
             delta={

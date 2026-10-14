@@ -174,30 +174,36 @@ describe("KDelta renders Lucy's three tones and never fabricates a direction (AC
   const render = (tone: "up" | "down" | "flat", label: string) =>
     renderToStaticMarkup(createElement(KDelta, { tone, children: label }));
 
-  it("up is green with a ▲ glyph", () => {
+  it("up is green with a ▲ glyph and a screen-reader 'up' word (not colour/glyph alone)", () => {
     const html = render("up", "2 pts vs 2025");
     expect(html).toContain("▲");
     expect(html).toContain("bg-green-bg");
     expect(html).toContain("text-green");
     expect(html).toContain("2 pts vs 2025");
     expect(html).not.toContain("▼");
+    // Dex B1 / WCAG 1.4.1: the direction must reach assistive tech, since the label is the ABSOLUTE
+    // size and the glyph is aria-hidden. A visually-hidden word carries it.
+    expect(html).toContain('<span class="sr-only">up </span>');
   });
 
-  it("down is terra with a ▼ glyph", () => {
+  it("down is terra with a ▼ glyph and a screen-reader 'down' word", () => {
     const html = render("down", "3 pts vs 2024");
     expect(html).toContain("▼");
     expect(html).toContain("bg-terra-bg");
     expect(html).toContain("text-terra");
     expect(html).not.toContain("▲");
+    expect(html).toContain('<span class="sr-only">down </span>');
   });
 
-  it("flat carries NO direction glyph — it is a no-change or an absent comparator, never ▲/▼", () => {
+  it("flat carries NO direction glyph or word — a no-change or absent comparator, never ▲/▼", () => {
     const html = render("flat", "— no prior sitting yet");
     expect(html).not.toContain("▲");
     expect(html).not.toContain("▼");
     expect(html).toContain("bg-bg");
     expect(html).toContain("text-navy-3");
     expect(html).toContain("— no prior sitting yet");
+    // No fabricated direction: flat has none to announce.
+    expect(html).not.toContain("sr-only");
   });
 
   it("AC1 · the pill carries no DEMO chip — a trend figure is measured, not illustrative", () => {
