@@ -853,11 +853,12 @@ describe("the subtree bound is RLS's, and the figures are each officer's own (AC
 
 describe("the column sits after PTR and spans every row (AC-14)", () => {
   it("the empty-state colSpan still spans EVERY column, with and without coverage", () => {
-    // The Vacancies column moved the count 7→8 / 5→6. A stale colSpan is a layout break that only
+    // The Vacancies column moved the count 7→8 / 5→6, and the two CPD/PLC columns (increment L — PLC
+    // coverage + CPD compliance) moved it again 8→10 / 6→8. A stale colSpan is a layout break that only
     // appears in the EMPTY state, which no value assertion reaches.
     for (const [hasCoverage, expected] of [
-      [true, 8],
-      [false, 6],
+      [true, 10],
+      [false, 8],
     ] as const) {
       const markup = renderToStaticMarkup(
         createElement(BreakdownTable, {
